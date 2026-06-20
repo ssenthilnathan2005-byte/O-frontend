@@ -251,6 +251,16 @@ export default function DoctorDashboard() {
     (doctor as any)?.statusOverride ?? "not_yet_arrived"
   );
 
+  // Re-sync the local selector whenever the doctor record (re)loads — e.g. on
+  // page refresh the doctor list is re-fetched from the server, and without
+  // this the dropdown would stay stuck on its initial mount value
+  // ("not_yet_arrived") even though the server has a saved status.
+  useEffect(() => {
+    if (doctor && (doctor as any).statusOverride) {
+      setDoctorStatusOverride((doctor as any).statusOverride);
+    }
+  }, [doctor && (doctor as any).statusOverride]);
+
   function handleSaveDoctorStatus() {
     if (!doctor) return;
     updateDoctor(doctor.id, { statusOverride: doctorStatusOverride } as any);
