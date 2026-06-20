@@ -38,6 +38,7 @@ export interface Doctor {
   education?: string;
   languages?: string[];
   sessionTimings?: Partial<Record<SessionType, SessionTiming>>;
+  statusOverride?: string;
 }
 
 export type TokenStatus =

@@ -43,7 +43,23 @@ export default function HospitalDoctorsPage({ id }: Props) {
   }
 
   // Get current token status for a doctor (today's sessions)
+  const DOCTOR_STATUS_OPTIONS = {
+    running_late: { label: "Running late", color: "yellow", detail: "The doctor is delayed. Please wait a little longer." },
+    seeing_patients: { label: "Seeing patients", color: "green", detail: "Your turn will come shortly." },
+    short_break: { label: "Short break", color: "yellow", detail: "The doctor will be back shortly." },
+    available_soon: { label: "Available soon", color: "green", detail: "Please be ready, the doctor is almost here." },
+    attending_emergency: { label: "Attending an emergency", color: "red", detail: "There may be a delay. Please wait." },
+  } as const;
+
   function getDoctorStatus(doctor: Doctor) {
+    if (doctor.statusOverride && doctor.statusOverride !== "not_yet_arrived") {
+      return DOCTOR_STATUS_OPTIONS[doctor.statusOverride as keyof typeof DOCTOR_STATUS_OPTIONS] ?? {
+        label: "Doctor status updated",
+        color: "green",
+        detail: "See the latest update from the doctor.",
+      };
+    }
+
     const today = new Date().toISOString().split("T")[0];
     for (const session of doctor.sessions as SessionType[]) {
       const sid = `${doctor.id}_${today}_${session}`;

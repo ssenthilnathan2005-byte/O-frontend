@@ -365,6 +365,7 @@ export interface Doctor {
   sessionTimings?: Partial<Record<string, { start: string; end: string }>>;
   isAvailable?: boolean; yearsOfExperience?: string;
   education?: string; languages?: string[];
+  statusOverride?: string;
 }
 export interface Booking {
   id: string; patientId: string; patientName: string;
