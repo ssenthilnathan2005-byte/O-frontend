@@ -224,7 +224,6 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
         };
 
         const rzp = new (window as any).Razorpay(options);
-        document.querySelector("[data-slot=dialog-overlay]")?.setAttribute("style", "pointer-events: none !important; z-index: 0 !important");
         rzp.on("payment.failed", (response: any) => {
           reject(new Error(response.error?.description || "Payment failed"));
         });
@@ -312,7 +311,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="w-[94vw] max-w-md max-h-[calc(100dvh-1rem)] sm:max-h-[88vh] overflow-y-auto overscroll-contain p-4 sm:p-6" data-ocid="booking.dialog">
+      <DialogContent showOverlay={step !== "payment"} className="w-[94vw] max-w-md max-h-[calc(100dvh-1rem)] sm:max-h-[88vh] overflow-y-auto overscroll-contain p-4 sm:p-6" data-ocid="booking.dialog">
         <DialogHeader>
           <DialogTitle className="text-center text-lg sm:text-xl">
             {step === "tracking-info" || step === "success" ? "Booking Confirmed!" : "Book Appointment"}
