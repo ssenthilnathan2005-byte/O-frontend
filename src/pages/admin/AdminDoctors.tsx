@@ -52,11 +52,17 @@ type AddForm = {
   hospitalId: string;
   tokensPerSession: string;
   sessions: string;
+  code: string;
 };
 
 type EditForm = {
+  name: string;
+  phone: string;
   specialty: string;
   hospitalId: string;
+  tokensPerSession: string;
+  sessions: string;
+  code: string;
   isAvailable: boolean;
 };
 
@@ -72,10 +78,16 @@ export default function AdminDoctors() {
     hospitalId: "",
     tokensPerSession: "20",
     sessions: "morning,afternoon",
+    code: "",
   });
   const [editForm, setEditForm] = useState<EditForm>({
+    name: "",
+    phone: "",
     specialty: "",
     hospitalId: "",
+    tokensPerSession: "20",
+    sessions: "morning,afternoon",
+    code: "",
     isAvailable: true,
   });
 
@@ -104,7 +116,12 @@ export default function AdminDoctors() {
         sessions,
         isAvailable: true,
       });
-      toast.success(`Doctor ${newDoc.name} added with code ${newDoc.code}`);
+
+      if (addForm.code) {
+        await updateDoctor(newDoc.id, { code: addForm.code });
+      }
+
+      toast.success(`Doctor ${newDoc.name} added with code ${addForm.code || newDoc.code}`);
     } catch (err: any) {
       toast.error(err.message || "Failed to add doctor");
       return;
@@ -116,6 +133,7 @@ export default function AdminDoctors() {
       hospitalId: "",
       tokensPerSession: "20",
       sessions: "morning,afternoon",
+      code: "",
     });
     setAddOpen(false);
   }
@@ -123,17 +141,31 @@ export default function AdminDoctors() {
   function openEdit(doc: Doctor) {
     setEditDoctor(doc);
     setEditForm({
+      name: doc.name,
+      phone: doc.phone ?? "",
       specialty: doc.specialty,
       hospitalId: doc.hospitalId,
+      tokensPerSession: String(doc.tokensPerSession ?? 20),
+      sessions: (doc.sessions ?? ["morning", "afternoon"]).join(","),
+      code: doc.code ?? "",
       isAvailable: doc.isAvailable ?? true,
     });
   }
 
   function handleEdit() {
     if (!editDoctor) return;
+    const tokens = Number.parseInt(editForm.tokensPerSession, 10) || 20;
+    const sessions = editForm.sessions
+      .split(",")
+      .map((s) => s.trim()) as Doctor["sessions"];
     updateDoctor(editDoctor.id, {
+      name: editForm.name,
+      phone: editForm.phone,
       specialty: editForm.specialty,
       hospitalId: editForm.hospitalId,
+      tokensPerSession: tokens,
+      sessions,
+      code: editForm.code || undefined,
       consultationFee: STANDARD_FEE,
       price: STANDARD_FEE,
       isAvailable: editForm.isAvailable,
@@ -170,7 +202,7 @@ export default function AdminDoctors() {
               Add Doctor
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg" data-ocid="admin.dialog">
+          <DialogContent showOverlay={false} className="max-w-lg" data-ocid="admin.dialog">
             <DialogHeader>
               <DialogTitle>Add New Doctor</DialogTitle>
             </DialogHeader>
@@ -243,9 +275,39 @@ export default function AdminDoctors() {
                   data-ocid="admin.input"
                 />
               </div>
+              <div className="space-y-1.5">
+                <Label>Login Code</Label>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Input
+                    placeholder="Enter login code"
+                    value={addForm.code}
+                    onChange={(e) =>
+                      setAddForm((f) => ({ ...f, code: e.target.value }))
+                    }
+                    data-ocid="admin.input"
+                  />
+                  <Button
+                    variant="secondary"
+                    className="whitespace-nowrap"
+                    onClick={() => {
+                      if (!addForm.code) {
+                        toast.error("Enter a login code before saving");
+                        return;
+                      }
+                      toast.success("Login code saved for this doctor");
+                    }}
+                    data-ocid="admin.save_code_button"
+                  >
+                    Save Login Code
+                  </Button>
+                </div>
+              </div>
               <div className="rounded-xl border border-teal-200 bg-teal-50 p-3">
                 <p className="text-xs font-semibold text-teal-600 mb-1">Login Code Preview</p>
-                <code className="text-sm font-bold text-teal-700 tracking-widest">{addForm.name ? addForm.name.split(" ").map((w,i)=>i<2?w[0]:"").join("").toUpperCase() + ".CODE.01" : "Fill name to preview"}</code>
+                <code className="text-sm font-bold text-teal-700 tracking-widest">
+                  {addForm.code || (addForm.name ? addForm.name.split(" ").map((w, i) => i < 2 ? w[0] : "")
+                    .join("").toUpperCase() + ".CODE.01" : "Fill name to preview")}
+                </code>
               </div>
             </div>
             <DialogFooter>
@@ -370,11 +432,31 @@ export default function AdminDoctors() {
         open={!!editDoctor}
         onOpenChange={(open) => !open && setEditDoctor(null)}
       >
-        <DialogContent data-ocid="admin.dialog">
+        <DialogContent showOverlay={false} className="max-w-lg" data-ocid="admin.dialog">
           <DialogHeader>
             <DialogTitle>Edit Doctor: {editDoctor?.name}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>Full Name</Label>
+              <Input
+                value={editForm.name}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, name: e.target.value }))
+                }
+                data-ocid="admin.input"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Phone</Label>
+              <Input
+                value={editForm.phone}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, phone: e.target.value }))
+                }
+                data-ocid="admin.input"
+              />
+            </div>
             <div className="space-y-1.5">
               <Label>Specialty</Label>
               <Input
@@ -405,6 +487,28 @@ export default function AdminDoctors() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1.5">
+              <Label>Tokens per Session</Label>
+              <Input
+                type="number"
+                value={editForm.tokensPerSession}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, tokensPerSession: e.target.value }))
+                }
+                data-ocid="admin.input"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Sessions</Label>
+              <Input
+                placeholder="morning,afternoon"
+                value={editForm.sessions}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, sessions: e.target.value }))
+                }
+                data-ocid="admin.input"
+              />
+            </div>
             <div className="flex items-center gap-3">
               <Switch
                 checked={editForm.isAvailable}
@@ -417,11 +521,34 @@ export default function AdminDoctors() {
             </div>
             <div className="space-y-1.5">
               <Label>Login Code</Label>
-              <Input
-                className="font-mono"
-                value={editForm.code}
-                onChange={(e) => setEditForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
-              />
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Input
+                  value={editForm.code}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, code: e.target.value }))
+                  }
+                  data-ocid="admin.input"
+                />
+                <Button
+                  variant="secondary"
+                  className="whitespace-nowrap"
+                  onClick={() => {
+                    if (!editDoctor) {
+                      toast.error("No doctor selected to save code");
+                      return;
+                    }
+                    if (!editForm.code) {
+                      toast.error("Enter a login code before saving");
+                      return;
+                    }
+                    updateDoctor(editDoctor.id, { code: editForm.code });
+                    toast.success("Login code saved for this doctor");
+                  }}
+                  data-ocid="admin.save_code_button"
+                >
+                  Save Login Code
+                </Button>
+              </div>
             </div>
           </div>
           <DialogFooter>
