@@ -205,14 +205,27 @@ export default function DoctorDashboard() {
   }, [activeTab]);
 
   useEffect(() => {
+    // Wait until user and doctors are available to avoid race on refresh
     if (typeof window === "undefined") return;
+    if (!user || doctors.length === 0) return;
+
     const params = new URLSearchParams(window.location.search);
     const queryTab = params.get("doctorTab") as DoctorTab | null;
     if (queryTab === "livetokens" || queryTab === "profile") {
       setActiveTab(queryTab);
       window.localStorage.setItem("doctorTab", queryTab);
+      return;
     }
-  }, []);
+
+    const savedTab = window.localStorage.getItem("doctorTab") as DoctorTab | null;
+    if (savedTab === "livetokens" || savedTab === "profile") {
+      setActiveTab(savedTab);
+      return;
+    }
+
+    // fallback to default
+    setActiveTab("regulator");
+  }, [user, doctors.length]);
 
   const [profileForm, setProfileForm] = useState({
     name: doctor?.name ?? "",
