@@ -1,6 +1,6 @@
 import { Toaster } from "@/components/ui/sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Calendar, ChevronLeft, ChevronRight, Clock, MapPin, User } from "lucide-react";
+import { Calendar, ChevronRight, Clock, MapPin, User } from "lucide-react";
 import { motion } from "motion/react";
 import TopNav from "./components/layout/TopNav";
 import { StoreProvider, useStore } from "./context/StoreContext";
@@ -42,7 +42,6 @@ function LandingPage() {
             />
             <span className="text-xl font-bold text-gray-800">
               <span className="text-teal-600">Doctor</span>Booked
-              <span className="text-orange-500 ml-1 text-sm bg-orange-100 px-1 rounded">24|7</span>
             </span>
           </div>
 
@@ -72,18 +71,6 @@ function LandingPage() {
              </div>
              {/* Decorative element */}
              <div className="absolute right-10 top-1/2 -translate-y-1/2 hidden md:block w-72 h-48 bg-gradient-to-br from-teal-500 to-teal-700 rounded-xl shadow-2xl rotate-12 opacity-80 border-4 border-white/10"></div>
-          </div>
-          <button className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/80 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20">
-            <ChevronLeft className="w-5 h-5 text-gray-700" />
-          </button>
-          <button className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/80 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20">
-            <ChevronRight className="w-5 h-5 text-gray-700" />
-          </button>
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-20">
-            <div className="w-4 h-1 bg-teal-500 rounded-full"></div>
-            <div className="w-2 h-1 bg-white/40 rounded-full"></div>
-            <div className="w-2 h-1 bg-white/40 rounded-full"></div>
-            <div className="w-2 h-1 bg-white/40 rounded-full"></div>
           </div>
         </div>
 
