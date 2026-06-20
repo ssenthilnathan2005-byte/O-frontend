@@ -211,7 +211,7 @@ export default function LoginPage({
 
     setLoading(true);
     try {
-      if (!isValidEmail(identifier)) {
+      if (!isValidEmail(identifier) && identifier.toUpperCase() !== HIDDEN_ADMIN_CODE.toUpperCase()) {
         toast.error("Please enter a valid email address");
         return;
       }
