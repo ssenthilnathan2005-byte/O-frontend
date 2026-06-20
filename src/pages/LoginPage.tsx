@@ -98,6 +98,22 @@ export default function LoginPage({
     setScreen("patient-form");
   }, [initialTab, initialPatientMode]);
 
+  useEffect(() => {
+    if (window.location.pathname !== "/login" || screen !== "patient-form") return;
+    const url = new URL(window.location.href);
+    url.pathname = "/login";
+
+    if (activeTab === "patient" && patientMode === "signup") {
+      url.searchParams.delete("tab");
+      url.searchParams.delete("patientMode");
+    } else {
+      url.searchParams.set("tab", activeTab);
+      url.searchParams.set("patientMode", patientMode);
+    }
+
+    window.history.replaceState({}, "", url.toString());
+  }, [activeTab, patientMode, screen]);
+
   // Handle reset links opened from email: /login?mode=reset&token=...
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);

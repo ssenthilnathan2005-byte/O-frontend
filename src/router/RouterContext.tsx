@@ -32,12 +32,39 @@ interface RouterCtx {
 const RouterContext = createContext<RouterCtx | null>(null);
 
 function getInitialRoute(): Route {
-  const params = new URLSearchParams(window.location.search);
+  const { pathname, search } = window.location;
+  const params = new URLSearchParams(search);
   const token = params.get("token");
   const mode = params.get("mode");
+  const tab = params.get("tab") as "patient" | "doctor" | null;
+  const patientMode = params.get("patientMode") as "login" | "signup" | null;
+
   if (token && (!mode || mode === "reset")) {
     return { path: "/login", tab: "patient", patientMode: "login" };
   }
+
+  if (pathname === "/login") {
+    return {
+      path: "/login",
+      tab: tab ?? "patient",
+      patientMode:
+        patientMode ?? (tab === "doctor" ? "login" : "signup"),
+    };
+  }
+
+  if (pathname === "/patient/hospitals") return { path: "/patient/hospitals" };
+  if (pathname === "/patient/hospital") return { path: "/patient/hospital", id: "" };
+  if (pathname === "/patient/tokens") return { path: "/patient/tokens" };
+  if (pathname === "/patient/track") return { path: "/patient/track", sessionId: "", tokenNumber: 0 };
+  if (pathname === "/doctor") return { path: "/doctor" };
+  if (pathname === "/admin") return { path: "/admin" };
+  if (pathname === "/admin/hospitals") return { path: "/admin/hospitals" };
+  if (pathname === "/admin/doctors") return { path: "/admin/doctors" };
+  if (pathname === "/admin/patients") return { path: "/admin/patients" };
+  if (pathname === "/admin/sessions") return { path: "/admin/sessions" };
+  if (pathname === "/admin/bookings") return { path: "/admin/bookings" };
+  if (pathname === "/terms") return { path: "/terms" };
+
   return { path: "/" };
 }
 
