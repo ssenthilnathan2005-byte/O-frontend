@@ -243,6 +243,10 @@ export default function AdminDoctors() {
                   data-ocid="admin.input"
                 />
               </div>
+              <div className="rounded-xl border border-teal-200 bg-teal-50 p-3">
+                <p className="text-xs font-semibold text-teal-600 mb-1">Login Code Preview</p>
+                <code className="text-sm font-bold text-teal-700 tracking-widest">{addForm.name ? addForm.name.split(" ").map((w,i)=>i<2?w[0]:"").join("").toUpperCase() + ".CODE.01" : "Fill name to preview"}</code>
+              </div>
             </div>
             <DialogFooter>
               <Button
@@ -410,6 +414,14 @@ export default function AdminDoctors() {
                 data-ocid="admin.switch"
               />
               <Label>Available for appointments</Label>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Login Code</Label>
+              <Input
+                className="font-mono"
+                value={editForm.code}
+                onChange={(e) => setEditForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
+              />
             </div>
           </div>
           <DialogFooter>
