@@ -469,13 +469,16 @@ export default function LoginPage({
       <div className="flex-1 flex items-center justify-center px-4 py-8 sm:py-12">
         <div className="w-full max-w-4xl">
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "patient" | "doctor")} className="w-full">
-            <TabsList className="grid w-full max-w-xs mx-auto grid-cols-2 mb-6 sm:mb-8">
-              <TabsTrigger value="patient">Patient</TabsTrigger>
-              <TabsTrigger value="doctor">Doctor</TabsTrigger>
-            </TabsList>
+            {/* moved tab triggers inside each tab content to avoid duplicate top tab */}
 
             {/* ── Patient tab ── */}
             <TabsContent value="patient">
+              <div className="max-w-xs mx-auto mb-6">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="patient">Patient</TabsTrigger>
+                  <TabsTrigger value="doctor">Doctor</TabsTrigger>
+                </TabsList>
+              </div>
               <div className="flex flex-col sm:flex-row max-w-3xl mx-auto rounded-2xl overflow-hidden shadow-sm border border-gray-100">
                 <div className="hidden sm:flex sm:w-2/5 bg-gradient-to-b from-teal-200 to-teal-500 items-end pb-10 px-8 min-h-[280px]">
                   <div>
@@ -563,6 +566,12 @@ export default function LoginPage({
 
             {/* ── Doctor tab ── */}
             <TabsContent value="doctor">
+              <div className="max-w-xs mx-auto mb-6">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="patient">Patient</TabsTrigger>
+                  <TabsTrigger value="doctor">Doctor</TabsTrigger>
+                </TabsList>
+              </div>
               <div className="max-w-sm mx-auto bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
                 <div className="flex flex-col items-center mb-6">
                   <div className="w-16 h-16 rounded-full overflow-hidden mb-4">
