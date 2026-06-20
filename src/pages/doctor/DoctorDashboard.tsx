@@ -204,6 +204,16 @@ export default function DoctorDashboard() {
     window.history.replaceState({}, "", url.toString());
   }, [activeTab]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const queryTab = params.get("doctorTab") as DoctorTab | null;
+    if (queryTab === "livetokens" || queryTab === "profile") {
+      setActiveTab(queryTab);
+      window.localStorage.setItem("doctorTab", queryTab);
+    }
+  }, []);
+
   const [profileForm, setProfileForm] = useState({
     name: doctor?.name ?? "",
     specialty: doctor?.specialty ?? "",
@@ -638,7 +648,26 @@ export default function DoctorDashboard() {
         </p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as DoctorTab)} className="w-full">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => {
+          const nextTab = value as DoctorTab;
+          setActiveTab(nextTab);
+          if (typeof window !== "undefined") {
+            window.localStorage.setItem("doctorTab", nextTab);
+            const url = new URL(window.location.href);
+            if (window.location.pathname === "/doctor") {
+              if (nextTab === "regulator") {
+                url.searchParams.delete("doctorTab");
+              } else {
+                url.searchParams.set("doctorTab", nextTab);
+              }
+              window.history.replaceState({}, "", url.toString());
+            }
+          }
+        }}
+        className="w-full"
+      >
         <TabsList className="mb-6" data-ocid="doctor.tab">
           <TabsTrigger value="regulator" data-ocid="doctor.tab">
             <Activity className="w-4 h-4 mr-1.5 sm:mr-2" />

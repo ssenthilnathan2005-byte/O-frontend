@@ -99,6 +99,17 @@ export default function LoginPage({
   }, [initialTab, initialPatientMode]);
 
   useEffect(() => {
+    if (window.location.pathname !== "/login") return;
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get("tab");
+    const patientModeParam = params.get("patientMode");
+    if (tab === "doctor") setActiveTab("doctor");
+    if (patientModeParam === "login" || patientModeParam === "signup") {
+      setPatientMode(patientModeParam);
+    }
+  }, []);
+
+  useEffect(() => {
     if (window.location.pathname !== "/login" || screen !== "patient-form") return;
     const url = new URL(window.location.href);
     url.pathname = "/login";

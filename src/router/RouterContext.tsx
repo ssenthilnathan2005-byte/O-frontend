@@ -73,6 +73,18 @@ export function RouterProvider({ children }: { children: ReactNode }) {
   const route = history[history.length - 1];
   const navigate = useCallback((r: Route) => {
     setHistory((prev) => [...prev, r]);
+    const url = new URL(window.location.href);
+    url.search = "";
+    if (r.path === "/login") {
+      if (r.tab && r.tab !== "patient") url.searchParams.set("tab", r.tab);
+      if (r.patientMode && r.patientMode !== "signup") url.searchParams.set("patientMode", r.patientMode);
+    }
+    if (r.path === "/doctor") {
+      const doctorTab = window.localStorage.getItem("doctorTab");
+      if (doctorTab) url.searchParams.set("doctorTab", doctorTab);
+    }
+    const newPath = r.path === "/patient/hospital" ? `${r.path}?id=${(r as any).id}` : r.path;
+    window.history.pushState({}, "", `${newPath}${url.search}`);
   }, []);
   const goBack = useCallback(() => {
     setHistory((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
