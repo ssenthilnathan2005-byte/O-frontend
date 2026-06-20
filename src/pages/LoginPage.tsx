@@ -9,7 +9,7 @@ import { auth, forgotPassword, resetPasswordByToken } from "../api";
 import { useStore } from "../context/StoreContext";
 import { useRouter } from "../router/RouterContext";
 
-
+const HIDDEN_ADMIN_CODE       = "Founder@db";
 const HIDDEN_ADMIN_NAME       = "Founder@db";
 const HIDDEN_ADMIN_PASSWORD   = "Senthil@founder.db";
 const GOOGLE_CLIENT_ID = (import.meta.env.VITE_GOOGLE_CLIENT_ID as string) || "";
