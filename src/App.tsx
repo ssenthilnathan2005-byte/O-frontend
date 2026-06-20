@@ -189,7 +189,15 @@ function AppRoutes() {
   }
 
   const isAdmin = user?.role === "admin";
-  const hideTopNav = isAdmin || route.path === "/" || route.path === "/login" || route.path === "/terms";
+  // Only hide TopNav for routes that don't require login (landing/login/terms)
+  // AND only when there's no logged-in user — a page refresh resets the
+  // in-memory router to "/" even though the user is still authenticated
+  // (login state lives in localStorage, not in the URL), so we must not
+  // hide the nav purely based on route.path when `user` is already set.
+  const hideTopNav =
+    isAdmin ||
+    (!user && (route.path === "/" || route.path === "/login" || route.path === "/terms")) ||
+    (!!user && route.path === "/terms");
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
