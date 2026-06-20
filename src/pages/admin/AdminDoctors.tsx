@@ -55,9 +55,14 @@ type AddForm = {
 };
 
 type EditForm = {
+  name: string;
+  phone: string;
   specialty: string;
   hospitalId: string;
+  tokensPerSession: string;
+  sessions: string;
   isAvailable: boolean;
+  code?: string;
 };
 
 export default function AdminDoctors() {
@@ -74,9 +79,14 @@ export default function AdminDoctors() {
     sessions: "morning,afternoon",
   });
   const [editForm, setEditForm] = useState<EditForm>({
+    name: "",
+    phone: "",
     specialty: "",
     hospitalId: "",
+    tokensPerSession: "20",
+    sessions: "morning,afternoon",
     isAvailable: true,
+    code: "",
   });
 
   function getHospitalName(hospitalId: string) {
@@ -123,22 +133,44 @@ export default function AdminDoctors() {
   function openEdit(doc: Doctor) {
     setEditDoctor(doc);
     setEditForm({
-      specialty: doc.specialty,
-      hospitalId: doc.hospitalId,
+      name: doc.name ?? "",
+      phone: doc.phone ?? "",
+      specialty: doc.specialty ?? "",
+      hospitalId: doc.hospitalId ?? "",
+      tokensPerSession: String(doc.tokensPerSession ?? 20),
+      sessions: Array.isArray(doc.sessions) ? (doc.sessions as string[]).join(",") : (doc.sessions as any ?? "morning,afternoon"),
       isAvailable: doc.isAvailable ?? true,
+      code: doc.code ?? "",
     });
   }
 
   function handleEdit() {
     if (!editDoctor) return;
+    const tokens = Number.parseInt(editForm.tokensPerSession || "20", 10) || 20;
+    const sessions = editForm.sessions.split(",").map(s => s.trim());
     updateDoctor(editDoctor.id, {
+      name: editForm.name,
+      phone: editForm.phone,
       specialty: editForm.specialty,
       hospitalId: editForm.hospitalId,
+      tokensPerSession: tokens,
+      sessions,
       consultationFee: STANDARD_FEE,
       price: STANDARD_FEE,
       isAvailable: editForm.isAvailable,
     });
     toast.success("Doctor updated");
+    setEditDoctor(null);
+  }
+
+  async function handleSaveCode() {
+    if (!editDoctor) return;
+    if (!editForm.code) {
+      toast.error("Login code cannot be empty");
+      return;
+    }
+    await updateDoctor(editDoctor.id, { code: editForm.code.toUpperCase() });
+    toast.success("Login code saved");
     setEditDoctor(null);
   }
 
@@ -170,7 +202,7 @@ export default function AdminDoctors() {
               Add Doctor
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg" data-ocid="admin.dialog">
+          <DialogContent showOverlay={false} className="max-w-lg" data-ocid="admin.dialog">
             <DialogHeader>
               <DialogTitle>Add New Doctor</DialogTitle>
             </DialogHeader>
@@ -370,72 +402,102 @@ export default function AdminDoctors() {
         open={!!editDoctor}
         onOpenChange={(open) => !open && setEditDoctor(null)}
       >
-        <DialogContent data-ocid="admin.dialog">
+        <DialogContent showOverlay={false} data-ocid="admin.dialog">
           <DialogHeader>
             <DialogTitle>Edit Doctor: {editDoctor?.name}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <Label>Specialty</Label>
-              <Input
-                value={editForm.specialty}
-                onChange={(e) =>
-                  setEditForm((f) => ({ ...f, specialty: e.target.value }))
-                }
-                data-ocid="admin.input"
-              />
+            <div className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Label>Full Name</Label>
+                <Input
+                  value={editForm.name}
+                  onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                  data-ocid="admin.input"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Phone</Label>
+                <Input
+                  value={editForm.phone}
+                  onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))}
+                  data-ocid="admin.input"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Specialty</Label>
+                <Input
+                  value={editForm.specialty}
+                  onChange={(e) => setEditForm((f) => ({ ...f, specialty: e.target.value }))}
+                  data-ocid="admin.input"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Hospital</Label>
+                <Select
+                  value={editForm.hospitalId}
+                  onValueChange={(v) => setEditForm((f) => ({ ...f, hospitalId: v }))}
+                >
+                  <SelectTrigger data-ocid="admin.select">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {hospitals.map((h) => (
+                      <SelectItem key={h.id} value={h.id}>
+                        {h.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Tokens per Session</Label>
+                <Input
+                  type="number"
+                  value={editForm.tokensPerSession}
+                  onChange={(e) => setEditForm((f) => ({ ...f, tokensPerSession: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Sessions (comma separated)</Label>
+                <Input
+                  value={editForm.sessions}
+                  onChange={(e) => setEditForm((f) => ({ ...f, sessions: e.target.value }))}
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={editForm.isAvailable}
+                  onCheckedChange={(v) => setEditForm((f) => ({ ...f, isAvailable: v }))}
+                  data-ocid="admin.switch"
+                />
+                <Label>Available for appointments</Label>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Login Code</Label>
+                <Input
+                  className="font-mono"
+                  value={editForm.code}
+                  onChange={(e) => setEditForm((f) => ({ ...f, code: e.target.value }))}
+                />
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label>Hospital</Label>
-              <Select
-                value={editForm.hospitalId}
-                onValueChange={(v) =>
-                  setEditForm((f) => ({ ...f, hospitalId: v }))
-                }
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setEditDoctor(null)}
+                data-ocid="admin.cancel_button"
               >
-                <SelectTrigger data-ocid="admin.select">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {hospitals.map((h) => (
-                    <SelectItem key={h.id} value={h.id}>
-                      {h.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center gap-3">
-              <Switch
-                checked={editForm.isAvailable}
-                onCheckedChange={(v) =>
-                  setEditForm((f) => ({ ...f, isAvailable: v }))
-                }
-                data-ocid="admin.switch"
-              />
-              <Label>Available for appointments</Label>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Login Code</Label>
-              <Input
-                className="font-mono"
-                value={editForm.code}
-                onChange={(e) => setEditForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setEditDoctor(null)}
-              data-ocid="admin.cancel_button"
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleEdit} data-ocid="admin.save_button">
-              Save Changes
-            </Button>
-          </DialogFooter>
+                Cancel
+              </Button>
+              <div className="flex items-center gap-2">
+                <Button onClick={handleSaveCode} variant="secondary" data-ocid="admin.save_code_button">
+                  Save Code
+                </Button>
+                <Button onClick={handleEdit} data-ocid="admin.save_button">
+                  Save Changes
+                </Button>
+              </div>
+            </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

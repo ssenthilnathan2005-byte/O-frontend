@@ -19,7 +19,7 @@ export default function TopNav() {
   const isDoctor  = user?.role === "doctor";
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-gray-200 px-3 sm:px-6 py-3">
+    <header className="sticky top-0 z-70 bg-white border-b border-gray-200 px-3 sm:px-6 py-3">
       <div className="max-w-7xl mx-auto flex items-center gap-2 sm:gap-6">
         {/* Logo */}
         <button
