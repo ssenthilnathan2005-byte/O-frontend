@@ -153,6 +153,20 @@ function sanitizeSessionTimings(
   return result;
 }
 
+type DoctorTab = "regulator" | "livetokens" | "profile";
+
+function getInitialDoctorTab(): DoctorTab {
+  if (typeof window === "undefined") return "regulator";
+  const params = new URLSearchParams(window.location.search);
+  const queryTab = params.get("doctorTab") as DoctorTab | null;
+  if (queryTab === "livetokens" || queryTab === "profile") return queryTab;
+
+  const savedTab = window.localStorage.getItem("doctorTab") as DoctorTab | null;
+  if (savedTab === "livetokens" || savedTab === "profile") return savedTab;
+
+  return "regulator";
+}
+
 export default function DoctorDashboard() {
   const {
     user,
@@ -174,6 +188,21 @@ export default function DoctorDashboard() {
 
   const doctorUser = user as { doctorId: string; code: string };
   const doctor = doctors.find((d) => d.id === doctorUser.doctorId)!;
+  const [activeTab, setActiveTab] = useState<DoctorTab>(getInitialDoctorTab);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("doctorTab", activeTab);
+
+    if (window.location.pathname !== "/doctor") return;
+    const url = new URL(window.location.href);
+    if (activeTab === "regulator") {
+      url.searchParams.delete("doctorTab");
+    } else {
+      url.searchParams.set("doctorTab", activeTab);
+    }
+    window.history.replaceState({}, "", url.toString());
+  }, [activeTab]);
 
   const [profileForm, setProfileForm] = useState({
     name: doctor?.name ?? "",
@@ -609,7 +638,7 @@ export default function DoctorDashboard() {
         </p>
       </div>
 
-      <Tabs defaultValue="regulator" className="w-full">
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as DoctorTab)} className="w-full">
         <TabsList className="mb-6" data-ocid="doctor.tab">
           <TabsTrigger value="regulator" data-ocid="doctor.tab">
             <Activity className="w-4 h-4 mr-1.5 sm:mr-2" />
