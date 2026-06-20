@@ -279,11 +279,11 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
 
       {/* ── Important Notice Warning Popup (Image 1) — shown every time ── */}
       {showWarningPopup && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-4 pb-4 sm:pb-0">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-4 pb-4 sm:pb-0 pointer-events-none">
           <motion.div
             initial={{ y: 40, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            className="bg-amber-50 rounded-3xl shadow-2xl p-6 w-full max-w-sm border-2 border-amber-400"
+            className="bg-amber-50 rounded-3xl shadow-2xl p-6 w-full max-w-sm border-2 border-amber-400 pointer-events-auto"
           >
             {/* Header */}
             <div className="flex items-center gap-3 mb-5">

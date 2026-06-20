@@ -52,7 +52,7 @@ export default function HospitalDoctorsPage({ id }: Props) {
   } as const;
 
   function getDoctorStatus(doctor: Doctor) {
-    if (doctor.statusOverride && doctor.statusOverride !== "not_yet_arrived") {
+    if (doctor.statusOverride) {
       return DOCTOR_STATUS_OPTIONS[doctor.statusOverride as keyof typeof DOCTOR_STATUS_OPTIONS] ?? {
         label: "Doctor status updated",
         color: "green",
@@ -225,8 +225,8 @@ export default function HospitalDoctorsPage({ id }: Props) {
 
       {/* ── Login Gate Dialog ── */}
       {loginGateDoctor && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 pointer-events-none">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 pointer-events-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-bold text-gray-900">Book Appointment</h3>
               <button type="button" onClick={() => setLoginGateDoctor(null)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>

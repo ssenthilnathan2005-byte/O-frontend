@@ -234,10 +234,19 @@ export default function DoctorDashboard() {
     (doctor as any)?.statusOverride ?? "not_yet_arrived"
   );
 
-  function handleSaveDoctorStatus() {
+  useEffect(() => {
     if (!doctor) return;
-    updateDoctor(doctor.id, { statusOverride: doctorStatusOverride } as any);
-    toast.success("Status updated — patients can see this now.");
+    setDoctorStatusOverride((doctor as any)?.statusOverride ?? "not_yet_arrived");
+  }, [doctor?.id, doctor?.statusOverride]);
+
+  async function handleSaveDoctorStatus() {
+    if (!doctor) return;
+    try {
+      await updateDoctor(doctor.id, { statusOverride: doctorStatusOverride } as any);
+      toast.success("Status updated — patients can see this now.");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to save doctor status.");
+    }
   }
 
   // Live Tokens tab state

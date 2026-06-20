@@ -152,30 +152,38 @@ export default function AdminDoctors() {
     });
   }
 
-  function handleEdit() {
+  async function handleEdit() {
     if (!editDoctor) return;
     const tokens = Number.parseInt(editForm.tokensPerSession, 10) || 20;
     const sessions = editForm.sessions
       .split(",")
       .map((s) => s.trim()) as Doctor["sessions"];
-    updateDoctor(editDoctor.id, {
-      name: editForm.name,
-      phone: editForm.phone,
-      specialty: editForm.specialty,
-      hospitalId: editForm.hospitalId,
-      tokensPerSession: tokens,
-      sessions,
-      code: editForm.code || undefined,
-      consultationFee: STANDARD_FEE,
-      price: STANDARD_FEE,
-      isAvailable: editForm.isAvailable,
-    });
-    toast.success("Doctor updated");
-    setEditDoctor(null);
+    try {
+      await updateDoctor(editDoctor.id, {
+        name: editForm.name,
+        phone: editForm.phone,
+        specialty: editForm.specialty,
+        hospitalId: editForm.hospitalId,
+        tokensPerSession: tokens,
+        sessions,
+        code: editForm.code || undefined,
+        consultationFee: STANDARD_FEE,
+        price: STANDARD_FEE,
+        isAvailable: editForm.isAvailable,
+      });
+      toast.success("Doctor updated");
+      setEditDoctor(null);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update doctor");
+    }
   }
 
-  function handleToggleAvailability(doc: Doctor) {
-    updateDoctor(doc.id, { isAvailable: !(doc.isAvailable ?? true) });
+  async function handleToggleAvailability(doc: Doctor) {
+    try {
+      await updateDoctor(doc.id, { isAvailable: !(doc.isAvailable ?? true) });
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update availability");
+    }
   }
 
   function handleDelete(id: string) {
@@ -532,7 +540,7 @@ export default function AdminDoctors() {
                 <Button
                   variant="secondary"
                   className="whitespace-nowrap"
-                  onClick={() => {
+                  onClick={async () => {
                     if (!editDoctor) {
                       toast.error("No doctor selected to save code");
                       return;
@@ -541,8 +549,12 @@ export default function AdminDoctors() {
                       toast.error("Enter a login code before saving");
                       return;
                     }
-                    updateDoctor(editDoctor.id, { code: editForm.code });
-                    toast.success("Login code saved for this doctor");
+                    try {
+                      await updateDoctor(editDoctor.id, { code: editForm.code });
+                      toast.success("Login code saved for this doctor");
+                    } catch (err: any) {
+                      toast.error(err?.message || "Failed to save login code");
+                    }
                   }}
                   data-ocid="admin.save_code_button"
                 >
