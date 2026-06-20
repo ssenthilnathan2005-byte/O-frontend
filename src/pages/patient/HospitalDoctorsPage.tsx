@@ -29,7 +29,7 @@ export default function HospitalDoctorsPage({ id }: Props) {
   const [loginGateDoctor, setLoginGateDoctor] = useState<Doctor | null>(null);
 
   const hospital = hospitals.find((h) => h.id === id);
-  const hospitalDoctors = doctors.filter((d) => d.hospitalId === id);
+  const hospitalDoctors = doctors.filter((d) => d.hospitalId === id && d.available !== false);
 
   if (!hospital)
     return <div className="p-8 text-center">Hospital not found</div>;
