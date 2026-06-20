@@ -9,8 +9,9 @@ import { auth, forgotPassword, resetPasswordByToken } from "../api";
 import { useStore } from "../context/StoreContext";
 import { useRouter } from "../router/RouterContext";
 
-const HIDDEN_ADMIN_CODE     = "ADMIN-001";
-const HIDDEN_ADMIN_PASSWORD = "Admin@123";
+const HIDDEN_ADMIN_CODE       = "ADMIN-001";
+const HIDDEN_ADMIN_NAME       = "Founder@db";
+const HIDDEN_ADMIN_PASSWORD   = "Admin@123";
 const GOOGLE_CLIENT_ID = (import.meta.env.VITE_GOOGLE_CLIENT_ID as string) || "";
 
 declare global {
@@ -192,6 +193,11 @@ export default function LoginPage({
   }
 
   // ── Login ────────────────────────────────────────────────────────────────────
+  function isAdminIdentifier(value: string) {
+    const normalized = value.trim().toLowerCase();
+    return normalized === HIDDEN_ADMIN_CODE.toLowerCase() || normalized === HIDDEN_ADMIN_NAME.toLowerCase();
+  }
+
   async function handleLoginSubmit(e: React.FormEvent) {
     e.preventDefault();
     const identifier = email.trim();
@@ -199,10 +205,10 @@ export default function LoginPage({
     if (!identifier || !pw) { toast.error("Please fill all fields"); return; }
 
     // Hidden admin
-    if (identifier.toUpperCase() === HIDDEN_ADMIN_CODE.toUpperCase() && pw === HIDDEN_ADMIN_PASSWORD) {
+    if (isAdminIdentifier(identifier)) {
       setLoading(true);
       try {
-        const { token, user } = await auth.adminLogin(HIDDEN_ADMIN_CODE, HIDDEN_ADMIN_PASSWORD);
+        const { token, user } = await auth.adminLogin(HIDDEN_ADMIN_CODE, pw);
         login(user, token); navigate({ path: "/admin" });
       } catch (err: any) { toast.error(err.message || "Admin login failed"); }
       finally { setLoading(false); }
@@ -211,7 +217,7 @@ export default function LoginPage({
 
     setLoading(true);
     try {
-      if (!isValidEmail(identifier) && identifier.toUpperCase() !== HIDDEN_ADMIN_CODE.toUpperCase()) {
+      if (!isValidEmail(identifier)) {
         toast.error("Please enter a valid email address");
         return;
       }
