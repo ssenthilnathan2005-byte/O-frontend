@@ -190,42 +190,7 @@ export default function DoctorDashboard() {
   const doctor = doctors.find((d) => d.id === doctorUser.doctorId)!;
   const [activeTab, setActiveTab] = useState<DoctorTab>(getInitialDoctorTab);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem("doctorTab", activeTab);
-
-    if (window.location.pathname !== "/doctor") return;
-    const url = new URL(window.location.href);
-    if (activeTab === "regulator") {
-      url.searchParams.delete("doctorTab");
-    } else {
-      url.searchParams.set("doctorTab", activeTab);
-    }
-    window.history.replaceState({}, "", url.toString());
-  }, [activeTab]);
-
-  useEffect(() => {
-    // Wait until user and doctors are available to avoid race on refresh
-    if (typeof window === "undefined") return;
-    if (!user || doctors.length === 0) return;
-
-    const params = new URLSearchParams(window.location.search);
-    const queryTab = params.get("doctorTab") as DoctorTab | null;
-    if (queryTab === "livetokens" || queryTab === "profile") {
-      setActiveTab(queryTab);
-      window.localStorage.setItem("doctorTab", queryTab);
-      return;
-    }
-
-    const savedTab = window.localStorage.getItem("doctorTab") as DoctorTab | null;
-    if (savedTab === "livetokens" || savedTab === "profile") {
-      setActiveTab(savedTab);
-      return;
-    }
-
-    // fallback to default
-    setActiveTab("regulator");
-  }, [user, doctors.length]);
+  // Initial tab is set from getInitialDoctorTab(); persistence handled on user interaction
 
   const [profileForm, setProfileForm] = useState({
     name: doctor?.name ?? "",
