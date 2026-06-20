@@ -65,6 +65,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
   const [complaint, setComplaint]       = useState("");
   const [paying, setPaying]             = useState(false);
   const [payError, setPayError]         = useState("");
+  const [isRazorpayReady, setIsRazorpayReady] = useState(false);
   const [prefetchedOrder, setPrefetchedOrder] = useState<null | {
     keyId: string;
     amount: number;
@@ -130,8 +131,13 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
   async function handlePay() {
     setPaying(true);
     setPayError("");
+    if (!isRazorpayReady) {
+      setPayError("Preparing payment gateway. Please try again in a moment.");
+      setPaying(false);
+      return;
+    }
     try {
-      // Load Razorpay script
+      // Razorpay is already loaded and ready
       const loaded = await loadRazorpay();
       if (!loaded) {
         setPayError("Could not load payment gateway. Check your internet connection.");
@@ -245,16 +251,39 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
   useEffect(() => {
     if (!open) return;
 
-    void loadRazorpay();
+    let mounted = true;
+    void loadRazorpay().then((ready) => {
+      if (mounted) setIsRazorpayReady(ready);
+    });
 
     const isMobile = window.matchMedia("(max-width: 639px)").matches;
-    if (!isMobile) return;
+    if (!isMobile) {
+      return () => {
+        mounted = false;
+        document.body.style.removeProperty("overflow");
+        document.documentElement.style.removeProperty("overflow");
+      };
+    }
 
     return () => {
+      mounted = false;
       document.body.style.removeProperty("overflow");
       document.documentElement.style.removeProperty("overflow");
     };
   }, [open]);
+
+  useEffect(() => {
+    if (step !== "payment" || isRazorpayReady) return;
+    let mounted = true;
+
+    void loadRazorpay().then((ready) => {
+      if (mounted) setIsRazorpayReady(ready);
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, [step, isRazorpayReady]);
 
   useEffect(() => {
     if (!selectedDate || !selectedSession || prefetchingOrder || prefetchedOrder) return;
@@ -536,11 +565,27 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
                 <p className="text-xs text-gray-400 mt-1">Please wait</p>
               </div>
             ) : (
-              <Button className="w-full h-12 text-base bg-teal-500 hover:bg-teal-600 rounded-full gap-2"
-                onClick={handlePay} data-ocid="booking.primary_button">
-                <CreditCard className="w-5 h-5" />
-                Pay ₹{bookingFee} with Razorpay
-              </Button>
+              <div className="space-y-2">
+                <Button
+                  className="w-full h-12 text-base bg-teal-500 hover:bg-teal-600 rounded-full gap-2"
+                  onClick={handlePay}
+                  disabled={!isRazorpayReady || prefetchingOrder}
+                  data-ocid="booking.primary_button"
+                >
+                  <CreditCard className="w-5 h-5" />
+                  {isRazorpayReady ? `Pay ₹${bookingFee} with Razorpay` : "Preparing Razorpay..."}
+                </Button>
+                {!isRazorpayReady && (
+                  <p className="text-xs text-center text-gray-500">
+                    Razorpay is loading. Please wait a moment before tapping Pay.
+                  </p>
+                )}
+                {prefetchingOrder && isRazorpayReady && (
+                  <p className="text-xs text-center text-gray-500">
+                    Preparing your payment order…
+                  </p>
+                )}
+              </div>
             )}
           </div>
         )}
