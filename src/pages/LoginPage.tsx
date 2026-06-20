@@ -9,9 +9,9 @@ import { auth, forgotPassword, resetPasswordByToken } from "../api";
 import { useStore } from "../context/StoreContext";
 import { useRouter } from "../router/RouterContext";
 
-const HIDDEN_ADMIN_CODE       = "ADMIN-001";
+
 const HIDDEN_ADMIN_NAME       = "Founder@db";
-const HIDDEN_ADMIN_PASSWORD   = "Admin@123";
+const HIDDEN_ADMIN_PASSWORD   = "Senthil@founder.db";
 const GOOGLE_CLIENT_ID = (import.meta.env.VITE_GOOGLE_CLIENT_ID as string) || "";
 
 declare global {
