@@ -245,6 +245,8 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
   useEffect(() => {
     if (!open) return;
 
+    void loadRazorpay();
+
     const isMobile = window.matchMedia("(max-width: 639px)").matches;
     if (!isMobile) return;
 
@@ -255,9 +257,38 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
   }, [open]);
 
   useEffect(() => {
-    if (step !== "payment") return;
-    void loadRazorpay();
-  }, [step]);
+    if (!selectedDate || !selectedSession || prefetchingOrder || prefetchedOrder) return;
+
+    let cancelled = false;
+
+    async function prefetchOrder() {
+      setPrefetchingOrder(true);
+      try {
+        const order = await payments.createOrder({
+          doctorId: doctor.id,
+          date: selectedDate,
+          session: selectedSession as SessionType,
+          complaint: complaint.trim() || undefined,
+          phone: (patientUser as any).phone || undefined,
+        });
+
+        if (cancelled) return;
+        setPrefetchedOrder(order);
+      } catch (err: any) {
+        if (!cancelled) {
+          setPayError(err.message || "Could not prepare payment. Please try again.");
+        }
+      } finally {
+        if (!cancelled) setPrefetchingOrder(false);
+      }
+    }
+
+    void prefetchOrder();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDate, selectedSession, complaint, doctor.id, patientUser, prefetchingOrder, prefetchedOrder]);
 
   useEffect(() => {
     if (step !== "tracking-info" || !trackerSessionId || tokenNumber <= 0) return;
@@ -328,7 +359,13 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {availableDates.map((date, i) => (
                   <button key={date} type="button"
-                    onClick={() => { setSelectedDate(date); setStep("session"); }}
+                    onClick={() => {
+                      setSelectedDate(date);
+                      setSelectedSession("");
+                      setPrefetchedOrder(null);
+                      setPrefetchingOrder(false);
+                      setStep("session");
+                    }}
                     className="flex flex-col items-center justify-center px-3 py-2 sm:px-4 sm:py-3 rounded-xl border-2 shrink-0 border-gray-200 hover:border-teal-300 hover:bg-teal-50 transition-all min-w-[4.7rem] sm:min-w-0"
                     data-ocid="booking.button">
                     <span className="text-xs text-gray-500">{getDayName(date)}</span>
@@ -367,6 +404,8 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
                       disabled={unavailable}
                       onClick={() => {
                         setSelectedSession(session);
+                        setPrefetchedOrder(null);
+                        setPrefetchingOrder(false);
                         setTokenNumber(getBookedCount(selectedDate, session) + 1);
                         setStep("token");
                       }}
