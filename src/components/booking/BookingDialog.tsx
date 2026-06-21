@@ -33,7 +33,8 @@ function loadRazorpay(): Promise<boolean> {
         resolve(true);
         return;
       }
-      if (existingScript.readyState === "complete" || existingScript.readyState === "loaded") {
+      const readyState = (existingScript as any).readyState as string | undefined;
+      if (readyState === "complete" || readyState === "loaded") {
         resolve(true);
         return;
       }
