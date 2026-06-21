@@ -579,8 +579,8 @@ export default function DoctorDashboard() {
           {n}
         </button>,
       );
-      if (n % 10 === 0 && n <= maxTokens) {
-        const slotIndex = n / 10;
+      if (n % 5 === 0 && n <= maxTokens) {
+        const slotIndex = n / 5;
         const ps = tokenState?.prioritySlots?.[slotIndex] ?? {
           label: `Priority Slot P${slotIndex}`,
           status: "waiting" as const,
