@@ -29,15 +29,6 @@ function loadRazorpay(): Promise<boolean> {
     );
 
     if (existingScript) {
-      if ((window as any).Razorpay) {
-        resolve(true);
-        return;
-      }
-      const readyState = (existingScript as any).readyState as string | undefined;
-      if (readyState === "complete" || readyState === "loaded") {
-        resolve(true);
-        return;
-      }
       existingScript.addEventListener("load", () => resolve(true), { once: true });
       existingScript.addEventListener("error", () => resolve(false), { once: true });
       return;
@@ -138,19 +129,33 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
   }
 
   // ── Payment via Razorpay ────────────────────────────────────────────────────
-  const isPaymentReady = isRazorpayReady && !prefetchingOrder && prefetchedOrder !== null;
-
   async function handlePay() {
     setPaying(true);
     setPayError("");
-    if (!isPaymentReady) {
+    if (!isRazorpayReady) {
       setPayError("Preparing payment gateway. Please try again in a moment.");
       setPaying(false);
       return;
     }
     try {
-      const order = prefetchedOrder!;
+      // Razorpay is already loaded and ready
+      const loaded = await loadRazorpay();
+      if (!loaded) {
+        setPayError("Could not load payment gateway. Check your internet connection.");
+        setPaying(false);
+        return;
+      }
 
+      // Step 1: Use the prefetched order when available; otherwise create it now.
+      const order = prefetchedOrder ?? await payments.createOrder({
+        doctorId: doctor.id,
+        date: selectedDate,
+        session: selectedSession as SessionType,
+        complaint: complaint.trim() || undefined,
+        phone: (patientUser as any).phone || undefined,
+      });
+
+      // Step 2: Open Razorpay checkout
       await new Promise<void>((resolve, reject) => {
         const options = {
           key:         order.keyId,
@@ -194,6 +199,9 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
           },
           modal: {
             ondismiss: () => reject(new Error("Payment cancelled")),
+            backdropclose: false,
+            escape: false,
+            animation: false,
           },
           handler: async (response: {
             razorpay_order_id: string;
@@ -229,11 +237,10 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
         rzp.on("payment.failed", (response: any) => {
           reject(new Error(response.error?.description || "Payment failed"));
         });
-        try {
-          rzp.open();
-        } catch (err: any) {
-          reject(err instanceof Error ? err : new Error("Payment gateway could not be opened."));
-        }
+        // Call open() immediately — animation:false means the iframe is
+        // fully painted and touch-ready from the first frame, so no delay
+        // is needed. A setTimeout here was the source of the touch lag.
+        rzp.open();
       });
 
     } catch (err: any) {
@@ -334,8 +341,8 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
       } finally {
         if (!cancelled) {
           setPrefetchingOrder(false);
+          orderPrefetchInFlight.current = false;
         }
-        orderPrefetchInFlight.current = false;
       }
     }
 
@@ -343,7 +350,6 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
 
     return () => {
       cancelled = true;
-      orderPrefetchInFlight.current = false;
     };
   }, [step, selectedDate, selectedSession, complaint, doctor.id, patientUser]);
 
@@ -547,15 +553,20 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
                 <Button
                   className="w-full h-12 text-base bg-teal-500 hover:bg-teal-600 rounded-full gap-2"
                   onClick={handlePay}
-                  disabled={!isPaymentReady}
+                  disabled={!isRazorpayReady || prefetchingOrder}
                   data-ocid="booking.primary_button"
                 >
                   <CreditCard className="w-5 h-5" />
-                  {isPaymentReady ? `Pay ₹${bookingFee} with Razorpay` : "Preparing payment..."}
+                  {isRazorpayReady ? `Pay ₹${bookingFee} with Razorpay` : "Preparing Razorpay..."}
                 </Button>
-                {!isPaymentReady && (
+                {!isRazorpayReady && (
                   <p className="text-xs text-center text-gray-500">
-                    {isRazorpayReady ? "Preparing your payment order…" : "Razorpay is loading. Please wait a moment before tapping Pay."}
+                    Razorpay is loading. Please wait a moment before tapping Pay.
+                  </p>
+                )}
+                {prefetchingOrder && isRazorpayReady && (
+                  <p className="text-xs text-center text-gray-500">
+                    Preparing your payment order…
                   </p>
                 )}
               </div>
