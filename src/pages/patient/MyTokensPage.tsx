@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Activity, Calendar, Clock, Hospital } from "lucide-react";
 import { motion } from "motion/react";
 import { useStore } from "../../context/StoreContext";
-import { SESSION_TIMES } from "../../data/seed";
+import { hasSessionEnded, SESSION_TIMES } from "../../data/seed";
 import { useRouter } from "../../router/RouterContext";
 import type { SessionType } from "../../types";
 
@@ -35,7 +35,7 @@ const STATUS_BADGE: Record<string, { label: string; className: string; descripti
 };
 
 export default function MyTokensPage() {
-  const { user, bookings } = useStore();
+  const { user, bookings, doctors } = useStore();
   const { navigate } = useRouter();
 
   function openTokenTracker(sessionId: string, tokenNumber: number) {
@@ -59,12 +59,25 @@ export default function MyTokensPage() {
   cutoffDate.setHours(0, 0, 0, 0);
   cutoffDate.setDate(cutoffDate.getDate() - RETENTION_DAYS);
 
-  const todayStr = new Date().toISOString().split("T")[0];
-  const liveBookings = allMyBookings.filter((b) => b.status === "confirmed" && b.date >= todayStr);
+  // A booking stays "live" (tracker available, shown at top) until its
+  // session has actually ended — not based on this patient's individual
+  // status. A token marked "completed" (seen) or "unvisited" (skipped)
+  // mid-session should still be trackable while the session is ongoing,
+  // since the patient may want to check back on the queue. Cancelled
+  // bookings have nothing left to track, so they move to past immediately.
+  const liveBookings = allMyBookings.filter((b) => {
+    if (b.status === "cancelled") return false;
+    if (!FINISHED_STATUSES.has(b.status) && b.status !== "confirmed") return false;
+    const doctor = doctors.find((d) => d.id === b.doctorId);
+    return !hasSessionEnded(b.date, b.session, doctor?.sessionTimings);
+  });
   const pastBookings = allMyBookings.filter((b) => {
     if (!FINISHED_STATUSES.has(b.status)) return false;
     const bookingDate = new Date(`${b.date}T00:00:00`);
-    return bookingDate >= cutoffDate;
+    if (bookingDate < cutoffDate) return false;
+    if (b.status === "cancelled") return true;
+    const doctor = doctors.find((d) => d.id === b.doctorId);
+    return hasSessionEnded(b.date, b.session, doctor?.sessionTimings);
   });
   const hiddenPastCount = allMyBookings.filter((b) => {
     if (!FINISHED_STATUSES.has(b.status)) return false;
@@ -266,11 +279,20 @@ export default function MyTokensPage() {
                               {SESSION_TIMES[booking.session as SessionType]?.label}
                             </span>
                           </div>
-                        </div>
-                        <div className="flex items-baseline gap-0.5 shrink-0">
-                          <span className="text-lg font-bold text-teal-500">#</span>
-                          <span className="text-3xl font-bold text-teal-600">{booking.tokenNumber}</span>
-                        </div>
+
+                          {booking.status !== "cancelled" && (
+                            <button
+                              type="button"
+                              onClick={() => openTokenTracker(booking.sessionId, booking.tokenNumber)}
+                              className="mt-3 text-xs font-medium text-teal-600 hover:text-teal-700 hover:underline"
+                            >
+                              View Tracker (session history)
+                            </button>
+                          )}
+                      </div>
+                      <div className="flex items-baseline gap-0.5 shrink-0">
+                        <span className="text-lg font-bold text-teal-500">#</span>
+                        <span className="text-3xl font-bold text-teal-600">{booking.tokenNumber}</span>
                       </div>
                     </div>
                   </motion.div>

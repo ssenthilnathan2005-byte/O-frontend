@@ -79,6 +79,33 @@ export function isSessionAvailable(
 }
 
 /**
+ * Returns true once a session has fully ended for the day — i.e. the
+ * scheduled end time has passed (for a past date, it's always true).
+ * Used to decide when a patient's booking should move from "live" to
+ * "past" bookings, regardless of that booking's individual status
+ * (confirmed/completed/unvisited) — a token shouldn't disappear from the
+ * live tracker just because it was marked seen/skipped while the session
+ * (and other patients' queue) is still ongoing.
+ */
+export function hasSessionEnded(
+  date: string,
+  session: string,
+  customTimings?: Partial<Record<SessionType, SessionTiming>>,
+): boolean {
+  const now = new Date();
+  const today = now.toISOString().split("T")[0];
+  if (date < today) return true;
+  if (date > today) return false;
+  const custom = customTimings?.[session as SessionType];
+  const times = custom ?? SESSION_TIMES[session];
+  if (!times) return true;
+  const [endH, endM] = times.end.split(":").map(Number);
+  const endTime = new Date(now);
+  endTime.setHours(endH, endM, 0, 0);
+  return now >= endTime;
+}
+
+/**
  * Returns true only when the session can be actively regulated:
  * - The selected date must be TODAY
  * - The current time must be >= the session's scheduled start time
