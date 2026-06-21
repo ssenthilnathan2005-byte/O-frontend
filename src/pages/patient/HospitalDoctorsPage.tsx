@@ -164,7 +164,18 @@ export default function HospitalDoctorsPage({ id }: Props) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.07 }}
             >
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => handleDoctorClick(doctor)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleDoctorClick(doctor);
+                  }
+                }}
+                className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:border-teal-300 hover:shadow-md transition-all"
+              >
                 {/* Doctor info row */}
                 <div className="flex items-start gap-3">
                   <div className="w-12 h-12 rounded-xl bg-teal-100 flex items-center justify-center shrink-0">
@@ -204,19 +215,15 @@ export default function HospitalDoctorsPage({ id }: Props) {
                   <p className={`text-xs mt-0.5 ${sc.detail}`}>{status.detail}</p>
                 </div>
 
-                {/* Check Schedule CTA */}
+                {/* Check Schedule indicator (visual only — the whole card above is clickable) */}
                 <hr className="my-3 border-gray-100" />
-                <button
-                  type="button"
-                  className="w-full flex items-center justify-between text-sm text-teal-600 hover:text-teal-700 font-medium"
-                  onClick={() => handleDoctorClick(doctor)}
-                >
+                <div className="w-full flex items-center justify-between text-sm text-teal-600 font-medium">
                   <span className="flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
                     Check Schedule
                   </span>
                   <ChevronRight className="w-4 h-4" />
-                </button>
+                </div>
               </div>
             </motion.div>
           );
