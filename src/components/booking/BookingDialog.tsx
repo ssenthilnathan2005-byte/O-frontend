@@ -76,6 +76,11 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
     hospitalName: string;
   }>(null);
   const [prefetchingOrder, setPrefetchingOrder] = useState(false);
+  // dialogOpen is false while Razorpay is active — releases Radix body overflow lock
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Keep dialogOpen in sync with the external open prop, but hide dialog while paying
+  useEffect(() => { setDialogOpen(open && !paying); }, [open, paying]);
 
   const availableDates = useMemo(() => getAvailableDates(), []);
   const patientUser = user as { id: string; email: string; name: string; role: "patient" };
@@ -354,7 +359,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
   }, [step, selectedDate, selectedSession, complaint, doctor.id, patientUser]);
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={dialogOpen} onOpenChange={handleClose}>
       <DialogContent
         showOverlay={step !== "payment" && !paying}
         className={`w-[94vw] max-w-md max-h-[calc(100dvh-1rem)] sm:max-h-[88vh] overflow-y-auto overscroll-contain p-4 sm:p-6${paying ? " opacity-0 pointer-events-none select-none" : ""}`}
