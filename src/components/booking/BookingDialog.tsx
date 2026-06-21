@@ -234,7 +234,13 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
         rzp.on("payment.failed", (response: any) => {
           reject(new Error(response.error?.description || "Payment failed"));
         });
-        rzp.open();
+        // Razorpay's checkout renders in an iframe that needs a brief moment
+        // to fully mount and bind its own click handlers. Opening it and
+        // immediately allowing interaction can swallow the very first
+        // click/tap, requiring the user to click multiple times before the
+        // UPI/Card options respond. A short delay before open() gives the
+        // iframe time to finish mounting first.
+        window.setTimeout(() => rzp.open(), 120);
       });
 
     } catch (err: any) {
