@@ -232,7 +232,30 @@ export default function MyTokensPage() {
                     transition={{ delay: idx * 0.05 }}
                     data-ocid={`tokens.item.past.${idx + 1}`}
                   >
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                    <div
+                      role={booking.status !== "cancelled" ? "button" : undefined}
+                      tabIndex={booking.status !== "cancelled" ? 0 : undefined}
+                      onClick={
+                        booking.status !== "cancelled"
+                          ? () => openTokenTracker(booking.sessionId, booking.tokenNumber)
+                          : undefined
+                      }
+                      onKeyDown={
+                        booking.status !== "cancelled"
+                          ? (e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                openTokenTracker(booking.sessionId, booking.tokenNumber);
+                              }
+                            }
+                          : undefined
+                      }
+                      className={`bg-white rounded-2xl shadow-sm border border-gray-100 p-5 transition ${
+                        booking.status !== "cancelled"
+                          ? "cursor-pointer hover:border-teal-200 hover:shadow"
+                          : ""
+                      }`}
+                    >
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -281,13 +304,9 @@ export default function MyTokensPage() {
                           </div>
 
                           {booking.status !== "cancelled" && (
-                            <button
-                              type="button"
-                              onClick={() => openTokenTracker(booking.sessionId, booking.tokenNumber)}
-                              className="mt-3 text-xs font-medium text-teal-600 hover:text-teal-700 hover:underline"
-                            >
+                            <p className="mt-3 text-xs font-medium text-teal-600">
                               View Tracker (session history)
-                            </button>
+                            </p>
                           )}
                         </div>
                         <div className="flex items-baseline gap-0.5 shrink-0">
