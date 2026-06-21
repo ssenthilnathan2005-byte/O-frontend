@@ -341,8 +341,8 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
       } finally {
         if (!cancelled) {
           setPrefetchingOrder(false);
-          orderPrefetchInFlight.current = false;
         }
+        orderPrefetchInFlight.current = false;
       }
     }
 
@@ -350,6 +350,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
 
     return () => {
       cancelled = true;
+      orderPrefetchInFlight.current = false;
     };
   }, [step, selectedDate, selectedSession, complaint, doctor.id, patientUser]);
 
