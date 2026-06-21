@@ -579,14 +579,14 @@ export default function DoctorDashboard() {
           {n}
         </button>,
       );
-      if (n % 5 === 0 && n < maxTokens) {
-        const slotIndex = n / 5;
+      if (n % 10 === 0 && n <= maxTokens) {
+        const slotIndex = n / 10;
         const ps = tokenState?.prioritySlots?.[slotIndex] ?? {
           label: `Priority Slot P${slotIndex}`,
           status: "waiting" as const,
         };
         elements.push(
-          <div key={`ps_${slotIndex}`} className="col-span-5 sm:col-span-10">
+          <div key={`ps_${slotIndex}`} className="col-span-5 sm:col-span-10 mt-1">
             <button
               type="button"
               className={`w-full py-2.5 px-4 rounded-xl border-2 border-dashed text-xs font-semibold text-left flex items-center justify-between transition-all ${

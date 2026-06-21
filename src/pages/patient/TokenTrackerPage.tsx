@@ -265,7 +265,7 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
             );
 
             if (n % 5 === 0 && n < maxTokens) {
-              const slotIndex = n / 5;
+              const slotIndex = Math.ceil(n / 10);
               const ps = prioritySlots[slotIndex];
               const slotStatus = ps?.status ?? "waiting";
               elements.push(
