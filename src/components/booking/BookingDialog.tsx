@@ -29,6 +29,14 @@ function loadRazorpay(): Promise<boolean> {
     );
 
     if (existingScript) {
+      if ((window as any).Razorpay) {
+        resolve(true);
+        return;
+      }
+      if (existingScript.readyState === "complete" || existingScript.readyState === "loaded") {
+        resolve(true);
+        return;
+      }
       existingScript.addEventListener("load", () => resolve(true), { once: true });
       existingScript.addEventListener("error", () => resolve(false), { once: true });
       return;
@@ -129,33 +137,19 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
   }
 
   // ── Payment via Razorpay ────────────────────────────────────────────────────
+  const isPaymentReady = isRazorpayReady && !prefetchingOrder && prefetchedOrder !== null;
+
   async function handlePay() {
     setPaying(true);
     setPayError("");
-    if (!isRazorpayReady) {
+    if (!isPaymentReady) {
       setPayError("Preparing payment gateway. Please try again in a moment.");
       setPaying(false);
       return;
     }
     try {
-      // Razorpay is already loaded and ready
-      const loaded = await loadRazorpay();
-      if (!loaded) {
-        setPayError("Could not load payment gateway. Check your internet connection.");
-        setPaying(false);
-        return;
-      }
+      const order = prefetchedOrder!;
 
-      // Step 1: Use the prefetched order when available; otherwise create it now.
-      const order = prefetchedOrder ?? await payments.createOrder({
-        doctorId: doctor.id,
-        date: selectedDate,
-        session: selectedSession as SessionType,
-        complaint: complaint.trim() || undefined,
-        phone: (patientUser as any).phone || undefined,
-      });
-
-      // Step 2: Open Razorpay checkout
       await new Promise<void>((resolve, reject) => {
         const options = {
           key:         order.keyId,
@@ -234,13 +228,11 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
         rzp.on("payment.failed", (response: any) => {
           reject(new Error(response.error?.description || "Payment failed"));
         });
-        // Razorpay's checkout renders in an iframe that needs a brief moment
-        // to fully mount and bind its own click handlers. Opening it and
-        // immediately allowing interaction can swallow the very first
-        // click/tap, requiring the user to click multiple times before the
-        // UPI/Card options respond. A short delay before open() gives the
-        // iframe time to finish mounting first.
-        window.setTimeout(() => rzp.open(), 120);
+        try {
+          rzp.open();
+        } catch (err: any) {
+          reject(err instanceof Error ? err : new Error("Payment gateway could not be opened."));
+        }
       });
 
     } catch (err: any) {
@@ -554,20 +546,15 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
                 <Button
                   className="w-full h-12 text-base bg-teal-500 hover:bg-teal-600 rounded-full gap-2"
                   onClick={handlePay}
-                  disabled={!isRazorpayReady || prefetchingOrder}
+                  disabled={!isPaymentReady}
                   data-ocid="booking.primary_button"
                 >
                   <CreditCard className="w-5 h-5" />
-                  {isRazorpayReady ? `Pay ₹${bookingFee} with Razorpay` : "Preparing Razorpay..."}
+                  {isPaymentReady ? `Pay ₹${bookingFee} with Razorpay` : "Preparing payment..."}
                 </Button>
-                {!isRazorpayReady && (
+                {!isPaymentReady && (
                   <p className="text-xs text-center text-gray-500">
-                    Razorpay is loading. Please wait a moment before tapping Pay.
-                  </p>
-                )}
-                {prefetchingOrder && isRazorpayReady && (
-                  <p className="text-xs text-center text-gray-500">
-                    Preparing your payment order…
+                    {isRazorpayReady ? "Preparing your payment order…" : "Razorpay is loading. Please wait a moment before tapping Pay."}
                   </p>
                 )}
               </div>
