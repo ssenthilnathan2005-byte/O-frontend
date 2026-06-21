@@ -5,7 +5,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Activity, AlertCircle, Calendar, CheckCircle2, Clock,
          CreditCard, FileText, Hash, IndianRupee, Loader2, MapPin, ShieldCheck } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { payments } from "../../api";
 import { useStore } from "../../context/StoreContext";
@@ -66,6 +66,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
   const [paying, setPaying]             = useState(false);
   const [payError, setPayError]         = useState("");
   const [isRazorpayReady, setIsRazorpayReady] = useState(false);
+  const orderPrefetchInFlight = useRef(false);
   const [prefetchedOrder, setPrefetchedOrder] = useState<null | {
     keyId: string;
     amount: number;
@@ -286,40 +287,6 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
   }, [step, isRazorpayReady]);
 
   useEffect(() => {
-    if (!selectedDate || !selectedSession || prefetchingOrder || prefetchedOrder) return;
-
-    let cancelled = false;
-
-    async function prefetchOrder() {
-      setPrefetchingOrder(true);
-      try {
-        const order = await payments.createOrder({
-          doctorId: doctor.id,
-          date: selectedDate,
-          session: selectedSession as SessionType,
-          complaint: complaint.trim() || undefined,
-          phone: (patientUser as any).phone || undefined,
-        });
-
-        if (cancelled) return;
-        setPrefetchedOrder(order);
-      } catch (err: any) {
-        if (!cancelled) {
-          setPayError(err.message || "Could not prepare payment. Please try again.");
-        }
-      } finally {
-        if (!cancelled) setPrefetchingOrder(false);
-      }
-    }
-
-    void prefetchOrder();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedDate, selectedSession, complaint, doctor.id, patientUser, prefetchingOrder, prefetchedOrder]);
-
-  useEffect(() => {
     if (step !== "tracking-info" || !trackerSessionId || tokenNumber <= 0) return;
 
     const redirectTimer = window.setTimeout(() => {
@@ -333,14 +300,22 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
     if (step !== "payment") {
       setPrefetchedOrder(null);
       setPrefetchingOrder(false);
+      orderPrefetchInFlight.current = false;
       return;
     }
 
+    if (!selectedDate || !selectedSession) return;
+    // Guard with a ref (not state) so this effect doesn't list its own
+    // async state in deps — putting prefetchingOrder/prefetchedOrder in the
+    // dependency arrae caused this effect to re-run every time those states
+    // changed, repeatedly calling createOrder and leaving the "Pay" button
+    // stuck on "Preparing your payment order..." indefinitely.
+    if (orderPrefetchInFlight.current) return;
+
     let cancelled = false;
+    orderPrefetchInFlight.current = true;
 
     async function prefetchOrder() {
-      if (!selectedDate || !selectedSession || prefetchingOrder || prefetchedOrder) return;
-
       setPrefetchingOrder(true);
       try {
         const order = await payments.createOrder({
@@ -358,7 +333,10 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
           setPayError(err.message || "Could not prepare payment. Please try again.");
         }
       } finally {
-        if (!cancelled) setPrefetchingOrder(false);
+        if (!cancelled) {
+          setPrefetchingOrder(false);
+          orderPrefetchInFlight.current = false;
+        }
       }
     }
 
@@ -367,7 +345,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
     return () => {
       cancelled = true;
     };
-  }, [step, selectedDate, selectedSession, complaint, doctor.id, patientUser, prefetchingOrder, prefetchedOrder]);
+  }, [step, selectedDate, selectedSession, complaint, doctor.id, patientUser]);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
