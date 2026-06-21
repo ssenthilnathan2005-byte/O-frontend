@@ -5,7 +5,7 @@ import {
 import { motion } from "motion/react";
 import React, { useEffect, useState } from "react";
 import { useStore } from "../../context/StoreContext";
-import { SESSION_TIMES } from "../../data/seed";
+import { hasSessionEnded, SESSION_TIMES } from "../../data/seed";
 import { useRouter } from "../../router/RouterContext";
 import type { SessionType, TokenStatus } from "../../types";
 import { useQueueNotifications } from "../../hooks/useQueueNotifications";
@@ -45,6 +45,14 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
   const booking = bookings.find(
     (b) => b.sessionId === sessionId && b.tokenNumber === tokenNumber,
   );
+
+  // The "stay on this page, don't close the app" warning only makes sense
+  // for a live, ongoing session. For a past booking the patient is just
+  // looking back at history, so this popup shouldn't appear at all.
+  const doctorForSession = doctors.find((d) => d.id === booking?.doctorId);
+  const isPastSession = booking
+    ? hasSessionEnded(booking.date, booking.session, doctorForSession?.sessionTimings)
+    : false;
 
   useEffect(() => {
     getOrCreateTokenState(
@@ -310,8 +318,8 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
         ))}
       </div>
 
-      {/* ── Important Notice Warning Popup (Image 1) — shown every time ── */}
-      {showWarningPopup && (
+      {/* ── Important Notice Warning Popup — shown every time, but only for live (not yet ended) sessions ── */}
+      {showWarningPopup && !isPastSession && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-4 pb-4 sm:pb-0 pointer-events-none">
           <motion.div
             initial={{ y: 40, opacity: 0 }}
