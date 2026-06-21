@@ -3,7 +3,7 @@ import {
   CheckCircle, Clock, X,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useStore } from "../../context/StoreContext";
 import { SESSION_TIMES } from "../../data/seed";
 import { useRouter } from "../../router/RouterContext";
@@ -234,11 +234,14 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
           ))}
         </div>
         {/* Token grid */}
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
           {Array.from({ length: maxTokens }, (_, i) => i + 1).map((n) => {
             const st: TokenStatus = (statuses[n] as TokenStatus) ?? "white";
             const isMe = n === tokenNumber;
-            return (
+            const prioritySlots = tokenState?.prioritySlots ?? {};
+            const elements: React.ReactNode[] = [];
+
+            elements.push(
               <div
                 key={n}
                 className={`relative w-11 h-11 rounded-xl flex items-center justify-center text-sm font-bold transition-all ${
@@ -252,10 +255,40 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
                 )}
               </div>
             );
+
+            if (n % 5 === 0 && n < maxTokens) {
+              const slotIndex = n / 5;
+              const ps = prioritySlots[slotIndex];
+              const slotStatus = ps?.status ?? "waiting";
+              elements.push(
+                <div key={`ps_${slotIndex}`} className="col-span-5 sm:col-span-10">
+                  <div className={`w-full py-2 px-3 rounded-xl border-2 border-dashed text-xs font-semibold flex items-center justify-between ${
+                    slotStatus === "completed"
+                      ? "bg-green-50 border-green-200 text-green-700"
+                      : slotStatus === "ongoing"
+                        ? "bg-orange-50 border-orange-200 text-orange-700"
+                        : "bg-blue-50 border-blue-200 text-blue-700"
+                  }`}>
+                    <span>⚡ Walk-in Patient Slot W{slotIndex}</span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      slotStatus === "completed"
+                        ? "bg-green-200 text-green-800"
+                        : slotStatus === "ongoing"
+                          ? "bg-orange-200 text-orange-800"
+                          : "bg-blue-200 text-blue-800"
+                    }`}>
+                      {slotStatus === "completed" ? "Completed" : slotStatus === "ongoing" ? "Ongoing" : "Waiting"}
+                    </span>
+                  </div>
+                </div>
+              );
+            }
+
+            return elements;
           })}
         </div>
         <p className="text-xs text-gray-400 mt-3">
-          Blue ring indicates your token. The walk-in slot appears inline after each 10 tokens.
+          Blue ring indicates your token. Walk-in slots appear after every 5 tokens.
         </p>
       </div>
 
