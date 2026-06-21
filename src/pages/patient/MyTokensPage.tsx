@@ -289,10 +289,11 @@ export default function MyTokensPage() {
                               View Tracker (session history)
                             </button>
                           )}
-                      </div>
-                      <div className="flex items-baseline gap-0.5 shrink-0">
-                        <span className="text-lg font-bold text-teal-500">#</span>
-                        <span className="text-3xl font-bold text-teal-600">{booking.tokenNumber}</span>
+                        </div>
+                        <div className="flex items-baseline gap-0.5 shrink-0">
+                          <span className="text-lg font-bold text-teal-500">#</span>
+                          <span className="text-3xl font-bold text-teal-600">{booking.tokenNumber}</span>
+                        </div>
                       </div>
                     </div>
                   </motion.div>
