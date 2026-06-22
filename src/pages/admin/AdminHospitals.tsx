@@ -143,6 +143,16 @@ export default function AdminHospitals() {
     setEditHospital(null);
   }
 
+  // ── Set hospital mode (paid or free) ────────────────────────────────────
+  async function handleSetHospitalMode(hospital: Hospital, isFree: boolean) {
+    try {
+      await updateHospital(hospital.id, { isFree });
+      toast.success(`Hospital mode changed to ${isFree ? "Free" : "Paid"}`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update hospital mode");
+    }
+  }
+
   return (
     <div className="p-8">
       {/* Header */}

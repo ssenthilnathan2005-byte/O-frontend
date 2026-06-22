@@ -10,6 +10,7 @@ export interface Hospital {
   address?: string;
   phone?: string;
   photoUrl?: string;
+  isFree?: boolean;
 }
 
 export type SessionType = "morning" | "afternoon" | "evening";
