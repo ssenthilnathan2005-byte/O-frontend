@@ -277,7 +277,8 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
       if (addBookingToStore) addBookingToStore(booking);
       setTokenNumber(booking.tokenNumber);
       setTrackerSessionId(booking.sessionId);
-      void refreshFromStorage();
+      // Ensure booking is synced to store before navigation to avoid race condition
+      await refreshFromStorage();
       setStep("tracking-info");
     } catch (err: any) {
       setPayError(err.message || "Could not complete booking. Please try again.");
