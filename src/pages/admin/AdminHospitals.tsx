@@ -197,6 +197,7 @@ export default function AdminHospitals() {
               <TableHead>Address</TableHead>
               <TableHead>Phone</TableHead>
               <TableHead className="text-center">Doctors</TableHead>
+              <TableHead className="text-center">Mode</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -231,6 +232,32 @@ export default function AdminHospitals() {
                 <TableCell className="text-muted-foreground text-sm">{hospital.phone ?? "—"}</TableCell>
                 <TableCell className="text-center">
                   <Badge variant="secondary">{getDoctorCount(hospital.id)}</Badge>
+                </TableCell>
+                <TableCell className="text-center">
+                  <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden" data-ocid="admin.hospital_mode_toggle">
+                    <button
+                      type="button"
+                      onClick={() => handleSetHospitalMode(hospital, false)}
+                      className={`px-3 py-1 text-xs font-medium transition-colors ${
+                        !hospital.isFree
+                          ? "bg-gray-900 text-white"
+                          : "bg-white text-gray-500 hover:bg-gray-50"
+                      }`}
+                    >
+                      Paid
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSetHospitalMode(hospital, true)}
+                      className={`px-3 py-1 text-xs font-medium transition-colors ${
+                        hospital.isFree
+                          ? "bg-teal-600 text-white"
+                          : "bg-white text-gray-500 hover:bg-gray-50"
+                      }`}
+                    >
+                      Free
+                    </button>
+                  </div>
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2 justify-end">

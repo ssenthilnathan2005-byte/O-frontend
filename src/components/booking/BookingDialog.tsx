@@ -7,7 +7,7 @@ import { Activity, AlertCircle, Calendar, CheckCircle2, Clock,
          CreditCard, FileText, Hash, IndianRupee, Loader2, MapPin, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { payments } from "../../api";
+import { bookings as bookingsApi, payments } from "../../api";
 import { useStore } from "../../context/StoreContext";
 import { useRouter } from "../../router/RouterContext";
 import {
@@ -253,6 +253,35 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
         setPayError(err.message || "Payment failed. Please try again.");
         toast.error(err.message || "Payment failed");
       }
+    } finally {
+      setPaying(false);
+    }
+  }
+
+  // Free-hospital booking path — no Razorpay, no payment order. Hits the
+  // direct booking endpoint (which the backend only allows when the
+  // doctor's hospital is actually marked free) and goes straight to the
+  // tracking-info step, mirroring the success path of handlePay above.
+  async function handleFreeBook() {
+    setPaying(true);
+    setPayError("");
+    try {
+      const booking = await bookingsApi.create({
+        doctorId: doctor.id,
+        date: selectedDate,
+        session: selectedSession as SessionType,
+        complaint: complaint.trim() || undefined,
+        phone: (patientUser as any).phone || undefined,
+      });
+
+      if (addBookingToStore) addBookingToStore(booking);
+      setTokenNumber(booking.tokenNumber);
+      setTrackerSessionId(booking.sessionId);
+      void refreshFromStorage();
+      setStep("tracking-info");
+    } catch (err: any) {
+      setPayError(err.message || "Could not complete booking. Please try again.");
+      toast.error(err.message || "Booking failed");
     } finally {
       setPaying(false);
     }
@@ -530,10 +559,14 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
               </div>
               <div className="border-t border-gray-200 mt-2 pt-2 flex justify-between">
                 <span className="font-semibold text-gray-900">Booking Fee</span>
-                <div className="flex items-center gap-0.5 font-bold text-gray-900 text-lg">
-                  <IndianRupee className="w-4 h-4" />
-                  {bookingFee}
-                </div>
+                {hospital.isFree ? (
+                  <span className="font-bold text-teal-600 text-lg">Free</span>
+                ) : (
+                  <div className="flex items-center gap-0.5 font-bold text-gray-900 text-lg">
+                    <IndianRupee className="w-4 h-4" />
+                    {bookingFee}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -545,40 +578,61 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
               </div>
             )}
 
-            {/* Security note */}
-            <div className="flex items-center gap-2 text-xs text-gray-400 justify-center">
-              <ShieldCheck className="w-3.5 h-3.5 text-green-500" />
-              Secured by Razorpay — 100% safe payment
-            </div>
-
-            {paying ? (
-              <div className="py-4 text-center">
-                <Loader2 className="w-8 h-8 animate-spin text-teal-500 mx-auto mb-3" />
-                <p className="text-sm font-medium text-gray-700">Opening payment gateway…</p>
-                <p className="text-xs text-gray-400 mt-1">Please wait</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
+            {hospital.isFree ? (
+              paying ? (
+                <div className="py-4 text-center">
+                  <Loader2 className="w-8 h-8 animate-spin text-teal-500 mx-auto mb-3" />
+                  <p className="text-sm font-medium text-gray-700">Confirming your booking…</p>
+                  <p className="text-xs text-gray-400 mt-1">Please wait</p>
+                </div>
+              ) : (
                 <Button
                   className="w-full h-12 text-base bg-teal-500 hover:bg-teal-600 rounded-full gap-2"
-                  onClick={handlePay}
-                  disabled={!isRazorpayReady || prefetchingOrder}
+                  onClick={handleFreeBook}
                   data-ocid="booking.primary_button"
                 >
-                  <CreditCard className="w-5 h-5" />
-                  {isRazorpayReady ? `Pay ₹${bookingFee} with Razorpay` : "Preparing Razorpay..."}
+                  <CheckCircle2 className="w-5 h-5" />
+                  Book Appointment
                 </Button>
-                {!isRazorpayReady && (
-                  <p className="text-xs text-center text-gray-500">
-                    Razorpay is loading. Please wait a moment before tapping Pay.
-                  </p>
+              )
+            ) : (
+              <>
+                {/* Security note */}
+                <div className="flex items-center gap-2 text-xs text-gray-400 justify-center">
+                  <ShieldCheck className="w-3.5 h-3.5 text-green-500" />
+                  Secured by Razorpay — 100% safe payment
+                </div>
+
+                {paying ? (
+                  <div className="py-4 text-center">
+                    <Loader2 className="w-8 h-8 animate-spin text-teal-500 mx-auto mb-3" />
+                    <p className="text-sm font-medium text-gray-700">Opening payment gateway…</p>
+                    <p className="text-xs text-gray-400 mt-1">Please wait</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Button
+                      className="w-full h-12 text-base bg-teal-500 hover:bg-teal-600 rounded-full gap-2"
+                      onClick={handlePay}
+                      disabled={!isRazorpayReady || prefetchingOrder}
+                      data-ocid="booking.primary_button"
+                    >
+                      <CreditCard className="w-5 h-5" />
+                      {isRazorpayReady ? `Pay ₹${bookingFee} with Razorpay` : "Preparing Razorpay..."}
+                    </Button>
+                    {!isRazorpayReady && (
+                      <p className="text-xs text-center text-gray-500">
+                        Razorpay is loading. Please wait a moment before tapping Pay.
+                      </p>
+                    )}
+                    {prefetchingOrder && isRazorpayReady && (
+                      <p className="text-xs text-center text-gray-500">
+                        Preparing your payment order…
+                      </p>
+                    )}
+                  </div>
                 )}
-                {prefetchingOrder && isRazorpayReady && (
-                  <p className="text-xs text-center text-gray-500">
-                    Preparing your payment order…
-                  </p>
-                )}
-              </div>
+              </>
             )}
           </div>
         )}
