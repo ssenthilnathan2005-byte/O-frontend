@@ -12,6 +12,7 @@ import HospitalDoctorsPage from "./pages/patient/HospitalDoctorsPage";
 import HospitalsPage from "./pages/patient/HospitalsPage";
 import MyTokensPage from "./pages/patient/MyTokensPage";
 import TokenTrackerPage from "./pages/patient/TokenTrackerPage";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { RouterProvider, useRouter } from "./router/RouterContext";
 
 function resolvePhotoUrl(url: string | null | undefined): string | null {
@@ -169,7 +170,9 @@ function AppRoutes() {
     if (route.path === "/patient/track") {
       const r = route as { sessionId: string; tokenNumber: number };
       return (
-        <TokenTrackerPage sessionId={r.sessionId} tokenNumber={r.tokenNumber} />
+        <ErrorBoundary fallbackLabel="your queue tracker">
+          <TokenTrackerPage sessionId={r.sessionId} tokenNumber={r.tokenNumber} />
+        </ErrorBoundary>
       );
     }
     return <HospitalsPage />;
