@@ -279,8 +279,9 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
               </div>
             );
 
-            if (n % 5 === 0 && n < maxTokens) {
-              const slotIndex = n / 5;
+            const effectiveWalkInInterval = doctor?.walkInInterval && doctor.walkInInterval > 0 ? doctor.walkInInterval : 5;
+            if (!n % effectiveWalkInInterval === 0 && n < maxTokens) {
+              const slotIndex = n / effectiveWalkInInterval;
               const ps = prioritySlots[slotIndex];
               const slotStatus = ps?.status ?? "waiting";
               elements.push(
@@ -311,7 +312,7 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
           })}
         </div>
         <p className="text-xs text-gray-400 mt-3">
-          Blue ring indicates your token. Walk-in slots appear after every 5 tokens.
+          Blue ring indicates your token. Walk-in slots appear after every {doctor?.walkInInterval && doctor.walkInInterval > 0 ? doctor.walkInInterval : 5} tokens.
         </p>
       </div>
 

@@ -196,6 +196,7 @@ export default function DoctorDashboard() {
     name: doctor?.name ?? "",
     specialty: doctor?.specialty ?? "",
     tokensPerSession: String(doctor?.tokensPerSession ?? 20),
+    walkInInterval: String(doctor?.walkInInterval ?? 5),
     sessions: ((doctor?.sessions ?? []) as string[]).filter((s): s is SessionType => ["morning","afternoon","evening"].includes(s)),
     contactPhone: (doctor as any)?.contactPhone || doctor?.phone || "",
     sessionTimings: sanitizeSessionTimings(doctor?.sessionTimings),
@@ -214,6 +215,7 @@ export default function DoctorDashboard() {
         name: doctor.name ?? "",
         specialty: doctor.specialty ?? "",
         tokensPerSession: String(doctor.tokensPerSession ?? 20),
+        walkInInterval: String(doctor.walkInInterval ?? 5),
         sessions: ((doctor.sessions ?? []) as string[]).filter((s): s is SessionType => ["morning","afternoon","evening"].includes(s)),
         contactPhone: (doctor as any).contactPhone || doctor?.phone || "",
         sessionTimings: sanitizeSessionTimings(doctor.sessionTimings),
@@ -225,6 +227,7 @@ export default function DoctorDashboard() {
         name: doctor.name ?? prev.name,
         specialty: doctor.specialty ?? prev.specialty,
         tokensPerSession: String(doctor.tokensPerSession ?? prev.tokensPerSession),
+        walkInInterval: String(doctor.walkInInterval ?? prev.walkInInterval),
         contactPhone: (doctor as any).contactPhone || doctor?.phone || prev.contactPhone,
         // ✅ sessions and sessionTimings are NOT overwritten — user edits preserved
       }));
@@ -347,11 +350,18 @@ export default function DoctorDashboard() {
       }
     }
 
+    const walkInIntervalNum = Number(profileForm.walkInInterval);
+    if (!Number.isInteger(walkInIntervalNum) || walkInIntervalNum < 1) {
+      toast.error("Walk-in interval must be a whole number of 1 or more.");
+      return;
+    }
+
     const payload: Record<string, unknown> = {
       name: profileForm.name,
       specialty: profileForm.specialty,
       price: 10,
       tokensPerSession: Number(profileForm.tokensPerSession),
+      walkInInterval: walkInIntervalNum,
       sessions: profileForm.sessions,
       consultationFee: 10,
       sessionTimings: normalizedTimings,
@@ -540,6 +550,7 @@ export default function DoctorDashboard() {
   }
 
   const maxTokens = doctor?.tokensPerSession ?? 20;
+  const walkInInterval = doctor?.walkInInterval && doctor.walkInInterval > 0 ? doctor.walkInInterval : 5;
 
   function renderTokenGrid() {
     const elements: React.ReactNode[] = [];
@@ -579,8 +590,8 @@ export default function DoctorDashboard() {
           {n}
         </button>,
       );
-      if (n % 5 === 0 && n <= maxTokens) {
-        const slotIndex = n / 5;
+      if (n % walkInInterval === 0 && n <= maxTokens) {
+        const slotIndex = n / walkInInterval;
         const ps = tokenState?.prioritySlots?.[slotIndex] ?? {
           label: `Priority Slot P${slotIndex}`,
           status: "waiting" as const,
@@ -1224,6 +1235,27 @@ export default function DoctorDashboard() {
                     }
                     data-ocid="profile.input"
                   />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="doc-walkin-interval" className="text-sm font-medium">
+                    Walk-in Slot Interval
+                  </Label>
+                  <Input
+                    id="doc-walkin-interval"
+                    type="number"
+                    min={1}
+                    value={profileForm.walkInInterval}
+                    onChange={(e) =>
+                      setProfileForm((p) => ({
+                        ...p,
+                        walkInInterval: e.target.value,
+                      }))
+                    }
+                    data-ocid="profile.input"
+                  />
+                  <p className="text-xs text-gray-400">
+                    A walk-in patient slot is inserted after every N online patients (e.g. 5 means after tokens 5, 10, 15…).
+                  </p>
                 </div>
               </div>
 

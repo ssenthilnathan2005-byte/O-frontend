@@ -366,6 +366,7 @@ export interface Doctor {
   isAvailable?: boolean; yearsOfExperience?: string;
   education?: string; languages?: string[];
   statusOverride?: string;
+  walkInInterval?: number;
 }
 export interface Booking {
   id: string; patientId: string; patientName: string;
