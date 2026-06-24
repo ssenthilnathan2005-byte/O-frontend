@@ -350,6 +350,14 @@ export function connectTokenSocket(
   };
 }
 
+// ── Push Notifications ────────────────────────────────────────────────────────
+export const push = {
+  register: (token: string) =>
+    post<{ success: boolean }>("/push/register", { token }),
+  unregister: (token: string) =>
+    post<{ success: boolean }>("/push/unregister", { token }),
+};
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 export type UserRole = "patient" | "doctor" | "admin";
 export interface Hospital {
