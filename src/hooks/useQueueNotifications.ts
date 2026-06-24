@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import type { TokenStatus } from "../types";
-
+import { enablePushNotifications, onForegroundPush } from "../lib/push";
+ 
 export function useQueueNotifications(
   sessionId: string,
   tokenNumber: number,
@@ -12,107 +13,129 @@ export function useQueueNotifications(
 ) {
   const lastStatusRef = useRef<TokenStatus | null>(null);
   const lastNowSeeingRef = useRef<number | null>(null);
-
+  // Track whether we've already attempted push setup this session
+  const pushSetupDone = useRef(false);
+ 
   function vibrate(pattern: number | number[]) {
     if (typeof navigator !== "undefined" && "vibrate" in navigator) {
       navigator.vibrate(pattern);
     }
   }
-
-  // Request permission first time
-  useEffect(() => {
-    if ("Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission();
+ 
+  // ── Show a notification via the service worker (Android-compatible) ──────
+  // On Android, `new Notification()` is not supported — you must go through
+  // the service worker registration. This falls back gracefully on desktop.
+  async function showNotification(title: string, options: NotificationOptions & { tag: string }) {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      await reg.showNotification(title, options);
+    } catch {
+      // Desktop fallback — new Notification() works fine here
+      if (Notification.permission === "granted") {
+        new Notification(title, options);
+      }
     }
-  }, []);
-
+  }
+ 
+  // ── One-time push setup: ask permission + register FCM token ─────────────
+  // Runs once when the component mounts. We guard with a ref so it never
+  // fires twice even if the parent re-renders.
   useEffect(() => {
-    const isPreviousTokenCalled = nowSeeingToken !== null && nowSeeingToken === tokenNumber - 1;
+    if (pushSetupDone.current) return;
+    pushSetupDone.current = true;
+ 
+    // enablePushNotifications() handles:
+    //  1. registerServiceWorker()
+    //  2. Notification.requestPermission()  ← this shows the OS permission dialog
+    //  3. getToken() from Firebase
+    //  4. POST to /api/push/register
+    // It is fully async and never throws — safe to fire and not await here.
+    enablePushNotifications().catch(() => {
+      // Non-fatal — user may have denied, or Firebase may be unconfigured in dev
+    });
+  }, []); // empty deps — run exactly once on mount
+ 
+  // ── Listen for foreground push messages (tab is open & focused) ──────────
+  useEffect(() => {
+    let unsubscribe: (() => void) | null = null;
+ 
+    onForegroundPush(({ title, body }) => {
+      toast.info(title, { description: body, duration: 7000 });
+    }).then((fn) => {
+      unsubscribe = fn;
+    });
+ 
+    return () => {
+      unsubscribe?.();
+    };
+  }, []); // empty deps — subscribe once, clean up on unmount
+ 
+  // ── React to queue status changes ─────────────────────────────────────────
+  useEffect(() => {
+    const isPreviousTokenCalled =
+      nowSeeingToken !== null && nowSeeingToken === tokenNumber - 1;
     const previousWasCalledEarlier = lastNowSeeingRef.current === tokenNumber - 1;
-
+ 
+    // Token just before yours was called → heads-up toast
     if (isPreviousTokenCalled && !previousWasCalledEarlier) {
       toast.info("Previous token called", {
         description: `Token #${tokenNumber} is next. Please stay ready at ${hospitalName}.`,
         duration: 7000,
       });
-
       vibrate([150, 80, 150]);
-
-      if ("Notification" in window && Notification.permission === "granted") {
-        new Notification("Doctor Booked - Get ready", {
+ 
+      if (Notification.permission === "granted") {
+        showNotification("Doctor Booked - Get ready", {
           body: `Previous token is in progress. Token #${tokenNumber} is next.`,
           icon: "/assets/Logo.jpg",
           tag: `queue-${sessionId}-${tokenNumber}-previous`,
         });
       }
     }
-
-    // Trigger when status changes to "yellow" (next up)
-    if (
-      currentStatus === "yellow" &&
-      lastStatusRef.current !== "yellow"
-    ) {
+ 
+    // Status changed to "yellow" (you're next)
+    if (currentStatus === "yellow" && lastStatusRef.current !== "yellow") {
       lastStatusRef.current = currentStatus;
-
-      // Show in-app toast
+ 
       toast.success("🔔 You're Next!", {
         description: `Token #${tokenNumber} at ${hospitalName}`,
         duration: 8000,
       });
-
       vibrate([200, 100, 200]);
-
-      // Show browser notification
-      if (
-        "Notification" in window &&
-        Notification.permission === "granted"
-      ) {
-        const notification = new Notification(
-          "Doctor Booked - You're Next! 🎉",
-          {
-            body: `Token #${tokenNumber} at ${hospitalName}\nDr. ${doctorName} will call you soon. Get ready!`,
-            icon: "/assets/Logo.jpg",
-            badge: "/assets/Logo.jpg",
-            tag: `queue-${sessionId}-${tokenNumber}`,
-          }
-        );
-
-        notification.onclick = () => {
-          window.focus();
-          notification.close();
-        };
+ 
+      if (Notification.permission === "granted") {
+        showNotification("Doctor Booked - You're Next! 🎉", {
+          body: `Token #${tokenNumber} at ${hospitalName}\nDr. ${doctorName} will call you soon. Get ready!`,
+          icon: "/assets/Logo.jpg",
+          badge: "/assets/Logo.jpg",
+          tag: `queue-${sessionId}-${tokenNumber}`,
+        });
       }
     }
-    // Also notify when being seen (orange)
-    else if (
-      currentStatus === "orange" &&
-      lastStatusRef.current !== "orange"
-    ) {
+    // Status changed to "orange" (you're being seen)
+    else if (currentStatus === "orange" && lastStatusRef.current !== "orange") {
       lastStatusRef.current = currentStatus;
-
+ 
       toast.success("🏥 You're Being Seen!", {
         description: "Go to the consultation room now!",
         duration: 6000,
       });
-
       vibrate([500, 100, 500]);
-
-      if (
-        "Notification" in window &&
-        Notification.permission === "granted"
-      ) {
-        new Notification("Your consultation is starting! 🏥", {
+ 
+      if (Notification.permission === "granted") {
+        showNotification("Your consultation is starting! 🏥", {
           body: "Please go to the consultation room now.",
           icon: "/assets/Logo.jpg",
           tag: `queue-${sessionId}-consultation`,
         });
       }
     }
-    // Reset for other statuses
+    // Any other status — just update the ref
     else if (currentStatus !== "yellow" && currentStatus !== "orange") {
       lastStatusRef.current = currentStatus;
     }
-
+ 
     lastNowSeeingRef.current = nowSeeingToken;
   }, [currentStatus, nowSeeingToken, sessionId, tokenNumber, doctorName, hospitalName]);
 }
+  
