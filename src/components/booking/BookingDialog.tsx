@@ -63,6 +63,8 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
   const [tokenNumber, setTokenNumber]   = useState(0);
   const [trackerSessionId, setTrackerSessionId] = useState("");
   const [complaint, setComplaint]       = useState("");
+  const [patientName, setPatientName]   = useState("");
+  const [patientAge, setPatientAge]     = useState("");
   const [paying, setPaying]             = useState(false);
   const [payError, setPayError]         = useState("");
   const [isRazorpayReady, setIsRazorpayReady] = useState(false);
@@ -518,12 +520,38 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
               <div className="w-12 h-12 bg-teal-50 rounded-full flex items-center justify-center mx-auto mb-3">
                 <FileText className="w-6 h-6 text-teal-500" />
               </div>
-              <h3 className="font-semibold text-gray-900 text-base">What brings you in today?</h3>
-              <p className="text-sm text-gray-400 mt-1">Your doctor will see this. Optional.</p>
+              <h3 className="font-semibold text-gray-900 text-base">Patient Details</h3>
+              <p className="text-sm text-gray-400 mt-1">Help your doctor prepare. All fields are optional.</p>
             </div>
-            <Textarea rows={4} placeholder="Describe your symptoms or reason for visit... (optional)"
-              value={complaint} onChange={e => setComplaint(e.target.value)}
-              className="resize-none text-sm" data-ocid="booking.textarea" />
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Patient Name</label>
+                <input
+                  type="text"
+                  placeholder="Enter patient name (optional)"
+                  value={patientName}
+                  onChange={e => setPatientName(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Age</label>
+                <input
+                  type="number"
+                  placeholder="Enter age (optional)"
+                  value={patientAge}
+                  onChange={e => setPatientAge(e.target.value)}
+                  min={0} max={120}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Symptoms / Reason for Visit</label>
+                <Textarea rows={3} placeholder="Describe symptoms or reason for visit... (optional)"
+                  value={complaint} onChange={e => setComplaint(e.target.value)}
+                  className="resize-none text-sm" data-ocid="booking.textarea" />
+              </div>
+            </div>
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1 rounded-full"
                 onClick={() => setStep("payment")} data-ocid="booking.secondary_button">Skip</Button>
