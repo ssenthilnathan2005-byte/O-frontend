@@ -521,24 +521,24 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
                 <FileText className="w-6 h-6 text-teal-500" />
               </div>
               <h3 className="font-semibold text-gray-900 text-base">Patient Details</h3>
-              <p className="text-sm text-gray-400 mt-1">Help your doctor prepare. All fields are optional.</p>
+              <p className="text-sm text-gray-400 mt-1">Please fill in all details before continuing.</p>
             </div>
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">Patient Name</label>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Patient Name <span className="text-red-500">*</span></label>
                 <input
                   type="text"
-                  placeholder="Enter patient name (optional)"
+                  placeholder="Enter patient name"
                   value={patientName}
                   onChange={e => setPatientName(e.target.value)}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">Age</label>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Age <span className="text-red-500">*</span></label>
                 <input
                   type="number"
-                  placeholder="Enter age (optional)"
+                  placeholder="Enter age"
                   value={patientAge}
                   onChange={e => setPatientAge(e.target.value)}
                   min={0} max={120}
@@ -546,17 +546,21 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">Symptoms / Reason for Visit</label>
-                <Textarea rows={3} placeholder="Describe symptoms or reason for visit... (optional)"
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Symptoms / Reason for Visit <span className="text-red-500">*</span></label>
+                <Textarea rows={3} placeholder="Describe symptoms or reason for visit..."
                   value={complaint} onChange={e => setComplaint(e.target.value)}
                   className="resize-none text-sm" data-ocid="booking.textarea" />
               </div>
             </div>
             <div className="flex gap-3">
-              <Button variant="outline" className="flex-1 rounded-full"
-                onClick={() => setStep("payment")} data-ocid="booking.secondary_button">Skip</Button>
-              <Button className="flex-1 bg-teal-500 hover:bg-teal-600 rounded-full"
-                onClick={() => setStep("payment")} data-ocid="booking.primary_button">
+              <Button className="w-full bg-teal-500 hover:bg-teal-600 rounded-full"
+                onClick={() => {
+                  if (!patientName.trim() || !patientAge.trim() || !complaint.trim()) {
+                    toast.error("Please fill in all required fields");
+                    return;
+                  }
+                  setStep("payment");
+                }} data-ocid="booking.primary_button">
                 {hospital.isFree ? "Continue to Booking" : "Continue to Payment"}
               </Button>
             </div>
