@@ -40,7 +40,7 @@ export default defineConfig({
     },
   },
   plugins: [
-    environment(["VITE_API_URL"]),
+    environment(["VITE_API_URL", "VITE_GOOGLE_CLIENT_ID"]),
     react(),
   ],
   resolve: {

@@ -280,7 +280,7 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
             );
 
             const effectiveWalkInInterval = doctor?.walkInInterval && doctor.walkInInterval > 0 ? doctor.walkInInterval : 5;
-            if (!n % effectiveWalkInInterval === 0 && n < maxTokens) {
+            if (n % effectiveWalkInInterval === 0 && n < maxTokens) {
               const slotIndex = n / effectiveWalkInInterval;
               const ps = prioritySlots[slotIndex];
               const slotStatus = ps?.status ?? "waiting";
