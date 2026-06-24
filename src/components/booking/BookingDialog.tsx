@@ -528,7 +528,9 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
               <Button variant="outline" className="flex-1 rounded-full"
                 onClick={() => setStep("payment")} data-ocid="booking.secondary_button">Skip</Button>
               <Button className="flex-1 bg-teal-500 hover:bg-teal-600 rounded-full"
-                onClick={() => setStep("payment")} data-ocid="booking.primary_button">Continue to Payment</Button>
+                onClick={() => setStep("payment")} data-ocid="booking.primary_button">
+                {hospital.isFree ? "Continue to Booking" : "Continue to Payment"}
+              </Button>
             </div>
           </div>
         )}
