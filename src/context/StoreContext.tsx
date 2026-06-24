@@ -175,9 +175,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     api.setToken(token);
     localStorage.setItem("db_user", JSON.stringify(u));
     setUser(u);
+    if (u.role === "patient") {
+      import("../lib/push").then(({ enablePushNotifications }) => {
+        enablePushNotifications();
+      });
+    }
   }, []);
 
   const logout = useCallback(() => {
+    import("../lib/push").then(({ disablePushNotifications }) => {
+      disablePushNotifications();
+    });
     api.clearToken();
     localStorage.removeItem("db_user");
     setUser(null); setBookings([]); setPatients([]); setTokenStates({});
