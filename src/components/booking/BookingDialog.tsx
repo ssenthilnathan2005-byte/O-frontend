@@ -546,8 +546,8 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">Symptoms / Reason for Visit <span className="text-red-500">*</span></label>
-                <Textarea rows={3} placeholder="Describe symptoms or reason for visit..."
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Symptoms / Reason for Visit</label>
+                <Textarea rows={3} placeholder="Describe symptoms or reason for visit... (optional)"
                   value={complaint} onChange={e => setComplaint(e.target.value)}
                   className="resize-none text-sm" data-ocid="booking.textarea" />
               </div>
@@ -555,8 +555,8 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
             <div className="flex gap-3">
               <Button className="w-full bg-teal-500 hover:bg-teal-600 rounded-full"
                 onClick={() => {
-                  if (!patientName.trim() || !patientAge.trim() || !complaint.trim()) {
-                    toast.error("Please fill in all required fields");
+                  if (!patientName.trim() || !patientAge.trim()) {
+                    toast.error("Please fill in patient name and age");
                     return;
                   }
                   setStep("payment");
