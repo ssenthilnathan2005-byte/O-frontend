@@ -1066,7 +1066,12 @@ export default function DoctorDashboard() {
                   {(liveTokensView === "tovisit" ? liveToVisit : liveVisited).map((b) => (
                     <div key={b.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
                       <div>
-                        <p className="font-semibold text-gray-900 text-sm">{b.patientName}</p>
+                        <p className="font-semibold text-gray-900 text-sm">
+                          {b.patientName}
+                          {b.patientAge != null && (
+                            <span className="font-normal text-gray-400"> · {b.patientAge} yrs</span>
+                          )}
+                        </p>
                         <p className="text-xs text-gray-400 mt-0.5">{b.session} · {b.date}</p>
                         {b.complaint && <p className="text-xs text-gray-500 mt-0.5 italic">"{b.complaint}"</p>}
                       </div>
@@ -1380,6 +1385,9 @@ export default function DoctorDashboard() {
               <span className="font-semibold">
                 {dialogTokenBooking?.patientName ?? "Walk-in / Unknown"}
               </span>
+              {dialogTokenBooking?.patientAge != null && (
+                <span className="text-gray-500"> ({dialogTokenBooking.patientAge} yrs)</span>
+              )}
             </p>
 
             {/* Complaint box */}

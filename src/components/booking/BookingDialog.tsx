@@ -160,6 +160,8 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
         session: selectedSession as SessionType,
         complaint: complaint.trim() || undefined,
         phone: (patientUser as any).phone || undefined,
+        patientName: patientName.trim() || undefined,
+        patientAge: patientAge.trim() || undefined,
       });
 
       // Step 2: Open Razorpay checkout
@@ -274,6 +276,8 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
         session: selectedSession as SessionType,
         complaint: complaint.trim() || undefined,
         phone: (patientUser as any).phone || undefined,
+        patientName: patientName.trim() || undefined,
+        patientAge: patientAge.trim() || undefined,
       });
 
       if (addBookingToStore) addBookingToStore(booking);
@@ -367,6 +371,8 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
           session: selectedSession as SessionType,
           complaint: complaint.trim() || undefined,
           phone: (patientUser as any).phone || undefined,
+          patientName: patientName.trim() || undefined,
+          patientAge: patientAge.trim() || undefined,
         });
 
         if (cancelled) return;
@@ -388,7 +394,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
     return () => {
       cancelled = true;
     };
-  }, [step, selectedDate, selectedSession, complaint, doctor.id, patientUser]);
+  }, [step, selectedDate, selectedSession, complaint, doctor.id, patientUser, patientName, patientAge]);
 
   return (
     <Dialog open={dialogOpen} onOpenChange={handleClose}>
