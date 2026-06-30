@@ -1066,10 +1066,15 @@ export default function DoctorDashboard() {
                   {(liveTokensView === "tovisit" ? liveToVisit : liveVisited).map((b) => (
                     <div key={b.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
                       <div>
-                        <p className="font-semibold text-gray-900 text-sm">
+                        <p className="font-semibold text-gray-900 text-sm flex items-center gap-1.5 flex-wrap">
                           {b.patientName}
                           {b.patientAge != null && (
                             <span className="font-normal text-gray-400"> · {b.patientAge} yrs</span>
+                          )}
+                          {b.status === "unvisited" && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-red-600 bg-red-50 border border-red-200 rounded-full px-2 py-0.5">
+                              <XCircle className="w-3 h-3" /> Unvisited
+                            </span>
                           )}
                         </p>
                         <p className="text-xs text-gray-400 mt-0.5">{b.session} · {b.date}</p>
