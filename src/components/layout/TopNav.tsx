@@ -1,11 +1,42 @@
 import { Button } from "@/components/ui/button";
 import { BookOpen, Hospital, LogOut, User } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { useStore } from "../../context/StoreContext";
 import { useRouter } from "../../router/RouterContext";
+import { enablePushNotifications } from "../../lib/push";
 
 export default function TopNav() {
   const { user, logout, doctors, bookings } = useStore();
   const { navigate, route } = useRouter();
+  const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !user || user.role !== "patient") {
+      setShowNotificationPrompt(false);
+      return;
+    }
+
+    if (!("Notification" in window)) {
+      setShowNotificationPrompt(false);
+      return;
+    }
+
+    setShowNotificationPrompt(Notification.permission === "default");
+  }, [user]);
+
+  async function handleEnableNotifications() {
+    const token = await enablePushNotifications();
+    if (token) {
+      toast.success("Notifications turned on");
+      setShowNotificationPrompt(false);
+      return;
+    }
+
+    if (typeof window !== "undefined" && "Notification" in window) {
+      setShowNotificationPrompt(Notification.permission === "default");
+    }
+  }
 
   // Resolve display name: for doctors look up from live doctors list
   const displayName =
@@ -107,6 +138,38 @@ export default function TopNav() {
           )}
         </div>
       </div>
+
+      {showNotificationPrompt && (
+        <div className="mt-3 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-teal-900">Turn on notifications</p>
+              <p className="text-xs text-teal-700 mt-0.5">
+                Get queue updates even when this page is closed or in the background.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                className="bg-teal-600 hover:bg-teal-700 text-white rounded-full"
+                onClick={() => void handleEnableNotifications()}
+              >
+                Enable notifications
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="text-teal-700 hover:bg-teal-100 rounded-full"
+                onClick={() => setShowNotificationPrompt(false)}
+              >
+                Not now
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }
