@@ -72,6 +72,17 @@ export function useStore(): Store {
 
 const REFRESH_MS = 30_000;
 
+function preserveBookingTimestamps(next: Booking[], previous: Booking[]) {
+  const previousById = new Map(previous.map((booking) => [booking.id, booking]));
+
+  return next.map((booking) => {
+    if (booking.createdAt) return booking;
+
+    const prior = previousById.get(booking.id);
+    return prior?.createdAt ? { ...booking, createdAt: prior.createdAt } : booking;
+  });
+}
+
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(() => {
     try { return JSON.parse(localStorage.getItem("db_user") || "null"); } catch { return null; }
@@ -121,7 +132,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     try {
       const b = await api.bookings.list();
-      setBookings(b);
+      setBookings((previous) => preserveBookingTimestamps(b, previous));
     } catch (err) {
       if (!background) console.error("[store] bookings load failed:", err);
     }
@@ -254,13 +265,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       doctorId: data.doctorId, date: data.date,
       session: data.session, complaint: data.complaint, phone: data.phone,
     });
-    setBookings(p => [...p, b]);
+    const booking = b.createdAt ? b : { ...b, createdAt: new Date().toISOString() };
+    setBookings(p => [...p, booking]);
     subscribe(b.sessionId);
   }, [subscribe]);
 
   // Called by BookingDialog after Razorpay payment succeeds — adds booking to local state
   const addBookingToStore = useCallback((booking: Booking) => {
-    setBookings(p => [...p.filter(b => b.id !== booking.id), booking]);
+    const normalized = booking.createdAt ? booking : { ...booking, createdAt: new Date().toISOString() };
+    setBookings(p => [...p.filter(b => b.id !== normalized.id), normalized]);
     subscribe(booking.sessionId);
   }, [subscribe]);
 

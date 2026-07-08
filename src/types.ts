@@ -65,6 +65,7 @@ export interface Booking {
   status: "confirmed" | "completed" | "unvisited" | "cancelled";
   phone?: string;
   complaint?: string;
+  createdAt: string;
 }
 
 export interface SessionTokenState {

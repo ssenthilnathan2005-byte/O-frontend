@@ -226,10 +226,16 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
               });
 
               if (result.success) {
+                const confirmedAt = new Date().toISOString();
+                const booking = {
+                  ...result.booking,
+                  createdAt: result.booking.createdAt ?? confirmedAt,
+                };
+
                 // Add booking to local store without a second API call
-                if (addBookingToStore) addBookingToStore(result.booking);
-                setTokenNumber(result.booking.tokenNumber);
-                setTrackerSessionId(result.booking.sessionId);
+                if (addBookingToStore) addBookingToStore(booking);
+                setTokenNumber(booking.tokenNumber);
+                setTrackerSessionId(booking.sessionId);
                 void refreshFromStorage();
                 setStep("tracking-info");
                 resolve();
@@ -280,9 +286,15 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
         patientAge: patientAge.trim() || undefined,
       });
 
-      if (addBookingToStore) addBookingToStore(booking);
-      setTokenNumber(booking.tokenNumber);
-      setTrackerSessionId(booking.sessionId);
+      const confirmedAt = new Date().toISOString();
+      const bookingWithTimestamp = {
+        ...booking,
+        createdAt: booking.createdAt ?? confirmedAt,
+      };
+
+      if (addBookingToStore) addBookingToStore(bookingWithTimestamp);
+      setTokenNumber(bookingWithTimestamp.tokenNumber);
+      setTrackerSessionId(bookingWithTimestamp.sessionId);
       // Ensure booking is synced to store before navigation to avoid race condition
       await refreshFromStorage();
       setStep("tracking-info");
