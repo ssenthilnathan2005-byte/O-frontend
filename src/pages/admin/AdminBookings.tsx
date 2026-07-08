@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -16,28 +17,10 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: "bg-red-100 text-red-700",
 };
 
-function formatBookedAt(value?: string) {
-  if (!value) return "—";
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-
-  return date.toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
-
 export default function AdminBookings() {
   const { bookings } = useStore();
 
-  const recentBookings = [...bookings]
-    .sort((a, b) => {
-      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return timeB - timeA;
-    })
-    .slice(0, 100);
+  const recentBookings = [...bookings].reverse().slice(0, 100);
 
   return (
     <div className="p-8">
@@ -72,7 +55,6 @@ export default function AdminBookings() {
                 <TableHead>Doctor</TableHead>
                 <TableHead>Hospital</TableHead>
                 <TableHead>Date</TableHead>
-                <TableHead>Booked At</TableHead>
                 <TableHead>Session</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
@@ -93,9 +75,6 @@ export default function AdminBookings() {
                     {booking.hospitalName}
                   </TableCell>
                   <TableCell className="text-sm">{booking.date}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                    {formatBookedAt(booking.createdAt)}
-                  </TableCell>
                   <TableCell className="text-sm capitalize">
                     {booking.session}
                   </TableCell>
