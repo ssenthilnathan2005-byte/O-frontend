@@ -21,6 +21,13 @@ export function useQueueNotifications(
       navigator.vibrate(pattern);
     }
   }
+
+  function buildTrackerLink(): string {
+    const url = new URL("/patient/track", window.location.origin);
+    url.searchParams.set("sessionId", sessionId);
+    url.searchParams.set("tokenNumber", String(tokenNumber));
+    return `${url.pathname}${url.search}`;
+  }
  
   // ── Show a notification via the service worker (Android-compatible) ──────
   // On Android, `new Notification()` is not supported — you must go through
@@ -89,6 +96,7 @@ export function useQueueNotifications(
           body: `Previous token is in progress. Token #${tokenNumber} is next.`,
           icon: "/assets/Logo.jpg",
           tag: `queue-${sessionId}-${tokenNumber}-previous`,
+          data: { link: buildTrackerLink() },
         });
       }
     }
@@ -109,6 +117,7 @@ export function useQueueNotifications(
           icon: "/assets/Logo.jpg",
           badge: "/assets/Logo.jpg",
           tag: `queue-${sessionId}-${tokenNumber}`,
+          data: { link: buildTrackerLink() },
         });
       }
     }
@@ -127,6 +136,7 @@ export function useQueueNotifications(
           body: "Please go to the consultation room now.",
           icon: "/assets/Logo.jpg",
           tag: `queue-${sessionId}-consultation`,
+          data: { link: buildTrackerLink() },
         });
       }
     }

@@ -38,6 +38,9 @@ function getInitialRoute(): Route {
   const mode = params.get("mode");
   const tab = params.get("tab") as "patient" | "doctor" | null;
   const patientMode = params.get("patientMode") as "login" | "signup" | null;
+  const sessionId = params.get("sessionId") ?? "";
+  const tokenNumber = Number.parseInt(params.get("tokenNumber") ?? "0", 10);
+  const hospitalId = params.get("id") ?? "";
 
   if (token && (!mode || mode === "reset")) {
     return { path: "/login", tab: "patient", patientMode: "login" };
@@ -53,9 +56,15 @@ function getInitialRoute(): Route {
   }
 
   if (pathname === "/patient/hospitals") return { path: "/patient/hospitals" };
-  if (pathname === "/patient/hospital") return { path: "/patient/hospital", id: "" };
+  if (pathname === "/patient/hospital") return { path: "/patient/hospital", id: hospitalId };
   if (pathname === "/patient/tokens") return { path: "/patient/tokens" };
-  if (pathname === "/patient/track") return { path: "/patient/track", sessionId: "", tokenNumber: 0 };
+  if (pathname === "/patient/track") {
+    return {
+      path: "/patient/track",
+      sessionId,
+      tokenNumber: Number.isFinite(tokenNumber) ? tokenNumber : 0,
+    };
+  }
   if (pathname === "/doctor") return { path: "/doctor" };
   if (pathname === "/admin") return { path: "/admin" };
   if (pathname === "/admin/hospitals") return { path: "/admin/hospitals" };
