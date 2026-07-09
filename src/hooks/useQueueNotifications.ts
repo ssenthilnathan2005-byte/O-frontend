@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import type { TokenStatus } from "../types";
-import { enablePushNotifications, onForegroundPush } from "../lib/push";
+import { onForegroundPush } from "../lib/push";
  
 export function useQueueNotifications(
   sessionId: string,
@@ -47,24 +47,6 @@ export function useQueueNotifications(
       }
     }
   }
- 
-  // ── One-time push setup: ask permission + register FCM token ─────────────
-  // Runs once when the component mounts. We guard with a ref so it never
-  // fires twice even if the parent re-renders.
-  useEffect(() => {
-    if (pushSetupDone.current) return;
-    pushSetupDone.current = true;
- 
-    // enablePushNotifications() handles:
-    //  1. registerServiceWorker()
-    //  2. Notification.requestPermission()  ← this shows the OS permission dialog
-    //  3. getToken() from Firebase
-    //  4. POST to /api/push/register
-    // It is fully async and never throws — safe to fire and not await here.
-    enablePushNotifications().catch(() => {
-      // Non-fatal — user may have denied, or Firebase may be unconfigured in dev
-    });
-  }, []); // empty deps — run exactly once on mount
  
   // ── Listen for foreground push messages (tab is open & focused) ──────────
   useEffect(() => {
