@@ -88,14 +88,14 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
   const patientUser = user as { id: string; email: string; name: string; role: "patient" };
 
   // Pre-load token states when dialog opens
-  useMemo(() => {
+  useEffect(() => {
     if (!open) return;
     const today = new Date().toISOString().split("T")[0];
     for (const s of doctor.sessions as SessionType[]) {
       const sid = makeSessionId(doctor.id, today, s);
       getOrCreateTokenState(sid, doctor.id, today, s);
     }
-  }, [open, doctor.id]); // eslint-disable-line
+  }, [open, doctor.id, doctor.sessions, getOrCreateTokenState]);
 
   function getBookedCount(date: string, session: string): number {
     const sid = makeSessionId(doctor.id, date, session);
@@ -401,7 +401,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
       <DialogContent
         showOverlay={!(step === "payment" && !hospital.isFree) && !paying}
         overlayClassName="bg-black/50"
-        className={`w-[94vw] max-w-md max-h-[calc(100dvh-1rem)] sm:max-h-[88vh] overflow-y-auto overscroll-contain p-4 sm:p-6${paying ? " opacity-0 pointer-events-none select-none" : ""}`}
+        className={`w-[calc(100vw-1rem)] max-w-md max-h-[calc(100svh-1rem)] sm:w-[94vw] sm:max-h-[88vh] top-4 translate-y-0 sm:top-[50%] sm:translate-y-[-50%] overflow-y-auto overscroll-contain p-4 sm:p-6${paying ? " opacity-0 pointer-events-none select-none" : ""}`}
         data-ocid="booking.dialog"
       >
         <DialogHeader>

@@ -15,6 +15,10 @@ export function useQueueNotifications(
   const lastNowSeeingRef = useRef<number | null>(null);
   // Track whether we've already attempted push setup this session
   const pushSetupDone = useRef(false);
+
+  function canShowSystemNotification(): boolean {
+    return typeof Notification !== "undefined" && Notification.permission === "granted";
+  }
  
   function vibrate(pattern: number | number[]) {
     if (typeof navigator !== "undefined" && "vibrate" in navigator) {
@@ -91,7 +95,7 @@ export function useQueueNotifications(
       });
       vibrate([150, 80, 150]);
  
-      if (Notification.permission === "granted") {
+      if (canShowSystemNotification()) {
         showNotification("Doctor Booked - Get ready", {
           body: `Previous token is in progress. Token #${tokenNumber} is next.`,
           icon: "/assets/Logo.jpg",
@@ -111,7 +115,7 @@ export function useQueueNotifications(
       });
       vibrate([200, 100, 200]);
  
-      if (Notification.permission === "granted") {
+      if (canShowSystemNotification()) {
         showNotification("Doctor Booked - You're Next! 🎉", {
           body: `Token #${tokenNumber} at ${hospitalName}\nDr. ${doctorName} will call you soon. Get ready!`,
           icon: "/assets/Logo.jpg",
@@ -131,7 +135,7 @@ export function useQueueNotifications(
       });
       vibrate([500, 100, 500]);
  
-      if (Notification.permission === "granted") {
+      if (canShowSystemNotification()) {
         showNotification("Your consultation is starting! 🏥", {
           body: "Please go to the consultation room now.",
           icon: "/assets/Logo.jpg",

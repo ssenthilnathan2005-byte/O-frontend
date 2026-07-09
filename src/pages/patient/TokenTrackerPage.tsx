@@ -46,21 +46,6 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
     (b) => b.sessionId === sessionId && b.tokenNumber === tokenNumber,
   );
 
-  // Show loading state if booking data hasn't loaded yet (free hospital race condition protection)
-  if (!booking) {
-    return (
-      <div className="max-w-3xl mx-auto px-4 py-6">
-        <div className="text-center py-20">
-          <div className="animate-spin inline-block mb-4">
-            <Activity className="w-12 h-12 text-teal-500" />
-          </div>
-          <p className="text-lg font-semibold text-gray-900">Loading your booking details...</p>
-          <p className="text-sm text-gray-500 mt-2">Please wait, redirecting to tracker</p>
-        </div>
-      </div>
-    );
-  }
-
   // The "stay on this page, don't close the app" warning only makes sense
   // for a live, ongoing session. For a past booking the patient is just
   // looking back at history, so this popup shouldn't appear at all.
@@ -125,6 +110,21 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
 
   const msg = getStatusMsg();
   const showNextBanner = myStatus === "yellow" && !bannerDismissed;
+
+  // Show loading state if booking data hasn't loaded yet (free hospital race condition protection)
+  if (!booking) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-6">
+        <div className="text-center py-20">
+          <div className="animate-spin inline-block mb-4">
+            <Activity className="w-12 h-12 text-teal-500" />
+          </div>
+          <p className="text-lg font-semibold text-gray-900">Loading your booking details...</p>
+          <p className="text-sm text-gray-500 mt-2">Please wait, redirecting to tracker</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
