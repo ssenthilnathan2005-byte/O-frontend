@@ -401,7 +401,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
       <DialogContent
         showOverlay={!(step === "payment" && !hospital.isFree) && !paying}
         overlayClassName="bg-black/50"
-        className={`w-[calc(100vw-1rem)] max-w-md max-h-[calc(100svh-1rem)] sm:w-[94vw] sm:max-h-[88vh] top-4 translate-y-0 sm:top-[50%] sm:translate-y-[-50%] overflow-y-auto overscroll-contain p-4 sm:p-6${paying ? " opacity-0 pointer-events-none select-none" : ""}`}
+        className={`w-[calc(100vw-1rem)] max-w-md max-h-[calc(100svh-2rem)] overflow-y-auto overscroll-contain p-4 sm:p-6${paying ? " opacity-0 pointer-events-none select-none" : ""}`}
         data-ocid="booking.dialog"
       >
         <DialogHeader>
