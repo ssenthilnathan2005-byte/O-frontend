@@ -369,70 +369,93 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (!activeBookings.length) return;
 
     function vibrate(pattern: number | number[]) {
-      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-        navigator.vibrate(pattern);
+      try {
+        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+          navigator.vibrate(pattern);
+        }
+      } catch {
+        // vibration is best-effort only — never let it break the app
       }
     }
 
-    function notify(title: string, body: string, tag: string, vibratePattern: number[]) {
-      if (canUseNotifications()) {
-        const n = new Notification(title, {
-          body,
-          icon: '/assets/Logo.jpg',
-          tag,
-        });
+    // IMPORTANT: `new Notification(...)` is not supported on Android Chrome —
+    // it throws "Failed to construct 'Notification': Illegal constructor".
+    // Android requires notifications to go through a Service Worker
+    // registration instead. This mirrors the safe pattern already used in
+    // useQueueNotifications.ts. Everything here is wrapped so a notification
+    // failure can NEVER crash the app (this effect runs at the top of the
+    // whole tree, above any page-level ErrorBoundary).
+    async function notify(title: string, body: string, tag: string, vibratePattern: number[]) {
+      if (!canUseNotifications()) return;
+      try {
+        if ('serviceWorker' in navigator) {
+          const reg = await navigator.serviceWorker.ready;
+          await reg.showNotification(title, { body, icon: '/assets/Logo.jpg', tag });
+          vibrate(vibratePattern);
+          return;
+        }
+        // Desktop fallback where the constructor is actually supported.
+        const n = new Notification(title, { body, icon: '/assets/Logo.jpg', tag });
         n.onclick = () => { window.focus(); n.close(); };
         vibrate(vibratePattern);
+      } catch (err) {
+        console.error('[notify] failed to show notification:', err);
       }
     }
 
     for (const booking of activeBookings) {
-      const state = tokenStates[booking.sessionId];
-      if (!state) continue;
-      const statuses = state.tokenStatuses ?? {};
-      const myStatus = statuses[booking.tokenNumber];
-      const nowSeeing = state.currentToken;
+      try {
+        const state = tokenStates[booking.sessionId];
+        if (!state) continue;
+        const statuses = state.tokenStatuses ?? {};
+        const myStatus = statuses[booking.tokenNumber];
+        const nowSeeing = state.currentToken;
 
-      // Previous token called - get ready
-      if (nowSeeing !== null && nowSeeing === booking.tokenNumber - 1) {
-        const key = `notif_prev_${booking.sessionId}_${booking.tokenNumber}`;
-        if (!sessionStorage.getItem(key)) {
-          sessionStorage.setItem(key, '1');
-          notify(
-            'Doctor Booked - Get Ready!',
-            `Token #${booking.tokenNumber} is next. Please stay ready.`,
-            `prev-${booking.sessionId}-${booking.tokenNumber}`,
-            [150, 80, 150]
-          );
+        // Previous token called - get ready
+        if (nowSeeing !== null && nowSeeing === booking.tokenNumber - 1) {
+          const key = `notif_prev_${booking.sessionId}_${booking.tokenNumber}`;
+          if (!sessionStorage.getItem(key)) {
+            sessionStorage.setItem(key, '1');
+            void notify(
+              'Doctor Booked - Get Ready!',
+              `Token #${booking.tokenNumber} is next. Please stay ready.`,
+              `prev-${booking.sessionId}-${booking.tokenNumber}`,
+              [150, 80, 150]
+            );
+          }
         }
-      }
 
-      // Your token is next (yellow)
-      if (myStatus === 'yellow') {
-        const key = `notif_yellow_${booking.sessionId}_${booking.tokenNumber}`;
-        if (!sessionStorage.getItem(key)) {
-          sessionStorage.setItem(key, '1');
-          notify(
-            "Doctor Booked - You're Next! 🎉",
-            `Token #${booking.tokenNumber} - Dr. ${booking.doctorName} will call you soon!`,
-            `yellow-${booking.sessionId}-${booking.tokenNumber}`,
-            [200, 100, 200]
-          );
+        // Your token is next (yellow)
+        if (myStatus === 'yellow') {
+          const key = `notif_yellow_${booking.sessionId}_${booking.tokenNumber}`;
+          if (!sessionStorage.getItem(key)) {
+            sessionStorage.setItem(key, '1');
+            void notify(
+              "Doctor Booked - You're Next! 🎉",
+              `Token #${booking.tokenNumber} - Dr. ${booking.doctorName} will call you soon!`,
+              `yellow-${booking.sessionId}-${booking.tokenNumber}`,
+              [200, 100, 200]
+            );
+          }
         }
-      }
 
-      // Your token is ongoing (orange)
-      if (myStatus === 'orange') {
-        const key = `notif_orange_${booking.sessionId}_${booking.tokenNumber}`;
-        if (!sessionStorage.getItem(key)) {
-          sessionStorage.setItem(key, '1');
-          notify(
-            'Your consultation is starting! 🏥',
-            'Please go to the consultation room now.',
-            `orange-${booking.sessionId}-${booking.tokenNumber}`,
-            [500, 100, 500]
-          );
+        // Your token is ongoing (orange)
+        if (myStatus === 'orange') {
+          const key = `notif_orange_${booking.sessionId}_${booking.tokenNumber}`;
+          if (!sessionStorage.getItem(key)) {
+            sessionStorage.setItem(key, '1');
+            void notify(
+              'Your consultation is starting! 🏥',
+              'Please go to the consultation room now.',
+              `orange-${booking.sessionId}-${booking.tokenNumber}`,
+              [500, 100, 500]
+            );
+          }
         }
+      } catch (err) {
+        // A problem with one booking's notification should never take down
+        // the whole app or block notifications for the other bookings.
+        console.error('[queue notifications] failed for booking', booking.id, err);
       }
     }
   }, [bookings, tokenStates, user]);

@@ -219,12 +219,14 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider>
-        <StoreProvider>
-          <AppRoutes />
-        </StoreProvider>
-      </RouterProvider>
-    </QueryClientProvider>
+    <ErrorBoundary fallbackLabel="Doctor Booked">
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider>
+          <StoreProvider>
+            <AppRoutes />
+          </StoreProvider>
+        </RouterProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
