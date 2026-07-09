@@ -364,7 +364,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // ── Global Queue Notifications for all active bookings ──────────────────
   useEffect(() => {
     if (!user || user.role !== 'patient') return;
-    if (!('Notification' in window)) return;
+    if (typeof window === 'undefined' || !('Notification' in window)) return;
+
+    const canUseNotifications = () => Notification.permission === 'granted';
+
     if (Notification.permission === 'default') Notification.requestPermission();
 
     const activeBookings = bookings.filter(b => b.status === 'confirmed' && b.paymentDone);
@@ -377,7 +380,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
 
     function notify(title: string, body: string, tag: string, vibratePattern: number[]) {
-      if (Notification.permission === 'granted') {
+      if (canUseNotifications()) {
         const n = new Notification(title, {
           body,
           icon: '/assets/Logo.jpg',

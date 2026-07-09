@@ -42,7 +42,7 @@ export function useQueueNotifications(
       await reg.showNotification(title, options);
     } catch {
       // Desktop fallback — new Notification() works fine here
-      if (Notification.permission === "granted") {
+      if (canShowSystemNotification()) {
         new Notification(title, options);
       }
     }
