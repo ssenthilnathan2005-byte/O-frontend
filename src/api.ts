@@ -212,16 +212,16 @@ const del   = <T>(path: string)              => req<T>("DELETE", path);
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export const auth = {
   // Step 1 signup: send form data → backend sends JWT
-  patientSignup: (name: string, password: string, email: string) =>
+  patientSignup: (name: string, password: string, email?: string, phone?: string) =>
     post<{ success?: boolean; message?: string; token?: string; user?: AppUser }>(
-      "/auth/patient/signup", { name, password, email }
+      "/auth/patient/signup", { name, password, ...(email ? { email } : {}), ...(phone ? { phone } : {}) }
     ),
   // Step 1 login: verify credentials → backend returns JWT
-  patientLogin: (email: string, password: string) =>
+  patientLogin: (identifier: string, password: string) =>
     post<{
       success?: boolean; message?: string;
       token?: string; user?: AppUser;
-    }>("/auth/patient/login", { email, password }),
+    }>("/auth/patient/login", { email: identifier, password }),
   // Google One Tap — returns JWT
   googleLogin: (credential: string) =>
     post<{ token?: string; user?: AppUser; userId?: string; name?: string; email?: string }>(
