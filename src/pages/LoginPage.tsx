@@ -556,7 +556,7 @@ export default function LoginPage({
                           <Input className="pl-9" placeholder="Your full name" value={name} onChange={e => setName(e.target.value)} /></div>
                       </div>
                       <div className="space-y-1.5">
-                        <Label>Email Address <span className="text-gray-400 font-normal">(optional)</span></Label>
+                        <Label>Email Address</Label>
                         <div className="relative">
                           <Mail className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
                           <Input
@@ -570,8 +570,13 @@ export default function LoginPage({
                           />
                         </div>
                       </div>
+                      <div className="flex items-center gap-3 py-0.5">
+                        <div className="flex-1 h-px bg-gray-200" />
+                        <span className="text-xs text-gray-400 font-medium">or</span>
+                        <div className="flex-1 h-px bg-gray-200" />
+                      </div>
                       <div className="space-y-1.5">
-                        <Label>Phone Number <span className="text-gray-400 font-normal">(optional)</span></Label>
+                        <Label>Phone Number</Label>
                         <div className="relative">
                           <Phone className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
                           <Input
@@ -585,7 +590,7 @@ export default function LoginPage({
                           />
                         </div>
                         <p className="text-xs text-gray-400">
-                          Provide at least one — Gmail address or Indian mobile number (e.g. 9876543210)
+                          Provide at least one of email or phone (e.g. 9876543210)
                         </p>
                       </div>
                       <div className="space-y-1.5">
@@ -618,7 +623,7 @@ export default function LoginPage({
                   ) : (
                     <form onSubmit={handleLoginSubmit} className="space-y-4">
                       <div className="space-y-1.5">
-                        <Label>Email Address <span className="text-gray-400 font-normal">(optional)</span></Label>
+                        <Label>Email Address</Label>
                         <div className="relative">
                           <Mail className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
                           <Input
@@ -632,8 +637,13 @@ export default function LoginPage({
                           />
                         </div>
                       </div>
+                      <div className="flex items-center gap-3 py-0.5">
+                        <div className="flex-1 h-px bg-gray-200" />
+                        <span className="text-xs text-gray-400 font-medium">or</span>
+                        <div className="flex-1 h-px bg-gray-200" />
+                      </div>
                       <div className="space-y-1.5">
-                        <Label>Phone Number <span className="text-gray-400 font-normal">(optional)</span></Label>
+                        <Label>Phone Number</Label>
                         <div className="relative">
                           <Phone className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
                           <Input
