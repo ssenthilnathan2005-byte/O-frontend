@@ -373,9 +373,9 @@ export default function LoginPage({
         : <div ref={googleBtnRef} className="w-full flex justify-center min-h-[44px]" />
       }
       <div className="flex items-center gap-3">
-        <div className="flex-1 h-px bg-gray-200" />
-        <span className="text-xs text-gray-400 font-medium">or</span>
-        <div className="flex-1 h-px bg-gray-200" />
+        <div className="flex-1 h-px bg-gray-300" />
+        <span className="text-sm text-gray-600 font-semibold uppercase tracking-wide">or</span>
+        <div className="flex-1 h-px bg-gray-300" />
       </div>
     </div>
   ) : null;
@@ -570,10 +570,10 @@ export default function LoginPage({
                           />
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 py-0.5">
-                        <div className="flex-1 h-px bg-gray-200" />
-                        <span className="text-xs text-gray-400 font-medium">or</span>
-                        <div className="flex-1 h-px bg-gray-200" />
+                      <div className="flex items-center gap-2 py-0.5">
+                        <div className="flex-1 h-px bg-gray-100" />
+                        <span className="text-[11px] text-gray-300 font-normal">or</span>
+                        <div className="flex-1 h-px bg-gray-100" />
                       </div>
                       <div className="space-y-1.5">
                         <Label>Phone Number</Label>
@@ -637,10 +637,10 @@ export default function LoginPage({
                           />
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 py-0.5">
-                        <div className="flex-1 h-px bg-gray-200" />
-                        <span className="text-xs text-gray-400 font-medium">or</span>
-                        <div className="flex-1 h-px bg-gray-200" />
+                      <div className="flex items-center gap-2 py-0.5">
+                        <div className="flex-1 h-px bg-gray-100" />
+                        <span className="text-[11px] text-gray-300 font-normal">or</span>
+                        <div className="flex-1 h-px bg-gray-100" />
                       </div>
                       <div className="space-y-1.5">
                         <Label>Phone Number</Label>
