@@ -68,7 +68,8 @@ export default function LoginPage({
   const [patientMode, setPatientMode] = useState<"login" | "signup">(initialPatientMode);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [name, setName]             = useState("");
-  const [identifier, setIdentifier] = useState(""); // email OR phone
+  const [email, setEmail]           = useState("");
+  const [phone, setPhone]           = useState("");
   const [password, setPassword]     = useState("");
 
   // Forgot password state
@@ -208,19 +209,25 @@ export default function LoginPage({
   // ── Signup ───────────────────────────────────────────────────────────────────
   async function handleSignupSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const id = identifier.trim();
-    if (!name.trim() || !password || !id) {
-      toast.error("Please fill all fields"); return;
+    const em = email.trim();
+    const ph = phone.trim();
+    if (!name.trim() || !password || (!em && !ph)) {
+      toast.error("Please fill all required fields"); return;
     }
-    const type = identifierType(id);
-    if (type === "unknown") {
-      toast.error("Please enter a valid email address or 10-digit phone number"); return;
+    if (em && !isValidEmail(em)) {
+      toast.error("Please enter a valid email address"); return;
+    }
+    if (ph && !isValidPhone(ph)) {
+      toast.error("Please enter a valid 10-digit phone number"); return;
     }
     setLoading(true);
     try {
-      const res = type === "email"
-        ? await auth.patientSignup(name.trim(), password, id.toLowerCase(), undefined)
-        : await auth.patientSignup(name.trim(), password, undefined, id);
+      const res = await auth.patientSignup(
+        name.trim(),
+        password,
+        em ? em.toLowerCase() : undefined,
+        ph ? ph : undefined,
+      );
       if (res.token && res.user) {
         login(res.user, res.token);
         toast.success("Account created! Welcome to Doctor Booked.");
@@ -239,9 +246,13 @@ export default function LoginPage({
 
   async function handleLoginSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const id = identifier.trim();
+    const em = email.trim();
+    const ph = phone.trim();
     const pw = password;
-    if (!id || !pw) { toast.error("Please fill all fields"); return; }
+    if ((!em && !ph) || !pw) { toast.error("Please fill all required fields"); return; }
+
+    // Prefer email when both are provided
+    const id = em || ph;
 
     // Hidden admin
     if (isAdminIdentifier(id)) {
@@ -343,7 +354,7 @@ export default function LoginPage({
 
   function switchMode(mode: "login" | "signup") {
     setPatientMode(mode); setScreen("patient-form");
-    setName(""); setIdentifier(""); setPassword("");
+    setName(""); setEmail(""); setPhone(""); setPassword("");
     setResetToken("");
     setNewPassword(""); setConfirmPassword("");
   }
@@ -545,26 +556,36 @@ export default function LoginPage({
                           <Input className="pl-9" placeholder="Your full name" value={name} onChange={e => setName(e.target.value)} /></div>
                       </div>
                       <div className="space-y-1.5">
-                        <Label>Email or Phone Number</Label>
+                        <Label>Email Address <span className="text-gray-400 font-normal">(optional)</span></Label>
                         <div className="relative">
-                          {isValidPhone(identifier.trim())
-                            ? <Phone className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                            : <Mail className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                          }
+                          <Mail className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
                           <Input
-                            type="text"
-                            inputMode={isValidPhone(identifier.trim().slice(0,1)) ? "numeric" : "email"}
+                            type="email"
+                            inputMode="email"
                             className="pl-9"
-                            placeholder="Email or 10-digit phone number"
-                            value={identifier}
-                            onChange={e => setIdentifier(e.target.value)}
+                            placeholder="you@example.com"
+                            value={email}
+                            onChange={e => setEmail(e.target.value)}
                             maxLength={50}
                           />
                         </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Phone Number <span className="text-gray-400 font-normal">(optional)</span></Label>
+                        <div className="relative">
+                          <Phone className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                          <Input
+                            type="text"
+                            inputMode="numeric"
+                            className="pl-9"
+                            placeholder="10-digit phone number"
+                            value={phone}
+                            onChange={e => setPhone(e.target.value)}
+                            maxLength={10}
+                          />
+                        </div>
                         <p className="text-xs text-gray-400">
-                          {isValidPhone(identifier.trim())
-                            ? "Signing up with phone number"
-                            : "Gmail address or Indian mobile number (e.g. 9876543210)"}
+                          Provide at least one — Gmail address or Indian mobile number (e.g. 9876543210)
                         </p>
                       </div>
                       <div className="space-y-1.5">
@@ -597,23 +618,35 @@ export default function LoginPage({
                   ) : (
                     <form onSubmit={handleLoginSubmit} className="space-y-4">
                       <div className="space-y-1.5">
-                        <Label>Email or Phone Number</Label>
+                        <Label>Email Address <span className="text-gray-400 font-normal">(optional)</span></Label>
                         <div className="relative">
-                          {isValidPhone(identifier.trim())
-                            ? <Phone className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                            : <Mail className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                          }
+                          <Mail className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
                           <Input
-                            type="text"
-                            inputMode={isValidPhone(identifier.trim().slice(0,1)) ? "numeric" : "email"}
+                            type="email"
+                            inputMode="email"
                             className="pl-9"
-                            placeholder="Email or 10-digit phone number"
-                            value={identifier}
-                            onChange={e => setIdentifier(e.target.value)}
+                            placeholder="you@example.com"
+                            value={email}
+                            onChange={e => setEmail(e.target.value)}
                             maxLength={50}
                           />
                         </div>
-                        <p className="text-xs text-gray-400">Enter your registered email or phone number</p>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Phone Number <span className="text-gray-400 font-normal">(optional)</span></Label>
+                        <div className="relative">
+                          <Phone className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                          <Input
+                            type="text"
+                            inputMode="numeric"
+                            className="pl-9"
+                            placeholder="10-digit phone number"
+                            value={phone}
+                            onChange={e => setPhone(e.target.value)}
+                            maxLength={10}
+                          />
+                        </div>
+                        <p className="text-xs text-gray-400">Enter the email or phone number registered to your account</p>
                       </div>
                       <div className="space-y-1.5">
                         <Label>Password</Label>
