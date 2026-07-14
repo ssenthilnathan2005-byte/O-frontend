@@ -145,7 +145,9 @@ async function req<T>(
         // 4xx — client error, never retry
         if (res.status >= 400 && res.status < 500) {
           emitStatus("ok"); // server is reachable
-          throw new Error((data as any).error || `Error ${res.status}`);
+          const clientErr = new Error((data as any).error || `Error ${res.status}`);
+          (clientErr as any).isClientError = true;
+          throw clientErr;
         }
         // 5xx — server error, retry
         throw new Error((data as any).error || `Server error ${res.status}`);
@@ -160,8 +162,10 @@ async function req<T>(
       lastErr = err;
       const msg = err instanceof Error ? err.message : "";
 
-      // Client errors — throw immediately, never retry
-      if (!isNetworkError(err) && isClientError(msg)) throw err;
+      // Client errors (4xx) — throw immediately, never retry.
+      // Prefer the reliable status-code flag; fall back to message matching
+      // only for errors that didn't come through the fetch path above.
+      if (!isNetworkError(err) && ((err as any)?.isClientError || isClientError(msg))) throw err;
 
       // Last attempt — fall through to throw below
       if (attempt === MAX_RETRY) break;
