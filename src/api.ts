@@ -282,7 +282,7 @@ export const tokens = {
   complete:        (sid: string)                                  => post<SessionTokenState>(`/tokens/${sid}/complete`),
   skip:            (sid: string, tokenNum?: number)               => post<SessionTokenState>(`/tokens/${sid}/skip`, tokenNum != null ? { tokenNum } : undefined),
   completeSkipped: (sid: string, tokenNum: number)                => post<SessionTokenState>(`/tokens/${sid}/complete-skipped`, { tokenNum }),
-  closeSession:    (sid: string)                                  => post<SessionTokenState>(`/tokens/${sid}/close`),
+  closeSession:    (sid: string, reason: string)                    => post<SessionTokenState>(`/tokens/${sid}/close`, { reason }),
   setPrioritySlot: (sid: string, slotIndex: number, slot: PrioritySlotState) =>
     post<SessionTokenState>(`/tokens/${sid}/priority-slot`, { slotIndex, slot }),
   cancelSession:   (doctorId: string, date: string, session: string) =>
@@ -387,6 +387,7 @@ export interface Booking {
   date: string; session: string; tokenNumber: number; sessionId: string;
   paymentDone: boolean; status: "confirmed" | "completed" | "unvisited" | "cancelled";
   phone?: string; complaint?: string; patientAge?: number | null; createdAt: string;
+  closeReason?: string | null;
 }
 export type TokenStatus = "white" | "red" | "orange" | "yellow" | "green" | "unvisited";
 export interface SessionTokenState {

@@ -49,7 +49,7 @@ interface Store {
   completeCurrentToken: (sid: string) => Promise<void>;
   skipToken: (sid: string, tokenNum?: number) => Promise<void>;
   completeSkippedToken: (sid: string, tokenNum: number) => Promise<void>;
-  closeSession: (sid: string) => Promise<void>;
+  closeSession: (sid: string, reason: string) => Promise<void>;
   setPrioritySlot: (sid: string, slotIndex: number, slot: PrioritySlotState) => Promise<void>;
   cancelSession: (doctorId: string, date: string, session: string) => Promise<void>;
   isSessionCancelled: (doctorId: string, date: string, session: string) => boolean;
@@ -307,12 +307,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setTokenStates(p => ({ ...p, [sid]: s }));
   }, []);
 
-  const closeSession = useCallback(async (sid: string) => {
-    const s = await api.tokens.closeSession(sid);
+  const closeSession = useCallback(async (sid: string, reason: string) => {
+    const s = await api.tokens.closeSession(sid, reason);
     setTokenStates(p => ({ ...p, [sid]: s }));
     setBookings(p => p.map(b =>
       b.sessionId === sid && b.status === "confirmed"
-        ? { ...b, status: "unvisited" as const } : b
+        ? { ...b, status: "unvisited" as const, closeReason: reason || null } : b
     ));
   }, []);
 

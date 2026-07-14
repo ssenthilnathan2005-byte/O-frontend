@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Activity,
   AlertTriangle,
@@ -281,6 +282,7 @@ export default function DoctorDashboard() {
     open: boolean;
     tokenNum: number | null;
   }>({ open: false, tokenNum: null });
+  const [closeReason, setCloseReason] = useState("");
 
   const visibleSessions = useMemo((): SessionType[] => {
     if (!doctor) return [];
@@ -514,10 +516,11 @@ export default function DoctorDashboard() {
 
   function handleCloseSession() {
     const sessionLabel = getSessionLabel(regSession, doctor?.sessionTimings);
-    closeSession(sessionId);
+    closeSession(sessionId, closeReason.trim());
     toast.success(
-      "Session closed. Refunds will be processed for unvisited tokens.",
+      "Session closed. Patients have been notified and refunds will be processed for paid tokens.",
     );
+    setCloseReason("");
     const next = visibleSessions.find((s) => s !== regSession);
     if (next) setRegSession(next as SessionType);
     setSessionActionResult({ type: "ended", session: sessionLabel });
@@ -830,7 +833,7 @@ export default function DoctorDashboard() {
                   <div className="flex flex-wrap items-center gap-2">
                     {/* End Session: only when session is accessible now */}
                     {!isClosed && !cancelled && isSessionAccessibleNow && (
-                      <AlertDialog>
+                      <AlertDialog onOpenChange={(v) => { if (!v) setCloseReason(""); }}>
                         <AlertDialogTrigger asChild>
                           <Button
                             size="sm"
@@ -853,12 +856,28 @@ export default function DoctorDashboard() {
                               undone.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
+                          <div className="space-y-1.5 py-1">
+                            <Label htmlFor="close-reason">
+                              Reason for ending early <span className="text-red-500">*</span>
+                            </Label>
+                            <Textarea
+                              id="close-reason"
+                              placeholder="e.g. Medical emergency, unwell, called away suddenly..."
+                              value={closeReason}
+                              onChange={(e) => setCloseReason(e.target.value)}
+                              rows={3}
+                            />
+                            <p className="text-xs text-gray-400">
+                              This will be shown to patients who weren't seen today.
+                            </p>
+                          </div>
                           <AlertDialogFooter>
                             <AlertDialogCancel data-ocid="tokens.cancel_button">
                               Cancel
                             </AlertDialogCancel>
                             <AlertDialogAction
                               onClick={handleCloseSession}
+                              disabled={!closeReason.trim()}
                               data-ocid="tokens.confirm_button"
                             >
                               Close Session & Process Refunds

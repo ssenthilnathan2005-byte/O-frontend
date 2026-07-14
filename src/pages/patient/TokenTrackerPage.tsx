@@ -103,7 +103,13 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
       case "orange":  return { text: "You are currently being seen by the doctor!", color: "text-orange-600", bg: "bg-orange-50 border-orange-200" };
       case "yellow":  return { text: "You're next! Please be ready at the counter.", color: "text-amber-600", bg: "bg-amber-50 border-amber-200" };
       case "red":     return { text: `You're in the queue. ${tokensAhead} token${tokensAhead !== 1 ? "s" : ""} ahead.`, color: "text-teal-600", bg: "bg-teal-50 border-teal-200" };
-      case "unvisited": return { text: "Session closed. Refund will be processed.", color: "text-red-600", bg: "bg-red-50 border-red-200" };
+      case "unvisited": {
+        const reasonSuffix = booking?.closeReason ? ` Reason given: "${booking.closeReason}"` : "";
+        const text = booking?.paymentDone
+          ? `Session closed early by the doctor.${reasonSuffix} Refund will be processed.`
+          : `Session closed early by the doctor.${reasonSuffix} Please rebook for another available slot.`;
+        return { text, color: "text-red-600", bg: "bg-red-50 border-red-200" };
+      }
       default:        return { text: "", color: "", bg: "" };
     }
   }
