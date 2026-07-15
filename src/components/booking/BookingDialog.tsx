@@ -64,6 +64,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
   const [trackerSessionId, setTrackerSessionId] = useState("");
   const [complaint, setComplaint]       = useState("");
   const [patientName, setPatientName]   = useState("");
+  const [patientPhone, setPatientPhone] = useState("");
   const [patientAge, setPatientAge]     = useState("");
   const [paying, setPaying]             = useState(false);
   const [payError, setPayError]         = useState("");
@@ -106,10 +107,14 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
 
   function handleClose() {
     setStep("date"); setSelectedDate(""); setSelectedSession("");
-    setTokenNumber(0); setComplaint(""); setPayError("");
+    setTokenNumber(0); setComplaint(""); setPatientName(""); setPatientPhone(""); setPatientAge(""); setPayError("");
     setTrackerSessionId("");
     setPrefetchedOrder(null); setPrefetchingOrder(false);
     onClose();
+  }
+
+  function isValidPhone(value: string): boolean {
+    return /^\d{10}$/.test(value.trim());
   }
 
   function goToTracker() {
@@ -159,7 +164,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
         date: selectedDate,
         session: selectedSession as SessionType,
         complaint: complaint.trim() || undefined,
-        phone: (patientUser as any).phone || undefined,
+        phone: patientPhone.trim(),
         patientName: patientName.trim() || undefined,
         patientAge: patientAge.trim() || undefined,
       });
@@ -177,7 +182,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
           prefill: {
             name:    patientUser.name  || "",
             email:   patientUser.email || "",
-            contact: (patientUser as any).phone ? `+${(patientUser as any).phone}` : "",
+            contact: patientPhone.trim(),
           },
           notes: {
             doctorName:   order.doctorName,
@@ -275,7 +280,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
         date: selectedDate,
         session: selectedSession as SessionType,
         complaint: complaint.trim() || undefined,
-        phone: (patientUser as any).phone || undefined,
+        phone: patientPhone.trim(),
         patientName: patientName.trim() || undefined,
         patientAge: patientAge.trim() || undefined,
       });
@@ -370,7 +375,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
           date: selectedDate,
           session: selectedSession as SessionType,
           complaint: complaint.trim() || undefined,
-          phone: (patientUser as any).phone || undefined,
+          phone: patientPhone.trim(),
           patientName: patientName.trim() || undefined,
           patientAge: patientAge.trim() || undefined,
         });
@@ -394,7 +399,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
     return () => {
       cancelled = true;
     };
-  }, [step, selectedDate, selectedSession, complaint, doctor.id, patientUser, patientName, patientAge]);
+  }, [step, selectedDate, selectedSession, complaint, doctor.id, patientName, patientPhone, patientAge]);
 
   return (
     <Dialog open={dialogOpen} onOpenChange={handleClose}>
@@ -541,6 +546,17 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
                 />
               </div>
               <div>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Phone Number <span className="text-red-500">*</span></label>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  placeholder="Enter 10-digit phone number"
+                  value={patientPhone}
+                  onChange={e => setPatientPhone(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
+                />
+              </div>
+              <div>
                 <label className="text-xs font-medium text-gray-600 mb-1 block">Age <span className="text-red-500">*</span></label>
                 <input
                   type="number"
@@ -561,8 +577,12 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
             <div className="flex gap-3">
               <Button className="w-full bg-teal-500 hover:bg-teal-600 rounded-full"
                 onClick={() => {
-                  if (!patientName.trim() || !patientAge.trim()) {
-                    toast.error("Please fill in patient name and age");
+                  if (!patientName.trim() || !patientPhone.trim() || !patientAge.trim()) {
+                    toast.error("Please fill in patient name, phone number, and age");
+                    return;
+                  }
+                  if (!isValidPhone(patientPhone)) {
+                    toast.error("Please enter a valid 10-digit phone number");
                     return;
                   }
                   setStep("payment");

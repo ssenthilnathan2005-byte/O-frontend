@@ -269,7 +269,7 @@ export const doctors = {
 export const bookings = {
   list:       ()                              => get<Booking[]>("/bookings"),
   forSession: (sid: string)                   => get<Booking[]>(`/bookings/session/${sid}`),
-  create:     (data: { doctorId: string; date: string; session: string; complaint?: string; phone?: string; patientName?: string; patientAge?: string | number }) =>
+  create:     (data: { doctorId: string; date: string; session: string; complaint?: string; phone: string; patientName?: string; patientAge?: string | number }) =>
     post<Booking>("/bookings", data),
   updateStatus: (id: string, status: string)  => patch<Booking>(`/bookings/${id}/status`, { status }),
   stats:      ()                              => get<Stats>("/bookings/stats/summary"),
@@ -294,7 +294,7 @@ export const tokens = {
 export const payments = {
   // Step 1: create Razorpay order → returns orderId, amount, keyId
   createOrder: (data: {
-    doctorId: string; date: string; session: string; complaint?: string; phone?: string;
+    doctorId: string; date: string; session: string; complaint?: string; phone: string;
     patientName?: string; patientAge?: string | number;
   }) => post<{
     orderId: string; amount: number; amountRupees: number;
@@ -386,7 +386,7 @@ export interface Booking {
   doctorId: string; doctorName: string; hospitalName: string;
   date: string; session: string; tokenNumber: number; sessionId: string;
   paymentDone: boolean; status: "confirmed" | "completed" | "unvisited" | "cancelled";
-  phone?: string; complaint?: string; patientAge?: number | null; createdAt: string;
+  phone: string; complaint?: string; patientAge?: number | null; createdAt: string;
   closeReason?: string | null;
 }
 export type TokenStatus = "white" | "red" | "orange" | "yellow" | "green" | "unvisited";

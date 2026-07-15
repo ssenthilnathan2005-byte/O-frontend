@@ -36,7 +36,7 @@ interface Store {
     doctorId: string; doctorName?: string; hospitalName?: string;
     date: string; session: string; tokenNumber?: number; sessionId?: string;
     paymentDone?: boolean; status?: string;
-    complaint?: string; phone?: string;
+    complaint?: string; phone: string;
   }) => Promise<void>;
   addBookingToStore: (booking: Booking) => void;
   getBookingsForPatient: (patientId: string) => Booking[];

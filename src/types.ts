@@ -63,7 +63,7 @@ export interface Booking {
   sessionId: string;
   paymentDone: boolean;
   status: "confirmed" | "completed" | "unvisited" | "cancelled";
-  phone?: string;
+  phone: string;
   complaint?: string;
 }
 
