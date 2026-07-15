@@ -142,34 +142,24 @@ function LandingPage() {
 
           {/* City cards */}
           {!selectedCity && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-10">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-10">
               {cities.map((city, idx) => {
                 const count = hospitals.filter((h) => h.area === city).length;
-                // Pick a nice gradient per index
-                const gradients = [
-                  "from-teal-500 to-teal-700",
-                  "from-blue-500 to-blue-700",
-                  "from-violet-500 to-violet-700",
-                  "from-orange-400 to-orange-600",
-                  "from-rose-500 to-rose-700",
-                  "from-emerald-500 to-emerald-700",
-                  "from-sky-500 to-sky-700",
-                  "from-amber-500 to-amber-700",
-                ];
-                const grad = gradients[idx % gradients.length];
                 return (
                   <motion.button
                     key={city}
                     type="button"
                     onClick={() => setSelectedCity(city)}
-                    initial={{ opacity: 0, y: 16 }}
+                    initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: idx * 0.06 }}
-                    className={`bg-gradient-to-br ${grad} rounded-2xl p-5 text-left text-white shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all`}
+                    className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-left hover:border-teal-400 hover:shadow-sm transition-all"
                   >
-                    <MapPin className="w-6 h-6 mb-3 opacity-80" />
-                    <p className="font-bold text-base leading-tight">{city}</p>
-                    <p className="text-xs mt-1 opacity-75">{count} hospital{count !== 1 ? "s" : ""}</p>
+                    <div className="flex items-center gap-2 mb-1">
+                      <MapPin className="w-3.5 h-3.5 text-teal-500 shrink-0" />
+                      <p className="font-semibold text-gray-800 text-sm leading-tight">{city}</p>
+                    </div>
+                    <p className="text-xs text-gray-400 pl-5">{count} hospital{count !== 1 ? "s" : ""}</p>
                   </motion.button>
                 );
               })}
