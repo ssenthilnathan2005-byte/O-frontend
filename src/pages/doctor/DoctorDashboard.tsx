@@ -1096,6 +1096,10 @@ export default function DoctorDashboard() {
                             </span>
                           )}
                         </p>
+                        <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1.5">
+                          <Phone className="w-3 h-3 text-gray-400" />
+                          {b.phone}
+                        </p>
                         <p className="text-xs text-gray-400 mt-0.5">{b.session} · {b.date}</p>
                         {b.complaint && <p className="text-xs text-gray-500 mt-0.5 italic">"{b.complaint}"</p>}
                       </div>
@@ -1412,6 +1416,11 @@ export default function DoctorDashboard() {
               {dialogTokenBooking?.patientAge != null && (
                 <span className="text-gray-500"> ({dialogTokenBooking.patientAge} yrs)</span>
               )}
+            </p>
+            <p className="text-sm text-gray-700 flex items-center gap-1.5">
+              <Phone className="w-3.5 h-3.5 text-gray-400" />
+              <span className="font-medium">Phone:</span>
+              <span>{dialogTokenBooking?.phone ?? "Not available"}</span>
             </p>
 
             {/* Complaint box */}
