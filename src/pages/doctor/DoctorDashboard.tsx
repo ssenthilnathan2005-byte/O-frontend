@@ -46,7 +46,8 @@ import {
   User,
   XCircle,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { Download, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useStore } from "../../context/StoreContext";
 import {
@@ -650,6 +651,9 @@ export default function DoctorDashboard() {
         </p>
       </div>
 
+      {/* ── Doctor Patient Export Banner ── */}
+      <DoctorExportBanner token={localStorage.getItem("db_jwt") ?? ""} />
+
       <Tabs
         value={activeTab}
         onValueChange={(value) => {
@@ -670,23 +674,38 @@ export default function DoctorDashboard() {
         }}
         className="w-full"
       >
-        <TabsList className="mb-6" data-ocid="doctor.tab">
-          <TabsTrigger value="regulator" data-ocid="doctor.tab">
+        {/* ── Doctor Patient Export Banner ── */}
+      <DoctorExportBanner token={localStorage.getItem("db_jwt") ?? ""} />
+
+      <TabsList className="mb-6" data-ocid="doctor.tab">
+          {/* ── Doctor Patient Export Banner ── */}
+      <DoctorExportBanner token={localStorage.getItem("db_jwt") ?? ""} />
+
+      <TabsTrigger value="regulator" data-ocid="doctor.tab">
             <Activity className="w-4 h-4 mr-1.5 sm:mr-2" />
             Regulator
           </TabsTrigger>
-          <TabsTrigger value="livetokens" data-ocid="doctor.tab">
+          {/* ── Doctor Patient Export Banner ── */}
+      <DoctorExportBanner token={localStorage.getItem("db_jwt") ?? ""} />
+
+      <TabsTrigger value="livetokens" data-ocid="doctor.tab">
             <Clock className="w-4 h-4 mr-1.5 sm:mr-2" />
             Live Tokens
           </TabsTrigger>
-          <TabsTrigger value="profile" data-ocid="doctor.tab">
+          {/* ── Doctor Patient Export Banner ── */}
+      <DoctorExportBanner token={localStorage.getItem("db_jwt") ?? ""} />
+
+      <TabsTrigger value="profile" data-ocid="doctor.tab">
             <User className="w-4 h-4 mr-1.5 sm:mr-2" />
             Profile
           </TabsTrigger>
         </TabsList>
 
         {/* Token Regulator Tab */}
-        <TabsContent value="regulator">
+        {/* ── Doctor Patient Export Banner ── */}
+      <DoctorExportBanner token={localStorage.getItem("db_jwt") ?? ""} />
+
+      <TabsContent value="regulator">
           <div className="space-y-6">
 
             {/* ── Current Position shown to patients ── */}
@@ -1048,7 +1067,10 @@ export default function DoctorDashboard() {
 
         {/* Profile Tab */}
         {/* ── Live Tokens Tab ── */}
-        <TabsContent value="livetokens">
+        {/* ── Doctor Patient Export Banner ── */}
+      <DoctorExportBanner token={localStorage.getItem("db_jwt") ?? ""} />
+
+      <TabsContent value="livetokens">
           <Card className="border border-gray-100 shadow-sm">
             <CardContent className="p-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
@@ -1115,7 +1137,10 @@ export default function DoctorDashboard() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="profile">
+        {/* ── Doctor Patient Export Banner ── */}
+      <DoctorExportBanner token={localStorage.getItem("db_jwt") ?? ""} />
+
+      <TabsContent value="profile">
           <div className="space-y-4">
             {/* PHOTO IDENTITY */}
             <div className="border border-gray-200 rounded-2xl p-5 bg-white shadow-sm">
