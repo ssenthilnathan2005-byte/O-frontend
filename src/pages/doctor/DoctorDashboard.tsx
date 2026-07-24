@@ -179,7 +179,7 @@ function DoctorExportBanner({ token }: { token: string }) {
       const r = await fetch(`${API}/api/doctor/exports`, { headers: { Authorization: `Bearer ${token}` } });
       if (!r.ok) return;
       const data = await r.json();
-      setExports(data);
+      setExports(data.slice(0, 1));
     } catch {}
   }, [token]);
   useEffect(() => { fetchExports(); }, [fetchExports]);
