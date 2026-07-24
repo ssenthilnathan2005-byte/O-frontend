@@ -47,7 +47,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { Download, AlertTriangle } from "lucide-react";
+import { Download } from "lucide-react";
 import { toast } from "sonner";
 import { useStore } from "../../context/StoreContext";
 import {
@@ -167,6 +167,61 @@ function getInitialDoctorTab(): DoctorTab {
   if (savedTab === "livetokens" || savedTab === "profile") return savedTab;
 
   return "regulator";
+}
+
+const API = (import.meta.env.VITE_API_URL ?? "").replace(/\/api$/, "");
+
+function DoctorExportBanner({ token }: { token: string }) {
+  const [exports, setExports] = useState<any[]>([]);
+  const [downloading, setDownloading] = useState<number | null>(null);
+  const fetchExports = useCallback(async () => {
+    try {
+      const r = await fetch(`${API}/api/doctor/exports`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!r.ok) return;
+      const data = await r.json();
+      setExports(data);
+    } catch {}
+  }, [token]);
+  useEffect(() => { fetchExports(); }, [fetchExports]);
+  if (exports.length === 0) return null;
+  async function download(id: number) {
+    setDownloading(id);
+    try {
+      const r = await fetch(`${API}/api/doctor/exports/${id}/download`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!r.ok) return;
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `my_patients_${id}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setExports((prev) => prev.filter((e) => e.id !== id));
+    } catch {}
+    setDownloading(null);
+  }
+  return (
+    <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4">
+      <div className="flex items-start gap-3">
+        <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+        <div className="flex-1">
+          <p className="font-semibold text-amber-800">Your patient records are ready to download</p>
+          <p className="text-sm text-amber-700 mt-0.5">These records were removed from the system during cleanup. Download them to keep a copy.</p>
+          <div className="mt-3 flex flex-col gap-2">
+            {exports.map((e) => (
+              <div key={e.id} className="flex items-center justify-between bg-white rounded-lg border border-amber-200 px-3 py-2">
+                <span className="text-sm text-gray-700">{new Date(e.created_at).toLocaleDateString("en-IN")} — patient records</span>
+                <button onClick={() => download(e.id)} disabled={downloading === e.id} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 text-white text-xs font-medium hover:bg-amber-600 disabled:opacity-60">
+                  <Download className="w-3.5 h-3.5" />
+                  {downloading === e.id ? "Downloading..." : "Download"}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function DoctorDashboard() {
