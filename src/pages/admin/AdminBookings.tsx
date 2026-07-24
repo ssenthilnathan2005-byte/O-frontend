@@ -49,7 +49,7 @@ export default function AdminBookings() {
   const [lastFile, setLastFile]       = useState<string | null>(null);
   const [savingConfig, setSavingConfig] = useState(false);
 
-  const token = localStorage.getItem("token") ?? "";
+  const token = localStorage.getItem("db_jwt") ?? "";
 
   const fetchConfig = useCallback(async () => {
     try {
