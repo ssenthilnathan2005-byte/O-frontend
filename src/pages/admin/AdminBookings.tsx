@@ -18,7 +18,7 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled:  "bg-red-100 text-red-700",
 };
 
-const API = import.meta.env.VITE_API_URL ?? "";
+const API = (import.meta.env.VITE_API_URL ?? "").replace(//api$/, "");
 
 interface CleanupConfig {
   thresholdCount: number;
