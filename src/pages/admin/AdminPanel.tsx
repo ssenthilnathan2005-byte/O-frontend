@@ -17,14 +17,12 @@ import AdminDashboard from "./AdminDashboard";
 import AdminDoctors from "./AdminDoctors";
 import AdminHospitals from "./AdminHospitals";
 import AdminPatients from "./AdminPatients";
-import AdminSessions from "./AdminSessions";
 
 const NAV_ITEMS = [
   { path: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { path: "/admin/hospitals", label: "Hospitals", icon: Building2 },
   { path: "/admin/doctors", label: "Doctors", icon: UserCog },
   { path: "/admin/patients", label: "Patients", icon: Users },
-  { path: "/admin/sessions", label: "Sessions", icon: CalendarCheck },
   { path: "/admin/bookings", label: "Bookings", icon: BookOpen },
 ] as const;
 
@@ -41,8 +39,6 @@ export default function AdminPanel() {
         return <AdminDoctors />;
       case "/admin/patients":
         return <AdminPatients />;
-      case "/admin/sessions":
-        return <AdminSessions />;
       case "/admin/bookings":
         return <AdminBookings />;
       default:

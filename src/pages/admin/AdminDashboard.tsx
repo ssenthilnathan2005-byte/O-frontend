@@ -40,13 +40,7 @@ const STAT_CARD_DEFS = [
     color: "text-amber-500",
     bg: "bg-amber-50",
   },
-  {
-    label: "Active Sessions",
-    key: "activeSessions" as const,
-    icon: Activity,
-    color: "text-rose-500",
-    bg: "bg-rose-50",
-  },
+
 ];
 
 export default function AdminDashboard() {
