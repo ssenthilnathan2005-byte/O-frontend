@@ -62,7 +62,6 @@ import type {
   PrioritySlotState,
   SessionTiming,
   SessionType,
-  DayOfWeek,
   TokenStatus,
 } from "../../types";
 
@@ -149,8 +148,8 @@ function sanitizeSessionTimings(
     const end = normalizeTimeValue(raw?.end ?? "") ?? fallback.end;
 
     result[session] = isStartBeforeEnd(start, end)
-      ? { start, end, days: raw?.days }
-      : { ...fallback, days: raw?.days };
+      ? { start, end }
+      : { ...fallback };
   });
 
   return result;
@@ -221,150 +220,6 @@ function DoctorExportBanner({ token }: { token: string }) {
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-
-// ── Day-first Session Editor ─────────────────────────────────────────────────
-const DAYS: DayOfWeek[] = ["mon","tue","wed","thu","fri","sat","sun"];
-const DAY_LABELS: Record<DayOfWeek,string> = {mon:"Mon",tue:"Tue",wed:"Wed",thu:"Thu",fri:"Fri",sat:"Sat",sun:"Sun"};
-const ALL_SESSIONS: SessionType[] = ["morning","afternoon","evening"];
-const SESSION_LABELS: Record<SessionType,string> = {morning:"Morning",afternoon:"Afternoon",evening:"Evening"};
-const SESSION_DEFAULTS: Record<SessionType,{start:string,end:string}> = {morning:{start:"09:00",end:"12:00"},afternoon:{start:"14:00",end:"17:00"},evening:{start:"18:00",end:"21:00"}};
-
-function DaySessionEditor({
-  sessionTimings,
-  sessions,
-  onChange,
-}: {
-  sessionTimings: Partial<Record<SessionType, SessionTiming>>;
-  sessions: SessionType[];
-  onChange: (timings: Partial<Record<SessionType, SessionTiming>>, sessions: SessionType[]) => void;
-}) {
-  const [activeDay, setActiveDay] = useState<DayOfWeek>("mon");
-
-  function isDayEnabled(day: DayOfWeek, session: SessionType): boolean {
-    const timing = sessionTimings[session];
-    if (!sessions.includes(session)) return false;
-    if (!timing?.days) return true;
-    return timing.days.includes(day);
-  }
-
-  function toggleDaySession(day: DayOfWeek, session: SessionType) {
-    const currently = isDayEnabled(day, session);
-    const timing = sessionTimings[session] ?? { ...SESSION_DEFAULTS[session] };
-    // If no days set yet, session was active for all days
-    const currentDays: DayOfWeek[] = timing.days ?? [...DAYS];
-    const newDays: DayOfWeek[] = currently
-      ? currentDays.filter(d => d !== day)
-      : currentDays.includes(day) ? currentDays : [...currentDays, day];
-    // Keep session in sessions list as long as it has at least one day
-    const newSessions: SessionType[] = newDays.length === 0
-      ? sessions.filter(s => s !== session)
-      : sessions.includes(session) ? sessions : [...sessions, session];
-    onChange({ ...sessionTimings, [session]: { ...timing, days: newDays } }, newSessions);
-  }
-
-  function updateTime(session: SessionType, field: "start"|"end", value: string) {
-    const timing = sessionTimings[session] ?? { ...SESSION_DEFAULTS[session] };
-    onChange({ ...sessionTimings, [session]: { ...timing, [field]: value } }, sessions);
-  }
-
-  function setStandardForAllDays() {
-    // Copy active sessions on current day to ALL days with same timings
-    const newTimings = { ...sessionTimings };
-    const newSessions: SessionType[] = [...sessions];
-    for (const session of ALL_SESSIONS) {
-      const enabledOnActiveDay = isDayEnabled(activeDay, session);
-      const timing = sessionTimings[session] ?? SESSION_DEFAULTS[session];
-      if (enabledOnActiveDay) {
-        // Enable this session for ALL days with same start/end time
-        newTimings[session] = { ...timing, days: [...DAYS] };
-        if (!newSessions.includes(session)) newSessions.push(session);
-      } else {
-        // Disable this session for ALL days
-        newTimings[session] = { ...timing, days: [] };
-        const idx = newSessions.indexOf(session);
-        if (idx > -1) newSessions.splice(idx, 1);
-      }
-    }
-    onChange(newTimings, newSessions);
-  }
-
-  const activeSessions = ALL_SESSIONS.filter(s => isDayEnabled(activeDay, s));
-
-  return (
-    <div className="space-y-3">
-      {/* Day selector */}
-      <div className="flex gap-1.5 flex-wrap">
-        {DAYS.map(day => {
-          const hasAnySessions = ALL_SESSIONS.some(s => isDayEnabled(day, s));
-          return (
-            <button
-              key={day}
-              type="button"
-              onClick={() => setActiveDay(day)}
-              className={activeDay === day
-                ? "px-3 py-1.5 rounded-full text-xs font-bold border-2 border-teal-500 bg-teal-500 text-white transition"
-                : hasAnySessions
-                  ? "px-3 py-1.5 rounded-full text-xs font-semibold border-2 border-teal-200 bg-teal-50 text-teal-700 transition hover:border-teal-400"
-                  : "px-3 py-1.5 rounded-full text-xs font-semibold border border-gray-200 bg-white text-gray-400 transition hover:border-gray-300"}
-            >
-              {DAY_LABELS[day]}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Session config for selected day */}
-      <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 space-y-3">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{DAY_LABELS[activeDay]} — Sessions</p>
-        {ALL_SESSIONS.map(session => {
-          const enabled = isDayEnabled(activeDay, session);
-          const timing = sessionTimings[session] ?? SESSION_DEFAULTS[session];
-          return (
-            <div key={session} className={`rounded-xl border-2 p-3 transition-colors ${enabled ? "border-teal-200 bg-white" : "border-gray-100 bg-gray-100"}`}>
-              <div className="flex items-center gap-2 mb-2">
-                <input
-                  type="checkbox"
-                  id={`${activeDay}_${session}`}
-                  checked={enabled}
-                  onChange={() => toggleDaySession(activeDay, session)}
-                  className="w-4 h-4 accent-teal-500"
-                />
-                <label htmlFor={`${activeDay}_${session}`} className="text-sm font-semibold cursor-pointer">
-                  {SESSION_LABELS[session]} Session
-                </label>
-                {enabled && <span className="ml-auto text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full font-medium">Active</span>}
-              </div>
-              {enabled && (
-                <div className="grid grid-cols-2 gap-3 mt-2">
-                  <div className="space-y-1">
-                    <label className="text-xs text-gray-500 font-medium">Start Time</label>
-                    <input type="time" value={timing.start} onChange={e => updateTime(session, "start", e.target.value)}
-                      className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs text-gray-500 font-medium">End Time</label>
-                    <input type="time" value={timing.end} onChange={e => updateTime(session, "end", e.target.value)}
-                      className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400" />
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Set as standard */}
-      <button
-        type="button"
-        onClick={setStandardForAllDays}
-        className="w-full py-2 rounded-xl border border-teal-200 text-teal-700 text-sm font-medium hover:bg-teal-50 transition"
-      >
-        Set current sessions as standard for all days
-      </button>
     </div>
   );
 }
@@ -1527,15 +1382,89 @@ export default function DoctorDashboard() {
                 </div>
               </div>
 
-              {/* Day-first session scheduling */}
+              {/* Session toggles + custom timings */}
               <div className="space-y-3">
-                <Label className="text-sm font-medium">Available Sessions & Timings</Label>
-                <p className="text-xs text-gray-400">Select a day to configure sessions. Use "Set as standard" to copy to all days.</p>
-                <DaySessionEditor
-                  sessionTimings={profileForm.sessionTimings}
-                  sessions={profileForm.sessions}
-                  onChange={(newTimings, newSessions) => setProfileForm(prev => ({...prev, sessionTimings: newTimings, sessions: newSessions}))}
-                />
+                <Label className="text-sm font-medium">
+                  Available Sessions & Timings
+                </Label>
+                <p className="text-xs text-gray-400">
+                  Enable a session and set your own start/end time. Patients
+                  will see your custom timings when booking.
+                </p>
+                {(["morning", "afternoon", "evening"] as SessionType[]).map(
+                  (s) => {
+                    const isEnabled = profileForm.sessions.includes(s);
+                    const timing =
+                      profileForm.sessionTimings[s] ?? DEFAULT_TIMINGS[s];
+                    const sessionName = s.charAt(0).toUpperCase() + s.slice(1);
+                    return (
+                      <div
+                        key={s}
+                        className={`rounded-xl border-2 p-4 transition-colors ${
+                          isEnabled
+                            ? "border-teal-200 bg-teal-50/50"
+                            : "border-gray-100 bg-gray-50"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 mb-3">
+                          <Checkbox
+                            id={`sess_${s}`}
+                            checked={isEnabled}
+                            onCheckedChange={() => toggleSession(s)}
+                            data-ocid="profile.checkbox"
+                          />
+                          <Label
+                            htmlFor={`sess_${s}`}
+                            className="font-semibold cursor-pointer text-sm"
+                          >
+                            {sessionName} Session
+                          </Label>
+                          {isEnabled && (
+                            <span className="ml-auto text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full font-medium">
+                              Active
+                            </span>
+                          )}
+                        </div>
+                        {isEnabled && (
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <Label className="text-xs text-gray-500 font-medium">
+                                Start Time
+                              </Label>
+                              <Input
+                                type="time"
+                                value={timing.start}
+                                onChange={(e) =>
+                                  updateSessionTiming(
+                                    s,
+                                    "start",
+                                    e.target.value,
+                                  )
+                                }
+                                className="text-sm"
+                                data-ocid="profile.input"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs text-gray-500 font-medium">
+                                End Time
+                              </Label>
+                              <Input
+                                type="time"
+                                value={timing.end}
+                                onChange={(e) =>
+                                  updateSessionTiming(s, "end", e.target.value)
+                                }
+                                className="text-sm"
+                                data-ocid="profile.input"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  },
+                )}
               </div>
             </div>
 
