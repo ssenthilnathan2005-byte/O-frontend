@@ -1460,6 +1460,36 @@ export default function DoctorDashboard() {
                               />
                             </div>
                           </div>
+                          {/* Day selector */}
+                          <div className="mt-3 space-y-1.5">
+                            <Label className="text-xs text-gray-500 font-medium">Available Days</Label>
+                            <div className="flex gap-1.5 flex-wrap">
+                              {(["mon","tue","wed","thu","fri","sat","sun"] as DayOfWeek[]).map((day) => {
+                                const activeDays = timing.days ?? ["mon","tue","wed","thu","fri","sat","sun"];
+                                const isActive = activeDays.includes(day);
+                                return (
+                                  <button
+                                    key={day}
+                                    type="button"
+                                    onClick={() => {
+                                      const current = timing.days ?? ["mon","tue","wed","thu","fri","sat","sun"];
+                                      const updated = isActive ? current.filter((d) => d !== day) : [...current, day];
+                                      setProfileForm((prev) => ({
+                                        ...prev,
+                                        sessionTimings: {
+                                          ...prev.sessionTimings,
+                                          [s]: { ...timing, days: updated },
+                                        },
+                                      }));
+                                    }}
+                                    className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition ${isActive ? "bg-teal-500 text-white border-teal-500" : "bg-white text-gray-400 border-gray-200 hover:border-teal-300"}`}
+                                  >
+                                    {day.charAt(0).toUpperCase() + day.slice(1)}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
                         )}
                       </div>
                     );

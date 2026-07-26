@@ -15,9 +15,12 @@ export interface Hospital {
 
 export type SessionType = "morning" | "afternoon" | "evening";
 
+export type DayOfWeek = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+
 export interface SessionTiming {
   start: string; // "HH:MM" 24h
   end: string; // "HH:MM" 24h
+  days?: DayOfWeek[]; // which days this session is available
 }
 
 export interface Doctor {
