@@ -64,12 +64,19 @@ export function isSessionAvailable(
   session: string,
   customTimings?: Partial<Record<SessionType, SessionTiming>>,
 ): boolean {
+  // Check day-of-week availability first
+  const dateObj = new Date(date + "T00:00:00");
+  const DAY_MAP = ["sun","mon","tue","wed","thu","fri","sat"];
+  const dayOfWeek = DAY_MAP[dateObj.getDay()];
+  const custom = customTimings?.[session as SessionType];
+  if (custom?.days && custom.days.length > 0) {
+    if (!custom.days.includes(dayOfWeek as any)) return false;
+  }
   const now = new Date();
   const today = now.toISOString().split("T")[0];
   if (date > today) return true;
   if (date < today) return false;
   // Same day - check if session ends in more than 10 min
-  const custom = customTimings?.[session as SessionType];
   const times = custom ?? SESSION_TIMES[session];
   if (!times) return false;
   const [endH, endM] = times.end.split(":").map(Number);
