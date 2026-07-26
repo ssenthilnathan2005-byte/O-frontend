@@ -62,6 +62,7 @@ import type {
   PrioritySlotState,
   SessionTiming,
   SessionType,
+  DayOfWeek,
   TokenStatus,
 } from "../../types";
 
@@ -1426,7 +1427,8 @@ export default function DoctorDashboard() {
                           )}
                         </div>
                         {isEnabled && (
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1">
                               <Label className="text-xs text-gray-500 font-medium">
                                 Start Time
@@ -1483,6 +1485,7 @@ export default function DoctorDashboard() {
                                 );
                               })}
                             </div>
+                          </div>
                           </div>
 
                         )}
