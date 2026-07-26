@@ -254,9 +254,13 @@ function DaySessionEditor({
   function toggleDaySession(day: DayOfWeek, session: SessionType) {
     const currently = isDayEnabled(day, session);
     const timing = sessionTimings[session] ?? { ...SESSION_DEFAULTS[session] };
+    // If no days set yet, session was active for all days
     const currentDays: DayOfWeek[] = timing.days ?? [...DAYS];
-    const newDays = currently ? currentDays.filter(d => d !== day) : [...currentDays, day];
-    const newSessions = newDays.length === 0
+    const newDays: DayOfWeek[] = currently
+      ? currentDays.filter(d => d !== day)
+      : currentDays.includes(day) ? currentDays : [...currentDays, day];
+    // Keep session in sessions list as long as it has at least one day
+    const newSessions: SessionType[] = newDays.length === 0
       ? sessions.filter(s => s !== session)
       : sessions.includes(session) ? sessions : [...sessions, session];
     onChange({ ...sessionTimings, [session]: { ...timing, days: newDays } }, newSessions);
@@ -268,13 +272,24 @@ function DaySessionEditor({
   }
 
   function setStandardForAllDays() {
+    // Copy active sessions on current day to ALL days with same timings
     const newTimings = { ...sessionTimings };
+    const newSessions: SessionType[] = [...sessions];
     for (const session of ALL_SESSIONS) {
-      if (sessions.includes(session)) {
-        newTimings[session] = { ...(sessionTimings[session] ?? SESSION_DEFAULTS[session]), days: [...DAYS] };
+      const enabledOnActiveDay = isDayEnabled(activeDay, session);
+      const timing = sessionTimings[session] ?? SESSION_DEFAULTS[session];
+      if (enabledOnActiveDay) {
+        // Enable this session for ALL days with same start/end time
+        newTimings[session] = { ...timing, days: [...DAYS] };
+        if (!newSessions.includes(session)) newSessions.push(session);
+      } else {
+        // Disable this session for ALL days
+        newTimings[session] = { ...timing, days: [] };
+        const idx = newSessions.indexOf(session);
+        if (idx > -1) newSessions.splice(idx, 1);
       }
     }
-    onChange(newTimings, sessions);
+    onChange(newTimings, newSessions);
   }
 
   const activeSessions = ALL_SESSIONS.filter(s => isDayEnabled(activeDay, s));
