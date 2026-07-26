@@ -149,8 +149,8 @@ function sanitizeSessionTimings(
     const end = normalizeTimeValue(raw?.end ?? "") ?? fallback.end;
 
     result[session] = isStartBeforeEnd(start, end)
-      ? { start, end }
-      : { ...fallback };
+      ? { start, end, days: raw?.days }
+      : { ...fallback, days: raw?.days };
   });
 
   return result;
