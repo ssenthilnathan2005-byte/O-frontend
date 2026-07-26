@@ -729,26 +729,18 @@ export default function DoctorDashboard() {
         }}
         className="w-full"
       >
-        {/* ── Doctor Patient Export Banner ── */}
-      <DoctorExportBanner token={localStorage.getItem("db_jwt") ?? ""} />
 
       <TabsList className="mb-6" data-ocid="doctor.tab">
-          {/* ── Doctor Patient Export Banner ── */}
-      <DoctorExportBanner token={localStorage.getItem("db_jwt") ?? ""} />
 
       <TabsTrigger value="regulator" data-ocid="doctor.tab">
             <Activity className="w-4 h-4 mr-1.5 sm:mr-2" />
             Regulator
           </TabsTrigger>
-          {/* ── Doctor Patient Export Banner ── */}
-      <DoctorExportBanner token={localStorage.getItem("db_jwt") ?? ""} />
 
       <TabsTrigger value="livetokens" data-ocid="doctor.tab">
             <Clock className="w-4 h-4 mr-1.5 sm:mr-2" />
             Live Tokens
           </TabsTrigger>
-          {/* ── Doctor Patient Export Banner ── */}
-      <DoctorExportBanner token={localStorage.getItem("db_jwt") ?? ""} />
 
       <TabsTrigger value="profile" data-ocid="doctor.tab">
             <User className="w-4 h-4 mr-1.5 sm:mr-2" />
@@ -757,8 +749,6 @@ export default function DoctorDashboard() {
         </TabsList>
 
         {/* Token Regulator Tab */}
-        {/* ── Doctor Patient Export Banner ── */}
-      <DoctorExportBanner token={localStorage.getItem("db_jwt") ?? ""} />
 
       <TabsContent value="regulator">
           <div className="space-y-6">
@@ -1122,8 +1112,6 @@ export default function DoctorDashboard() {
 
         {/* Profile Tab */}
         {/* ── Live Tokens Tab ── */}
-        {/* ── Doctor Patient Export Banner ── */}
-      <DoctorExportBanner token={localStorage.getItem("db_jwt") ?? ""} />
 
       <TabsContent value="livetokens">
           <Card className="border border-gray-100 shadow-sm">
@@ -1216,9 +1204,6 @@ export default function DoctorDashboard() {
             </CardContent>
           </Card>
         </TabsContent>
-
-        {/* ── Doctor Patient Export Banner ── */}
-      <DoctorExportBanner token={localStorage.getItem("db_jwt") ?? ""} />
 
       <TabsContent value="profile">
           <div className="space-y-4">
