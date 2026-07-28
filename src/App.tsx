@@ -14,6 +14,7 @@ import MyTokensPage from "./pages/patient/MyTokensPage";
 import TokenTrackerPage from "./pages/patient/TokenTrackerPage";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ChatbotWidget from "./components/ChatbotWidget";
+import ChatbotWidget from "./components/ChatbotWidget";
 import { RouterProvider, useRouter } from "./router/RouterContext";
 
 function resolvePhotoUrl(url: string | null | undefined): string | null {
@@ -214,6 +215,7 @@ function AppRoutes() {
       )}
       <main className="flex-1">{renderPage()}</main>
       <Toaster richColors position="top-right" />
+      <ChatbotWidget />
       <ChatbotWidget />
     </div>
   );
