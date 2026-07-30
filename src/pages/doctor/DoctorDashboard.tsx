@@ -254,6 +254,7 @@ export default function DoctorDashboard() {
     specialty: doctor?.specialty ?? "",
     tokensPerSession: String(doctor?.tokensPerSession ?? 20),
     walkInInterval: String(doctor?.walkInInterval ?? 5),
+    avgMinutesPerPatient: String((doctor as any)?.avgMinutesPerPatient ?? 5),
     sessions: ((doctor?.sessions ?? []) as string[]).filter((s): s is SessionType => ["morning","afternoon","evening"].includes(s)),
     contactPhone: (doctor as any)?.contactPhone || doctor?.phone || "",
     sessionTimings: sanitizeSessionTimings(doctor?.sessionTimings),
@@ -273,6 +274,7 @@ export default function DoctorDashboard() {
         specialty: doctor.specialty ?? "",
         tokensPerSession: String(doctor.tokensPerSession ?? 20),
         walkInInterval: String(doctor.walkInInterval ?? 5),
+        avgMinutesPerPatient: String((doctor as any).avgMinutesPerPatient ?? 5),
         sessions: ((doctor.sessions ?? []) as string[]).filter((s): s is SessionType => ["morning","afternoon","evening"].includes(s)),
         contactPhone: (doctor as any).contactPhone || doctor?.phone || "",
         sessionTimings: sanitizeSessionTimings(doctor.sessionTimings),
@@ -285,6 +287,7 @@ export default function DoctorDashboard() {
         specialty: doctor.specialty ?? prev.specialty,
         tokensPerSession: String(doctor.tokensPerSession ?? prev.tokensPerSession),
         walkInInterval: String(doctor.walkInInterval ?? prev.walkInInterval),
+        avgMinutesPerPatient: String((doctor as any).avgMinutesPerPatient ?? prev.avgMinutesPerPatient),
         contactPhone: (doctor as any).contactPhone || doctor?.phone || prev.contactPhone,
         // ✅ sessions and sessionTimings are NOT overwritten — user edits preserved
       }));
@@ -414,12 +417,16 @@ export default function DoctorDashboard() {
       return;
     }
 
+    const avgMinutesNum = Number(profileForm.avgMinutesPerPatient);
+    const finalAvgMinutes = Number.isInteger(avgMinutesNum) && avgMinutesNum >= 1 ? avgMinutesNum : 5;
+
     const payload: Record<string, unknown> = {
       name: profileForm.name,
       specialty: profileForm.specialty,
       price: 10,
       tokensPerSession: Number(profileForm.tokensPerSession),
       walkInInterval: walkInIntervalNum,
+      avgMinutesPerPatient: finalAvgMinutes,
       sessions: profileForm.sessions,
       consultationFee: 10,
       sessionTimings: normalizedTimings,
@@ -1378,6 +1385,28 @@ export default function DoctorDashboard() {
                   />
                   <p className="text-xs text-gray-400">
                     A walk-in patient slot is inserted after every N online patients (e.g. 5 means after tokens 5, 10, 15…).
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="doc-avg-minutes" className="text-sm font-medium">
+                    Avg. time per patient (minutes)
+                  </Label>
+                  <Input
+                    id="doc-avg-minutes"
+                    type="number"
+                    min={1}
+                    max={60}
+                    value={profileForm.avgMinutesPerPatient}
+                    onChange={(e) =>
+                      setProfileForm((p) => ({
+                        ...p,
+                        avgMinutesPerPatient: e.target.value,
+                      }))
+                    }
+                    data-ocid="profile.input"
+                  />
+                  <p className="text-xs text-gray-400">
+                    Used to show patients their estimated wait time. Default is 5 min per patient.
                   </p>
                 </div>
               </div>
