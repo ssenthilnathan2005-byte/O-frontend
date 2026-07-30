@@ -73,6 +73,24 @@ export function useStore(): Store {
 const REFRESH_MS = 300_000; // 5 minutes instead of 30 seconds
 
 export function StoreProvider({ children }: { children: ReactNode }) {
+  // Auto-register push for already logged-in patients on app start
+  useEffect(() => {
+    const stored = localStorage.getItem("db_user");
+    if (!stored) return;
+    try {
+      const u = JSON.parse(stored);
+      if (u?.role === "patient") {
+        import("../lib/push").then(({ registerServiceWorker, enablePushNotifications }) => {
+          registerServiceWorker().then(() => {
+            if (Notification.permission === "granted") {
+              enablePushNotifications().catch(() => {});
+            }
+          });
+        });
+      }
+    } catch {}
+  }, []);
+
   const [user, setUser] = useState<AppUser | null>(() => {
     try { return JSON.parse(localStorage.getItem("db_user") || "null"); } catch { return null; }
   });
@@ -175,6 +193,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     api.setToken(token);
     localStorage.setItem("db_user", JSON.stringify(u));
     setUser(u);
+    // Auto-register push notifications for patients on login
+    if (u.role === "patient") {
+      import("../lib/push").then(({ enablePushNotifications }) => {
+        enablePushNotifications().catch(() => {});
+      });
+    }
   }, []);
 
   const logout = useCallback(() => {

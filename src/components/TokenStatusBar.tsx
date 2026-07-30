@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 import { useStore } from "@/context/StoreContext";
+import { SESSION_TIMES } from "@/data/seed";
 
 interface ActiveBooking {
   id: string;
@@ -65,6 +66,23 @@ export default function TokenStatusBar() {
   }, [activeBooking?.sessionId]);
 
   if (!activeBooking) return null;
+
+  // Only show after session has started
+  const now = new Date();
+  const today = now.toISOString().split("T")[0];
+  if (activeBooking.date !== today) return null;
+
+  const doctor = (doctors as any[]).find((d: any) => d.id === activeBooking.sessionId.split("_")[0]);
+  const customTimings = doctor?.sessionTimings;
+  const sessionKey = activeBooking.session;
+  const custom = customTimings?.[sessionKey];
+  const times = custom ?? SESSION_TIMES[sessionKey];
+  if (!times) return null;
+
+  const [startH, startM] = times.start.split(":").map(Number);
+  const sessionStart = new Date();
+  sessionStart.setHours(startH, startM, 0, 0);
+  if (now < sessionStart) return null;
 
   const tokensAhead = Math.max(0, activeBooking.tokenNumber - currentToken - 1);
   const waitMinutes = tokensAhead * activeBooking.avgMinutesPerPatient;
