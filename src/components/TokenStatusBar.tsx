@@ -26,7 +26,7 @@ export default function TokenStatusBar() {
 
     const today = new Date().toISOString().split("T")[0];
     const todayBooking = (bookings as any[]).find(
-      (b) => b.date === today && b.status === "confirmed"
+      (b) => b.date === today && (b.status === "confirmed" || b.status === "ongoing")
     );
     if (!todayBooking) { setActiveBooking(null); return; }
 
@@ -56,7 +56,14 @@ export default function TokenStatusBar() {
       ws.onmessage = (e) => {
         try {
           const data = JSON.parse(e.data);
-          if (data.currentToken !== undefined) setCurrentToken(data.currentToken);
+          if (data.type === "state_update" && data.state) {
+            if (data.state.currentToken !== undefined && data.state.currentToken !== null) {
+              setCurrentToken(Number(data.state.currentToken));
+            }
+            if (data.state.isClosed) {
+              setActiveBooking(null);
+            }
+          }
         } catch {}
       };
     }
@@ -96,7 +103,15 @@ export default function TokenStatusBar() {
   let dotColor = "bg-green-500";
   let mainText = `Token #${activeBooking.tokenNumber} · About ${waitMinutes} min wait · ${tokensAhead} patient${tokensAhead !== 1 ? "s" : ""} ahead`;
 
-  if (isNow) {
+  const isVisited = currentToken > activeBooking.tokenNumber;
+
+  if (isVisited) {
+    bg = "bg-gray-50 border-gray-200";
+    textColor = "text-gray-600";
+    subColor = "text-gray-400";
+    dotColor = "bg-gray-400";
+    mainText = `Token #${activeBooking.tokenNumber} · Visit complete · Thank you!`;
+  } else if (isNow) {
     bg = "bg-red-50 border-red-200";
     textColor = "text-red-800";
     subColor = "text-red-600";
