@@ -18,7 +18,7 @@ export default function TokenStatusBar() {
   const router = useRouter();
   const [activeBooking, setActiveBooking] = useState<ActiveBooking | null>(null);
   const [currentToken, setCurrentToken] = useState<number>(0);
-  const [isClosed, setIsClosed] = useState(false);
+  
 
   useEffect(() => {
     if (!user || user.role !== "patient") return;
@@ -64,7 +64,7 @@ export default function TokenStatusBar() {
     return () => ws?.close();
   }, [activeBooking?.sessionId]);
 
-  if (!activeBooking || isClosed) return null;
+  if (!activeBooking) return null;
 
   const tokensAhead = Math.max(0, activeBooking.tokenNumber - currentToken - 1);
   const waitMinutes = tokensAhead * activeBooking.avgMinutesPerPatient;
@@ -110,13 +110,7 @@ export default function TokenStatusBar() {
         <p className={`text-sm font-medium truncate ${textColor}`}>{mainText}</p>
         <p className={`text-xs truncate ${subColor}`}>{subText}</p>
       </div>
-      <button
-        onClick={(e) => { e.stopPropagation(); setIsClosed(true); }}
-        className="text-gray-400 hover:text-gray-600 flex-shrink-0 text-lg leading-none"
-        aria-label="Dismiss"
-      >
-        ×
-      </button>
+
     </div>
   );
 }
