@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "@tanstack/react-router";
 import { useStore } from "@/context/StoreContext";
-import { api } from "@/api";
 
 interface ActiveBooking {
   id: string;
@@ -16,7 +15,7 @@ interface ActiveBooking {
 
 export default function TokenStatusBar() {
   const { user, bookings, doctors, hospitals } = useStore();
-  const navigate = useNavigate();
+  const router = useRouter();
   const [activeBooking, setActiveBooking] = useState<ActiveBooking | null>(null);
   const [currentToken, setCurrentToken] = useState<number>(0);
   const [isClosed, setIsClosed] = useState(false);
@@ -104,7 +103,7 @@ export default function TokenStatusBar() {
   return (
     <div
       className={`w-full border-b ${bg} px-4 py-2 flex items-center gap-3 cursor-pointer`}
-      onClick={() => navigate(`/my-tokens/${activeBooking.id}`)}
+      onClick={() => router.navigate({ to: `/my-tokens/${activeBooking.id}` })}
     >
       <div className={`w-2 h-2 rounded-full flex-shrink-0 ${dotColor}`} />
       <div className="flex-1 min-w-0">
