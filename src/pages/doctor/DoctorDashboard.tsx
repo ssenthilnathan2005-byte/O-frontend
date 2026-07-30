@@ -438,6 +438,7 @@ export default function DoctorDashboard() {
       payload.phone = profileForm.contactPhone.trim();
     }
     updateDoctor(doctor.id, payload as any);
+    hasInitialized.current = false;
     setProfileForm((prev) => ({ ...prev, sessionTimings: normalizedTimings }));
     toast.success("Profile updated successfully");
   }
