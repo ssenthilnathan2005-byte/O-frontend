@@ -9,7 +9,7 @@ export interface Hospital {
   gradient: string;
   address?: string;
   phone?: string;
-  photoUrl?: string;
+  photoUrl?: string | null;
   isFree?: boolean;
 }
 
