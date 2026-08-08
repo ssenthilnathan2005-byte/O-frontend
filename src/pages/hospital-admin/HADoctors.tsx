@@ -53,6 +53,7 @@ type EditForm = {
   tokensPerSession: string;
   sessions: string;
   isAvailable: boolean;
+  code: string;
 };
 
 const EMPTY_ADD: AddForm = {
@@ -69,7 +70,7 @@ export default function HADoctors() {
   const [addForm, setAddForm] = useState<AddForm>(EMPTY_ADD);
   const [editForm, setEditForm] = useState<EditForm>({
     name: "", phone: "", specialty: "", tokensPerSession: "20",
-    sessions: "morning,afternoon", isAvailable: true,
+    sessions: "morning,afternoon", isAvailable: true, code: "",
   });
 
   async function handleAdd() {
@@ -109,6 +110,7 @@ export default function HADoctors() {
       tokensPerSession: String(doc.tokensPerSession ?? 20),
       sessions: Array.isArray(doc.sessions) ? (doc.sessions as string[]).join(",") : (doc.sessions as any ?? "morning,afternoon"),
       isAvailable: doc.isAvailable ?? true,
+      code: doc.code ?? "",
     });
   }
 
@@ -132,6 +134,17 @@ export default function HADoctors() {
     } catch (err: any) {
       toast.error(err.message || "Failed to update doctor");
     }
+  }
+
+  async function handleSaveCode() {
+    if (!editDoctor) return;
+    if (!editForm.code) {
+      toast.error("Login code cannot be empty");
+      return;
+    }
+    await updateDoctor(editDoctor.id, { code: editForm.code.toUpperCase() });
+    toast.success("Login code saved");
+    setEditDoctor(null);
   }
 
   function handleToggleAvailability(doc: Doctor) {
@@ -319,10 +332,21 @@ export default function HADoctors() {
               <Switch checked={editForm.isAvailable} onCheckedChange={(v) => setEditForm((f) => ({ ...f, isAvailable: v }))} />
               <Label>Available for appointments</Label>
             </div>
+            <div className="space-y-1.5">
+              <Label>Login Code</Label>
+              <Input
+                className="font-mono"
+                value={editForm.code}
+                onChange={(e) => setEditForm((f) => ({ ...f, code: e.target.value }))}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditDoctor(null)}>Cancel</Button>
-            <Button onClick={handleEdit}>Save Changes</Button>
+            <div className="flex items-center gap-2">
+              <Button onClick={handleSaveCode} variant="secondary">Save Code</Button>
+              <Button onClick={handleEdit}>Save Changes</Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
