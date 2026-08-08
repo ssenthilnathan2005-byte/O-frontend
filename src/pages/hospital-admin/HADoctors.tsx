@@ -54,6 +54,7 @@ type EditForm = {
   sessions: string;
   isAvailable: boolean;
   code: string;
+  photo: string | null;
 };
 
 const EMPTY_ADD: AddForm = {
@@ -70,7 +71,7 @@ export default function HADoctors() {
   const [addForm, setAddForm] = useState<AddForm>(EMPTY_ADD);
   const [editForm, setEditForm] = useState<EditForm>({
     name: "", phone: "", specialty: "", tokensPerSession: "20",
-    sessions: "morning,afternoon", isAvailable: true, code: "",
+    sessions: "morning,afternoon", isAvailable: true, code: "", photo: null,
   });
 
   async function handleAdd() {
@@ -111,6 +112,7 @@ export default function HADoctors() {
       sessions: Array.isArray(doc.sessions) ? (doc.sessions as string[]).join(",") : (doc.sessions as any ?? "morning,afternoon"),
       isAvailable: doc.isAvailable ?? true,
       code: doc.code ?? "",
+      photo: doc.photo ?? null,
     });
   }
 
@@ -128,6 +130,7 @@ export default function HADoctors() {
         consultationFee: STANDARD_FEE,
         price: STANDARD_FEE,
         isAvailable: editForm.isAvailable,
+        photo: editForm.photo ?? "",
       });
       toast.success("Doctor updated");
       setEditDoctor(null);
@@ -266,7 +269,18 @@ export default function HADoctors() {
             )}
             {myDoctors.map((doctor) => (
               <TableRow key={doctor.id}>
-                <TableCell className="font-medium">{doctor.name}</TableCell>
+                <TableCell className="font-medium">
+                  <div className="flex items-center gap-2">
+                    {doctor.photo ? (
+                      <img src={doctor.photo} alt={doctor.name} className="w-8 h-8 rounded-full object-cover border shrink-0" />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground shrink-0">
+                        {doctor.name?.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    {doctor.name}
+                  </div>
+                </TableCell>
                 <TableCell><Badge variant="outline">{doctor.specialty}</Badge></TableCell>
                 <TableCell className="text-muted-foreground text-sm">{doctor.phone ?? "—"}</TableCell>
                 <TableCell>
@@ -342,6 +356,45 @@ export default function HADoctors() {
             <div className="flex items-center gap-3">
               <Switch checked={editForm.isAvailable} onCheckedChange={(v) => setEditForm((f) => ({ ...f, isAvailable: v }))} />
               <Label>Available for appointments</Label>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Doctor Photo</Label>
+              <div className="flex items-center gap-3">
+                {editForm.photo && (
+                  <img
+                    src={editForm.photo}
+                    alt="preview"
+                    className="w-14 h-14 rounded-full object-cover border"
+                  />
+                )}
+                <label className="cursor-pointer">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border border-input bg-background hover:bg-muted transition-colors">
+                    {editForm.photo ? "Change Photo" : "Upload Photo"}
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = () =>
+                        setEditForm((f) => ({ ...f, photo: reader.result as string }));
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                </label>
+                {editForm.photo && (
+                  <button
+                    type="button"
+                    className="text-xs text-destructive hover:underline"
+                    onClick={() => setEditForm((f) => ({ ...f, photo: null }))}
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
             </div>
             <div className="space-y-1.5">
               <Label>Login Code</Label>
