@@ -13,62 +13,88 @@ import { useMemo, useState } from "react";
 import { useStore } from "../../context/StoreContext";
 
 const STATUS_STYLES: Record<string, string> = {
-  confirmed:  "bg-blue-50 text-blue-700 border-blue-200",
-  completed:  "bg-green-50 text-green-700 border-green-200",
-  unvisited:  "bg-red-50 text-red-700 border-red-200",
+  confirmed: "bg-blue-50 text-blue-700 border-blue-200",
+  completed: "bg-green-50 text-green-700 border-green-200",
+  unvisited: "bg-red-50 text-red-700 border-red-200",
   cancelled:  "bg-gray-100 text-gray-500 border-gray-200",
 };
 
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function weekStartStr() {
+  const d = new Date();
+  d.setDate(d.getDate() - 6);
+  return d.toISOString().slice(0, 10);
+}
+
 export default function HAPatients() {
   const { bookings, doctors, user } = useStore();
-  const hospitalId = user?.role === "hospital_admin" ? (user as any).hospitalId : "";
-
-  const myDoctorIds = useMemo(
-    () => new Set(doctors.filter((d) => d.hospitalId === hospitalId).map((d) => d.id)),
-    [doctors, hospitalId]
-  );
-
-  const myBookings = useMemo(
-    () =>
-      bookings
-        .filter((b) => myDoctorIds.has(b.doctorId) && b.status !== "cancelled")
-        .sort((a, b) => {
-          if (b.date !== a.date) return b.date.localeCompare(a.date);
-          return b.tokenNumber - a.tokenNumber;
-        }),
-    [bookings, myDoctorIds]
-  );
+  const hospitalId =
+    user?.role === "hospital_admin" ? user.hospitalId : "";
 
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState<"today" | "week">("today");
   const [exporting, setExporting] = useState(false);
 
-  function getDateRange() {
-    const today = new Date();
-    const fmt = (d: Date) => d.toISOString().slice(0, 10);
-    if (dateFilter === "today") return { from: fmt(today), to: fmt(today) };
-    const week = new Date(today);
-    week.setDate(today.getDate() - 6);
-    return { from: fmt(week), to: fmt(today) };
-  }
+  const myDoctorIds = useMemo(
+    () =>
+      new Set(
+        doctors.filter((d) => d.hospitalId === hospitalId).map((d) => d.id)
+      ),
+    [doctors, hospitalId]
+  );
+
+  const from = dateFilter === "today" ? todayStr() : weekStartStr();
+  const to   = todayStr();
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return bookings
+      .filter(
+        (b) =>
+          myDoctorIds.has(b.doctorId) &&
+          b.status !== "cancelled" &&
+          b.date >= from &&
+          b.date <= to &&
+          (q === "" ||
+            b.patientName?.toLowerCase().includes(q) ||
+            b.doctorName?.toLowerCase().includes(q) ||
+            b.phone?.includes(q) ||
+            String(b.tokenNumber).includes(q))
+      )
+      .sort((a, b) => {
+        if (b.date !== a.date) return b.date.localeCompare(a.date);
+        return b.tokenNumber - a.tokenNumber;
+      });
+  }, [bookings, myDoctorIds, from, to, search]);
 
   async function handleExport() {
     setExporting(true);
     try {
-      const { from, to } = getDateRange();
       const token = localStorage.getItem("db_jwt") ?? "";
       const API = (import.meta.env.VITE_API_URL as string ?? "").replace(/\/api$/, "");
       const res = await fetch(`${API}/api/hospital/patients/export`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ from, to }),
       });
-      if (res.status === 404) { alert("No patient records found for this period."); return; }
-      if (!res.ok) { alert("Export failed. Please try again."); return; }
+      if (res.status === 404) {
+        alert("No patient records found for this period.");
+        return;
+      }
+      if (!res.ok) {
+        alert("Export failed. Please try again.");
+        return;
+      }
       const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href     = url;
       a.download = `patients_${from}_to_${to}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
@@ -76,20 +102,6 @@ export default function HAPatients() {
       setExporting(false);
     }
   }
-
-  const filtered = useMemo(() => {
-    const { from, to } = getDateRange();
-    const dateFiltered = myBookings.filter((b) => b.date >= from && b.date <= to);
-    const q = search.trim().toLowerCase();
-    if (!q) return dateFiltered;
-    return dateFiltered.filter(
-      (b) =>
-        b.patientName?.toLowerCase().includes(q) ||
-        b.doctorName?.toLowerCase().includes(q) ||
-        b.phone?.includes(q) ||
-        String(b.tokenNumber).includes(q)
-    );
-  }, [myBookings, search]);
 
   return (
     <div className="p-8">
@@ -111,19 +123,28 @@ export default function HAPatients() {
             />
           </div>
         </div>
+
         <div className="flex items-center gap-3">
           <div className="flex rounded-lg border border-border overflow-hidden">
             <button
               type="button"
               onClick={() => setDateFilter("today")}
-              className={`px-4 py-2 text-sm font-medium transition-colors ${dateFilter === "today" ? "bg-teal-600 text-white" : "bg-background text-muted-foreground hover:bg-muted"}`}
+              className={`px-4 py-2 text-sm font-medium transition-colors ${
+                dateFilter === "today"
+                  ? "bg-teal-600 text-white"
+                  : "bg-background text-muted-foreground hover:bg-muted"
+              }`}
             >
               Today
             </button>
             <button
               type="button"
               onClick={() => setDateFilter("week")}
-              className={`px-4 py-2 text-sm font-medium border-l border-border transition-colors ${dateFilter === "week" ? "bg-teal-600 text-white" : "bg-background text-muted-foreground hover:bg-muted"}`}
+              className={`px-4 py-2 text-sm font-medium border-l border-border transition-colors ${
+                dateFilter === "week"
+                  ? "bg-teal-600 text-white"
+                  : "bg-background text-muted-foreground hover:bg-muted"
+              }`}
             >
               This Week
             </button>
@@ -156,20 +177,29 @@ export default function HAPatients() {
           <TableBody>
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground py-16">
-                  {search ? "No results match your search." : "No patient bookings yet."}
+                <TableCell
+                  colSpan={7}
+                  className="text-center text-muted-foreground py-16"
+                >
+                  {search
+                    ? "No results match your search."
+                    : "No patient bookings for this period."}
                 </TableCell>
               </TableRow>
             )}
             {filtered.map((b) => (
               <TableRow key={b.id}>
                 <TableCell className="text-center">
-                  <span className="text-xl font-bold text-teal-600">#{b.tokenNumber}</span>
+                  <span className="text-xl font-bold text-teal-600">
+                    #{b.tokenNumber}
+                  </span>
                 </TableCell>
                 <TableCell>
                   <p className="font-medium">{b.patientName || "—"}</p>
                   {b.patientAge != null && (
-                    <p className="text-xs text-muted-foreground">{b.patientAge} yrs</p>
+                    <p className="text-xs text-muted-foreground">
+                      {b.patientAge} yrs
+                    </p>
                   )}
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
