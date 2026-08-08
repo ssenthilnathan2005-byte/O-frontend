@@ -34,6 +34,12 @@ export default function HAPatients() {
   const hospitalId =
     user?.role === "hospital_admin" ? user.hospitalId : "";
 
+  // DEBUG — remove after fix
+  console.log("[HAPatients] user:", JSON.stringify(user));
+  console.log("[HAPatients] hospitalId:", hospitalId);
+  console.log("[HAPatients] total bookings:", bookings.length);
+  console.log("[HAPatients] myDoctorIds will be computed from", doctors.length, "doctors");
+
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState<"today" | "week">("today");
   const [exporting, setExporting] = useState(false);
