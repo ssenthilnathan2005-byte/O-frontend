@@ -23,6 +23,9 @@ type Route =
   | { path: "/admin/patients" }
   | { path: "/admin/sessions" }
   | { path: "/admin/bookings" }
+  | { path: "/hospital-admin/login" }
+  | { path: "/hospital-admin" }
+  | { path: "/hospital-admin/doctors" }
   | { path: "/terms" };
 interface RouterCtx {
   route: Route;
@@ -73,6 +76,9 @@ function getInitialRoute(): Route {
   if (pathname === "/admin/patients") return { path: "/admin/patients" };
   if (pathname === "/admin/sessions") return { path: "/admin/sessions" };
   if (pathname === "/admin/bookings") return { path: "/admin/bookings" };
+  if (pathname === "/hospital-admin/login") return { path: "/hospital-admin/login" };
+  if (pathname === "/hospital-admin/doctors") return { path: "/hospital-admin/doctors" };
+  if (pathname === "/hospital-admin") return { path: "/hospital-admin" };
   if (pathname === "/terms") return { path: "/terms" };
 
   return { path: "/" };

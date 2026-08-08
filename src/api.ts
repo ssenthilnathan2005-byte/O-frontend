@@ -236,6 +236,12 @@ export const auth = {
   doctorLogin: (code: string, phone: string) =>
     post<{ token: string; user: AppUser }>("/auth/doctor/login", { code, phone }),
   me: () => get<{ user: AppUser }>("/auth/me"),
+  hospitalLogin: (loginId: string, password: string) =>
+    post<{ firstLogin?: boolean; loginId?: string; hospitalId?: string; hospitalName?: string; token?: string; user?: AppUser }>(
+      "/auth/hospital/login", { loginId, password }
+    ),
+  hospitalSetPassword: (loginId: string, newPassword: string) =>
+    post<{ token: string; user: AppUser }>("/auth/hospital/set-password", { loginId, newPassword }),
 };
 
 
@@ -253,6 +259,10 @@ export const hospitals = {
   },
   uploadPhotoBase64: (id: string, base64: string): Promise<{ photoUrl: string }> =>
     post<{ photoUrl: string }>(`/hospitals/${id}/photo-base64`, { base64 }),
+  getAdminInfo: (id: string) =>
+    get<{ loginId: string | null; hasAdminAccount: boolean; firstLogin: boolean }>(`/hospitals/${id}/admin-info`),
+  resetLogin: (id: string, newLoginId?: string) =>
+    post<{ loginId: string | null; hasAdminAccount: boolean }>(`/hospitals/${id}/reset-login`, newLoginId ? { newLoginId } : undefined),
 };
 
 // ── Doctors ───────────────────────────────────────────────────────────────────
@@ -364,7 +374,7 @@ export const push = {
 };
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-export type UserRole = "patient" | "doctor" | "admin";
+export type UserRole = "patient" | "doctor" | "admin" | "hospital_admin";
 export interface Hospital {
   id: string; name: string; area: string; address?: string;
   phone?: string; rating: number; gradient: string;
@@ -404,7 +414,8 @@ export interface PatientRecord { id: string; name: string; email?: string; creat
 export type AppUser =
   | { id: string; email: string; name: string; role: "patient" }
   | { id: string; code: string; doctorId: string; role: "doctor" }
-  | { id: string; role: "admin" };
+  | { id: string; role: "admin" }
+  | { id: string; role: "hospital_admin"; hospitalId: string; hospitalName: string };
 export interface Stats {
   totalHospitals: number; totalDoctors: number; totalPatients: number;
   totalBookings: number; activeSessions: number;

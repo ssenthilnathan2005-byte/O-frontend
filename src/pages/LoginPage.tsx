@@ -713,6 +713,14 @@ export default function LoginPage({
               </div>
             </TabsContent>
           </Tabs>
+
+          <button
+            type="button"
+            onClick={() => navigate({ path: "/hospital-admin/login" })}
+            className="block mx-auto mt-6 text-xs text-gray-400 hover:text-teal-600 transition-colors"
+          >
+            Hospital staff login
+          </button>
         </div>
       </div>
     </div>

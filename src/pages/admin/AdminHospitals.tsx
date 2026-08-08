@@ -13,10 +13,11 @@ import { Label }   from "@/components/ui/label";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Building2, CheckCircle2, Edit2, ImageIcon, Loader2, Plus, Trash2, UploadCloud } from "lucide-react";
+import { Building2, CheckCircle2, Edit2, ImageIcon, KeyRound, Loader2, Plus, RefreshCw, Trash2, UploadCloud } from "lucide-react";
 import { useState } from "react";
 import { toast }  from "sonner";
 import { useStore } from "../../context/StoreContext";
+import * as api from "../../api";
 import type { Hospital } from "../../api";
 
 // Resolve photo URL — base64 data URLs work as-is; relative paths need Railway prefix
@@ -38,9 +39,14 @@ export default function AdminHospitals() {
   const [isDragOver, setIsDragOver]       = useState(false);
   const [uploading, setUploading]         = useState(false);
   const [uploaded, setUploaded]           = useState(false);        // confirms save succeeded
-  const [form, setForm] = useState({ name: "", area: "", address: "", phone: "" });
+  const [form, setForm] = useState({ name: "", area: "", address: "", phone: "", loginId: "" });
   const [editHospital, setEditHospital]   = useState<Hospital | null>(null);
   const [editForm, setEditForm]           = useState<EditHospitalForm>({ name: "", area: "", address: "", phone: "" });
+  const [loginDialogHospital, setLoginDialogHospital] = useState<Hospital | null>(null);
+  const [loginInfo, setLoginInfo] = useState<{ loginId: string | null; hasAdminAccount: boolean; firstLogin: boolean } | null>(null);
+  const [loginInfoLoading, setLoginInfoLoading] = useState(false);
+  const [newLoginIdInput, setNewLoginIdInput] = useState("");
+  const [resetting, setResetting] = useState(false);
 
   function getDoctorCount(id: string) {
     return doctors.filter(d => d.hospitalId === id).length;
@@ -49,14 +55,55 @@ export default function AdminHospitals() {
   // ── Add hospital ────────────────────────────────────────────────────────────
   async function handleAdd() {
     if (!form.name || !form.area) { toast.error("Name and location are required"); return; }
-    await addHospital({
-      id: `h_${Date.now()}`, name: form.name, area: form.area,
-      address: form.address, phone: form.phone,
-      doctorCount: 0, rating: 4.0, gradient: "from-slate-400 to-slate-600",
-    } as any);
-    toast.success(`Hospital "${form.name}" added`);
-    setForm({ name: "", area: "", address: "", phone: "" });
+    try {
+      await addHospital({
+        id: `h_${Date.now()}`, name: form.name, area: form.area,
+        address: form.address, phone: form.phone,
+        loginId: form.loginId.trim() || undefined,
+        doctorCount: 0, rating: 4.0, gradient: "from-slate-400 to-slate-600",
+      } as any);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to add hospital");
+      return;
+    }
+    toast.success(
+      form.loginId.trim()
+        ? `Hospital "${form.name}" added — share login ID "${form.loginId.trim()}" with their staff`
+        : `Hospital "${form.name}" added`
+    );
+    setForm({ name: "", area: "", address: "", phone: "", loginId: "" });
     setAddOpen(false);
+  }
+
+  // ── Hospital admin login (view / create / reset) ────────────────────────────
+  async function openLoginDialog(hospital: Hospital) {
+    setLoginDialogHospital(hospital);
+    setLoginInfo(null);
+    setNewLoginIdInput("");
+    setLoginInfoLoading(true);
+    try {
+      const info = await api.hospitals.getAdminInfo(hospital.id);
+      setLoginInfo(info);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to load login info");
+    } finally {
+      setLoginInfoLoading(false);
+    }
+  }
+
+  async function handleResetLogin() {
+    if (!loginDialogHospital) return;
+    setResetting(true);
+    try {
+      const res = await api.hospitals.resetLogin(loginDialogHospital.id, newLoginIdInput.trim() || undefined);
+      setLoginInfo({ loginId: res.loginId, hasAdminAccount: res.hasAdminAccount, firstLogin: true });
+      setNewLoginIdInput("");
+      toast.success("Hospital staff will need to set a new password on next login");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to reset login");
+    } finally {
+      setResetting(false);
+    }
   }
 
   // ── Delete hospital ─────────────────────────────────────────────────────────
@@ -183,6 +230,15 @@ export default function AdminHospitals() {
                     data-ocid="admin.input" />
                 </div>
               ))}
+              <div className="space-y-1.5">
+                <Label>Hospital Staff Login ID (optional)</Label>
+                <Input placeholder="e.g. apollo-chennai" value={form.loginId}
+                  onChange={e => setForm(f => ({ ...f, loginId: e.target.value }))}
+                  data-ocid="admin.input" />
+                <p className="text-xs text-muted-foreground">
+                  If set, this hospital's staff can log in and manage their own doctors. You can also add this later.
+                </p>
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setAddOpen(false)} data-ocid="admin.cancel_button">Cancel</Button>
@@ -273,6 +329,10 @@ export default function AdminHospitals() {
                   <div className="flex items-center gap-2 justify-end">
                     <Button variant="ghost" size="sm" onClick={() => openEditHospital(hospital)} data-ocid="admin.edit_button">
                       <Edit2 className="w-4 h-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => openLoginDialog(hospital)} data-ocid="admin.button">
+                      <KeyRound className="w-4 h-4 mr-1" />
+                      Login
                     </Button>
                     <Button variant="ghost" size="sm" onClick={() => openPhotoDialog(hospital)} data-ocid="admin.button">
                       <ImageIcon className="w-4 h-4 mr-1" />
@@ -410,6 +470,59 @@ export default function AdminHospitals() {
                   ? <><CheckCircle2 className="w-4 h-4 mr-2" />Saved!</>
                   : "Save Photo"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Hospital Staff Login Dialog */}
+      <Dialog open={!!loginDialogHospital} onOpenChange={open => { if (!open) { setLoginDialogHospital(null); setLoginInfo(null); setNewLoginIdInput(""); } }}>
+        <DialogContent data-ocid="admin.dialog">
+          <DialogHeader><DialogTitle>Staff Login: {loginDialogHospital?.name}</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            {loginInfoLoading ? (
+              <div className="flex items-center justify-center py-8 text-muted-foreground">
+                <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading...
+              </div>
+            ) : loginInfo?.loginId ? (
+              <div className="space-y-3">
+                <div className="rounded-xl border border-teal-200 bg-teal-50 p-3">
+                  <p className="text-xs font-semibold text-teal-600 mb-1">Login ID</p>
+                  <code className="text-sm font-bold text-teal-700">{loginInfo.loginId}</code>
+                  <p className="text-xs text-teal-700 mt-2">
+                    {loginInfo.firstLogin
+                      ? "This hospital hasn't set a password yet — share this login ID with them; they'll set their own password on first login."
+                      : "This hospital's staff have already set their password."}
+                  </p>
+                </div>
+                <div className="space-y-1.5 pt-2 border-t border-border">
+                  <Label>Reset login (forces a new password to be set)</Label>
+                  <Input placeholder="New login ID (optional — leave blank to keep current)"
+                    value={newLoginIdInput} onChange={e => setNewLoginIdInput(e.target.value)} />
+                  <Button variant="outline" size="sm" className="mt-1" onClick={handleResetLogin} disabled={resetting}>
+                    {resetting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                    Reset Login
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  No staff login set up for this hospital yet. Create one below.
+                </p>
+                <div className="space-y-1.5">
+                  <Label>Login ID</Label>
+                  <Input placeholder="e.g. apollo-chennai" value={newLoginIdInput}
+                    onChange={e => setNewLoginIdInput(e.target.value)} />
+                </div>
+                <Button onClick={handleResetLogin} disabled={resetting || !newLoginIdInput.trim()}>
+                  {resetting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                  Create Login
+                </Button>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLoginDialogHospital(null)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
