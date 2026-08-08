@@ -34,26 +34,21 @@ export default function HAPatients() {
   const hospitalId =
     user?.role === "hospital_admin" ? user.hospitalId : "";
 
-  // DEBUG — remove after fix
-  console.log("[HAPatients] user:", JSON.stringify(user));
-  console.log("[HAPatients] hospitalId:", hospitalId);
-  console.log("[HAPatients] total bookings:", bookings.length);
-  console.log("[HAPatients] myDoctorIds will be computed from", doctors.length, "doctors");
-
-  const [search, setSearch] = useState("");
-  const [dateFilter, setDateFilter] = useState<"today" | "week">("today");
-  const [exporting, setExporting] = useState(false);
+  const [search, setSearch]         = useState("");
+  const [dateFilter, setDateFilter] = useState<"today" | "week">("week");
+  const [exporting, setExporting]   = useState(false);
 
   const myDoctorIds = useMemo(
-    () =>
-      new Set(
-        doctors.filter((d) => d.hospitalId === hospitalId).map((d) => d.id)
-      ),
+    () => new Set(doctors.filter((d) => d.hospitalId === hospitalId).map((d) => d.id)),
     [doctors, hospitalId]
   );
 
-  const from = dateFilter === "today" ? todayStr() : weekStartStr();
-  const to   = todayStr();
+  const { from, to } = useMemo(() => {
+    const t = todayStr();
+    return dateFilter === "today"
+      ? { from: t, to: t }
+      : { from: weekStartStr(), to: t };
+  }, [dateFilter]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -89,14 +84,8 @@ export default function HAPatients() {
         },
         body: JSON.stringify({ from, to }),
       });
-      if (res.status === 404) {
-        alert("No patient records found for this period.");
-        return;
-      }
-      if (!res.ok) {
-        alert("Export failed. Please try again.");
-        return;
-      }
+      if (res.status === 404) { alert("No patient records found for this period."); return; }
+      if (!res.ok) { alert("Export failed. Please try again."); return; }
       const blob = await res.blob();
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement("a");
@@ -183,29 +172,20 @@ export default function HAPatients() {
           <TableBody>
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell
-                  colSpan={7}
-                  className="text-center text-muted-foreground py-16"
-                >
-                  {search
-                    ? "No results match your search."
-                    : "No patient bookings for this period."}
+                <TableCell colSpan={7} className="text-center text-muted-foreground py-16">
+                  {search ? "No results match your search." : "No patient bookings for this period."}
                 </TableCell>
               </TableRow>
             )}
             {filtered.map((b) => (
               <TableRow key={b.id}>
                 <TableCell className="text-center">
-                  <span className="text-xl font-bold text-teal-600">
-                    #{b.tokenNumber}
-                  </span>
+                  <span className="text-xl font-bold text-teal-600">#{b.tokenNumber}</span>
                 </TableCell>
                 <TableCell>
                   <p className="font-medium">{b.patientName || "—"}</p>
                   {b.patientAge != null && (
-                    <p className="text-xs text-muted-foreground">
-                      {b.patientAge} yrs
-                    </p>
+                    <p className="text-xs text-muted-foreground">{b.patientAge} yrs</p>
                   )}
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
