@@ -147,6 +147,17 @@ export default function HADoctors() {
     setEditDoctor(null);
   }
 
+  async function handleSaveCode() {
+    if (!editDoctor) return;
+    if (!editForm.code) {
+      toast.error("Login code cannot be empty");
+      return;
+    }
+    await updateDoctor(editDoctor.id, { code: editForm.code.toUpperCase() });
+    toast.success("Login code saved");
+    setEditDoctor(null);
+  }
+
   function handleToggleAvailability(doc: Doctor) {
     updateDoctor(doc.id, { isAvailable: !(doc.isAvailable ?? true) });
   }
