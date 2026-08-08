@@ -1,6 +1,10 @@
 // ============================================================
 // FILE: src/frontend/src/pages/patient/HospitalsPage.tsx
 // REPLACE: entire file
+// Base: your existing HospitalsPage code (Tailwind + motion/react
+//       + shadcn Input + camelCase hospital props)
+// Change: added map pin button in top-right of each card photo
+//         that opens HospitalMapModal
 // ============================================================
 
 import { Input }  from "@/components/ui/input";
@@ -87,6 +91,39 @@ export default function HospitalsPage({ city }: { city?: string }) {
           />
         </div>
       </div>
+
+      {/* Available Cities — same style as landing page, lets you narrow down right here */}
+      {!city && (() => {
+        const cityCounts = new Map<string, number>();
+        for (const h of hospitals) {
+          const c = (h.area || "").trim();
+          if (!c) continue;
+          cityCounts.set(c, (cityCounts.get(c) ?? 0) + 1);
+        }
+        const cityList = Array.from(cityCounts.keys()).sort((a, b) => a.localeCompare(b));
+        if (cityList.length === 0) return null;
+        return (
+          <div className="mb-6">
+            <h2 className="text-sm font-semibold text-gray-500 mb-3 tracking-wide uppercase">
+              Available Cities
+            </h2>
+            <div className="flex flex-wrap gap-2.5">
+              {cityList.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => navigate({ path: "/patient/hospitals", city: c })}
+                  className="flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                  data-ocid={`hospitals.city_chip.${c}`}
+                >
+                  <MapPin className="w-3.5 h-3.5 text-gray-400" />
+                  {c}
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Empty state */}
       {filtered.length === 0 ? (
