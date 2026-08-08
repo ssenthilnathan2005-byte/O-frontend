@@ -29,13 +29,19 @@ function weekStartStr() {
   return d.toISOString().slice(0, 10);
 }
 
+function weekEndStr() {
+  const d = new Date();
+  d.setDate(d.getDate() + 6);
+  return d.toISOString().slice(0, 10);
+}
+
 export default function HAPatients() {
   const { bookings, doctors, user } = useStore();
   const hospitalId =
     user?.role === "hospital_admin" ? user.hospitalId : "";
 
   const [search, setSearch]         = useState("");
-  const [dateFilter, setDateFilter] = useState<"today" | "week">("week");
+  const [dateFilter, setDateFilter] = useState<"all" | "today" | "week">("all");
   const [exporting, setExporting]   = useState(false);
 
   const myDoctorIds = useMemo(
@@ -44,32 +50,36 @@ export default function HAPatients() {
   );
 
   const { from, to } = useMemo(() => {
-    const t = todayStr();
-    return dateFilter === "today"
-      ? { from: t, to: t }
-      : { from: weekStartStr(), to: t };
+    if (dateFilter === "today") return { from: todayStr(), to: todayStr() };
+    if (dateFilter === "week")  return { from: weekStartStr(), to: weekEndStr() };
+    return { from: "", to: "" };
   }, [dateFilter]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return bookings
-      .filter(
-        (b) =>
-          myDoctorIds.has(b.doctorId) &&
-          b.status !== "cancelled" &&
-          b.date >= from &&
-          b.date <= to &&
-          (q === "" ||
-            b.patientName?.toLowerCase().includes(q) ||
-            b.doctorName?.toLowerCase().includes(q) ||
-            b.phone?.includes(q) ||
-            String(b.tokenNumber).includes(q))
-      )
+      .filter((b) => {
+        if (!myDoctorIds.has(b.doctorId)) return false;
+        if (b.status === "cancelled") return false;
+        if (from && b.date < from) return false;
+        if (to   && b.date > to)   return false;
+        if (q && !(
+          b.patientName?.toLowerCase().includes(q) ||
+          b.doctorName?.toLowerCase().includes(q) ||
+          b.phone?.includes(q) ||
+          String(b.tokenNumber).includes(q)
+        )) return false;
+        return true;
+      })
       .sort((a, b) => {
         if (b.date !== a.date) return b.date.localeCompare(a.date);
         return b.tokenNumber - a.tokenNumber;
       });
   }, [bookings, myDoctorIds, from, to, search]);
+
+  // export uses same from/to but falls back to ±7 days if "all"
+  const exportFrom = from || weekStartStr();
+  const exportTo   = to   || weekEndStr();
 
   async function handleExport() {
     setExporting(true);
@@ -82,7 +92,7 @@ export default function HAPatients() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ from, to }),
+        body: JSON.stringify({ from: exportFrom, to: exportTo }),
       });
       if (res.status === 404) { alert("No patient records found for this period."); return; }
       if (!res.ok) { alert("Export failed. Please try again."); return; }
@@ -90,7 +100,7 @@ export default function HAPatients() {
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement("a");
       a.href     = url;
-      a.download = `patients_${from}_to_${to}.xlsx`;
+      a.download = `patients_${exportFrom}_to_${exportTo}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
     } finally {
@@ -105,7 +115,7 @@ export default function HAPatients() {
           <div>
             <h1 className="text-2xl font-bold">Live Patients</h1>
             <p className="text-muted-foreground mt-1">
-              {filtered.length} record{filtered.length !== 1 ? "s" : ""} for selected period
+              {filtered.length} record{filtered.length !== 1 ? "s" : ""} shown
             </p>
           </div>
           <div className="relative w-64">
@@ -123,8 +133,19 @@ export default function HAPatients() {
           <div className="flex rounded-lg border border-border overflow-hidden">
             <button
               type="button"
-              onClick={() => setDateFilter("today")}
+              onClick={() => setDateFilter("all")}
               className={`px-4 py-2 text-sm font-medium transition-colors ${
+                dateFilter === "all"
+                  ? "bg-teal-600 text-white"
+                  : "bg-background text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              onClick={() => setDateFilter("today")}
+              className={`px-4 py-2 text-sm font-medium border-l border-border transition-colors ${
                 dateFilter === "today"
                   ? "bg-teal-600 text-white"
                   : "bg-background text-muted-foreground hover:bg-muted"
@@ -173,7 +194,7 @@ export default function HAPatients() {
             {filtered.length === 0 && (
               <TableRow>
                 <TableCell colSpan={7} className="text-center text-muted-foreground py-16">
-                  {search ? "No results match your search." : "No patient bookings for this period."}
+                  {search ? "No results match your search." : "No patient bookings found."}
                 </TableCell>
               </TableRow>
             )}
