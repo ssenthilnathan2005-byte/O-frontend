@@ -1,10 +1,6 @@
 // ============================================================
 // FILE: src/frontend/src/pages/patient/HospitalsPage.tsx
 // REPLACE: entire file
-// Base: your existing HospitalsPage code (Tailwind + motion/react
-//       + shadcn Input + camelCase hospital props)
-// Change: now accepts an optional `city` prop to scope the list to
-//         hospitals in that city, with a breadcrumb back to Cities.
 // ============================================================
 
 import { Input }  from "@/components/ui/input";
@@ -26,7 +22,7 @@ function resolvePhotoUrl(url: string | null | undefined): string | null {
 
 export default function HospitalsPage({ city }: { city?: string }) {
   const [search, setSearch] = useState("");
-  const { navigate }        = useRouter();
+  const { navigate, goBack }        = useRouter();
   const { hospitals, doctors } = useStore();
 
   // Which hospital's map modal is open (null = none)
@@ -55,16 +51,16 @@ export default function HospitalsPage({ city }: { city?: string }) {
         />
       )}
 
-      {/* Breadcrumb back to city selection */}
+      {/* Breadcrumb back — only shown when arriving here scoped to a city */}
       {city && (
         <button
           type="button"
-          onClick={() => navigate({ path: "/patient/cities" })}
+          onClick={goBack}
           className="flex items-center gap-1 text-sm text-gray-500 hover:text-teal-600 transition-colors mb-4"
-          data-ocid="hospitals.back_to_cities"
+          data-ocid="hospitals.back_button"
         >
           <ChevronLeft className="w-4 h-4" />
-          All cities
+          Back
         </button>
       )}
 

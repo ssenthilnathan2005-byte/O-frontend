@@ -12,7 +12,6 @@ type Route =
       tab?: "patient" | "doctor";
       patientMode?: "login" | "signup";
     }
-  | { path: "/patient/cities" }
   | { path: "/patient/hospitals"; city?: string }
   | { path: "/patient/hospital"; id: string }
   | { path: "/patient/tokens" }
@@ -57,7 +56,6 @@ function getInitialRoute(): Route {
     };
   }
 
-  if (pathname === "/patient/cities") return { path: "/patient/cities" };
   if (pathname === "/patient/hospitals") return { path: "/patient/hospitals", city };
   if (pathname === "/patient/hospital") return { path: "/patient/hospital", id: hospitalId };
   if (pathname === "/patient/tokens") return { path: "/patient/tokens" };

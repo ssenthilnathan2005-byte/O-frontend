@@ -8,7 +8,6 @@ import TermsPage from "./pages/TermsPage";
 import LoginPage from "./pages/LoginPage";
 import AdminPanel from "./pages/admin/AdminPanel";
 import DoctorDashboard from "./pages/doctor/DoctorDashboard";
-import CitiesPage from "./pages/patient/CitiesPage";
 import HospitalDoctorsPage from "./pages/patient/HospitalDoctorsPage";
 import HospitalsPage from "./pages/patient/HospitalsPage";
 import MyTokensPage from "./pages/patient/MyTokensPage";
@@ -50,8 +49,8 @@ function LandingPage() {
           </div>
 
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-700">
-            <button onClick={() => navigate({ path: "/patient/cities" })} className="hover:text-teal-600 transition-colors">Find Hospitals</button>
-            <button onClick={() => navigate({ path: "/patient/cities" })} className="hover:text-teal-600 transition-colors">Find Doctors</button>
+            <button onClick={() => navigate({ path: "/patient/hospitals" })} className="hover:text-teal-600 transition-colors">Find Hospitals</button>
+            <button onClick={() => navigate({ path: "/patient/hospitals" })} className="hover:text-teal-600 transition-colors">Find Doctors</button>
           </nav>
 
           <button
@@ -66,7 +65,7 @@ function LandingPage() {
 
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-6">
         {/* Banner Carousel */}
-        <div className="relative w-full h-[240px] sm:h-[320px] rounded-2xl overflow-hidden mb-8 group cursor-pointer" onClick={() => navigate({ path: "/patient/cities" })}>
+        <div className="relative w-full h-[240px] sm:h-[320px] rounded-2xl overflow-hidden mb-8 group cursor-pointer" onClick={() => navigate({ path: "/patient/hospitals" })}>
           <div className="absolute inset-0 bg-gradient-to-r from-gray-900 to-gray-700 flex items-center p-8 sm:p-16">
              <div className="max-w-xl text-white relative z-10">
                <h2 className="text-3xl sm:text-5xl font-bold mb-4 leading-tight">Save Time on Your<br/><span className="text-teal-400">Doctor Visits</span></h2>
@@ -84,7 +83,7 @@ function LandingPage() {
             { title: "Find Hospitals", sub: "TOP CLINICS", icon: "🏥", bg: "bg-teal-50", text: "text-teal-900" },
             { title: "Doctor Appointment", sub: "BOOK NOW", icon: "👨‍⚕️", bg: "bg-orange-50", text: "text-orange-900" },
           ].map((card, i) => (
-            <div key={i} onClick={() => navigate({ path: "/patient/cities" })} className={`${card.bg} rounded-xl p-4 flex items-center justify-between cursor-pointer hover:shadow-md transition-shadow`}>
+            <div key={i} onClick={() => navigate({ path: "/patient/hospitals" })} className={`${card.bg} rounded-xl p-4 flex items-center justify-between cursor-pointer hover:shadow-md transition-shadow`}>
               <div className="flex items-center gap-3">
                 <span className="text-3xl">{card.icon}</span>
                 <div>
@@ -96,6 +95,39 @@ function LandingPage() {
             </div>
           ))}
         </div>
+
+        {/* Available Cities — small chips, click to jump straight to that city's hospitals */}
+        {(() => {
+          const cityCounts = new Map<string, number>();
+          for (const h of hospitals) {
+            const c = (h.area || "").trim();
+            if (!c) continue;
+            cityCounts.set(c, (cityCounts.get(c) ?? 0) + 1);
+          }
+          const cityList = Array.from(cityCounts.keys()).sort((a, b) => a.localeCompare(b));
+          if (cityList.length === 0) return null;
+          return (
+            <div className="mb-10">
+              <h2 className="text-sm font-semibold text-gray-500 mb-3 tracking-wide uppercase">
+                Available Cities
+              </h2>
+              <div className="flex flex-wrap gap-2.5">
+                {cityList.map((city) => (
+                  <button
+                    key={city}
+                    type="button"
+                    onClick={() => navigate({ path: "/patient/hospitals", city })}
+                    className="flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                    data-ocid={`landing.city_chip.${city}`}
+                  >
+                    <MapPin className="w-3.5 h-3.5 text-gray-400" />
+                    {city}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Hospitals List */}
         <div>
@@ -143,7 +175,6 @@ function AppRoutes() {
     if (!user) {
       if (route.path === "/") return <LandingPage />;
       if (route.path === "/terms") return <TermsPage />;
-      if (route.path === "/patient/cities") return <CitiesPage />;
       if (route.path === "/patient/hospitals") return <HospitalsPage city={(route as { city?: string }).city} />;
       if (route.path === "/patient/hospital") return <HospitalDoctorsPage id={(route as { id: string }).id} />;
       if (route.path === "/login") {
@@ -167,7 +198,6 @@ function AppRoutes() {
     }
     if (user.role === "admin") return <AdminPanel />;
     if (user.role === "doctor") return <DoctorDashboard />;
-    if (route.path === "/patient/cities") return <CitiesPage />;
     if (route.path === "/patient/hospitals") return <HospitalsPage city={(route as { city?: string }).city} />;
     if (route.path === "/patient/hospital")
       return <HospitalDoctorsPage id={(route as { id: string }).id} />;
@@ -180,8 +210,7 @@ function AppRoutes() {
         </ErrorBoundary>
       );
     }
-    // Default landing spot once a patient is signed in
-    return <CitiesPage />;
+    return <HospitalsPage />;
   }
 
   const isAdmin = user?.role === "admin";
