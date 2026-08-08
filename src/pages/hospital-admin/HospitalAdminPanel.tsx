@@ -1,11 +1,13 @@
-import { Building2, LogOut, Menu, UserCog, X } from "lucide-react";
+import { Building2, LogOut, Menu, UserCog, Users2, X } from "lucide-react";
 import { useState } from "react";
 import { useStore } from "../../context/StoreContext";
 import { useRouter } from "../../router/RouterContext";
 import HADoctors from "./HADoctors";
+import HAPatients from "./HAPatients";
 
 const NAV_ITEMS = [
   { path: "/hospital-admin/doctors", label: "Doctors", icon: UserCog },
+  { path: "/hospital-admin/patients", label: "Live Patients", icon: Users2 },
 ] as const;
 
 export default function HospitalAdminPanel() {
@@ -16,8 +18,7 @@ export default function HospitalAdminPanel() {
   const hospitalName = user && user.role === "hospital_admin" ? user.hospitalName : "Hospital Admin";
 
   function renderContent() {
-    // Only one section for now — doctor management. Bookings/analytics can
-    // slot in here later using the same NAV_ITEMS + switch pattern.
+    if (route.path === "/hospital-admin/patients") return <HAPatients />;
     return <HADoctors />;
   }
 
@@ -41,7 +42,7 @@ export default function HospitalAdminPanel() {
 
         <nav className="flex-1 px-3 py-4 space-y-1">
           {NAV_ITEMS.map(({ path, label, icon: Icon }) => {
-            const isActive = route.path === path || route.path === "/hospital-admin";
+            const isActive = route.path === path || (route.path === "/hospital-admin" && path === "/hospital-admin/doctors");
             return (
               <button
                 key={path}
