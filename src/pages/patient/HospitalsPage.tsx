@@ -136,7 +136,7 @@ export default function HospitalsPage({ city }: { city?: string }) {
           <Search className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p className="text-lg font-medium">No hospitals found</p>
           <p className="text-sm">
-            {isNearMeActive ? "No hospitals found within 20 km of your location" : city ? "Try a different search, or go back and pick another city" : "Try a different name or area"}
+            {isNearMeActive ? "No hospitals found within 20 km of your location" : city ? "No hospitals are currently available in this area. Try a nearby city or search by name." : "Try a different name or area"}
           </p>
         </div>
       ) : (
