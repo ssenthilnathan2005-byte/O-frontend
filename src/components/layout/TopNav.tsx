@@ -57,7 +57,7 @@ export default function TopNav() {
           type="button"
           className="flex items-center gap-1.5 shrink-0"
           onClick={() =>
-            navigate(isDoctor ? { path: "/doctor" } : { path: "/patient/hospitals" })
+            navigate(isDoctor ? { path: "/doctor" } : { path: "/patient/cities" })
           }
           data-ocid="nav.link"
         >
@@ -78,8 +78,8 @@ export default function TopNav() {
             <Button
               variant="ghost"
               size="sm"
-              className={`text-sm gap-1.5 ${route.path === "/patient/hospitals" ? "text-teal-600 bg-teal-50" : "text-gray-600"}`}
-              onClick={() => navigate({ path: "/patient/hospitals" })}
+              className={`text-sm gap-1.5 ${route.path === "/patient/cities" || route.path === "/patient/hospitals" || route.path === "/patient/hospital" ? "text-teal-600 bg-teal-50" : "text-gray-600"}`}
+              onClick={() => navigate({ path: "/patient/cities" })}
               data-ocid="nav.link"
             >
               <Hospital className="w-4 h-4" /> Hospitals

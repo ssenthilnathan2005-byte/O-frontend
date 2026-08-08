@@ -3,12 +3,12 @@
 // REPLACE: entire file
 // Base: your existing HospitalsPage code (Tailwind + motion/react
 //       + shadcn Input + camelCase hospital props)
-// Change: added map pin button in top-right of each card photo
-//         that opens HospitalMapModal
+// Change: now accepts an optional `city` prop to scope the list to
+//         hospitals in that city, with a breadcrumb back to Cities.
 // ============================================================
 
 import { Input }  from "@/components/ui/input";
-import { MapPin, Search, Users } from "lucide-react";
+import { ChevronLeft, MapPin, Search, Users } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { useStore }  from "../../context/StoreContext";
@@ -24,7 +24,7 @@ function resolvePhotoUrl(url: string | null | undefined): string | null {
   return base ? `${base}${url}` : url;
 }
 
-export default function HospitalsPage() {
+export default function HospitalsPage({ city }: { city?: string }) {
   const [search, setSearch] = useState("");
   const { navigate }        = useRouter();
   const { hospitals, doctors } = useStore();
@@ -32,7 +32,9 @@ export default function HospitalsPage() {
   // Which hospital's map modal is open (null = none)
   const [mapHospital, setMapHospital] = useState<(typeof hospitals)[0] | null>(null);
 
-  const filtered = hospitals.filter(
+  const cityScoped = city ? hospitals.filter((h) => h.area === city) : hospitals;
+
+  const filtered = cityScoped.filter(
     (h) =>
       h.name.toLowerCase().includes(search.toLowerCase()) ||
       h.area.toLowerCase().includes(search.toLowerCase()),
@@ -53,12 +55,29 @@ export default function HospitalsPage() {
         />
       )}
 
+      {/* Breadcrumb back to city selection */}
+      {city && (
+        <button
+          type="button"
+          onClick={() => navigate({ path: "/patient/cities" })}
+          className="flex items-center gap-1 text-sm text-gray-500 hover:text-teal-600 transition-colors mb-4"
+          data-ocid="hospitals.back_to_cities"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          All cities
+        </button>
+      )}
+
       {/* Header + search */}
       <div className="bg-teal-50 rounded-2xl p-6 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Find a Hospital</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {city ? `Hospitals in ${city}` : "Find a Hospital"}
+          </h1>
           <p className="text-gray-500 text-sm mt-1">
-            Search and book appointments at top hospitals near you
+            {city
+              ? `${cityScoped.length} hospital${cityScoped.length === 1 ? "" : "s"} available for booking`
+              : "Search and book appointments at top hospitals near you"}
           </p>
         </div>
         <div className="relative w-full sm:w-72">
@@ -78,7 +97,9 @@ export default function HospitalsPage() {
         <div className="text-center py-16 text-gray-400" data-ocid="hospitals.empty_state">
           <Search className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p className="text-lg font-medium">No hospitals found</p>
-          <p className="text-sm">Try a different name or area</p>
+          <p className="text-sm">
+            {city ? `Try a different search, or go back and pick another city` : "Try a different name or area"}
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
