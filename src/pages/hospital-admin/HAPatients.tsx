@@ -187,6 +187,7 @@ export default function HAPatients() {
               <TableHead>Doctor</TableHead>
               <TableHead>Session</TableHead>
               <TableHead>Date</TableHead>
+              <TableHead>Complaint</TableHead>
               <TableHead className="text-center">Status</TableHead>
             </TableRow>
           </TableHeader>
@@ -220,6 +221,11 @@ export default function HAPatients() {
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
                   {b.date}
+                </TableCell>
+                <TableCell className="max-w-[180px]">
+                  <p className="text-xs text-muted-foreground italic truncate">
+                    {b.complaint || "—"}
+                  </p>
                 </TableCell>
                 <TableCell className="text-center">
                   <Badge

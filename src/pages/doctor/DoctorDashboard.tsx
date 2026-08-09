@@ -1199,7 +1199,7 @@ export default function DoctorDashboard() {
                           {b.phone}
                         </p>
                         <p className="text-xs text-gray-400 mt-0.5">{b.session} · {b.date}</p>
-                        {b.complaint && <p className="text-xs text-gray-500 mt-0.5 italic">"{b.complaint}"</p>}
+                        {b.complaint && <p className="text-xs text-gray-500 mt-0.5 italic line-clamp-2">📋 {b.complaint}</p>}
                       </div>
                       <div className="flex items-baseline gap-0.5 shrink-0 ml-3">
                         <span className="text-base font-bold text-teal-500">#</span>
