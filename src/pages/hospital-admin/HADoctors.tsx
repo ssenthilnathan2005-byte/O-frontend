@@ -61,6 +61,21 @@ const EMPTY_ADD: AddForm = {
   name: "", phone: "", specialty: "", tokensPerSession: "20", sessions: "morning,afternoon",
 };
 
+const SPECIALTIES = [
+  "General Practitioner (GP)", "Internist", "Pediatrician / Child Specialist",
+  "Geriatrician", "Family Physician", "Cardiologist", "Cardiac Surgeon",
+  "Vascular Surgeon", "Neurologist", "Neurosurgeon", "Psychiatrist",
+  "Addiction Medicine Specialist", "Pulmonologist", "Gastroenterologist",
+  "Hepatologist", "Endocrinologist / Diabetologist", "Nephrologist",
+  "Urologist", "Gynecologist / Obstetrician", "Orthopedic Surgeon",
+  "Dermatologist", "Ophthalmologist", "ENT Specialist", "Dentist / Oral Surgeon",
+  "Rheumatologist", "Oncologist", "Hematologist", "Allergist / Immunologist",
+  "Physiotherapist / Rehabilitation", "Pain Management Specialist",
+  "Infectious Disease Specialist", "Sleep Medicine Physician", "Neonatologist",
+  "Radiologist", "Pathologist", "General Surgeon", "Plastic Surgeon",
+  "Pediatric Surgeon", "Colorectal Surgeon", "Thoracic Surgeon",
+];
+
 export default function HADoctors() {
   const { doctors, user, addDoctor, deleteDoctor, updateDoctor } = useStore();
   const hospitalId = user && user.role === "hospital_admin" ? user.hospitalId : "";
@@ -68,6 +83,10 @@ export default function HADoctors() {
 
   const [addOpen, setAddOpen] = useState(false);
   const [editDoctor, setEditDoctor] = useState<Doctor | null>(null);
+  const [addSpecialtySearch, setAddSpecialtySearch] = useState("");
+  const [addSpecialtyOpen, setAddSpecialtyOpen] = useState(false);
+  const [editSpecialtySearch, setEditSpecialtySearch] = useState("");
+  const [editSpecialtyOpen, setEditSpecialtyOpen] = useState(false);
   const [addForm, setAddForm] = useState<AddForm>(EMPTY_ADD);
   const [editForm, setEditForm] = useState<EditForm>({
     name: "", phone: "", specialty: "", tokensPerSession: "20",
@@ -343,7 +362,31 @@ export default function HADoctors() {
             </div>
             <div className="space-y-1.5">
               <Label>Specialty</Label>
-              <Input value={editForm.specialty} onChange={(e) => setEditForm((f) => ({ ...f, specialty: e.target.value }))} />
+              <div className="relative">
+                <Input
+                  placeholder="Search or type specialty..."
+                  value={editSpecialtySearch || editForm.specialty}
+                  onFocus={() => { setEditSpecialtyOpen(true); setEditSpecialtySearch(""); }}
+                  onChange={(e) => { setEditSpecialtySearch(e.target.value); setEditForm((f) => ({ ...f, specialty: e.target.value })); setEditSpecialtyOpen(true); }}
+                  onBlur={() => setTimeout(() => setEditSpecialtyOpen(false), 150)}
+                />
+                {editSpecialtyOpen && (
+                  <div className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto rounded-md border border-border bg-popover shadow-md">
+                    {SPECIALTIES.filter((s) => s.toLowerCase().includes((editSpecialtySearch || editForm.specialty).toLowerCase())).map((s) => (
+                      <button
+                        key={s} type="button"
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors"
+                        onMouseDown={() => { setEditForm((f) => ({ ...f, specialty: s })); setEditSpecialtySearch(""); setEditSpecialtyOpen(false); }}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                    {SPECIALTIES.filter((s) => s.toLowerCase().includes((editSpecialtySearch || editForm.specialty).toLowerCase())).length === 0 && (
+                      <p className="px-3 py-2 text-sm text-muted-foreground">No match — will use as typed</p>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="space-y-1.5">
               <Label>Tokens per Session</Label>
