@@ -65,11 +65,30 @@ type EditForm = {
   code?: string;
 };
 
+const SPECIALTIES = [
+  "General Practitioner (GP)", "Internist", "Pediatrician / Child Specialist",
+  "Geriatrician", "Family Physician", "Cardiologist", "Cardiac Surgeon",
+  "Vascular Surgeon", "Neurologist", "Neurosurgeon", "Psychiatrist",
+  "Addiction Medicine Specialist", "Pulmonologist", "Gastroenterologist",
+  "Hepatologist", "Endocrinologist / Diabetologist", "Nephrologist",
+  "Urologist", "Gynecologist / Obstetrician", "Orthopedic Surgeon",
+  "Dermatologist", "Ophthalmologist", "ENT Specialist", "Dentist / Oral Surgeon",
+  "Rheumatologist", "Oncologist", "Hematologist", "Allergist / Immunologist",
+  "Physiotherapist / Rehabilitation", "Pain Management Specialist",
+  "Infectious Disease Specialist", "Sleep Medicine Physician", "Neonatologist",
+  "Radiologist", "Pathologist", "General Surgeon", "Plastic Surgeon",
+  "Pediatric Surgeon", "Colorectal Surgeon", "Thoracic Surgeon",
+];
+
 export default function AdminDoctors() {
   const { doctors, hospitals, addDoctor, deleteDoctor, updateDoctor } =
     useStore();
   const [addOpen, setAddOpen] = useState(false);
   const [editDoctor, setEditDoctor] = useState<Doctor | null>(null);
+  const [addSpSearch, setAddSpSearch] = useState("");
+  const [addSpOpen, setAddSpOpen] = useState(false);
+  const [editSpSearch, setEditSpSearch] = useState("");
+  const [editSpOpen, setEditSpOpen] = useState(false);
   const [addForm, setAddForm] = useState<AddForm>({
     name: "",
     phone: "",

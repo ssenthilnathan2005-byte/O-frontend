@@ -582,36 +582,26 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
                   );
                   return (
                     <div className="space-y-2">
-                      <p className="text-xs text-gray-400">{matched.label} — select all that apply</p>
-                      <div className="flex flex-wrap gap-2 max-h-44 overflow-y-auto pr-1">
-                        {matched.symptoms.map((s) => {
-                          const active = selectedSymptoms.includes(s);
-                          return (
-                            <button
-                              key={s}
-                              type="button"
-                              onClick={() =>
-                                setSelectedSymptoms((prev) =>
-                                  active ? prev.filter((x) => x !== s) : [...prev, s]
-                                )
-                              }
-                              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                                active
-                                  ? "bg-teal-500 text-white border-teal-500"
-                                  : "bg-white text-gray-600 border-gray-300 hover:border-teal-400"
-                              }`}
-                            >
-                              {s}
-                            </button>
-                          );
-                        })}
-                      </div>
+                      <p className="text-xs text-gray-400">{matched.label}</p>
+                      <select
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300 bg-white"
+                        value={selectedSymptoms[0] ?? ""}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setSelectedSymptoms(val ? [val] : []);
+                        }}
+                      >
+                        <option value="">— Select your main symptom —</option>
+                        {matched.symptoms.map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
                       <Textarea
                         rows={2}
                         placeholder="Any other details... (optional)"
                         value={complaint}
                         onChange={(e) => setComplaint(e.target.value)}
-                        className="resize-none text-sm mt-1"
+                        className="resize-none text-sm"
                         data-ocid="booking.textarea"
                       />
                     </div>
