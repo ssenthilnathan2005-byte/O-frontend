@@ -82,9 +82,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (u?.role === "patient") {
         import("../lib/push").then(({ registerServiceWorker, enablePushNotifications }) => {
           registerServiceWorker().then(() => {
-            if (Notification.permission === "granted") {
-              enablePushNotifications().catch(() => {});
-            }
+            enablePushNotifications().catch(() => {});
           });
         });
       }
