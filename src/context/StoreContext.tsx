@@ -193,8 +193,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setUser(u);
     // Auto-register push notifications for patients on login
     if (u.role === "patient") {
-      import("../lib/push").then(({ enablePushNotifications }) => {
-        enablePushNotifications().catch(() => {});
+      import("../lib/push").then(({ registerServiceWorker, enablePushNotifications }) => {
+        registerServiceWorker().then(() => {
+          enablePushNotifications().catch(() => {});
+        });
       });
     }
   }, []);
