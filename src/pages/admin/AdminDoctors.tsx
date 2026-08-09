@@ -63,6 +63,7 @@ type EditForm = {
   sessions: string;
   isAvailable: boolean;
   code?: string;
+  photo: string | null;
 };
 
 const SPECIALTIES = [
@@ -160,6 +161,7 @@ export default function AdminDoctors() {
       sessions: Array.isArray(doc.sessions) ? (doc.sessions as string[]).join(",") : (doc.sessions as any ?? "morning,afternoon"),
       isAvailable: doc.isAvailable ?? true,
       code: doc.code ?? "",
+      photo: doc.photo ?? null,
     });
   }
 
@@ -250,14 +252,30 @@ export default function AdminDoctors() {
               </div>
               <div className="space-y-1.5">
                 <Label>Specialty *</Label>
-                <Input
-                  placeholder="e.g. Cardiologist"
-                  value={addForm.specialty}
-                  onChange={(e) =>
-                    setAddForm((f) => ({ ...f, specialty: e.target.value }))
-                  }
-                  data-ocid="admin.input"
-                />
+                <div className="relative">
+                  <Input
+                    placeholder="Search specialty..."
+                    value={addSpSearch || addForm.specialty}
+                    onFocus={() => { setAddSpOpen(true); setAddSpSearch(""); }}
+                    onChange={(e) => { setAddSpSearch(e.target.value); setAddForm((f) => ({ ...f, specialty: e.target.value })); setAddSpOpen(true); }}
+                    onBlur={() => setTimeout(() => setAddSpOpen(false), 150)}
+                    data-ocid="admin.input"
+                  />
+                  {addSpOpen && (
+                    <div className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto rounded-md border border-border bg-popover shadow-md">
+                      {SPECIALTIES.filter((s) => s.toLowerCase().includes((addSpSearch || addForm.specialty).toLowerCase())).map((s) => (
+                        <button key={s} type="button"
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors"
+                          onMouseDown={() => { setAddForm((f) => ({ ...f, specialty: s })); setAddSpSearch(""); setAddSpOpen(false); }}>
+                          {s}
+                        </button>
+                      ))}
+                      {SPECIALTIES.filter((s) => s.toLowerCase().includes((addSpSearch || addForm.specialty).toLowerCase())).length === 0 && (
+                        <p className="px-3 py-2 text-sm text-muted-foreground">No match — will save as typed</p>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="space-y-1.5">
                 <Label>Hospital *</Label>
@@ -444,11 +462,30 @@ export default function AdminDoctors() {
               </div>
               <div className="space-y-1.5">
                 <Label>Specialty</Label>
-                <Input
-                  value={editForm.specialty}
-                  onChange={(e) => setEditForm((f) => ({ ...f, specialty: e.target.value }))}
-                  data-ocid="admin.input"
-                />
+                <div className="relative">
+                  <Input
+                    placeholder="Search specialty..."
+                    value={editSpSearch || editForm.specialty}
+                    onFocus={() => { setEditSpOpen(true); setEditSpSearch(""); }}
+                    onChange={(e) => { setEditSpSearch(e.target.value); setEditForm((f) => ({ ...f, specialty: e.target.value })); setEditSpOpen(true); }}
+                    onBlur={() => setTimeout(() => setEditSpOpen(false), 150)}
+                    data-ocid="admin.input"
+                  />
+                  {editSpOpen && (
+                    <div className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto rounded-md border border-border bg-popover shadow-md">
+                      {SPECIALTIES.filter((s) => s.toLowerCase().includes((editSpSearch || editForm.specialty).toLowerCase())).map((s) => (
+                        <button key={s} type="button"
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors"
+                          onMouseDown={() => { setEditForm((f) => ({ ...f, specialty: s })); setEditSpSearch(""); setEditSpOpen(false); }}>
+                          {s}
+                        </button>
+                      ))}
+                      {SPECIALTIES.filter((s) => s.toLowerCase().includes((editSpSearch || editForm.specialty).toLowerCase())).length === 0 && (
+                        <p className="px-3 py-2 text-sm text-muted-foreground">No match — will save as typed</p>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="space-y-1.5">
                 <Label>Hospital</Label>
@@ -490,6 +527,33 @@ export default function AdminDoctors() {
                   data-ocid="admin.switch"
                 />
                 <Label>Available for appointments</Label>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Doctor Photo</Label>
+                <div className="flex items-center gap-3">
+                  {editForm.photo && (
+                    <img src={editForm.photo} alt="preview" className="w-14 h-14 rounded-full object-cover border shrink-0" />
+                  )}
+                  <label className="cursor-pointer">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border border-input bg-background hover:bg-muted transition-colors">
+                      {editForm.photo ? "Change Photo" : "Upload Photo"}
+                    </span>
+                    <input type="file" accept="image/*" className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = () => setEditForm((f) => ({ ...f, photo: reader.result as string }));
+                        reader.readAsDataURL(file);
+                      }} />
+                  </label>
+                  {editForm.photo && (
+                    <button type="button" className="text-xs text-destructive hover:underline"
+                      onClick={() => setEditForm((f) => ({ ...f, photo: null }))}>
+                      Remove
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="space-y-1.5">
                 <Label>Login Code</Label>

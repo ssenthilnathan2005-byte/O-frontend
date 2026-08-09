@@ -302,6 +302,7 @@ export default function AdminBookings() {
                 <TableHead>Hospital</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Session</TableHead>
+                <TableHead>Complaint</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -316,6 +317,9 @@ export default function AdminBookings() {
                   <TableCell className="text-muted-foreground text-sm">{booking.hospitalName}</TableCell>
                   <TableCell className="text-sm">{booking.date}</TableCell>
                   <TableCell className="text-sm capitalize">{booking.session}</TableCell>
+                  <TableCell className="max-w-[180px]">
+                    <p className="text-xs text-muted-foreground italic truncate">{booking.complaint || "—"}</p>
+                  </TableCell>
                   <TableCell>
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       STATUS_COLORS[booking.status] ?? "bg-gray-100 text-gray-700"
