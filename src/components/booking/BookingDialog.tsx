@@ -583,19 +583,42 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
                   return (
                     <div className="space-y-2">
                       <p className="text-xs text-gray-400">{matched.label}</p>
-                      <select
-                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300 bg-white"
-                        value={selectedSymptoms[0] ?? ""}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setSelectedSymptoms(val ? [val] : []);
-                        }}
-                      >
-                        <option value="">— Select your main symptom —</option>
-                        {matched.symptoms.map((s) => (
-                          <option key={s} value={s}>{s}</option>
-                        ))}
-                      </select>
+                      <div className="border border-gray-200 rounded-lg overflow-hidden">
+                        <p className="text-xs text-gray-400 px-3 pt-2 pb-1">Select all that apply</p>
+                        <div className="max-h-40 overflow-y-auto px-2 pb-2 space-y-1">
+                          {matched.symptoms.map((s) => {
+                            const active = selectedSymptoms.includes(s);
+                            return (
+                              <button
+                                key={s}
+                                type="button"
+                                onClick={() =>
+                                  setSelectedSymptoms((prev) =>
+                                    active ? prev.filter((x) => x !== s) : [...prev, s]
+                                  )
+                                }
+                                className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center gap-2 ${
+                                  active
+                                    ? "bg-teal-50 text-teal-700 font-medium"
+                                    : "hover:bg-gray-50 text-gray-700"
+                                }`}
+                              >
+                                <span className={`w-4 h-4 shrink-0 rounded border flex items-center justify-center text-xs ${
+                                  active ? "bg-teal-500 border-teal-500 text-white" : "border-gray-300"
+                                }`}>
+                                  {active ? "✓" : ""}
+                                </span>
+                                {s}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {selectedSymptoms.length > 0 && (
+                          <div className="border-t border-gray-100 px-3 py-1.5 bg-gray-50">
+                            <p className="text-xs text-teal-600 font-medium">{selectedSymptoms.length} selected</p>
+                          </div>
+                        )}
+                      </div>
                       <Textarea
                         rows={2}
                         placeholder="Any other details... (optional)"
