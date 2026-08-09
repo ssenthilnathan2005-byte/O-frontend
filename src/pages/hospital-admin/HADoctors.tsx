@@ -83,6 +83,10 @@ export default function HADoctors() {
 
   const [addOpen, setAddOpen] = useState(false);
   const [editDoctor, setEditDoctor] = useState<Doctor | null>(null);
+  const [addSpSearch, setAddSpSearch] = useState("");
+  const [addSpOpen, setAddSpOpen] = useState(false);
+  const [editSpSearch, setEditSpSearch] = useState("");
+  const [editSpOpen, setEditSpOpen] = useState(false);
   const [addSpecialtySearch, setAddSpecialtySearch] = useState("");
   const [addSpecialtyOpen, setAddSpecialtyOpen] = useState(false);
   const [editSpecialtySearch, setEditSpecialtySearch] = useState("");
@@ -232,11 +236,29 @@ export default function HADoctors() {
               </div>
               <div className="space-y-1.5">
                 <Label>Specialty *</Label>
-                <Input
-                  placeholder="Cardiology"
-                  value={addForm.specialty}
-                  onChange={(e) => setAddForm((f) => ({ ...f, specialty: e.target.value }))}
-                />
+                <div className="relative">
+                  <Input
+                    placeholder="Search specialty..."
+                    value={addSpSearch || addForm.specialty}
+                    onFocus={() => { setAddSpOpen(true); setAddSpSearch(""); }}
+                    onChange={(e) => { setAddSpSearch(e.target.value); setAddForm((f) => ({ ...f, specialty: e.target.value })); setAddSpOpen(true); }}
+                    onBlur={() => setTimeout(() => setAddSpOpen(false), 150)}
+                  />
+                  {addSpOpen && (
+                    <div className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto rounded-md border border-border bg-popover shadow-md">
+                      {SPECIALTIES.filter((s) => s.toLowerCase().includes((addSpSearch || addForm.specialty).toLowerCase())).map((s) => (
+                        <button key={s} type="button"
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors"
+                          onMouseDown={() => { setAddForm((f) => ({ ...f, specialty: s })); setAddSpSearch(""); setAddSpOpen(false); }}>
+                          {s}
+                        </button>
+                      ))}
+                      {SPECIALTIES.filter((s) => s.toLowerCase().includes((addSpSearch || addForm.specialty).toLowerCase())).length === 0 && (
+                        <p className="px-3 py-2 text-sm text-muted-foreground">No match — will save as typed</p>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="space-y-1.5">
                 <Label>Tokens per Session</Label>
