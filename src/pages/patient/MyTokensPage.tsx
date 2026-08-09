@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Activity, Calendar, Clock, Hospital } from "lucide-react";
 import { motion } from "motion/react";
 import { useStore } from "../../context/StoreContext";
-import { hasSessionEnded, SESSION_TIMES } from "../../data/seed";
+import { hasSessionEnded, SESSION_TIMES , getSessionLabel} from "../../data/seed";
 import { useRouter } from "../../router/RouterContext";
 import type { SessionType } from "../../types";
 
@@ -170,7 +170,7 @@ export default function MyTokensPage() {
                             </span>
                             <span className="flex items-center gap-1">
                               <Clock className="w-3.5 h-3.5" />
-                              {SESSION_TIMES[booking.session as SessionType]?.label}
+                              {getSessionLabel(booking.session as SessionType, doctors.find(d => d.id === booking.doctorId)?.sessionTimings)}
                             </span>
                           </div>
                         </div>
@@ -299,7 +299,7 @@ export default function MyTokensPage() {
                             </span>
                             <span className="flex items-center gap-1">
                               <Clock className="w-3.5 h-3.5" />
-                              {SESSION_TIMES[booking.session as SessionType]?.label}
+                              {getSessionLabel(booking.session as SessionType, doctors.find(d => d.id === booking.doctorId)?.sessionTimings)}
                             </span>
                           </div>
 

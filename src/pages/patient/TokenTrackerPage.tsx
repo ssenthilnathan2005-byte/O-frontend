@@ -5,7 +5,7 @@ import {
 import { motion } from "motion/react";
 import React, { useEffect, useState } from "react";
 import { useStore } from "../../context/StoreContext";
-import { hasSessionEnded, SESSION_TIMES } from "../../data/seed";
+import { hasSessionEnded, SESSION_TIMES , getSessionLabel} from "../../data/seed";
 import { useRouter } from "../../router/RouterContext";
 import type { SessionType, TokenStatus } from "../../types";
 import { useQueueNotifications } from "../../hooks/useQueueNotifications";
@@ -216,7 +216,7 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
                 </span>
                 <span className="flex items-center gap-1">
                   <Clock className="w-3.5 h-3.5" />
-                  {SESSION_TIMES[booking.session as SessionType]?.label}
+                  {getSessionLabel(booking.session as SessionType, doctorForSession?.sessionTimings)}
                 </span>
               </div>
             )}
