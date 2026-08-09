@@ -13,6 +13,7 @@ import { useRouter } from "../../router/RouterContext";
 import {
   getAvailableDates, getSessionLabel, isSessionAvailable, makeSessionId,
 } from "../../data/seed";
+import { getSymptomsForSpecialty } from "../../data/doctorSymptoms";
 import type { Doctor, Hospital } from "../../api";
 import type { SessionType } from "../../types";
 
@@ -63,6 +64,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
   const [tokenNumber, setTokenNumber]   = useState(0);
   const [trackerSessionId, setTrackerSessionId] = useState("");
   const [complaint, setComplaint]       = useState("");
+  const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
   const [patientName, setPatientName]   = useState("");
   const [patientPhone, setPatientPhone] = useState("");
   const [patientAge, setPatientAge]     = useState("");
@@ -107,7 +109,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
 
   function handleClose() {
     setStep("date"); setSelectedDate(""); setSelectedSession("");
-    setTokenNumber(0); setComplaint(""); setPatientName(""); setPatientPhone(""); setPatientAge(""); setPayError("");
+    setTokenNumber(0); setComplaint(""); setSelectedSymptoms([]); setPatientName(""); setPatientPhone(""); setPatientAge(""); setPayError("");
     setTrackerSessionId("");
     setPrefetchedOrder(null); setPrefetchingOrder(false);
     onClose();
@@ -568,10 +570,53 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">Symptoms / Reason for Visit</label>
-                <Textarea rows={3} placeholder="Describe symptoms or reason for visit... (optional)"
-                  value={complaint} onChange={e => setComplaint(e.target.value)}
-                  className="resize-none text-sm" data-ocid="booking.textarea" />
+                <label className="text-xs font-medium text-gray-600 mb-1 block">
+                  Symptoms / Reason for Visit <span className="text-red-500">*</span>
+                </label>
+                {(() => {
+                  const matched = getSymptomsForSpecialty(doctor.specialty || "");
+                  if (!matched) return (
+                    <Textarea rows={3} placeholder="Describe symptoms or reason for visit..."
+                      value={complaint} onChange={e => setComplaint(e.target.value)}
+                      className="resize-none text-sm" data-ocid="booking.textarea" />
+                  );
+                  return (
+                    <div className="space-y-2">
+                      <p className="text-xs text-gray-400">{matched.label} — select all that apply</p>
+                      <div className="flex flex-wrap gap-2 max-h-44 overflow-y-auto pr-1">
+                        {matched.symptoms.map((s) => {
+                          const active = selectedSymptoms.includes(s);
+                          return (
+                            <button
+                              key={s}
+                              type="button"
+                              onClick={() =>
+                                setSelectedSymptoms((prev) =>
+                                  active ? prev.filter((x) => x !== s) : [...prev, s]
+                                )
+                              }
+                              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                                active
+                                  ? "bg-teal-500 text-white border-teal-500"
+                                  : "bg-white text-gray-600 border-gray-300 hover:border-teal-400"
+                              }`}
+                            >
+                              {s}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <Textarea
+                        rows={2}
+                        placeholder="Any other details... (optional)"
+                        value={complaint}
+                        onChange={(e) => setComplaint(e.target.value)}
+                        className="resize-none text-sm mt-1"
+                        data-ocid="booking.textarea"
+                      />
+                    </div>
+                  );
+                })()}
               </div>
             </div>
             <div className="flex gap-3">
@@ -585,6 +630,16 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
                     toast.error("Please enter a valid 10-digit phone number");
                     return;
                   }
+                  const hasSymptomData = selectedSymptoms.length > 0 || complaint.trim().length > 0;
+                  if (!hasSymptomData) {
+                    toast.error("Please select at least one symptom or describe your reason for visit");
+                    return;
+                  }
+                  const combined = [
+                    ...selectedSymptoms,
+                    ...(complaint.trim() ? [complaint.trim()] : []),
+                  ].join(", ");
+                  setComplaint(combined);
                   setStep("payment");
                 }} data-ocid="booking.primary_button">
                 {hospital.isFree ? "Continue to Booking" : "Continue to Payment"}
