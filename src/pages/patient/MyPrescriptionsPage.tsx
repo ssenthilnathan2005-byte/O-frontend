@@ -61,6 +61,22 @@ export default function MyPrescriptionsPage() {
 
   useEffect(() => { fetchPrescriptions(); }, [fetchPrescriptions]);
 
+  useEffect(() => {
+    if (!user) return;
+    const WS_BASE = (import.meta.env.VITE_API_URL as string || "http://localhost:4000/api")
+      .replace(/^http/, "ws").replace(/\/api$/, "");
+    const ws = new WebSocket(`${WS_BASE}/ws?session=patient_${user.id}`);
+    ws.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === "prescription_update") {
+          fetchPrescriptions();
+        }
+      } catch (_) {}
+    };
+    return () => ws.close();
+  }, [user, fetchPrescriptions]);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white border-b px-4 py-3 flex items-center gap-3">
