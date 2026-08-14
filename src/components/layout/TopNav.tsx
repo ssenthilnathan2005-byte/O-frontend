@@ -74,20 +74,20 @@ export default function TopNav() {
 
         {/* Patient nav */}
         {isPatient && (
-          <nav className="flex items-center gap-1 overflow-x-auto scrollbar-none min-w-0 max-w-[60vw] sm:flex-1">
+          <nav className="flex items-center gap-0.5 overflow-x-auto scrollbar-none min-w-0 max-w-[65vw] sm:flex-1">
             <Button
               variant="ghost"
               size="sm"
-              className={`text-sm gap-1.5 shrink-0 ${route.path === "/patient/hospitals" || route.path === "/patient/hospital" ? "text-teal-600 bg-teal-50" : "text-gray-600"}`}
+              className={`text-xs sm:text-sm gap-1 px-2 sm:px-3 shrink-0 ${route.path === "/patient/hospitals" || route.path === "/patient/hospital" ? "text-teal-600 bg-teal-50" : "text-gray-600"}`}
               onClick={() => navigate({ path: "/patient/hospitals" })}
               data-ocid="nav.link"
             >
-              <Hospital className="w-4 h-4" /> Hospitals
+              <Hospital className="w-4 h-4" /><span className="hidden xs:inline">Hospitals</span>
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              className={`text-sm gap-1.5 shrink-0 ${route.path === "/patient/tokens" ? "text-teal-600 bg-teal-50" : "text-gray-600"}`}
+              className={`text-xs sm:text-sm gap-1 px-2 sm:px-3 shrink-0 ${route.path === "/patient/tokens" ? "text-teal-600 bg-teal-50" : "text-gray-600"}`}
               onClick={() => navigate({ path: "/patient/tokens" })}
               data-ocid="nav.link"
             >
@@ -102,7 +102,7 @@ export default function TopNav() {
             <Button
               variant="ghost"
               size="sm"
-              className={`text-sm gap-1.5 shrink-0 ${route.path === "/patient/prescriptions" ? "text-teal-600 bg-teal-50" : "text-gray-600"}`}
+              className={`text-xs sm:text-sm gap-1 px-2 sm:px-3 shrink-0 ${route.path === "/patient/prescriptions" ? "text-teal-600 bg-teal-50" : "text-gray-600"}`}
               onClick={() => navigate({ path: "/patient/prescriptions" })}
             >
               <Pill className="w-4 h-4" />
