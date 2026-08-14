@@ -48,6 +48,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Download } from "lucide-react";
+import PrescriptionDialog from "@/components/PrescriptionDialog";
 import { toast } from "sonner";
 import { useStore } from "../../context/StoreContext";
 import {
@@ -220,6 +221,18 @@ function DoctorExportBanner({ token }: { token: string }) {
           </div>
         </div>
       </div>
+
+      <PrescriptionDialog
+        open={showPrescription}
+        onClose={() => setShowPrescription(false)}
+        onConfirm={() => { setShowPrescription(false); handleMarkCompleted(); }}
+        booking={dialogTokenBooking}
+        doctorId={doctor?.id ?? ""}
+        doctorName={doctor?.name ?? ""}
+        hospitalId={doctor?.hospitalId ?? ""}
+        hospitalName={doctor?.hospitalName ?? ""}
+        sessionId={sessionId}
+      />
     </div>
   );
 }
@@ -337,6 +350,7 @@ export default function DoctorDashboard() {
     : [];
   const liveToVisit = allDoctorBookings.filter((b: any) => b.status === "confirmed");
   const liveVisited = allDoctorBookings.filter((b: any) => ["completed", "unvisited"].includes(b.status));
+  const [showPrescription, setShowPrescription] = useState(false);
   const [tokenDialog, setTokenDialog] = useState<{
     open: boolean;
     tokenNum: number | null;
@@ -1599,7 +1613,7 @@ export default function DoctorDashboard() {
                 </p>
                 <Button
                   className="w-full bg-green-600 hover:bg-green-700 text-white font-bold h-11"
-                  onClick={handleMarkCompleted}
+                  onClick={() => setShowPrescription(true)}
                   data-ocid="tokens.confirm_button"
                 >
                   <CheckCircle2 className="w-4 h-4 mr-2" />
@@ -1743,6 +1757,18 @@ export default function DoctorDashboard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <PrescriptionDialog
+        open={showPrescription}
+        onClose={() => setShowPrescription(false)}
+        onConfirm={() => { setShowPrescription(false); handleMarkCompleted(); }}
+        booking={dialogTokenBooking}
+        doctorId={doctor?.id ?? ""}
+        doctorName={doctor?.name ?? ""}
+        hospitalId={doctor?.hospitalId ?? ""}
+        hospitalName={doctor?.hospitalName ?? ""}
+        sessionId={sessionId}
+      />
     </div>
   );
 }
