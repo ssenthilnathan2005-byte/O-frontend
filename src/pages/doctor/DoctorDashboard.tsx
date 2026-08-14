@@ -249,6 +249,7 @@ export default function DoctorDashboard() {
   const doctorUser = user as { doctorId: string; code: string };
   const doctor = doctors.find((d) => d.id === doctorUser.doctorId)!;
   const hasPharmacy = !!(hospitals.find(h => h.id === doctor?.hospitalId)?.hasPharmacy);
+  console.log("[pharmacy check] hospitalId:", doctor?.hospitalId, "hasPharmacy:", hasPharmacy, "hospital:", hospitals.find(h => h.id === doctor?.hospitalId));
   const [activeTab, setActiveTab] = useState<DoctorTab>(getInitialDoctorTab);
 
   // Initial tab is set from getInitialDoctorTab(); persistence handled on user interaction
