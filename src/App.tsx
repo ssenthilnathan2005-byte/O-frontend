@@ -7,6 +7,7 @@ import { StoreProvider, useStore } from "./context/StoreContext";
 import TermsPage from "./pages/TermsPage";
 import LoginPage from "./pages/LoginPage";
 import HospitalAdminLogin from "./pages/HospitalAdminLogin";
+import PharmacyDashboard from "./pages/PharmacyDashboard";
 import PharmacyLogin from "./pages/PharmacyLogin";
 import AdminPanel from "./pages/admin/AdminPanel";
 import HospitalAdminPanel from "./pages/hospital-admin/HospitalAdminPanel";
@@ -203,7 +204,7 @@ function AppRoutes() {
     }
     if (user.role === "admin") return <AdminPanel />;
     if (user.role === "hospital_admin") return <HospitalAdminPanel />;
-    if (user.role === "pharmacy") return <div />;
+    if (user.role === "pharmacy") return <PharmacyDashboard />;
     if (user.role === "doctor") return <DoctorDashboard />;
     if (route.path === "/patient/hospitals") return <HospitalsPage city={(route as { city?: string }).city} />;
     if (route.path === "/patient/hospital")
