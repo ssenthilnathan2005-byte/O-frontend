@@ -380,7 +380,7 @@ export type UserRole = "patient" | "doctor" | "admin" | "hospital_admin" | "phar
 export interface Hospital {
   id: string; name: string; area: string; address?: string;
   phone?: string; rating: number; gradient: string;
-  photoUrl?: string | null; doctorCount: number; isFree?: boolean;
+  photoUrl?: string | null; doctorCount: number; isFree?: boolean; hasPharmacy?: boolean;
 }
 export interface Doctor {
   id: string; hospitalId: string; code?: string; name: string;
