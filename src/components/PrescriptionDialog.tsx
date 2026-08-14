@@ -30,7 +30,6 @@ interface Props {
   doctorName: string;
   hospitalId: string;
   hospitalName: string;
-  sessionId: string;
 }
 
 const EMPTY_MED: Medicine = { name: "", dosage: "", duration: "", instructions: "" };

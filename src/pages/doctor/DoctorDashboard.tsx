@@ -222,17 +222,6 @@ function DoctorExportBanner({ token }: { token: string }) {
         </div>
       </div>
 
-      <PrescriptionDialog
-        open={showPrescription}
-        onClose={() => setShowPrescription(false)}
-        onConfirm={() => { setShowPrescription(false); handleMarkCompleted(); }}
-        booking={dialogTokenBooking}
-        doctorId={doctor?.id ?? ""}
-        doctorName={doctor?.name ?? ""}
-        hospitalId={doctor?.hospitalId ?? ""}
-        hospitalName={doctor?.hospitalName ?? ""}
-        sessionId={sessionId}
-      />
     </div>
   );
 }
@@ -350,12 +339,12 @@ export default function DoctorDashboard() {
     : [];
   const liveToVisit = allDoctorBookings.filter((b: any) => b.status === "confirmed");
   const liveVisited = allDoctorBookings.filter((b: any) => ["completed", "unvisited"].includes(b.status));
-  const [showPrescription, setShowPrescription] = useState(false);
   const [tokenDialog, setTokenDialog] = useState<{
     open: boolean;
     tokenNum: number | null;
   }>({ open: false, tokenNum: null });
   const [closeReason, setCloseReason] = useState("");
+  const [showPrescription, setShowPrescription] = useState(false);
 
   const visibleSessions = useMemo((): SessionType[] => {
     if (!doctor) return [];
@@ -1762,12 +1751,11 @@ export default function DoctorDashboard() {
         open={showPrescription}
         onClose={() => setShowPrescription(false)}
         onConfirm={() => { setShowPrescription(false); handleMarkCompleted(); }}
-        booking={dialogTokenBooking}
+        booking={dialogTokenBooking ? { ...dialogTokenBooking, patientAge: dialogTokenBooking.patientAge ?? undefined } : null}
         doctorId={doctor?.id ?? ""}
         doctorName={doctor?.name ?? ""}
         hospitalId={doctor?.hospitalId ?? ""}
-        hospitalName={doctor?.hospitalName ?? ""}
-        sessionId={sessionId}
+        hospitalName={(user as any)?.hospitalName ?? ""}
       />
     </div>
   );
