@@ -248,8 +248,17 @@ export default function DoctorDashboard() {
 
   const doctorUser = user as { doctorId: string; code: string };
   const doctor = doctors.find((d) => d.id === doctorUser.doctorId)!;
-  const hasPharmacy = !!(hospitals.find(h => h.id === doctor?.hospitalId)?.hasPharmacy);
-  console.log("[pharmacy check] hospitalId:", doctor?.hospitalId, "hasPharmacy:", hasPharmacy, "hospital:", hospitals.find(h => h.id === doctor?.hospitalId));
+  const [hasPharmacy, setHasPharmacy] = useState(false);
+  useEffect(() => {
+    const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
+    fetch(`${BASE}/hospitals`)
+      .then(r => r.json())
+      .then(data => {
+        const h = data.find((h: any) => h.id === doctor?.hospitalId);
+        setHasPharmacy(!!(h?.hasPharmacy));
+      })
+      .catch(() => {});
+  }, [doctor?.hospitalId]);
   const [activeTab, setActiveTab] = useState<DoctorTab>(getInitialDoctorTab);
 
   // Initial tab is set from getInitialDoctorTab(); persistence handled on user interaction
