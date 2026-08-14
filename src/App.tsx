@@ -7,6 +7,7 @@ import { StoreProvider, useStore } from "./context/StoreContext";
 import TermsPage from "./pages/TermsPage";
 import LoginPage from "./pages/LoginPage";
 import HospitalAdminLogin from "./pages/HospitalAdminLogin";
+import PharmacyLogin from "./pages/PharmacyLogin";
 import AdminPanel from "./pages/admin/AdminPanel";
 import HospitalAdminPanel from "./pages/hospital-admin/HospitalAdminPanel";
 import DoctorDashboard from "./pages/doctor/DoctorDashboard";
@@ -178,6 +179,7 @@ function AppRoutes() {
       if (route.path === "/") return <LandingPage />;
       if (route.path === "/terms") return <TermsPage />;
       if (route.path === "/hospital-admin/login") return <HospitalAdminLogin />;
+      if (route.path === "/pharmacy/login") return <PharmacyLogin />;
       if (route.path === "/patient/hospitals") return <HospitalsPage city={(route as { city?: string }).city} />;
       if (route.path === "/patient/hospital") return <HospitalDoctorsPage id={(route as { id: string }).id} />;
       if (route.path === "/login") {
@@ -201,6 +203,7 @@ function AppRoutes() {
     }
     if (user.role === "admin") return <AdminPanel />;
     if (user.role === "hospital_admin") return <HospitalAdminPanel />;
+    if (user.role === "pharmacy") return <div />;
     if (user.role === "doctor") return <DoctorDashboard />;
     if (route.path === "/patient/hospitals") return <HospitalsPage city={(route as { city?: string }).city} />;
     if (route.path === "/patient/hospital")
@@ -217,7 +220,7 @@ function AppRoutes() {
     return <HospitalsPage />;
   }
 
-  const isAdmin = user?.role === "admin" || user?.role === "hospital_admin";
+  const isAdmin = user?.role === "admin" || user?.role === "hospital_admin" || user?.role === "pharmacy";
   // Only hide TopNav for routes that don't require login (landing/login/terms)
   // AND only when there's no logged-in user — a page refresh resets the
   // in-memory router to "/" even though the user is still authenticated
@@ -225,7 +228,7 @@ function AppRoutes() {
   // hide the nav purely based on route.path when `user` is already set.
   const hideTopNav =
     isAdmin ||
-    (!user && (route.path === "/" || route.path === "/login" || route.path === "/terms" || route.path === "/hospital-admin/login")) ||
+    (!user && (route.path === "/" || route.path === "/login" || route.path === "/terms" || route.path === "/hospital-admin/login" || route.path === "/pharmacy/login")) ||
     (!!user && route.path === "/terms");
 
   return (

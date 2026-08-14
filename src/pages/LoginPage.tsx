@@ -721,6 +721,13 @@ export default function LoginPage({
           >
             Hospital staff login
           </button>
+          <button
+            type="button"
+            onClick={() => navigate({ path: "/pharmacy/login" })}
+            className="block mx-auto mt-2 text-xs text-gray-400 hover:text-emerald-600 transition-colors"
+          >
+            Pharmacy staff login
+          </button>
         </div>
       </div>
     </div>

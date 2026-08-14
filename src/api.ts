@@ -242,6 +242,8 @@ export const auth = {
     ),
   hospitalSetPassword: (loginId: string, newPassword: string) =>
     post<{ token: string; user: AppUser }>("/auth/hospital/set-password", { loginId, newPassword }),
+  pharmacyLogin: (code: string, phone: string) =>
+    post<{ token: string; user: AppUser }>("/auth/pharmacy/login", { code, phone }),
 };
 
 
@@ -374,7 +376,7 @@ export const push = {
 };
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-export type UserRole = "patient" | "doctor" | "admin" | "hospital_admin";
+export type UserRole = "patient" | "doctor" | "admin" | "hospital_admin" | "pharmacy";
 export interface Hospital {
   id: string; name: string; area: string; address?: string;
   phone?: string; rating: number; gradient: string;
@@ -415,7 +417,8 @@ export type AppUser =
   | { id: string; email: string; name: string; role: "patient" }
   | { id: string; code: string; doctorId: string; role: "doctor" }
   | { id: string; role: "admin" }
-  | { id: string; role: "hospital_admin"; hospitalId: string; hospitalName: string };
+  | { id: string; role: "hospital_admin"; hospitalId: string; hospitalName: string }
+  | { id: string; code: string; pharmacyStaffId: string; hospitalId: string; hospitalName: string; role: "pharmacy" };
 export interface Stats {
   totalHospitals: number; totalDoctors: number; totalPatients: number;
   totalBookings: number; activeSessions: number;
