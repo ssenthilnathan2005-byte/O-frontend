@@ -96,9 +96,17 @@ export function RouterProvider({ children }: { children: ReactNode }) {
   const [history, setHistory] = useState<Route[]>([getInitialRoute()]);
   const route = history[history.length - 1];
   const navigate = useCallback((r: Route) => {
-    // keep navigation in-memory only to avoid changing the browser pathname
-    // (some hosting environments return 404 for direct pathname refreshes)
+    // Push a dummy history entry so browser back button works
+    window.history.pushState(null, "", window.location.pathname);
     setHistory((prev) => [...prev, r]);
+  }, []);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setHistory((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
   }, []);
   const goBack = useCallback(() => {
     setHistory((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
