@@ -69,3 +69,4 @@ export function useNearMe(hospitals: Hospital[]) {
 
   return { state, locate, clear, sorted };
 }
+git add -A && git commit -m "fix: restore Hospitals text label in nav" && git push

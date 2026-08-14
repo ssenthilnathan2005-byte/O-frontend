@@ -82,7 +82,7 @@ export default function TopNav() {
               onClick={() => navigate({ path: "/patient/hospitals" })}
               data-ocid="nav.link"
             >
-              <Hospital className="w-4 h-4" /><span className="hidden xs:inline">Hospitals</span>
+              <Hospital className="w-4 h-4" /><span>Hospitals</span>
             </Button>
             <Button
               variant="ghost"
