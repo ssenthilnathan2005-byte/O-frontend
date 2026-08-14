@@ -243,10 +243,12 @@ export default function DoctorDashboard() {
     isSessionCancelled,
     tokenStates,
     getBookingsForSession,
+    hospitals,
   } = useStore();
 
   const doctorUser = user as { doctorId: string; code: string };
   const doctor = doctors.find((d) => d.id === doctorUser.doctorId)!;
+  const hasPharmacy = !!(hospitals.find(h => h.id === doctor?.hospitalId) as any)?.hasPharmacy;
   const [activeTab, setActiveTab] = useState<DoctorTab>(getInitialDoctorTab);
 
   // Initial tab is set from getInitialDoctorTab(); persistence handled on user interaction
@@ -1602,7 +1604,7 @@ export default function DoctorDashboard() {
                 </p>
                 <Button
                   className="w-full bg-green-600 hover:bg-green-700 text-white font-bold h-11"
-                  onClick={() => setShowPrescription(true)}
+                  onClick={() => hasPharmacy ? setShowPrescription(true) : handleMarkCompleted()}
                   data-ocid="tokens.confirm_button"
                 >
                   <CheckCircle2 className="w-4 h-4 mr-2" />

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useStore } from "../../context/StoreContext";
 import { getToken } from "@/api";
 import { toast } from "sonner";
-import { Plus, Trash2, Copy, Pill } from "lucide-react";
+import { Plus, Trash2, Copy, Pill, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,11 +23,34 @@ interface StaffMember {
 export default function HAPharmacy() {
   const { user } = useStore();
   const hospitalId = user?.role === "hospital_admin" ? user.hospitalId : "";
+  const [hasPharmacy, setHasPharmacy] = useState<boolean | null>(null);
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [saving, setSaving] = useState(false);
+
+  async function fetchHospitalSettings() {
+    try {
+      const res = await fetch(`${BASE}/hospitals/${hospitalId}`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      const data = await res.json();
+      setHasPharmacy(!!data.hasPharmacy);
+    } catch { }
+  }
+
+  async function togglePharmacy(val: boolean) {
+    try {
+      await fetch(`${BASE}/hospitals/${hospitalId}/pharmacy-toggle`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({ hasPharmacy: val }),
+      });
+      setHasPharmacy(val);
+      toast.success(val ? "Pharmacy enabled" : "Pharmacy disabled");
+    } catch { toast.error("Failed to update setting"); }
+  }
 
   async function fetchStaff() {
     setLoading(true);
@@ -41,7 +64,7 @@ export default function HAPharmacy() {
     finally { setLoading(false); }
   }
 
-  useEffect(() => { if (hospitalId) fetchStaff(); }, [hospitalId]);
+  useEffect(() => { if (hospitalId) { fetchStaff(); fetchHospitalSettings(); } }, [hospitalId]);
 
   async function handleAdd() {
     if (!name.trim() || !phone.trim()) return toast.error("Name and phone required");
@@ -84,6 +107,25 @@ export default function HAPharmacy() {
         <Pill className="w-5 h-5 text-teal-600" />
         <h1 className="text-xl font-bold">Pharmacy Staff</h1>
       </div>
+
+      {/* Pharmacy Toggle */}
+      <Card>
+        <CardContent className="flex items-center justify-between py-4 px-4">
+          <div className="flex items-center gap-2">
+            <Settings className="w-4 h-4 text-gray-400" />
+            <div>
+              <p className="font-medium text-sm">Pharmacy Module</p>
+              <p className="text-xs text-gray-400">Enable to allow prescription and medicine management</p>
+            </div>
+          </div>
+          <button
+            onClick={() => togglePharmacy(!hasPharmacy)}
+            className={`relative w-11 h-6 rounded-full transition-colors ${hasPharmacy ? "bg-teal-500" : "bg-gray-300"}`}
+          >
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${hasPharmacy ? "translate-x-5" : ""}`} />
+          </button>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader><CardTitle className="text-base">Add Pharmacy Staff</CardTitle></CardHeader>
