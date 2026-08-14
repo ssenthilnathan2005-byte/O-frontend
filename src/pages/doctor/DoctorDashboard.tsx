@@ -251,7 +251,7 @@ export default function DoctorDashboard() {
   const [hasPharmacy, setHasPharmacy] = useState(false);
   useEffect(() => {
     const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
-    fetch(`${BASE}/hospitals`)
+    fetch(`${BASE}/hospitals?_=${Date.now()}`)
       .then(r => r.json())
       .then(data => {
         const h = data.find((h: any) => h.id === doctor?.hospitalId);
