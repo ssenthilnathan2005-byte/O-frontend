@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { BookOpen, Hospital, LogOut, User } from "lucide-react";
+import { BookOpen, Hospital, LogOut, Pill, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useStore } from "../../context/StoreContext";
@@ -98,6 +98,15 @@ export default function TopNav() {
                 )}
               </span>
               <span className="text-xs sm:text-sm">My Bookings</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`text-sm gap-1.5 ${route.path === "/patient/prescriptions" ? "text-teal-600 bg-teal-50" : "text-gray-600"}`}
+              onClick={() => navigate({ path: "/patient/prescriptions" })}
+            >
+              <Pill className="w-4 h-4" />
+              <span className="text-xs sm:text-sm">Prescriptions</span>
             </Button>
           </nav>
         )}

@@ -15,6 +15,7 @@ import DoctorDashboard from "./pages/doctor/DoctorDashboard";
 import HospitalDoctorsPage from "./pages/patient/HospitalDoctorsPage";
 import HospitalsPage from "./pages/patient/HospitalsPage";
 import MyTokensPage from "./pages/patient/MyTokensPage";
+import MyPrescriptionsPage from "./pages/patient/MyPrescriptionsPage";
 import TokenTrackerPage from "./pages/patient/TokenTrackerPage";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ChatbotWidget from "./components/ChatbotWidget";
@@ -210,6 +211,7 @@ function AppRoutes() {
     if (route.path === "/patient/hospital")
       return <HospitalDoctorsPage id={(route as { id: string }).id} />;
     if (route.path === "/patient/tokens") return <MyTokensPage />;
+    if (route.path === "/patient/prescriptions") return <MyPrescriptionsPage />;
     if (route.path === "/patient/track") {
       const r = route as { sessionId: string; tokenNumber: number };
       return (
