@@ -74,7 +74,7 @@ export default function TopNav() {
 
         {/* Patient nav */}
         {isPatient && (
-          <nav className="flex items-center gap-1 overflow-x-auto scrollbar-none flex-1 min-w-0">
+          <nav className="flex items-center gap-1 overflow-x-auto scrollbar-none min-w-0 max-w-[60vw] sm:flex-1">
             <Button
               variant="ghost"
               size="sm"
@@ -114,7 +114,7 @@ export default function TopNav() {
         <div className="flex-1" />
 
         {/* Right side */}
-        <div className="flex items-center gap-2 ml-auto">
+        <div className="flex items-center gap-2 ml-auto shrink-0">
           {user ? (
             <>
               <span className="hidden sm:flex items-center gap-1.5 text-sm text-gray-600 border border-gray-200 rounded-full px-3 py-1.5">

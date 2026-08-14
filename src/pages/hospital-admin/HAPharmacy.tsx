@@ -21,7 +21,7 @@ interface StaffMember {
 }
 
 export default function HAPharmacy() {
-  const { user } = useStore();
+  const { user, updateHospital } = useStore();
   const hospitalId = user?.role === "hospital_admin" ? user.hospitalId : "";
   const [hasPharmacy, setHasPharmacy] = useState<boolean | null>(null);
   const [staff, setStaff] = useState<StaffMember[]>([]);
@@ -48,6 +48,7 @@ export default function HAPharmacy() {
         body: JSON.stringify({ hasPharmacy: val }),
       });
       setHasPharmacy(val);
+      await updateHospital(hospitalId, { hasPharmacy: val });
       toast.success(val ? "Pharmacy enabled" : "Pharmacy disabled");
     } catch { toast.error("Failed to update setting"); }
   }
