@@ -4,10 +4,12 @@ import { useStore } from "../../context/StoreContext";
 import { useRouter } from "../../router/RouterContext";
 import HADoctors from "./HADoctors";
 import HAPatients from "./HAPatients";
+import HAPharmacy from "./HAPharmacy";
 
 const NAV_ITEMS = [
   { path: "/hospital-admin/doctors", label: "Doctors", icon: UserCog },
   { path: "/hospital-admin/patients", label: "Live Patients", icon: Users2 },
+  { path: "/hospital-admin/pharmacy", label: "Pharmacy", icon: Building2 },
 ] as const;
 
 export default function HospitalAdminPanel() {
@@ -19,6 +21,7 @@ export default function HospitalAdminPanel() {
 
   function renderContent() {
     if (route.path === "/hospital-admin/patients") return <HAPatients />;
+    if (route.path === "/hospital-admin/pharmacy") return <HAPharmacy />;
     return <HADoctors />;
   }
 
