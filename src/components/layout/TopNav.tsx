@@ -74,11 +74,11 @@ export default function TopNav() {
 
         {/* Patient nav */}
         {isPatient && (
-          <nav className="flex items-center gap-1 flex-1">
+          <nav className="flex items-center gap-1 overflow-x-auto scrollbar-none flex-1 min-w-0">
             <Button
               variant="ghost"
               size="sm"
-              className={`text-sm gap-1.5 ${route.path === "/patient/hospitals" || route.path === "/patient/hospital" ? "text-teal-600 bg-teal-50" : "text-gray-600"}`}
+              className={`text-sm gap-1.5 shrink-0 ${route.path === "/patient/hospitals" || route.path === "/patient/hospital" ? "text-teal-600 bg-teal-50" : "text-gray-600"}`}
               onClick={() => navigate({ path: "/patient/hospitals" })}
               data-ocid="nav.link"
             >
@@ -87,7 +87,7 @@ export default function TopNav() {
             <Button
               variant="ghost"
               size="sm"
-              className={`text-sm gap-1.5 ${route.path === "/patient/tokens" ? "text-teal-600 bg-teal-50" : "text-gray-600"}`}
+              className={`text-sm gap-1.5 shrink-0 ${route.path === "/patient/tokens" ? "text-teal-600 bg-teal-50" : "text-gray-600"}`}
               onClick={() => navigate({ path: "/patient/tokens" })}
               data-ocid="nav.link"
             >
@@ -102,7 +102,7 @@ export default function TopNav() {
             <Button
               variant="ghost"
               size="sm"
-              className={`text-sm gap-1.5 ${route.path === "/patient/prescriptions" ? "text-teal-600 bg-teal-50" : "text-gray-600"}`}
+              className={`text-sm gap-1.5 shrink-0 ${route.path === "/patient/prescriptions" ? "text-teal-600 bg-teal-50" : "text-gray-600"}`}
               onClick={() => navigate({ path: "/patient/prescriptions" })}
             >
               <Pill className="w-4 h-4" />

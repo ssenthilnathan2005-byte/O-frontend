@@ -92,3 +92,6 @@
 }
 
 /* Logo sizing left to component styles; removed global 1em rule (reverted) */
+
+.scrollbar-none { scrollbar-width: none; -ms-overflow-style: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }
