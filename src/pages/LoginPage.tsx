@@ -733,28 +733,41 @@ export default function LoginPage({
               Hospital login
             </button>
           ) : (
-            <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
-              <button
-                type="button"
-                onClick={() => handleStaffLogin("hospital")}
-                className="text-xs text-gray-600 hover:text-teal-600 transition-colors border border-gray-200 bg-white rounded-full px-3 py-2"
-              >
-                Hospital admin login
-              </button>
-              <button
-                type="button"
-                onClick={() => handleStaffLogin("doctor")}
-                className="text-xs text-gray-600 hover:text-blue-600 transition-colors border border-gray-200 bg-white rounded-full px-3 py-2"
-              >
-                Doctor login
-              </button>
-              <button
-                type="button"
-                onClick={() => handleStaffLogin("pharmacy")}
-                className="text-xs text-gray-600 hover:text-emerald-600 transition-colors border border-gray-200 bg-white rounded-full px-3 py-2"
-              >
-                Pharmacy login
-              </button>
+            <div className="mx-auto mt-6 w-full max-w-lg rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Staff login</p>
+                <button
+                  type="button"
+                  onClick={() => setShowStaffOptions(false)}
+                  className="text-[11px] text-gray-400 hover:text-gray-600"
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                <button
+                  type="button"
+                  onClick={() => handleStaffLogin("hospital")}
+                  className="rounded-xl border border-teal-200 bg-teal-50 px-3 py-3 text-xs font-medium text-teal-700 transition hover:bg-teal-100"
+                >
+                  Hospital admin login
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleStaffLogin("doctor")}
+                  className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-3 text-xs font-medium text-blue-700 transition hover:bg-blue-100"
+                >
+                  Doctor login
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleStaffLogin("pharmacy")}
+                  className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100"
+                >
+                  Pharmacy login
+                </button>
+              </div>
             </div>
           )}
         </div>
