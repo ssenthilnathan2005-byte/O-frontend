@@ -59,7 +59,7 @@ function loadGoogleScript(): Promise<void> {
 
 export default function LoginPage({
   initialTab = "patient",
-  initialPatientMode = "signup",
+  initialPatientMode = "login",
 }: LoginPageProps) {
   const { login } = useStore();
   const { navigate } = useRouter();
@@ -82,6 +82,7 @@ export default function LoginPage({
 
   const [doctorCode, setDoctorCode] = useState("");
   const [doctorPass, setDoctorPass] = useState("");
+  const [showStaffOptions, setShowStaffOptions] = useState(false);
   const [loading, setLoading]       = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   function isValidEmail(value: string): boolean {
@@ -363,6 +364,24 @@ export default function LoginPage({
     navigate({ path: "/" });
   }
 
+  function handleStaffLogin(type: "hospital" | "doctor" | "pharmacy") {
+    setShowStaffOptions(false);
+
+    if (type === "hospital") {
+      navigate({ path: "/hospital-admin/login" });
+      return;
+    }
+
+    if (type === "pharmacy") {
+      navigate({ path: "/pharmacy/login" });
+      return;
+    }
+
+    setActiveTab("doctor");
+    setScreen("patient-form");
+    navigate({ path: "/login", tab: "doctor", patientMode: "login" });
+  }
+
   // ── Shared Google section ─────────────────────────────────────────────────────
   const googleSection = GOOGLE_CLIENT_ID && screen === "patient-form" ? (
     <div className="space-y-3 mb-4">
@@ -519,215 +538,225 @@ export default function LoginPage({
 
       <div className="flex-1 flex items-center justify-center px-4 py-8 sm:py-12">
         <div className="w-full max-w-4xl">
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "patient" | "doctor")} className="w-full">
-            {/* moved tab triggers inside each tab content to avoid duplicate top tab */}
-
-            {/* ── Patient tab ── */}
-            <TabsContent value="patient">
-              <div className="max-w-xs mx-auto mb-6">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="patient">Patient</TabsTrigger>
-                  <TabsTrigger value="doctor">Doctor</TabsTrigger>
-                </TabsList>
-              </div>
-              <div className="flex flex-col sm:flex-row max-w-3xl mx-auto rounded-2xl overflow-hidden shadow-sm border border-gray-100">
-                <div className="hidden sm:flex sm:w-2/5 bg-gradient-to-b from-teal-200 to-teal-500 items-end pb-10 px-8 min-h-[280px]">
-                  <div>
-                    <h2 className="text-2xl font-bold text-white leading-tight mb-2">Your Health,<br />Prioritized.</h2>
-                    <p className="text-teal-50 text-sm leading-relaxed">Book appointments, track your token, and skip the waiting room stress.</p>
-                  </div>
+          {activeTab === "doctor" ? (
+            <div className="max-w-sm mx-auto bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
+              <div className="flex flex-col items-center mb-6">
+                <div className="w-16 h-16 rounded-full overflow-hidden mb-4">
+                  <img src="/assets/Logo.jpg"
+                    alt="Doctor Booked" className="w-full h-full object-cover"
+                    onError={e => { (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='20' fill='%2314b8a6'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='18' font-family='sans-serif'%3EDB%3C/text%3E%3C/svg%3E"; }} />
                 </div>
-                <div className="flex-1 bg-white p-6 sm:p-8">
-                  <div className="mb-5 hidden sm:block">
-                    <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center mb-4">
-                      <Activity className="w-6 h-6 text-teal-600" />
+                <h3 className="text-xl font-bold text-gray-900">Doctor Login</h3>
+                <p className="text-gray-500 text-sm mt-1 text-center">Enter your assigned login credentials</p>
+              </div>
+              <form onSubmit={handleDoctorLogin} className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label>Doctor Login Code</Label>
+                  <div className="relative"><KeyRound className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                    <Input className="pl-9 font-mono tracking-widest" placeholder="Enter your doctor code" value={doctorCode} onChange={e => setDoctorCode(e.target.value)} /></div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Password</Label>
+                  <div className="relative"><Lock className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                    <Input type="password" className="pl-9" placeholder="Enter your password" value={doctorPass} onChange={e => setDoctorPass(e.target.value)} /></div>
+                </div>
+                <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 rounded-full h-11" disabled={loading}>
+                  {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Verifying…</> : "Access Dashboard"}
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab("patient");
+                    setShowStaffOptions(false);
+                    setPatientMode("login");
+                  }}
+                  className="w-full text-center text-xs text-gray-400 hover:text-teal-600 transition-colors"
+                >
+                  ← Back to patient login
+                </button>
+              </form>
+            </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row max-w-3xl mx-auto rounded-2xl overflow-hidden shadow-sm border border-gray-100">
+              <div className="hidden sm:flex sm:w-2/5 bg-gradient-to-b from-teal-200 to-teal-500 items-end pb-10 px-8 min-h-[280px]">
+                <div>
+                  <h2 className="text-2xl font-bold text-white leading-tight mb-2">Your Health,<br />Prioritized.</h2>
+                  <p className="text-teal-50 text-sm leading-relaxed">Book appointments, track your token, and skip the waiting room stress.</p>
+                </div>
+              </div>
+              <div className="flex-1 bg-white p-6 sm:p-8">
+                <div className="mb-5 hidden sm:block">
+                  <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center mb-4">
+                    <Activity className="w-6 h-6 text-teal-600" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900">Patient Portal</h3>
+                  <p className="text-gray-500 text-sm mt-1">{patientMode === "signup" ? "Create your account" : "Welcome back"}</p>
+                </div>
+
+                {googleSection}
+
+                {patientMode === "signup" ? (
+                  <form onSubmit={handleSignupSubmit} className="space-y-3">
+                    <div className="space-y-1.5">
+                      <Label>Full Name</Label>
+                      <div className="relative"><User className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                        <Input className="pl-9" placeholder="Your full name" value={name} onChange={e => setName(e.target.value)} /></div>
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900">Patient Portal</h3>
-                    <p className="text-gray-500 text-sm mt-1">{patientMode === "signup" ? "Create your account" : "Welcome back"}</p>
-                  </div>
-
-                  {googleSection}
-
-                  {patientMode === "signup" ? (
-                    <form onSubmit={handleSignupSubmit} className="space-y-3">
-                      <div className="space-y-1.5">
-                        <Label>Full Name</Label>
-                        <div className="relative"><User className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                          <Input className="pl-9" placeholder="Your full name" value={name} onChange={e => setName(e.target.value)} /></div>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label>Email Address</Label>
-                        <div className="relative">
-                          <Mail className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                          <Input
-                            type="email"
-                            inputMode="email"
-                            className="pl-9"
-                            placeholder="you@example.com"
-                            value={email}
-                            onChange={e => setEmail(e.target.value)}
-                            maxLength={50}
-                          />
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 py-0.5">
-                        <div className="flex-1 h-px bg-gray-100" />
-                        <span className="text-[11px] text-gray-300 font-normal">or</span>
-                        <div className="flex-1 h-px bg-gray-100" />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label>Phone Number</Label>
-                        <div className="relative">
-                          <Phone className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                          <Input
-                            type="text"
-                            inputMode="numeric"
-                            className="pl-9"
-                            placeholder="10-digit phone number"
-                            value={phone}
-                            onChange={e => setPhone(e.target.value)}
-                            maxLength={10}
-                          />
-                        </div>
-                        <p className="text-xs text-gray-400">
-                          Provide at least one of email or phone (e.g. 9876543210)
-                        </p>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label>Password</Label>
-                        <div className="relative"><Lock className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                          <Input type="password" className="pl-9" placeholder="Min 6 characters" value={password} onChange={e => setPassword(e.target.value)} /></div>
-                      </div>
-                      <div className="flex items-start gap-2 mt-1">
-                        <input
-                          type="checkbox"
-                          id="terms"
-                          checked={agreedToTerms}
-                          onChange={e => setAgreedToTerms(e.target.checked)}
-                          className="mt-0.5 accent-teal-500"
+                    <div className="space-y-1.5">
+                      <Label>Email Address</Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                        <Input
+                          type="email"
+                          inputMode="email"
+                          className="pl-9"
+                          placeholder="you@example.com"
+                          value={email}
+                          onChange={e => setEmail(e.target.value)}
+                          maxLength={50}
                         />
-                        <label htmlFor="terms" className="text-xs text-gray-500 leading-relaxed">
-                          I agree to the{" "}
-                          <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline font-medium">
-                            Terms & Conditions
-                          </a>
-                          {" "}of Doctor Booked
-                        </label>
                       </div>
-                      <Button type="submit" className="w-full bg-teal-500 hover:bg-teal-600 rounded-full h-11 mt-1" disabled={loading || !agreedToTerms}>
-                        {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating account…</> : "Sign Up"}
-                      </Button>
-                      <p className="text-xs text-center text-gray-500">Already have an account?{" "}
-                        <button type="button" className="text-teal-600 hover:underline font-medium" onClick={() => switchMode("login")}>Log in</button></p>
-                    </form>
-                  ) : (
-                    <form onSubmit={handleLoginSubmit} className="space-y-4">
-                      <div className="space-y-1.5">
-                        <Label>Email Address</Label>
-                        <div className="relative">
-                          <Mail className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                          <Input
-                            type="email"
-                            inputMode="email"
-                            className="pl-9"
-                            placeholder="you@example.com"
-                            value={email}
-                            onChange={e => setEmail(e.target.value)}
-                            maxLength={50}
-                          />
-                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 py-0.5">
+                      <div className="flex-1 h-px bg-gray-100" />
+                      <span className="text-[11px] text-gray-300 font-normal">or</span>
+                      <div className="flex-1 h-px bg-gray-100" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Phone Number</Label>
+                      <div className="relative">
+                        <Phone className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          className="pl-9"
+                          placeholder="10-digit phone number"
+                          value={phone}
+                          onChange={e => setPhone(e.target.value)}
+                          maxLength={10}
+                        />
                       </div>
-                      <div className="flex items-center gap-2 py-0.5">
-                        <div className="flex-1 h-px bg-gray-100" />
-                        <span className="text-[11px] text-gray-300 font-normal">or</span>
-                        <div className="flex-1 h-px bg-gray-100" />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label>Phone Number</Label>
-                        <div className="relative">
-                          <Phone className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                          <Input
-                            type="text"
-                            inputMode="numeric"
-                            className="pl-9"
-                            placeholder="10-digit phone number"
-                            value={phone}
-                            onChange={e => setPhone(e.target.value)}
-                            maxLength={10}
-                          />
-                        </div>
-                        <p className="text-xs text-gray-400">Enter the email or phone number registered to your account</p>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label>Password</Label>
-                        <div className="relative"><Lock className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                          <Input type="password" className="pl-9" placeholder="Your password" value={password} onChange={e => setPassword(e.target.value)} /></div>
-                      </div>
-                      <Button type="submit" className="w-full bg-teal-500 hover:bg-teal-600 rounded-full h-11" disabled={loading}>
-                        {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Logging in…</> : "Login"}
-                      </Button>
-                      <p className="text-xs text-center text-gray-500">Don't have an account?{" "}
-                        <button type="button" className="text-teal-600 hover:underline font-medium" onClick={() => switchMode("signup")}>Sign up</button></p>
-                      <p className="text-xs text-center text-gray-500 mt-1">
-                        <button type="button" className="text-gray-400 hover:text-teal-600 hover:underline" onClick={() => setScreen("forgot-email")}>Forgot password?</button>
+                      <p className="text-xs text-gray-400">
+                        Provide at least one of email or phone (e.g. 9876543210)
                       </p>
-                    </form>
-                  )}
-                </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Password</Label>
+                      <div className="relative"><Lock className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                        <Input type="password" className="pl-9" placeholder="Min 6 characters" value={password} onChange={e => setPassword(e.target.value)} /></div>
+                    </div>
+                    <div className="flex items-start gap-2 mt-1">
+                      <input
+                        type="checkbox"
+                        id="terms"
+                        checked={agreedToTerms}
+                        onChange={e => setAgreedToTerms(e.target.checked)}
+                        className="mt-0.5 accent-teal-500"
+                      />
+                      <label htmlFor="terms" className="text-xs text-gray-500 leading-relaxed">
+                        I agree to the{" "}
+                        <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline font-medium">
+                          Terms & Conditions
+                        </a>
+                        {" "}of Doctor Booked
+                      </label>
+                    </div>
+                    <Button type="submit" className="w-full bg-teal-500 hover:bg-teal-600 rounded-full h-11 mt-1" disabled={loading || !agreedToTerms}>
+                      {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating account…</> : "Sign Up"}
+                    </Button>
+                    <p className="text-xs text-center text-gray-500">Already have an account?{" "}
+                      <button type="button" className="text-teal-600 hover:underline font-medium" onClick={() => switchMode("login")}>Log in</button></p>
+                  </form>
+                ) : (
+                  <form onSubmit={handleLoginSubmit} className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label>Email Address</Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                        <Input
+                          type="email"
+                          inputMode="email"
+                          className="pl-9"
+                          placeholder="you@example.com"
+                          value={email}
+                          onChange={e => setEmail(e.target.value)}
+                          maxLength={50}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 py-0.5">
+                      <div className="flex-1 h-px bg-gray-100" />
+                      <span className="text-[11px] text-gray-300 font-normal">or</span>
+                      <div className="flex-1 h-px bg-gray-100" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Phone Number</Label>
+                      <div className="relative">
+                        <Phone className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          className="pl-9"
+                          placeholder="10-digit phone number"
+                          value={phone}
+                          onChange={e => setPhone(e.target.value)}
+                          maxLength={10}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-400">Enter the email or phone number registered to your account</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Password</Label>
+                      <div className="relative"><Lock className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                        <Input type="password" className="pl-9" placeholder="Your password" value={password} onChange={e => setPassword(e.target.value)} /></div>
+                    </div>
+                    <Button type="submit" className="w-full bg-teal-500 hover:bg-teal-600 rounded-full h-11" disabled={loading}>
+                      {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Logging in…</> : "Login"}
+                    </Button>
+                    <p className="text-xs text-center text-gray-500">Don't have an account?{" "}
+                      <button type="button" className="text-teal-600 hover:underline font-medium" onClick={() => switchMode("signup")}>Sign up</button></p>
+                    <p className="text-xs text-center text-gray-500 mt-1">
+                      <button type="button" className="text-gray-400 hover:text-teal-600 hover:underline" onClick={() => setScreen("forgot-email")}>Forgot password?</button>
+                    </p>
+                  </form>
+                )}
               </div>
-            </TabsContent>
+            </div>
+          )}
 
-            {/* ── Doctor tab ── */}
-            <TabsContent value="doctor">
-              <div className="max-w-xs mx-auto mb-6">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="patient">Patient</TabsTrigger>
-                  <TabsTrigger value="doctor">Doctor</TabsTrigger>
-                </TabsList>
-              </div>
-              <div className="max-w-sm mx-auto bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
-                <div className="flex flex-col items-center mb-6">
-                  <div className="w-16 h-16 rounded-full overflow-hidden mb-4">
-                    <img src="/assets/Logo.jpg"
-                      alt="Doctor Booked" className="w-full h-full object-cover"
-                      onError={e => { (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='20' fill='%2314b8a6'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='18' font-family='sans-serif'%3EDB%3C/text%3E%3C/svg%3E"; }} />
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900">Doctor Login</h3>
-                  <p className="text-gray-500 text-sm mt-1 text-center">Enter your assigned login credentials</p>
-                </div>
-                <form onSubmit={handleDoctorLogin} className="space-y-4">
-                  <div className="space-y-1.5">
-                    <Label>Doctor Login Code</Label>
-                    <div className="relative"><KeyRound className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                      <Input className="pl-9 font-mono tracking-widest" placeholder="Enter your doctor code" value={doctorCode} onChange={e => setDoctorCode(e.target.value)} /></div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Password</Label>
-                    <div className="relative"><Lock className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                      <Input type="password" className="pl-9" placeholder="Enter your password" value={doctorPass} onChange={e => setDoctorPass(e.target.value)} /></div>
-                  </div>
-                  <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 rounded-full h-11" disabled={loading}>
-                    {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Verifying…</> : "Access Dashboard"}
-                  </Button>
-                </form>
-              </div>
-            </TabsContent>
-          </Tabs>
-
-          <button
-            type="button"
-            onClick={() => navigate({ path: "/hospital-admin/login" })}
-            className="block mx-auto mt-6 text-xs text-gray-400 hover:text-teal-600 transition-colors"
-          >
-            Hospital staff login
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate({ path: "/pharmacy/login" })}
-            className="block mx-auto mt-2 text-xs text-gray-400 hover:text-emerald-600 transition-colors"
-          >
-            Pharmacy staff login
-          </button>
+          {!showStaffOptions ? (
+            <button
+              type="button"
+              onClick={() => setShowStaffOptions(true)}
+              className="block mx-auto mt-6 text-xs text-gray-400 hover:text-teal-600 transition-colors"
+            >
+              Hospital login
+            </button>
+          ) : (
+            <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => handleStaffLogin("hospital")}
+                className="text-xs text-gray-600 hover:text-teal-600 transition-colors border border-gray-200 bg-white rounded-full px-3 py-2"
+              >
+                Hospital admin login
+              </button>
+              <button
+                type="button"
+                onClick={() => handleStaffLogin("doctor")}
+                className="text-xs text-gray-600 hover:text-blue-600 transition-colors border border-gray-200 bg-white rounded-full px-3 py-2"
+              >
+                Doctor login
+              </button>
+              <button
+                type="button"
+                onClick={() => handleStaffLogin("pharmacy")}
+                className="text-xs text-gray-600 hover:text-emerald-600 transition-colors border border-gray-200 bg-white rounded-full px-3 py-2"
+              >
+                Pharmacy login
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -59,7 +59,7 @@ function getInitialRoute(): Route {
       path: "/login",
       tab: tab ?? "patient",
       patientMode:
-        patientMode ?? (tab === "doctor" ? "login" : "signup"),
+        patientMode ?? "login",
     };
   }
 

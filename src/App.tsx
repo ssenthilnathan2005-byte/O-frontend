@@ -192,7 +192,7 @@ function AppRoutes() {
         const initialTab = loginRoute.tab ?? "patient";
         const initialPatientMode =
           loginRoute.patientMode ??
-          (initialTab === "doctor" ? "login" : "signup");
+          (initialTab === "doctor" ? "login" : "login");
         return (
           <LoginPage
             key={`${initialTab}-${initialPatientMode}`}
@@ -201,7 +201,7 @@ function AppRoutes() {
           />
         );
       }
-      return <LoginPage initialTab="patient" initialPatientMode="signup" />;
+      return <LoginPage initialTab="patient" initialPatientMode="login" />;
     }
     if (user.role === "admin") return <AdminPanel />;
     if (user.role === "hospital_admin") return <HospitalAdminPanel />;
