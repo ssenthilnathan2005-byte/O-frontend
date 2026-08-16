@@ -409,12 +409,36 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     // useQueueNotifications.ts. Everything here is wrapped so a notification
     // failure can NEVER crash the app (this effect runs at the top of the
     // whole tree, above any page-level ErrorBoundary).
-    async function notify(_title: string, _body: string, _tag: string, vibratePattern: number[]) {
-      // Background/closed-app notifications are handled by Firebase FCM via
-      // the service worker (firebase-messaging-sw.js) — no local SW notification
-      // needed here. We only vibrate as a foreground feedback signal.
+    async function notify(title: string, body: string, tag: string, vibratePattern: number[]) {
       if (!canUseNotifications()) return;
+
       try { vibrate(vibratePattern); } catch {}
+
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        await reg.showNotification(title, {
+          body,
+          icon: "/assets/Logo.jpg",
+          badge: "/assets/Logo.jpg",
+          tag,
+          data: { link: "/patient/hospitals" },
+        });
+        return;
+      } catch {
+        // Service worker path may not be ready yet; fall back to browser notification.
+      }
+
+      try {
+        new Notification(title, {
+          body,
+          icon: "/assets/Logo.jpg",
+          badge: "/assets/Logo.jpg",
+          tag,
+          data: { link: "/patient/hospitals" },
+        });
+      } catch {
+        // Browser notification is best-effort; never let it crash the store.
+      }
     }
 
     for (const booking of activeBookings) {
