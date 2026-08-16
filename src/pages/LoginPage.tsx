@@ -728,45 +728,47 @@ export default function LoginPage({
             <button
               type="button"
               onClick={() => setShowStaffOptions(true)}
-              className="block mx-auto mt-6 text-xs text-gray-400 hover:text-teal-600 transition-colors"
+              className="block mx-auto mt-6 text-xs text-gray-400 hover:text-gray-600 transition-colors"
             >
               Hospital login
             </button>
           ) : (
-            <div className="mx-auto mt-6 w-full max-w-lg rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-              <div className="mb-3 flex items-center justify-between">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Staff login</p>
-                <button
-                  type="button"
-                  onClick={() => setShowStaffOptions(false)}
-                  className="text-[11px] text-gray-400 hover:text-gray-600"
-                >
-                  Close
-                </button>
-              </div>
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-[1px] px-4">
+              <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-gray-100 p-5 shadow-lg">
+                <div className="mb-4 flex items-center justify-between border-b border-gray-200 pb-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">Staff login</p>
+                  <button
+                    type="button"
+                    onClick={() => setShowStaffOptions(false)}
+                    className="text-[11px] text-gray-500 hover:text-gray-700"
+                  >
+                    Close
+                  </button>
+                </div>
 
-              <div className="grid gap-3 sm:grid-cols-3">
-                <button
-                  type="button"
-                  onClick={() => handleStaffLogin("hospital")}
-                  className="rounded-xl border border-teal-200 bg-teal-50 px-3 py-3 text-xs font-medium text-teal-700 transition hover:bg-teal-100"
-                >
-                  Hospital admin login
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleStaffLogin("doctor")}
-                  className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-3 text-xs font-medium text-blue-700 transition hover:bg-blue-100"
-                >
-                  Doctor login
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleStaffLogin("pharmacy")}
-                  className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100"
-                >
-                  Pharmacy login
-                </button>
+                <div className="grid gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleStaffLogin("hospital")}
+                    className="rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-200"
+                  >
+                    Hospital admin login
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleStaffLogin("doctor")}
+                    className="rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-200"
+                  >
+                    Doctor login
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleStaffLogin("pharmacy")}
+                    className="rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-200"
+                  >
+                    Pharmacy login
+                  </button>
+                </div>
               </div>
             </div>
           )}
