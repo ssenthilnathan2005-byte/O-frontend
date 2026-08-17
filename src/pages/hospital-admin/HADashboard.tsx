@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { UserCog, Users2, CalendarCheck, Pill, Activity } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useStore } from "../../context/StoreContext";
+import { isLiveBookingStatus, normalizeBookingStatus } from "../../lib/bookingStatus";
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -49,9 +50,9 @@ export default function HADashboard() {
     [myBookings]
   );
 
-  const todayCompleted = todayBookings.filter((b) => b.status === "completed").length;
-  const todayConfirmed = todayBookings.filter((b) => b.status === "confirmed").length;
-  const todayUnvisited = todayBookings.filter((b) => b.status === "unvisited").length;
+  const todayCompleted = todayBookings.filter((b) => normalizeBookingStatus(b.status) === "completed").length;
+  const todayConfirmed = todayBookings.filter((b) => isLiveBookingStatus(b.status)).length;
+  const todayUnvisited = todayBookings.filter((b) => normalizeBookingStatus(b.status) === "unvisited").length;
 
   const availableDoctors = myDoctors.filter((d) => d.isAvailable).length;
 
@@ -133,8 +134,8 @@ export default function HADashboard() {
           ) : (
             myDoctors.map((doc) => {
               const docBookings = todayBookings.filter((b) => b.doctorId === doc.id);
-              const completed = docBookings.filter((b) => b.status === "completed").length;
-              const confirmed = docBookings.filter((b) => b.status === "confirmed").length;
+              const completed = docBookings.filter((b) => normalizeBookingStatus(b.status) === "completed").length;
+              const confirmed = docBookings.filter((b) => isLiveBookingStatus(b.status)).length;
               return (
                 <div key={doc.id} className="px-5 py-3 flex items-center justify-between">
                   <div>

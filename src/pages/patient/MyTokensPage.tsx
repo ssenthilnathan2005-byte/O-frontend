@@ -3,6 +3,7 @@ import { Activity, Calendar, Clock, Hospital } from "lucide-react";
 import { motion } from "motion/react";
 import { useStore } from "../../context/StoreContext";
 import { hasSessionEnded, SESSION_TIMES , getSessionLabel} from "../../data/seed";
+import { isLiveBookingStatus, normalizeBookingStatus } from "../../lib/bookingStatus";
 import { useRouter } from "../../router/RouterContext";
 import type { SessionType } from "../../types";
 
@@ -43,7 +44,7 @@ export default function MyTokensPage() {
   }
 
   const RETENTION_DAYS = 6;
-  const FINISHED_STATUSES = new Set(["completed", "unvisited", "cancelled", "confirmed"]);
+  const FINISHED_STATUSES = new Set(["completed", "unvisited", "cancelled", "confirmed", "booked", "waiting", "live", "checked_in"]);
   const patientId = (user as { id: string }).id;
 
   const allMyBookings = bookings
@@ -66,21 +67,24 @@ export default function MyTokensPage() {
   // since the patient may want to check back on the queue. Cancelled
   // bookings have nothing left to track, so they move to past immediately.
   const liveBookings = allMyBookings.filter((b) => {
-    if (b.status === "cancelled") return false;
-    if (!FINISHED_STATUSES.has(b.status) && b.status !== "confirmed") return false;
+    const status = normalizeBookingStatus(b.status);
+    if (status === "cancelled") return false;
+    if (!FINISHED_STATUSES.has(status) && !isLiveBookingStatus(b.status)) return false;
     const doctor = doctors.find((d) => d.id === b.doctorId);
     return !hasSessionEnded(b.date, b.session, doctor?.sessionTimings);
   });
   const pastBookings = allMyBookings.filter((b) => {
-    if (!FINISHED_STATUSES.has(b.status)) return false;
+    const status = normalizeBookingStatus(b.status);
+    if (!FINISHED_STATUSES.has(status)) return false;
     const bookingDate = new Date(`${b.date}T00:00:00`);
     if (bookingDate < cutoffDate) return false;
-    if (b.status === "cancelled") return true;
+    if (status === "cancelled") return true;
     const doctor = doctors.find((d) => d.id === b.doctorId);
     return hasSessionEnded(b.date, b.session, doctor?.sessionTimings);
   });
   const hiddenPastCount = allMyBookings.filter((b) => {
-    if (!FINISHED_STATUSES.has(b.status)) return false;
+    const status = normalizeBookingStatus(b.status);
+    if (!FINISHED_STATUSES.has(status)) return false;
     const bookingDate = new Date(`${b.date}T00:00:00`);
     return bookingDate < cutoffDate;
   }).length;

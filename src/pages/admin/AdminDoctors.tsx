@@ -107,6 +107,7 @@ export default function AdminDoctors() {
     sessions: "morning,afternoon",
     isAvailable: true,
     code: "",
+    photo: null,
   });
 
   function getHospitalName(hospitalId: string) {

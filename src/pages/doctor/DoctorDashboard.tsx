@@ -59,6 +59,12 @@ import {
   isSessionAccessibleForRegulator,
   makeSessionId,
 } from "../../data/seed";
+import {
+  getBookingPatientName,
+  getBookingPhone,
+  isLiveBookingStatus,
+  normalizeBookingStatus,
+} from "../../lib/bookingStatus";
 import type {
   PrioritySlotState,
   SessionTiming,
@@ -349,8 +355,8 @@ export default function DoctorDashboard() {
   const allDoctorBookings = doctor
     ? bookings.filter((b: any) => b.doctorId === doctor.id)
     : [];
-  const liveToVisit = allDoctorBookings.filter((b: any) => b.status === "confirmed");
-  const liveVisited = allDoctorBookings.filter((b: any) => ["completed", "unvisited"].includes(b.status));
+  const liveToVisit = allDoctorBookings.filter((b: any) => isLiveBookingStatus(b.status));
+  const liveVisited = allDoctorBookings.filter((b: any) => ["completed", "unvisited"].includes(normalizeBookingStatus(b.status)));
   const [tokenDialog, setTokenDialog] = useState<{
     open: boolean;
     tokenNum: number | null;
@@ -403,12 +409,33 @@ export default function DoctorDashboard() {
   // Derive info for the token dialog
   const dialogTokenBooking = useMemo(() => {
     if (tokenDialog.tokenNum === null) return null;
+
     const sessionBookings = getBookingsForSession(sessionId);
+    const bySession = sessionBookings.find((b) => b.tokenNumber === tokenDialog.tokenNum);
+    if (bySession) return bySession;
+
+    if (!doctor) return null;
+
     return (
-      sessionBookings.find((b) => b.tokenNumber === tokenDialog.tokenNum) ??
+      bookings.find(
+        (b) =>
+          b.doctorId === doctor.id &&
+          b.date === regDate &&
+          b.session === regSession &&
+          b.tokenNumber === tokenDialog.tokenNum,
+      ) ??
+      bookings.find(
+        (b) =>
+          b.doctorId === doctor.id &&
+          b.tokenNumber === tokenDialog.tokenNum &&
+          b.date === regDate,
+      ) ??
+      bookings.find(
+        (b) => b.doctorId === doctor.id && b.tokenNumber === tokenDialog.tokenNum,
+      ) ??
       null
     );
-  }, [tokenDialog.tokenNum, sessionId, getBookingsForSession]);
+  }, [tokenDialog.tokenNum, sessionId, getBookingsForSession, doctor, regDate, regSession, bookings]);
 
   const dialogTokenStatus: TokenStatus | null = useMemo(() => {
     if (tokenDialog.tokenNum === null) return null;
@@ -1199,7 +1226,7 @@ export default function DoctorDashboard() {
                     <div key={b.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
                       <div>
                         <p className="font-semibold text-gray-900 text-sm flex items-center gap-1.5 flex-wrap">
-                          {b.patientName}
+                          {getBookingPatientName(b.patientName)}
                           {b.patientAge != null && (
                             <span className="font-normal text-gray-400"> · {b.patientAge} yrs</span>
                           )}
@@ -1211,7 +1238,7 @@ export default function DoctorDashboard() {
                         </p>
                         <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1.5">
                           <Phone className="w-3 h-3 text-gray-400" />
-                          {b.phone}
+                          {getBookingPhone(b.phone)}
                         </p>
                         <p className="text-xs text-gray-400 mt-0.5">{b.session} · {b.date}</p>
                         {b.complaint && <p className="text-xs text-gray-500 mt-0.5 italic line-clamp-2">📋 {b.complaint}</p>}
@@ -1546,7 +1573,7 @@ export default function DoctorDashboard() {
             <p className="text-sm text-gray-700">
               Patient:{" "}
               <span className="font-semibold">
-                {dialogTokenBooking?.patientName ?? "Walk-in / Unknown"}
+                {getBookingPatientName(dialogTokenBooking?.patientName, "Walk-in Patient")}
               </span>
               {dialogTokenBooking?.patientAge != null && (
                 <span className="text-gray-500"> ({dialogTokenBooking.patientAge} yrs)</span>
@@ -1555,7 +1582,7 @@ export default function DoctorDashboard() {
             <p className="text-sm text-gray-700 flex items-center gap-1.5">
               <Phone className="w-3.5 h-3.5 text-gray-400" />
               <span className="font-medium">Phone:</span>
-              <span>{dialogTokenBooking?.phone ?? "Not available"}</span>
+              <span>{getBookingPhone(dialogTokenBooking?.phone, "Phone not provided")}</span>
             </p>
 
             {/* Complaint box */}

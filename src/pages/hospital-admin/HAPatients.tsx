@@ -11,6 +11,7 @@ import {
 import { Download, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useStore } from "../../context/StoreContext";
+import { normalizeBookingStatus } from "../../lib/bookingStatus";
 
 const STATUS_STYLES: Record<string, string> = {
   confirmed: "bg-blue-50 text-blue-700 border-blue-200",
@@ -59,8 +60,9 @@ export default function HAPatients() {
     const q = search.trim().toLowerCase();
     return bookings
       .filter((b) => {
+        const status = normalizeBookingStatus(b.status);
         if (!myDoctorIds.has(b.doctorId)) return false;
-        if (b.status === "cancelled") return false;
+        if (status === "cancelled") return false;
         if (from && b.date < from) return false;
         if (to   && b.date > to)   return false;
         if (q && !(
@@ -230,9 +232,9 @@ export default function HAPatients() {
                 <TableCell className="text-center">
                   <Badge
                     variant="outline"
-                    className={`capitalize text-xs ${STATUS_STYLES[b.status] ?? ""}`}
+                    className={`capitalize text-xs ${STATUS_STYLES[normalizeBookingStatus(b.status)] ?? ""}`}
                   >
-                    {b.status}
+                    {normalizeBookingStatus(b.status)}
                   </Badge>
                 </TableCell>
               </TableRow>
