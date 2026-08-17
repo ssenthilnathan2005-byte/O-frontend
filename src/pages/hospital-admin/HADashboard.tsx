@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { UserCog, Users2, CalendarCheck, Building2, Activity, Clock } from "lucide-react";
+import { UserCog, Users2, CalendarCheck, Pill, Activity } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useStore } from "../../context/StoreContext";
 
 function todayStr() {
@@ -11,6 +12,27 @@ export default function HADashboard() {
 
   const hospitalId = user?.role === "hospital_admin" ? user.hospitalId : "";
   const hospitalName = user?.role === "hospital_admin" ? user.hospitalName : "Hospital";
+
+  const [pharmacyCount, setPharmacyCount] = useState(0);
+  const [hasPharmacy, setHasPharmacy] = useState(false);
+
+  const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
+
+  useEffect(() => {
+    if (!hospitalId) return;
+    async function fetchPharmacy() {
+      try {
+        const { getToken } = await import("../../api");
+        const res = await fetch(`${BASE}/pharmacy/staff?hospitalId=${hospitalId}`, {
+          headers: { Authorization: `Bearer ${getToken()}` },
+        });
+        const data = await res.json();
+        setPharmacyCount(Array.isArray(data) ? data.filter((s: any) => s.is_active).length : 0);
+        setHasPharmacy(Array.isArray(data) && data.length > 0);
+      } catch { }
+    }
+    fetchPharmacy();
+  }, [hospitalId]);
 
   const myDoctors = useMemo(
     () => doctors.filter((d) => d.hospitalId === hospitalId),
@@ -66,9 +88,15 @@ export default function HADashboard() {
       color: "text-purple-600",
       bg: "bg-purple-50",
     },
+    {
+      label: "Pharmacy Staff",
+      value: pharmacyCount,
+      sub: hasPharmacy ? "pharmacy active" : "no pharmacy",
+      icon: Pill,
+      color: "text-orange-600",
+      bg: "bg-orange-50",
+    },
   ];
-
-  const now = new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
@@ -134,29 +162,7 @@ export default function HADashboard() {
         </div>
       </div>
 
-      {/* System Info */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-        <h2 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-          <Building2 className="w-4 h-4 text-teal-500" />
-          System Info
-        </h2>
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-gray-500">Platform</span>
-            <span className="font-medium text-gray-800">DoctorBooked v1.0</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-500">Data Store</span>
-            <span className="font-medium text-gray-800">PostgreSQL (Supabase)</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-500">Last Refreshed</span>
-            <span className="font-medium text-teal-600 flex items-center gap-1">
-              <Clock className="w-3 h-3" />{now}
-            </span>
-          </div>
-        </div>
-      </div>
+
     </div>
   );
 }
