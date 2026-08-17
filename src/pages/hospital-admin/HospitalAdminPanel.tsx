@@ -1,12 +1,14 @@
-import { Building2, LogOut, Menu, UserCog, Users2, X } from "lucide-react";
+import { Building2, LayoutDashboard, LogOut, Menu, UserCog, Users2, X } from "lucide-react";
 import { useState } from "react";
 import { useStore } from "../../context/StoreContext";
 import { useRouter } from "../../router/RouterContext";
+import HADashboard from "./HADashboard";
 import HADoctors from "./HADoctors";
 import HAPatients from "./HAPatients";
 import HAPharmacy from "./HAPharmacy";
 
 const NAV_ITEMS = [
+  { path: "/hospital-admin", label: "Dashboard", icon: LayoutDashboard },
   { path: "/hospital-admin/doctors", label: "Doctors", icon: UserCog },
   { path: "/hospital-admin/patients", label: "Live Patients", icon: Users2 },
   { path: "/hospital-admin/pharmacy", label: "Pharmacy", icon: Building2 },
@@ -22,7 +24,8 @@ export default function HospitalAdminPanel() {
   function renderContent() {
     if (route.path === "/hospital-admin/patients") return <HAPatients />;
     if (route.path === "/hospital-admin/pharmacy") return <HAPharmacy />;
-    return <HADoctors />;
+    if (route.path === "/hospital-admin/doctors") return <HADoctors />;
+    return <HADashboard />;
   }
 
   return (
@@ -45,7 +48,7 @@ export default function HospitalAdminPanel() {
 
         <nav className="flex-1 px-3 py-4 space-y-1">
           {NAV_ITEMS.map(({ path, label, icon: Icon }) => {
-            const isActive = route.path === path || (route.path === "/hospital-admin" && path === "/hospital-admin/doctors");
+            const isActive = route.path === path || (route.path === "/hospital-admin" && path === "/hospital-admin");
             return (
               <button
                 key={path}
