@@ -12,6 +12,26 @@ export default function HospitalAdminLogin() {
   const { login } = useStore();
   const { navigate } = useRouter();
 
+  function normalizeHospitalAdminUser(res: {
+    user?: any;
+    hospitalId?: string;
+    hospitalName?: string;
+  }) {
+    const u = res.user;
+    if (!u) return null;
+    const role = String(u.role ?? "").toLowerCase();
+    if (role === "hospital_admin") return u;
+    if (role === "hospital" || role === "hospitaladmin" || role === "hospital-admin") {
+      return {
+        ...u,
+        role: "hospital_admin",
+        hospitalId: u.hospitalId ?? res.hospitalId ?? "",
+        hospitalName: u.hospitalName ?? res.hospitalName ?? "Hospital",
+      };
+    }
+    return u;
+  }
+
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -37,7 +57,12 @@ export default function HospitalAdminLogin() {
           return;
         }
         if (res.token && res.user) {
-          login(res.user, res.token);
+          const normalizedUser = normalizeHospitalAdminUser(res);
+          if (!normalizedUser || normalizedUser.role !== "hospital_admin") {
+            toast.error("Hospital admin access required for this account");
+            return;
+          }
+          login(normalizedUser, res.token);
           toast.success("Welcome back");
         }
       } else {
@@ -50,7 +75,12 @@ export default function HospitalAdminLogin() {
           return;
         }
         const res = await api.auth.hospitalSetPassword(loginId.trim(), password);
-        login(res.user, res.token);
+        const normalizedUser = normalizeHospitalAdminUser(res as any);
+        if (!normalizedUser || normalizedUser.role !== "hospital_admin") {
+          toast.error("Hospital admin access required for this account");
+          return;
+        }
+        login(normalizedUser, res.token);
         toast.success("Password set — you're in");
       }
     } catch (err: any) {

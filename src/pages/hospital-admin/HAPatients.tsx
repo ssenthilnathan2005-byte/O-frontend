@@ -9,9 +9,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Download, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useStore } from "../../context/StoreContext";
 import { normalizeBookingStatus } from "../../lib/bookingStatus";
+import { getToken } from "../../api";
 
 const STATUS_STYLES: Record<string, string> = {
   confirmed: "bg-blue-50 text-blue-700 border-blue-200",
@@ -44,6 +45,7 @@ export default function HAPatients() {
   const [search, setSearch]         = useState("");
   const [dateFilter, setDateFilter] = useState<"all" | "today" | "week">("all");
   const [exporting, setExporting]   = useState(false);
+  const [fallbackBookings, setFallbackBookings] = useState<any[]>([]);
 
   const myDoctorIds = useMemo(
     () => new Set(doctors.filter((d) => d.hospitalId === hospitalId).map((d) => d.id)),
@@ -58,7 +60,8 @@ export default function HAPatients() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return bookings
+    const sourceBookings = bookings.length > 0 ? bookings : fallbackBookings;
+    return sourceBookings
       .filter((b) => {
         const status = normalizeBookingStatus(b.status);
         if (!myDoctorIds.has(b.doctorId)) return false;
@@ -77,7 +80,42 @@ export default function HAPatients() {
         if (b.date !== a.date) return b.date.localeCompare(a.date);
         return b.tokenNumber - a.tokenNumber;
       });
-  }, [bookings, myDoctorIds, from, to, search]);
+  }, [bookings, fallbackBookings, myDoctorIds, from, to, search]);
+
+  useEffect(() => {
+    if (bookings.length > 0 || !hospitalId) {
+      setFallbackBookings([]);
+      return;
+    }
+
+    let cancelled = false;
+    async function fetchFallbackPatients() {
+      const API = (import.meta.env.VITE_API_URL as string ?? "").replace(/\/api$/, "");
+      const headers = { Authorization: `Bearer ${getToken() ?? ""}` };
+      const candidates = [
+        `${API}/api/hospital/patients?hospitalId=${encodeURIComponent(hospitalId)}`,
+        `${API}/api/hospital/bookings?hospitalId=${encodeURIComponent(hospitalId)}`,
+        `${API}/api/bookings?hospitalId=${encodeURIComponent(hospitalId)}`,
+      ];
+
+      for (const url of candidates) {
+        try {
+          const res = await fetch(url, { headers });
+          if (!res.ok) continue;
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            if (!cancelled) setFallbackBookings(data);
+            return;
+          }
+        } catch {
+          // Try next candidate endpoint.
+        }
+      }
+    }
+
+    void fetchFallbackPatients();
+    return () => { cancelled = true; };
+  }, [bookings.length, hospitalId]);
 
   // export uses same from/to but falls back to ±7 days if "all"
   const exportFrom = from || weekStartStr();

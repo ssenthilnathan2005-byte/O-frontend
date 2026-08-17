@@ -117,17 +117,30 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // Background = true means errors are silently swallowed (periodic refresh)
   // Background = false means errors propagate (initial load after login)
   const loadCoreData = useCallback(async (u: AppUser | null, background = false) => {
-    try {
-      const [h, d] = await Promise.all([
-        api.hospitals.list(),
-        api.doctors.list(),
-      ]);
-      setHospitals(h);
-      setDoctors(d);
-    } catch (err) {
-      // On initial load, keep whatever data we already have
-      // On background refresh, just skip silently — will retry in 30s
-      if (!background) console.error("[store] initial hospitals/doctors load failed:", err);
+    if (u?.role === "hospital_admin") {
+      try {
+        const [h, d] = await Promise.all([
+          api.hospitals.get(u.hospitalId),
+          api.doctors.list(u.hospitalId),
+        ]);
+        setHospitals(h ? [h] : []);
+        setDoctors(d);
+      } catch (err) {
+        if (!background) console.error("[store] hospital admin hospitals/doctors load failed:", err);
+      }
+    } else {
+      try {
+        const [h, d] = await Promise.all([
+          api.hospitals.list(),
+          api.doctors.list(),
+        ]);
+        setHospitals(h);
+        setDoctors(d);
+      } catch (err) {
+        // On initial load, keep whatever data we already have
+        // On background refresh, just skip silently — will retry in 30s
+        if (!background) console.error("[store] initial hospitals/doctors load failed:", err);
+      }
     }
 
     // Cancelled sessions — always silent
@@ -136,10 +149,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (!u) return;
 
     try {
-      const b = await api.bookings.list();
+      const b = await api.bookings.list(u.role === "hospital_admin" ? u.hospitalId : undefined);
       setBookings(b);
     } catch (err) {
       if (!background) console.error("[store] bookings load failed:", err);
+      // Some backends block global /bookings for hospital admins.
+      // Try hospital-scoped endpoint fallback instead.
+      if (u.role === "hospital_admin") {
+        try {
+          const fallback = await api.bookings.forHospital(u.hospitalId);
+          setBookings(fallback);
+        } catch (fallbackErr) {
+          if (!background) console.error("[store] hospital bookings fallback failed:", fallbackErr);
+        }
+      }
     }
 
     if (u.role === "admin") {

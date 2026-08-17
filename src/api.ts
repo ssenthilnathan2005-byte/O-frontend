@@ -279,8 +279,15 @@ export const doctors = {
 
 // ── Bookings ──────────────────────────────────────────────────────────────────
 export const bookings = {
-  list:       ()                              => get<Booking[]>("/bookings"),
+  list:       (hospitalId?: string)           => get<Booking[]>(hospitalId ? `/bookings?hospitalId=${encodeURIComponent(hospitalId)}` : "/bookings"),
   forSession: (sid: string)                   => get<Booking[]>(`/bookings/session/${sid}`),
+  forHospital: async (hospitalId: string)     => {
+    try {
+      return await get<Booking[]>(`/hospital/patients?hospitalId=${encodeURIComponent(hospitalId)}`);
+    } catch {
+      return get<Booking[]>(`/hospital/bookings?hospitalId=${encodeURIComponent(hospitalId)}`);
+    }
+  },
   create:     (data: { doctorId: string; date: string; session: string; complaint?: string; phone: string; patientName?: string; patientAge?: string | number }) =>
     post<Booking>("/bookings", data),
   updateStatus: (id: string, status: string)  => patch<Booking>(`/bookings/${id}/status`, { status }),
