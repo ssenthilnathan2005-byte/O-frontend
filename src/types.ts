@@ -11,6 +11,7 @@ export interface Hospital {
   phone?: string;
   photoUrl?: string | null;
   isFree?: boolean;
+  hasPharmacy?: boolean;
 }
 
 export type SessionType = "morning" | "afternoon" | "evening";
@@ -40,6 +41,7 @@ export interface Doctor {
   languages?: string[];
   sessionTimings?: Partial<Record<SessionType, SessionTiming>>;
   statusOverride?: string;
+  walkInInterval?: number;
 }
 
 export type TokenStatus =
@@ -65,6 +67,9 @@ export interface Booking {
   status: "confirmed" | "completed" | "unvisited" | "cancelled";
   phone: string;
   complaint?: string;
+  patientAge?: number | null;
+  createdAt: string;
+  closeReason?: string | null;
 }
 
 export interface SessionTokenState {
@@ -105,7 +110,23 @@ export interface AdminUser {
   role: "admin";
 }
 
-export type AppUser = PatientUser | DoctorUser | AdminUser;
+export interface HospitalAdminUser {
+  id: string;
+  role: "hospital_admin";
+  hospitalId: string;
+  hospitalName: string;
+}
+
+export interface PharmacyUser {
+  id: string;
+  code: string;
+  pharmacyStaffId: string;
+  hospitalId: string;
+  hospitalName: string;
+  role: "pharmacy";
+}
+
+export type AppUser = PatientUser | DoctorUser | AdminUser | HospitalAdminUser | PharmacyUser;
 
 export interface PatientRecord {
   id: string;
