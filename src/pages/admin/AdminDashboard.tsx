@@ -137,11 +137,11 @@ export default function AdminDashboard() {
           <CardContent className="space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Platform</span>
-              <span className="font-medium">MediToken v1.0</span>
+              <span className="font-medium">DoctorBooked v1.0</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Data Store</span>
-              <span className="font-medium">SQLite Database</span>
+              <span className="font-medium">PostgreSQL (Supabase)</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Last Refreshed</span>
