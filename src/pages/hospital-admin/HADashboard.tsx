@@ -80,14 +80,7 @@ export default function HADashboard() {
       color: "text-green-600",
       bg: "bg-green-50",
     },
-    {
-      label: "Total Patients",
-      value: myBookings.length,
-      sub: "last 7 days",
-      icon: Users2,
-      color: "text-purple-600",
-      bg: "bg-purple-50",
-    },
+
     {
       label: "Pharmacy Staff",
       value: pharmacyCount,
