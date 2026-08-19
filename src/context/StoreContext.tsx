@@ -206,10 +206,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     wsRefs.current[sid] = api.connectTokenSocket(sid, (msg) => {
       if (msg.type === "state_update" && msg.state)
         setTokenStates(p => ({ ...p, [sid]: msg.state! }));
-      else if (msg.type === "token_booked")
+      else if (msg.type === "token_booked") {
         api.tokens.getState(sid)
           .then(s => { if (s) setTokenStates(p => ({ ...p, [sid]: s })); })
           .catch(() => {});
+        api.bookings.forSession(sid)
+          .then(bs => setBookings(p => {
+            const others = p.filter(b => b.sessionId !== sid);
+            return [...others, ...bs];
+          }))
+          .catch(() => {});
+      }
       else if (msg.type === "prescription_created") {
         const doctorName = (msg as { doctorName?: string }).doctorName;
         toast.success("💊 New Prescription!", {
@@ -358,8 +365,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const bookToken = useCallback(() => {}, []);
 
   const regulateToken = useCallback(async (sid: string, clickedToken: number) => {
-    const s = await api.tokens.regulate(sid, clickedToken);
+    const [s, bs] = await Promise.all([
+      api.tokens.regulate(sid, clickedToken),
+      api.bookings.forSession(sid),
+    ]);
     setTokenStates(p => ({ ...p, [sid]: s }));
+    setBookings(p => {
+      const others = p.filter(b => b.sessionId !== sid);
+      return [...others, ...bs];
+    });
   }, []);
 
   const completeCurrentToken = useCallback(async (sid: string) => {
