@@ -377,18 +377,39 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const completeCurrentToken = useCallback(async (sid: string) => {
-    const s = await api.tokens.complete(sid);
+    const [s, bs] = await Promise.all([
+      api.tokens.complete(sid),
+      api.bookings.forSession(sid),
+    ]);
     setTokenStates(p => ({ ...p, [sid]: s }));
+    setBookings(p => {
+      const others = p.filter(b => b.sessionId !== sid);
+      return [...others, ...bs];
+    });
   }, []);
 
   const skipToken = useCallback(async (sid: string, tokenNum?: number) => {
-    const s = await api.tokens.skip(sid, tokenNum);
+    const [s, bs] = await Promise.all([
+      api.tokens.skip(sid, tokenNum),
+      api.bookings.forSession(sid),
+    ]);
     setTokenStates(p => ({ ...p, [sid]: s }));
+    setBookings(p => {
+      const others = p.filter(b => b.sessionId !== sid);
+      return [...others, ...bs];
+    });
   }, []);
 
   const completeSkippedToken = useCallback(async (sid: string, tokenNum: number) => {
-    const s = await api.tokens.completeSkipped(sid, tokenNum);
+    const [s, bs] = await Promise.all([
+      api.tokens.completeSkipped(sid, tokenNum),
+      api.bookings.forSession(sid),
+    ]);
     setTokenStates(p => ({ ...p, [sid]: s }));
+    setBookings(p => {
+      const others = p.filter(b => b.sessionId !== sid);
+      return [...others, ...bs];
+    });
   }, []);
 
   const closeSession = useCallback(async (sid: string, reason: string) => {
