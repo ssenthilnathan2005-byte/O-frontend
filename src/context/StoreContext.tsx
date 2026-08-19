@@ -8,6 +8,8 @@ import {
   useState,
 } from "react";
 import * as api from "../api";
+import { toast } from "sonner";
+import { useRouter } from "../router/RouterContext";
 import type {
   AppUser, Booking, Doctor, Hospital,
   PatientRecord, PrioritySlotState, SessionTokenState,
@@ -73,6 +75,8 @@ export function useStore(): Store {
 const REFRESH_MS = 300_000; // 5 minutes instead of 30 seconds
 
 export function StoreProvider({ children }: { children: ReactNode }) {
+  const { navigate } = useRouter();
+
   // Auto-register push for already logged-in patients on app start
   useEffect(() => {
     const stored = localStorage.getItem("db_user");
@@ -206,8 +210,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         api.tokens.getState(sid)
           .then(s => { if (s) setTokenStates(p => ({ ...p, [sid]: s })); })
           .catch(() => {});
+      else if (msg.type === "prescription_created") {
+        const doctorName = (msg as { doctorName?: string }).doctorName;
+        toast.success("💊 New Prescription!", {
+          description: doctorName ? `Dr. ${doctorName} has prescribed your medicines.` : "Your doctor has prescribed your medicines.",
+          duration: 6000,
+        });
+        window.setTimeout(() => {
+          navigate({ path: "/patient/prescriptions" });
+        }, 3200);
+      }
     });
-  }, []);
+  }, [navigate]);
+
+  // ── Global prescription notifications ─────────────────────────────
+  // Subscribe to this patient's personal WS room so a new prescription
+  // shows up instantly no matter what page they're on, mirroring the
+  // booking flow's "green check + auto redirect" behaviour.
+  useEffect(() => {
+    if (!user || user.role !== "patient") return;
+    subscribe(`patient_${user.id}`);
+  }, [user, subscribe]);
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   const login = useCallback((u: AppUser, token: string) => {
