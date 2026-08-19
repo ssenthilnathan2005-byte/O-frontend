@@ -243,6 +243,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     subscribe(`patient_${user.id}`);
   }, [user, subscribe]);
 
+  // ── Auto-subscribe to all active booking sessions globally ───────────────────
+  // Ensures tokenStates are populated for every active booking so
+  // notifications fire on ANY page, not just TokenTrackerPage.
+  useEffect(() => {
+    if (!user || user.role !== "patient") return;
+    const activeBookings = bookings.filter(b => b.status === "confirmed" && b.paymentDone);
+    for (const b of activeBookings) {
+      subscribe(b.sessionId);
+      api.tokens.getState(b.sessionId)
+        .then(s => { if (s) setTokenStates(p => ({ ...p, [b.sessionId]: s })); })
+        .catch(() => {});
+    }
+  }, [bookings, user, subscribe]);
+
   // ── Auth ──────────────────────────────────────────────────────────────────
   const login = useCallback((u: AppUser, token: string) => {
     api.setToken(token);
@@ -553,6 +567,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           const key = `notif_yellow_${booking.sessionId}_${booking.tokenNumber}`;
           if (!sessionStorage.getItem(key)) {
             sessionStorage.setItem(key, '1');
+            toast.success("🔔 You're Next!", {
+              description: `Token #${booking.tokenNumber} — Dr. ${booking.doctorName} will call you soon!`,
+              duration: 8000,
+            });
             void notify(
               "Doctor Booked - You're Next! 🎉",
               `Token #${booking.tokenNumber} - Dr. ${booking.doctorName} will call you soon!`,
@@ -567,6 +585,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           const key = `notif_orange_${booking.sessionId}_${booking.tokenNumber}`;
           if (!sessionStorage.getItem(key)) {
             sessionStorage.setItem(key, '1');
+            toast.success("🏥 You're Being Seen!", {
+              description: 'Please go to the consultation room now!',
+              duration: 6000,
+            });
             void notify(
               'Your consultation is starting! 🏥',
               'Please go to the consultation room now.',
