@@ -7,7 +7,7 @@ import { useRouter } from "../../router/RouterContext";
 import { enablePushNotifications } from "../../lib/push";
 
 export default function TopNav() {
-  const { user, logout, doctors, bookings } = useStore();
+  const { user, logout, doctors, bookings, hasNewPrescription, clearPrescriptionDot } = useStore();
   const { navigate, route } = useRouter();
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
 
@@ -103,9 +103,14 @@ export default function TopNav() {
               variant="ghost"
               size="sm"
               className={`text-xs sm:text-sm gap-1 px-2 sm:px-3 shrink-0 ${route.path === "/patient/prescriptions" ? "text-teal-600 bg-teal-50" : "text-gray-600"}`}
-              onClick={() => navigate({ path: "/patient/prescriptions" })}
+              onClick={() => { clearPrescriptionDot(); navigate({ path: "/patient/prescriptions" }); }}
             >
-              <Pill className="w-4 h-4" />
+              <span className="relative">
+                <Pill className="w-4 h-4" />
+                {hasNewPrescription && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full border border-white" />
+                )}
+              </span>
               <span className="text-xs sm:text-sm">Prescriptions</span>
             </Button>
           </nav>

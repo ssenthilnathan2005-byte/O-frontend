@@ -58,6 +58,8 @@ interface Store {
   getStats: () => { totalHospitals: number; totalDoctors: number; totalPatients: number; totalBookings: number; activeSessions: number };
   notification: string | null;
   setNotification: (n: string | null) => void;
+  hasNewPrescription: boolean;
+  clearPrescriptionDot: () => void;
   refreshFromStorage: () => Promise<void>;
   getPatientCredentials: () => Record<string, { name: string; password: string }>;
   getPatientNameIndex: () => Record<string, string>;
@@ -104,6 +106,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [tokenStates, setTokenStates] = useState<Record<string, SessionTokenState>>({});
   const [cancelled, setCancelled]     = useState<string[]>([]);
   const [notification, setNotification] = useState<string | null>(null);
+  const [hasNewPrescription, setHasNewPrescription] = useState(false);
 
   const wsRefs       = useRef<Record<string, () => void>>({});
   const userRef      = useRef<AppUser | null>(user);
@@ -219,6 +222,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
       else if (msg.type === "prescription_created") {
         const doctorName = (msg as { doctorName?: string }).doctorName;
+        setHasNewPrescription(true);
         toast.success("💊 New Prescription!", {
           description: doctorName ? `Dr. ${doctorName} has prescribed your medicines.` : "Your doctor has prescribed your medicines.",
           duration: 6000,
@@ -588,7 +592,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     tokenStates, getOrCreateTokenState, bookToken,
     regulateToken, completeCurrentToken, skipToken, completeSkippedToken,
     closeSession, setPrioritySlot, cancelSession, isSessionCancelled,
-    getStats, notification, setNotification, refreshFromStorage,
+    getStats, notification, setNotification, hasNewPrescription, clearPrescriptionDot: () => setHasNewPrescription(false), refreshFromStorage,
     getPatientCredentials, getPatientNameIndex, savePatientCredential,
   };
 
