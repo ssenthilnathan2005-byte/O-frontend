@@ -278,6 +278,13 @@ export const doctors = {
 };
 
 // ── Bookings ──────────────────────────────────────────────────────────────────
+export const inward = {
+  list:      ()                     => get<any[]>(`/inward`),
+  admit:     (data: any)             => post<any>(`/inward`, data),
+  update:    (id: string, data: any) => patch<any>(`/inward/${id}`, data),
+  discharge: (id: string)            => patch<any>(`/inward/${id}/discharge`, {}),
+};
+
 export const bookings = {
   list:       (hospitalId?: string)           => get<Booking[]>(hospitalId ? `/bookings?hospitalId=${encodeURIComponent(hospitalId)}` : "/bookings"),
   forSession: (sid: string)                   => get<Booking[]>(`/bookings/session/${sid}`),

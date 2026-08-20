@@ -1,4 +1,4 @@
-import { Building2, LayoutDashboard, LogOut, Menu, UserCog, Users2, X } from "lucide-react";
+import { BedDouble, Building2, LayoutDashboard, LogOut, Menu, UserCog, Users2, X } from "lucide-react";
 import { useState } from "react";
 import { useStore } from "../../context/StoreContext";
 import { useRouter } from "../../router/RouterContext";
@@ -6,12 +6,14 @@ import HADashboard from "./HADashboard";
 import HADoctors from "./HADoctors";
 import HAPatients from "./HAPatients";
 import HAPharmacy from "./HAPharmacy";
+import HAInward from "./HAInward";
 
 const NAV_ITEMS = [
   { path: "/hospital-admin", label: "Dashboard", icon: LayoutDashboard },
   { path: "/hospital-admin/doctors", label: "Doctors", icon: UserCog },
   { path: "/hospital-admin/patients", label: "Live Patients", icon: Users2 },
   { path: "/hospital-admin/pharmacy", label: "Pharmacy", icon: Building2 },
+  { path: "/hospital-admin/inward", label: "Inward", icon: BedDouble },
 ] as const;
 
 export default function HospitalAdminPanel() {
@@ -22,6 +24,7 @@ export default function HospitalAdminPanel() {
   const hospitalName = user && user.role === "hospital_admin" ? user.hospitalName : "Hospital Admin";
 
   function renderContent() {
+    if (route.path === "/hospital-admin/inward") return <HAInward />;
     if (route.path === "/hospital-admin/patients") return <HAPatients />;
     if (route.path === "/hospital-admin/pharmacy") return <HAPharmacy />;
     if (route.path === "/hospital-admin/doctors") return <HADoctors />;
