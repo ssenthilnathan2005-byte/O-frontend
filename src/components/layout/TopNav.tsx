@@ -1,5 +1,5 @@
-import { BookOpen, Hospital, LogOut, Pill, User } from "lucide-react";
-import { useEffect, useState } from "react";
+import { BookOpen, Hospital, LogOut, Pill, User, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useStore } from "../../context/StoreContext";
 import { useRouter } from "../../router/RouterContext";
@@ -9,6 +9,8 @@ export default function TopNav() {
   const { user, logout, doctors, bookings, hasNewPrescription, clearPrescriptionDot } = useStore();
   const { navigate, route } = useRouter();
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (typeof window === "undefined" || !user || user.role !== "patient") {
@@ -21,6 +23,17 @@ export default function TopNav() {
     }
     setShowNotificationPrompt(Notification.permission === "default");
   }, [user]);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowProfileMenu(false);
+      }
+    }
+    if (showProfileMenu) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showProfileMenu]);
 
   async function handleEnableNotifications() {
     const token = await enablePushNotifications();
@@ -48,7 +61,7 @@ export default function TopNav() {
     (b) => b.status === "confirmed" && b.date >= new Date().toISOString().split("T")[0]
   ).length ?? 0;
 
-  // ── Doctor / non-patient: keep a slim top bar ─────────────────────────────
+  // ── Doctor / non-patient: slim top bar ──────────────────────────────────
   if (!isPatient) {
     return (
       <header className="sticky top-0 z-40 bg-white border-b border-gray-200 px-3 sm:px-6 py-3">
@@ -93,40 +106,11 @@ export default function TopNav() {
             ) : null}
           </div>
         </div>
-
-        {showNotificationPrompt && (
-          <div className="mt-3 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 shadow-sm">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm font-semibold text-teal-900">Turn on notifications</p>
-                <p className="text-xs text-teal-700 mt-0.5">
-                  Get queue updates even when this page is closed or in the background.
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  className="bg-teal-600 hover:bg-teal-700 text-white text-sm rounded-full px-4 py-1.5"
-                  onClick={() => void handleEnableNotifications()}
-                >
-                  Enable notifications
-                </button>
-                <button
-                  type="button"
-                  className="text-teal-700 hover:bg-teal-100 text-sm rounded-full px-3 py-1.5"
-                  onClick={() => setShowNotificationPrompt(false)}
-                >
-                  Not now
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </header>
     );
   }
 
-  // ── Patient: bottom nav bar ───────────────────────────────────────────────
+  // ── Patient: bottom nav ──────────────────────────────────────────────────
   const navActive = "text-teal-600";
   const navInactive = "text-gray-400";
 
@@ -136,7 +120,7 @@ export default function TopNav() {
 
   return (
     <>
-      {/* Notification prompt — floats above bottom nav */}
+      {/* Notification prompt */}
       {showNotificationPrompt && (
         <div className="fixed bottom-20 left-3 right-3 z-50 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 shadow-lg">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -165,6 +149,58 @@ export default function TopNav() {
           </div>
         </div>
       )}
+
+      {/* Profile menu popup */}
+      {showProfileMenu && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: "rgba(0,0,0,0.35)" }}>
+          <div
+            ref={menuRef}
+            className="w-full max-w-sm bg-white rounded-t-3xl px-4 pt-4 pb-8 shadow-2xl"
+            style={{ animation: "slideUp 0.2s ease-out" }}
+          >
+            {/* Handle bar */}
+            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
+
+            {/* User info */}
+            <div className="flex items-center gap-3 px-2 pb-4 border-b border-gray-100">
+              <div className="w-11 h-11 rounded-full bg-teal-100 flex items-center justify-center">
+                <User className="w-5 h-5 text-teal-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900 text-sm">{displayName}</p>
+                <p className="text-xs text-gray-400">Patient</p>
+              </div>
+              <button
+                className="ml-auto text-gray-400 hover:text-gray-600"
+                onClick={() => setShowProfileMenu(false)}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Menu items — add more here later */}
+            <div className="mt-3 space-y-1">
+              <button
+                type="button"
+                className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-red-500 hover:bg-red-50 transition-colors text-sm font-medium"
+                onClick={() => { setShowProfileMenu(false); logout(); }}
+              >
+                <div className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center">
+                  <LogOut className="w-4 h-4 text-red-500" />
+                </div>
+                Log out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes slideUp {
+          from { transform: translateY(100%); opacity: 0; }
+          to   { transform: translateY(0);    opacity: 1; }
+        }
+      `}</style>
 
       {/* Bottom navigation bar */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 safe-area-inset-bottom">
@@ -233,12 +269,11 @@ export default function TopNav() {
             <span className="text-[10px] font-medium">Prescriptions</span>
           </button>
 
-          {/* Profile / logout */}
+          {/* Profile — opens menu instead of direct logout */}
           <button
             type="button"
-            className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-colors ${navInactive} hover:text-red-400`}
-            onClick={logout}
-            data-ocid="nav.logout_button"
+            className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-colors ${navInactive} hover:text-teal-500`}
+            onClick={() => setShowProfileMenu(true)}
           >
             <User className="w-5 h-5" />
             <span className="text-[10px] font-medium truncate max-w-[52px]">{displayName.split(" ")[0]}</span>
@@ -246,8 +281,6 @@ export default function TopNav() {
 
         </div>
       </nav>
-
-
     </>
   );
 }
