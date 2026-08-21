@@ -11,6 +11,7 @@ export default function TopNav() {
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const desktopMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (typeof window === "undefined" || !user || user.role !== "patient") {
@@ -27,7 +28,10 @@ export default function TopNav() {
   // Close menu when clicking outside
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const insideMobile = menuRef.current?.contains(target) ?? false;
+      const insideDesktop = desktopMenuRef.current?.contains(target) ?? false;
+      if (!insideMobile && !insideDesktop) {
         setShowProfileMenu(false);
       }
     }
@@ -216,8 +220,102 @@ export default function TopNav() {
         }
       `}</style>
 
-      {/* Bottom navigation bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 safe-area-inset-bottom">
+      {/* Desktop top nav — md and up only, phones never see this */}
+      <header className="hidden md:block sticky top-0 z-40 bg-white border-b border-gray-200 px-6 py-3">
+        <div className="max-w-7xl mx-auto flex items-center gap-8">
+          <button
+            type="button"
+            className="flex items-center gap-2 shrink-0"
+            onClick={() => navigate({ path: "/patient/hospitals" })}
+            data-ocid="nav.link"
+          >
+            <img
+              src="/assets/Logo.jpg"
+              alt="Doctor Booked Logo"
+              className="w-8 h-8 rounded-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src =
+                  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='20' fill='%2314b8a6'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='18' font-family='sans-serif'%3EDB%3C/text%3E%3C/svg%3E";
+              }}
+            />
+            <span className="text-base font-bold text-gray-900">
+              Doctor<span className="text-teal-500"> Booked</span>
+            </span>
+          </button>
+
+          <nav className="flex items-center gap-6 text-sm font-medium">
+            <button
+              type="button"
+              className={`flex items-center gap-1.5 transition-colors ${isActive(["/patient/hospitals", "/patient/hospital"])} hover:text-teal-600`}
+              onClick={() => navigate({ path: "/patient/hospitals" })}
+              data-ocid="nav.link"
+            >
+              <Hospital className="w-4 h-4" /> Hospitals
+            </button>
+            <button
+              type="button"
+              className={`relative flex items-center gap-1.5 transition-colors ${isActive(["/patient/tokens"])} hover:text-teal-600`}
+              onClick={() => navigate({ path: "/patient/tokens" })}
+              data-ocid="nav.link"
+            >
+              <BookOpen className="w-4 h-4" /> Bookings
+              {activeBookingCount > 0 && (
+                <span className="absolute -top-1 -right-2 w-2 h-2 bg-teal-500 rounded-full border border-white" />
+              )}
+            </button>
+            <button
+              type="button"
+              className={`relative flex items-center gap-1.5 transition-colors ${isActive(["/patient/prescriptions"])} hover:text-teal-600`}
+              onClick={() => { clearPrescriptionDot(); navigate({ path: "/patient/prescriptions" }); }}
+            >
+              <Pill className="w-4 h-4" /> Prescriptions
+              {hasNewPrescription && (
+                <span className="absolute -top-1 -right-2 w-2 h-2 bg-green-500 rounded-full border border-white" />
+              )}
+            </button>
+          </nav>
+
+          <div className="flex-1" />
+
+          <div className="relative" ref={desktopMenuRef}>
+            <button
+              type="button"
+              className="flex items-center gap-2 text-sm text-gray-700 border border-gray-200 rounded-full pl-1.5 pr-3 py-1.5 hover:bg-gray-50 transition-colors"
+              onClick={() => setShowProfileMenu((v) => !v)}
+            >
+              <span className="w-6 h-6 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center shrink-0">
+                <User className="w-3.5 h-3.5 text-white" />
+              </span>
+              <span className="font-medium truncate max-w-[120px]">{displayName}</span>
+            </button>
+
+            {showProfileMenu && (
+              <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl border border-gray-200 shadow-lg py-2 z-50">
+                <div className="px-3 pb-2 mb-1 border-b border-gray-100">
+                  <p className="font-semibold text-gray-900 text-sm truncate">{displayName}</p>
+                  {patientContact && (
+                    <p className="flex items-center gap-1 text-xs text-gray-500 mt-0.5 truncate">
+                      {isEmailContact ? <Mail className="w-3 h-3 shrink-0" /> : <Phone className="w-3 h-3 shrink-0" />}
+                      <span className="truncate">{patientContact}</span>
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors"
+                  onClick={() => { setShowProfileMenu(false); logout(); }}
+                  data-ocid="nav.logout_button"
+                >
+                  <LogOut className="w-4 h-4" /> Log out
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* Bottom navigation bar — mobile only, untouched on phones */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 safe-area-inset-bottom">
         <div className="flex items-end justify-around px-2 py-2 max-w-lg mx-auto">
 
           {/* Hospitals */}
