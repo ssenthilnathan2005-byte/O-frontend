@@ -1,6 +1,6 @@
 import { Toaster } from "@/components/ui/sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Calendar, ChevronRight, Clock, MapPin, User } from "lucide-react";
+import { Calendar, ChevronRight, Clock, MapPin, User, Ticket, Timer, ShieldCheck } from "lucide-react";
 import { motion } from "motion/react";
 import TopNav from "./components/layout/TopNav";
 import { StoreProvider, useStore } from "./context/StoreContext";
@@ -35,16 +35,29 @@ function LandingPage() {
   const { navigate } = useRouter();
   const { hospitals } = useStore();
 
+  const quickLinks = [
+    { title: "Find Hospitals", sub: "TOP CLINICS", icon: "🏥", bg: "bg-teal-50", text: "text-teal-900", path: "/patient/hospitals" as const },
+    { title: "Doctor Appointment", sub: "BOOK NOW", icon: "👨‍⚕️", bg: "bg-orange-50", text: "text-orange-900", path: "/patient/hospitals" as const },
+    { title: "My Tokens", sub: "TRACK LIVE", icon: "🎟️", bg: "bg-blue-50", text: "text-blue-900", path: "/patient/tokens" as const },
+    { title: "My Prescriptions", sub: "VIEW RECORDS", icon: "📄", bg: "bg-purple-50", text: "text-purple-900", path: "/patient/prescriptions" as const },
+  ];
+
+  const trustPoints = [
+    { icon: Ticket, title: "Live Queue Tracking", desc: "See your token number update in real time." },
+    { icon: Timer, title: "Skip the Waiting Room", desc: "Arrive only when your turn is close." },
+    { icon: ShieldCheck, title: "Verified Hospitals", desc: "Every listed hospital is vetted by our team." },
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
       {/* Apollo-like Header */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto flex items-center justify-between px-4 py-3">
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-20">
+        <div className="max-w-7xl 2xl:max-w-[1600px] mx-auto flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
             <img
               src="/assets/Logo.jpg"
               alt="Logo"
-              className="w-10 h-10 rounded-full object-contain" 
+              className="w-10 h-10 rounded-full object-contain"
               onError={(e)=>{(e.target as HTMLImageElement).src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='20' fill='%2314b8a6'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='18' font-family='sans-serif'%3EDB%3C/text%3E%3C/svg%3E"}}
             />
             <span className="text-xl font-bold text-gray-800">
@@ -52,9 +65,18 @@ function LandingPage() {
             </span>
           </div>
 
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-700">
+          {/* Desktop-only nav: extra links only appear at lg+, mobile is untouched */}
+          <nav className="hidden lg:flex items-center gap-8 text-sm font-medium text-gray-700">
             <button onClick={() => navigate({ path: "/patient/hospitals" })} className="hover:text-teal-600 transition-colors">Find Hospitals</button>
             <button onClick={() => navigate({ path: "/patient/hospitals" })} className="hover:text-teal-600 transition-colors">Find Doctors</button>
+            <button onClick={() => navigate({ path: "/patient/tokens" })} className="hover:text-teal-600 transition-colors">My Tokens</button>
+            <button onClick={() => navigate({ path: "/patient/prescriptions" })} className="hover:text-teal-600 transition-colors">My Prescriptions</button>
+          </nav>
+
+          {/* Original mobile-visible nav, unchanged */}
+          <nav className="flex lg:hidden items-center gap-6 text-sm font-medium text-gray-700">
+            <button onClick={() => navigate({ path: "/patient/hospitals" })} className="hover:text-teal-600 transition-colors hidden md:inline">Find Hospitals</button>
+            <button onClick={() => navigate({ path: "/patient/hospitals" })} className="hover:text-teal-600 transition-colors hidden md:inline">Find Doctors</button>
           </nav>
 
           <button
@@ -67,27 +89,24 @@ function LandingPage() {
         </div>
       </header>
 
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-6">
+      <main className="flex-1 w-full max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 py-6 lg:py-10">
         {/* Banner Carousel */}
-        <div className="relative w-full h-[240px] sm:h-[320px] rounded-2xl overflow-hidden mb-8 group cursor-pointer" onClick={() => navigate({ path: "/patient/hospitals" })}>
-          <div className="absolute inset-0 bg-gradient-to-r from-gray-900 to-gray-700 flex items-center p-8 sm:p-16">
-             <div className="max-w-xl text-white relative z-10">
-               <h2 className="text-3xl sm:text-5xl font-bold mb-4 leading-tight">Save Time on Your<br/><span className="text-teal-400">Doctor Visits</span></h2>
-               <p className="text-sm sm:text-lg text-gray-300">Book appointments online, track your token live, and skip the waiting room completely.</p>
+        <div className="relative w-full h-[240px] sm:h-[320px] lg:h-[380px] rounded-2xl overflow-hidden mb-8 lg:mb-12 group cursor-pointer" onClick={() => navigate({ path: "/patient/hospitals" })}>
+          <div className="absolute inset-0 bg-gradient-to-r from-gray-900 to-gray-700 flex items-center p-8 sm:p-16 lg:p-20">
+             <div className="max-w-xl lg:max-w-2xl text-white relative z-10">
+               <h2 className="text-3xl sm:text-5xl lg:text-6xl font-bold mb-4 leading-tight">Save Time on Your<br/><span className="text-teal-400">Doctor Visits</span></h2>
+               <p className="text-sm sm:text-lg lg:text-xl text-gray-300">Book appointments online, track your token live, and skip the waiting room completely.</p>
                <button className="mt-6 bg-gradient-to-r from-yellow-500 to-yellow-600 text-gray-900 font-bold px-6 py-2.5 rounded-lg shadow-lg hover:from-yellow-400 hover:to-yellow-500 transition-all">Book Now</button>
              </div>
              {/* Decorative element */}
-             <div className="absolute right-10 top-1/2 -translate-y-1/2 hidden md:block w-72 h-48 bg-gradient-to-br from-teal-500 to-teal-700 rounded-xl shadow-2xl rotate-12 opacity-80 border-4 border-white/10"></div>
+             <div className="absolute right-10 top-1/2 -translate-y-1/2 hidden md:block w-72 lg:w-96 h-48 lg:h-64 bg-gradient-to-br from-teal-500 to-teal-700 rounded-xl shadow-2xl rotate-12 opacity-80 border-4 border-white/10"></div>
           </div>
         </div>
 
-        {/* Quick Links */}
-        <div className="grid grid-cols-2 gap-4 mb-12">
-          {[
-            { title: "Find Hospitals", sub: "TOP CLINICS", icon: "🏥", bg: "bg-teal-50", text: "text-teal-900" },
-            { title: "Doctor Appointment", sub: "BOOK NOW", icon: "👨‍⚕️", bg: "bg-orange-50", text: "text-orange-900" },
-          ].map((card, i) => (
-            <div key={i} onClick={() => navigate({ path: "/patient/hospitals" })} className={`${card.bg} rounded-xl p-4 flex items-center justify-between cursor-pointer hover:shadow-md transition-shadow`}>
+        {/* Quick Links: 2 cols on mobile (unchanged), 4 cols on desktop */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10 lg:mb-12">
+          {quickLinks.map((card, i) => (
+            <div key={i} onClick={() => navigate({ path: card.path })} className={`${card.bg} rounded-xl p-4 flex items-center justify-between cursor-pointer hover:shadow-md transition-shadow`}>
               <div className="flex items-center gap-3">
                 <span className="text-3xl">{card.icon}</span>
                 <div>
@@ -96,6 +115,21 @@ function LandingPage() {
                 </div>
               </div>
               <ChevronRight className={`w-4 h-4 ${card.text} opacity-50`} />
+            </div>
+          ))}
+        </div>
+
+        {/* Trust strip — fills desktop width, stacks on mobile */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10 lg:mb-14 bg-white border border-gray-100 rounded-2xl p-6 lg:p-8">
+          {trustPoints.map((t, i) => (
+            <div key={i} className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-teal-50 flex items-center justify-center shrink-0">
+                <t.icon className="w-5 h-5 text-teal-600" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-gray-900 text-sm">{t.title}</h4>
+                <p className="text-xs text-gray-500 mt-0.5">{t.desc}</p>
+              </div>
             </div>
           ))}
         </div>
@@ -111,7 +145,7 @@ function LandingPage() {
           const cityList = Array.from(cityCounts.keys()).sort((a, b) => a.localeCompare(b));
           if (cityList.length === 0) return null;
           return (
-            <div className="mb-10">
+            <div className="mb-10 lg:mb-14">
               <h2 className="text-sm font-semibold text-gray-500 mb-3 tracking-wide uppercase">
                 Available Cities
               </h2>
@@ -133,11 +167,11 @@ function LandingPage() {
           );
         })()}
 
-        {/* Hospitals List */}
+        {/* Hospitals List — more columns as the screen widens */}
         <div>
-          <h2 className="text-xl font-bold text-gray-900 mb-6">Top Hospitals ({hospitals.length})</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-             {hospitals.slice(0, 12).map((h) => (
+          <h2 className="text-xl lg:text-2xl font-bold text-gray-900 mb-6">Top Hospitals ({hospitals.length})</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 2xl:grid-cols-8 gap-4">
+             {hospitals.slice(0, 16).map((h) => (
                 <div key={h.id} className="cursor-pointer group" onClick={() => navigate({ path: "/patient/hospital", id: h.id })}>
                   <div className="bg-gray-50 rounded-2xl aspect-square mb-3 overflow-hidden border border-gray-100 flex items-center justify-center p-4 group-hover:border-teal-300 transition-colors relative">
                     {h.photoUrl ? (
@@ -154,16 +188,32 @@ function LandingPage() {
         </div>
       </main>
 
-      <footer className="border-t border-gray-200 mt-auto bg-white px-4 py-6">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-gray-900">Doctor</span>
-            <span className="font-bold text-teal-500">Booked</span>
-            <span className="text-gray-400 text-sm ml-2">— Skip the waiting room.</span>
+      <footer className="border-t border-gray-200 mt-auto bg-white px-4 py-8 lg:py-10">
+        <div className="max-w-7xl 2xl:max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-4 gap-8">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="font-bold text-gray-900">Doctor</span>
+              <span className="font-bold text-teal-500">Booked</span>
+            </div>
+            <p className="text-gray-400 text-sm">Skip the waiting room. Track your token live.</p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="hidden lg:block">
+            <h5 className="text-xs font-semibold text-gray-900 uppercase mb-3">For Patients</h5>
+            <div className="flex flex-col gap-2 text-sm text-gray-500">
+              <button onClick={() => navigate({ path: "/patient/hospitals" })} className="text-left hover:text-teal-600 transition-colors">Find Hospitals</button>
+              <button onClick={() => navigate({ path: "/patient/tokens" })} className="text-left hover:text-teal-600 transition-colors">My Tokens</button>
+              <button onClick={() => navigate({ path: "/patient/prescriptions" })} className="text-left hover:text-teal-600 transition-colors">My Prescriptions</button>
+            </div>
+          </div>
+          <div className="hidden lg:block">
+            <h5 className="text-xs font-semibold text-gray-900 uppercase mb-3">Company</h5>
+            <div className="flex flex-col gap-2 text-sm text-gray-500">
+              <button onClick={() => navigate({ path: "/terms" })} className="text-left hover:text-teal-600 transition-colors">Terms & Conditions</button>
+              <button onClick={() => navigate({ path: "/hospital-admin/login" })} className="text-left hover:text-teal-600 transition-colors">Hospital Admin Login</button>
+            </div>
+          </div>
+          <div className="flex lg:items-start lg:justify-end">
             <p className="text-xs text-gray-400">2026 Doctor Booked. All rights reserved.</p>
-            <button type="button" onClick={() => navigate({ path: "/terms" })} className="text-xs text-teal-600 hover:underline">Terms & Conditions</button>
           </div>
         </div>
       </footer>
