@@ -256,7 +256,7 @@ function AppRoutes() {
           <span>Taking longer than usual — still trying to connect, please wait…</span>
         </div>
       )}
-      <main className="flex-1">{renderPage()}</main>
+      <main className="flex-1 pb-24">{renderPage()}</main>
       <Toaster richColors position="top-right" />
       <ChatbotWidget />
     </div>

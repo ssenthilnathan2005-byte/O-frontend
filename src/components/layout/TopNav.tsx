@@ -247,8 +247,7 @@ export default function TopNav() {
         </div>
       </nav>
 
-      {/* Spacer so page content isn't hidden behind the bottom bar */}
-      <div className="h-20" />
+
     </>
   );
 }
