@@ -19,7 +19,6 @@ import MyPrescriptionsPage from "./pages/patient/MyPrescriptionsPage";
 import TokenTrackerPage from "./pages/patient/TokenTrackerPage";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ChatbotWidget from "./components/ChatbotWidget";
-import TokenStatusBar from "./components/TokenStatusBar";
 import { RouterProvider, useRouter } from "./router/RouterContext";
 
 function resolvePhotoUrl(url: string | null | undefined): string | null {
@@ -237,7 +236,7 @@ function AppRoutes() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {!hideTopNav && <TopNav />}
-      {!hideTopNav && <TokenStatusBar />}
+
       {/* Server status banner — shown when Railway is waking up or unreachable */}
       {serverStatus === "waking" && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500 text-white text-sm font-medium py-2.5 px-4 flex items-center justify-center gap-2 shadow-md">

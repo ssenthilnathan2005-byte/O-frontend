@@ -120,7 +120,7 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
   // Show loading state if booking data hasn't loaded yet (free hospital race condition protection)
   if (!booking) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-6">
+      <div className="max-w-3xl mx-auto px-4 pt-3 pb-6">
         <div className="text-center py-20">
           <div className="animate-spin inline-block mb-4">
             <Activity className="w-12 h-12 text-teal-500" />
@@ -133,7 +133,7 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6">
+    <div className="max-w-3xl mx-auto px-4 pt-3 pb-6">
 
       {/* ── "You're Next!" top notification (Image 2) ── */}
       {showNextBanner && (

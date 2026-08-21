@@ -78,8 +78,8 @@ export default function MyPrescriptionsPage() {
   }, [user, fetchPrescriptions]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b px-4 py-3 flex items-center gap-3">
+    <div className="min-h-screen bg-gray-50 pt-0">
+      <div className="bg-white border-b px-4 py-2 flex items-center gap-3">
         <button onClick={() => navigate({ path: "/patient/tokens" })} className="text-gray-400 hover:text-gray-600">
           <ArrowLeft className="w-5 h-5" />
         </button>

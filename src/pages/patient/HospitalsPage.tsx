@@ -40,7 +40,7 @@ export default function HospitalsPage({ city }: { city?: string }) {
   const isNearMeActive = nearState.status === "done";
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 pt-4 pb-8">
 
       {mapHospital && (
         <HospitalMapModal

@@ -80,13 +80,13 @@ export default function ChatbotWidget() {
   return (
     <>
       <button onClick={() => setOpen((o) => !o)} aria-label="Open DoctorBooked guide"
-        className="fixed bottom-5 right-5 z-50 w-14 h-14 rounded-full bg-teal-600 text-white flex items-center justify-center shadow-lg hover:bg-teal-700 transition-colors"
+        className="fixed bottom-24 right-4 z-40 w-12 h-12 rounded-full bg-teal-600 text-white flex items-center justify-center shadow-lg hover:bg-teal-700 transition-colors"
         style={{ fontSize: 24 }}>
         {open ? "✕" : "💬"}
       </button>
 
       {open && (
-        <div className="fixed bottom-24 right-5 z-50 w-80 sm:w-96 rounded-2xl border border-gray-200 bg-white flex flex-col overflow-hidden"
+        <div className="fixed bottom-40 right-4 z-40 w-80 sm:w-96 rounded-2xl border border-gray-200 bg-white flex flex-col overflow-hidden"
           style={{ maxHeight: "75vh", boxShadow: "0 8px 32px rgba(0,0,0,0.15)" }}>
           <div className="bg-teal-600 px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2">

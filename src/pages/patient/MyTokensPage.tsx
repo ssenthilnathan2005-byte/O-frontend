@@ -96,7 +96,7 @@ export default function MyTokensPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
+    <div className="max-w-3xl mx-auto px-4 pt-4 pb-8">
       {/* Page header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">My Bookings</h1>

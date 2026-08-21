@@ -1,0 +1,40 @@
+[1mdiff --git a/src/context/StoreContext.tsx b/src/context/StoreContext.tsx[m
+[1mindex 7c723e38..9d617391 100644[m
+[1m--- a/src/context/StoreContext.tsx[m
+[1m+++ b/src/context/StoreContext.tsx[m
+[36m@@ -206,10 +206,17 @@[m [mexport function StoreProvider({ children }: { children: ReactNode }) {[m
+     wsRefs.current[sid] = api.connectTokenSocket(sid, (msg) => {[m
+       if (msg.type === "state_update" && msg.state)[m
+         setTokenStates(p => ({ ...p, [sid]: msg.state! }));[m
+[31m-      else if (msg.type === "token_booked")[m
+[32m+[m[32m      else if (msg.type === "token_booked") {[m
+         api.tokens.getState(sid)[m
+           .then(s => { if (s) setTokenStates(p => ({ ...p, [sid]: s })); })[m
+           .catch(() => {});[m
+[32m+[m[32m        api.bookings.forSession(sid)[m
+[32m+[m[32m          .then(bs => setBookings(p => {[m
+[32m+[m[32m            const others = p.filter(b => b.sessionId !== sid);[m
+[32m+[m[32m            return [...others, ...bs];[m
+[32m+[m[32m          }))[m
+[32m+[m[32m          .catch(() => {});[m
+[32m+[m[32m      }[m
+       else if (msg.type === "prescription_created") {[m
+         const doctorName = (msg as { doctorName?: string }).doctorName;[m
+         toast.success("💊 New Prescription!", {[m
+[36m@@ -358,8 +365,15 @@[m [mexport function StoreProvider({ children }: { children: ReactNode }) {[m
+   const bookToken = useCallback(() => {}, []);[m
+ [m
+   const regulateToken = useCallback(async (sid: string, clickedToken: number) => {[m
+[31m-    const s = await api.tokens.regulate(sid, clickedToken);[m
+[32m+[m[32m    const [s, bs] = await Promise.all([[m
+[32m+[m[32m      api.tokens.regulate(sid, clickedToken),[m
+[32m+[m[32m      api.bookings.forSession(sid),[m
+[32m+[m[32m    ]);[m
+     setTokenStates(p => ({ ...p, [sid]: s }));[m
+[32m+[m[32m    setBookings(p => {[m
+[32m+[m[32m      const others = p.filter(b => b.sessionId !== sid);[m
+[32m+[m[32m      return [...others, ...bs];[m
+[32m+[m[32m    });[m
+   }, []);[m
+ [m
+   const completeCurrentToken = useCallback(async (sid: string) => {[m
