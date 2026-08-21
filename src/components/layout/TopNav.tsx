@@ -1,4 +1,4 @@
-import { BookOpen, Hospital, LogOut, Pill, User, X } from "lucide-react";
+import { BookOpen, Hospital, LogOut, Mail, Phone, Pill, User, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useStore } from "../../context/StoreContext";
@@ -56,6 +56,11 @@ export default function TopNav() {
 
   const isPatient = user?.role === "patient";
   const isDoctor  = user?.role === "doctor";
+
+  // Google login stores the account email here; phone-based login stores the
+  // 10-digit number here instead — either way it's the right thing to show.
+  const patientContact = user?.role === "patient" ? (user as { email?: string }).email : undefined;
+  const isEmailContact = !!patientContact && patientContact.includes("@");
 
   const activeBookingCount = bookings?.filter(
     (b) => b.status === "confirmed" && b.date >= new Date().toISOString().split("T")[0]
@@ -162,16 +167,25 @@ export default function TopNav() {
             <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
 
             {/* User info */}
-            <div className="flex items-center gap-3 px-2 pb-4 border-b border-gray-100">
-              <div className="w-11 h-11 rounded-full bg-teal-100 flex items-center justify-center">
-                <User className="w-5 h-5 text-teal-600" />
+            <div className="flex items-center gap-3 px-2 pb-5">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center shadow-sm shrink-0">
+                <User className="w-6 h-6 text-white" />
               </div>
-              <div>
-                <p className="font-semibold text-gray-900 text-sm">{displayName}</p>
-                <p className="text-xs text-gray-400">Patient</p>
+              <div className="min-w-0">
+                <p className="font-semibold text-gray-900 text-[15px] leading-tight truncate">{displayName}</p>
+                {patientContact && (
+                  <p className="flex items-center gap-1 text-xs text-gray-500 mt-0.5 truncate">
+                    {isEmailContact ? (
+                      <Mail className="w-3 h-3 text-gray-400 shrink-0" />
+                    ) : (
+                      <Phone className="w-3 h-3 text-gray-400 shrink-0" />
+                    )}
+                    <span className="truncate">{patientContact}</span>
+                  </p>
+                )}
               </div>
               <button
-                className="ml-auto text-gray-400 hover:text-gray-600"
+                className="ml-auto shrink-0 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full p-1.5 transition-colors"
                 onClick={() => setShowProfileMenu(false)}
               >
                 <X className="w-5 h-5" />
@@ -179,7 +193,7 @@ export default function TopNav() {
             </div>
 
             {/* Menu items — add more here later */}
-            <div className="mt-3 space-y-1">
+            <div className="space-y-1">
               <button
                 type="button"
                 className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-red-500 hover:bg-red-50 transition-colors text-sm font-medium"
