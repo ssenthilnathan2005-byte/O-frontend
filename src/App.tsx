@@ -1,6 +1,6 @@
 import { Toaster } from "@/components/ui/sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Calendar, ChevronRight, Clock, MapPin, User, Ticket, Timer, ShieldCheck } from "lucide-react";
+import { Calendar, ChevronRight, Clock, MapPin, User } from "lucide-react";
 import { motion } from "motion/react";
 import TopNav from "./components/layout/TopNav";
 import { StoreProvider, useStore } from "./context/StoreContext";
@@ -40,12 +40,6 @@ function LandingPage() {
     { title: "Doctor Appointment", sub: "BOOK NOW", icon: "👨‍⚕️", bg: "bg-orange-50", text: "text-orange-900", path: "/patient/hospitals" as const },
     { title: "My Tokens", sub: "TRACK LIVE", icon: "🎟️", bg: "bg-blue-50", text: "text-blue-900", path: "/patient/tokens" as const },
     { title: "My Prescriptions", sub: "VIEW RECORDS", icon: "📄", bg: "bg-purple-50", text: "text-purple-900", path: "/patient/prescriptions" as const },
-  ];
-
-  const trustPoints = [
-    { icon: Ticket, title: "Live Queue Tracking", desc: "See your token number update in real time." },
-    { icon: Timer, title: "Skip the Waiting Room", desc: "Arrive only when your turn is close." },
-    { icon: ShieldCheck, title: "Verified Hospitals", desc: "Every listed hospital is vetted by our team." },
   ];
 
   return (
@@ -115,21 +109,6 @@ function LandingPage() {
                 </div>
               </div>
               <ChevronRight className={`w-4 h-4 ${card.text} opacity-50`} />
-            </div>
-          ))}
-        </div>
-
-        {/* Trust strip — fills desktop width, stacks on mobile */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10 lg:mb-14 bg-white border border-gray-100 rounded-2xl p-6 lg:p-8">
-          {trustPoints.map((t, i) => (
-            <div key={i} className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-full bg-teal-50 flex items-center justify-center shrink-0">
-                <t.icon className="w-5 h-5 text-teal-600" />
-              </div>
-              <div>
-                <h4 className="font-semibold text-gray-900 text-sm">{t.title}</h4>
-                <p className="text-xs text-gray-500 mt-0.5">{t.desc}</p>
-              </div>
             </div>
           ))}
         </div>
