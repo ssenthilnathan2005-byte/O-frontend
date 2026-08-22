@@ -85,12 +85,12 @@ function LandingPage() {
 
       <main className="flex-1 w-full max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 py-6 lg:py-10">
         {/* Banner */}
-        <div className="relative w-full min-h-[160px] lg:min-h-[200px] rounded-2xl overflow-hidden mb-8 lg:mb-12 bg-gradient-to-br from-[#04182a] via-[#0a3d3f] to-[#0f766e] cursor-pointer" onClick={() => navigate({ path: "/patient/hospitals" })}>
+        <div className="relative w-full min-h-[110px] lg:min-h-[130px] rounded-2xl overflow-hidden mb-8 lg:mb-12 bg-gradient-to-br from-[#04182a] via-[#0a3d3f] to-[#0f766e] cursor-pointer" onClick={() => navigate({ path: "/patient/hospitals" })}>
           {/* Glow accents */}
           <div className="absolute -right-24 -bottom-24 w-[420px] h-[420px] bg-teal-400/20 rounded-full blur-3xl"></div>
           <div className="absolute right-1/3 top-0 w-64 h-64 bg-teal-300/10 rounded-full blur-3xl"></div>
 
-          <div className="relative z-10 flex flex-col lg:flex-row items-center h-full p-6 sm:p-8 lg:p-10">
+          <div className="relative z-10 flex flex-col lg:flex-row items-center h-full p-5 sm:p-6 lg:p-8">
             {/* Left: copy */}
             <div className="flex-1 text-white">
               <h2 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold mb-1 leading-tight">Save Time on Your</h2>
