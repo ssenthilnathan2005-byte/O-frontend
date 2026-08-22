@@ -84,54 +84,16 @@ function LandingPage() {
       </header>
 
       <main className="flex-1 w-full max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 py-6 lg:py-10">
-        {/* Banner */}
-        <div className="relative w-full min-h-[260px] sm:min-h-[320px] lg:min-h-[380px] rounded-2xl overflow-hidden mb-8 lg:mb-12 bg-teal-900 cursor-pointer" onClick={() => navigate({ path: "/patient/hospitals" })}>
-          {/* Soft medical-cross pattern background */}
-          <div className="absolute inset-0 opacity-[0.07]" style={{
-            backgroundImage: "radial-gradient(circle, white 1.5px, transparent 1.5px)",
-            backgroundSize: "24px 24px"
-          }}></div>
-          <div className="absolute -right-16 -top-16 w-72 h-72 bg-teal-700/40 rounded-full blur-3xl"></div>
-          <div className="absolute -right-10 bottom-0 w-56 h-56 bg-yellow-500/10 rounded-full blur-3xl"></div>
-
-          <div className="relative z-10 flex flex-col lg:flex-row items-center h-full p-8 sm:p-12 lg:p-16 gap-8">
-            {/* Left: copy */}
-            <div className="flex-1 text-white">
-              <span className="inline-block bg-white/10 text-teal-200 text-xs font-semibold tracking-wide px-3 py-1 rounded-full mb-4 border border-white/10">
-                TRUSTED BY 10,000+ PATIENTS
-              </span>
-              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-3 leading-tight">
-                Your health,<br/><span className="text-teal-300">one tap away</span>
-              </h2>
-              <p className="text-sm sm:text-base lg:text-lg text-teal-100/80 max-w-md mb-6">
-                Book verified doctors, track your token live, and skip the waiting room entirely.
-              </p>
-              <button className="bg-yellow-500 text-gray-900 font-bold px-6 py-3 rounded-lg shadow-md hover:bg-yellow-400 transition-colors">
-                Book an appointment
-              </button>
-            </div>
-
-            {/* Right: illustration card */}
-            <div className="hidden lg:flex flex-1 items-center justify-center relative">
-              <div className="w-72 h-72 bg-white rounded-3xl shadow-2xl flex items-center justify-center relative">
-                <div className="w-24 h-24 rounded-full bg-teal-50 flex items-center justify-center">
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0d9488" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M6 3v6a4 4 0 0 0 8 0V3"/><path d="M8 3H4"/><path d="M18 3h-4"/>
-                    <circle cx="18" cy="15" r="3"/><path d="M12 9v6a6 6 0 0 0 6 6"/>
-                  </svg>
-                </div>
-                {/* Floating badge: live queue */}
-                <div className="absolute -left-6 top-6 bg-white rounded-xl shadow-lg px-4 py-2.5 flex items-center gap-2 border border-gray-100">
-                  <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                  <span className="text-xs font-semibold text-gray-700">Token #14 · Live</span>
-                </div>
-                {/* Floating badge: verified */}
-                <div className="absolute -right-8 bottom-8 bg-white rounded-xl shadow-lg px-4 py-2.5 flex items-center gap-2 border border-gray-100">
-                  <span className="text-teal-600">✓</span>
-                  <span className="text-xs font-semibold text-gray-700">Verified hospital</span>
-                </div>
-              </div>
-            </div>
+        {/* Banner Carousel */}
+        <div className="relative w-full h-[240px] sm:h-[320px] lg:h-[380px] rounded-2xl overflow-hidden mb-8 lg:mb-12 group cursor-pointer" onClick={() => navigate({ path: "/patient/hospitals" })}>
+          <div className="absolute inset-0 bg-gradient-to-r from-gray-900 to-gray-700 flex items-center p-8 sm:p-16 lg:p-20">
+             <div className="max-w-xl lg:max-w-2xl text-white relative z-10">
+               <h2 className="text-3xl sm:text-5xl lg:text-6xl font-bold mb-4 leading-tight">Save Time on Your<br/><span className="text-teal-400">Doctor Visits</span></h2>
+               <p className="text-sm sm:text-lg lg:text-xl text-gray-300">Book appointments online, track your token live, and skip the waiting room completely.</p>
+               <button className="mt-6 bg-gradient-to-r from-yellow-500 to-yellow-600 text-gray-900 font-bold px-6 py-2.5 rounded-lg shadow-lg hover:from-yellow-400 hover:to-yellow-500 transition-all">Book Now</button>
+             </div>
+             {/* Decorative element */}
+             <div className="absolute right-10 top-1/2 -translate-y-1/2 hidden md:block w-72 lg:w-96 h-48 lg:h-64 bg-gradient-to-br from-teal-500 to-teal-700 rounded-xl shadow-2xl rotate-12 opacity-80 border-4 border-white/10"></div>
           </div>
         </div>
 
