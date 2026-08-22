@@ -85,19 +85,14 @@ function LandingPage() {
 
       <main className="flex-1 w-full max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 py-6 lg:py-10">
         {/* Banner */}
-        <div className="relative w-full min-h-[260px] lg:min-h-[300px] rounded-2xl overflow-hidden mb-8 lg:mb-12 bg-gradient-to-br from-[#04182a] via-[#0a3d3f] to-[#0f766e] cursor-pointer" onClick={() => navigate({ path: "/patient/hospitals" })}>
+        <div className="relative w-full min-h-[160px] lg:min-h-[200px] rounded-2xl overflow-hidden mb-8 lg:mb-12 bg-gradient-to-br from-[#04182a] via-[#0a3d3f] to-[#0f766e] cursor-pointer" onClick={() => navigate({ path: "/patient/hospitals" })}>
           {/* Glow accents */}
           <div className="absolute -right-24 -bottom-24 w-[420px] h-[420px] bg-teal-400/20 rounded-full blur-3xl"></div>
           <div className="absolute right-1/3 top-0 w-64 h-64 bg-teal-300/10 rounded-full blur-3xl"></div>
 
-          <div className="relative z-10 flex flex-col lg:flex-row items-center h-full p-6 sm:p-8 lg:p-10 gap-8">
+          <div className="relative z-10 flex flex-col lg:flex-row items-center h-full p-6 sm:p-8 lg:p-10">
             {/* Left: copy */}
             <div className="flex-1 text-white">
-              <span className="inline-flex items-center gap-2 bg-white/10 border border-white/10 text-teal-100 text-xs sm:text-sm font-medium px-4 py-2 rounded-full mb-5">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2 4 6v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6l-8-4Z"/><path d="m9 12 2 2 4-4"/></svg>
-                Smarter healthcare, made simple
-              </span>
-
               <h2 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold mb-1 leading-tight">Save Time on Your</h2>
               <h2 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold mb-4 leading-tight text-teal-300 relative inline-block">
                 Doctor Visits
@@ -112,46 +107,6 @@ function LandingPage() {
                 Book Now
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
               </button>
-            </div>
-
-            {/* Right: floating feature badges + phone mockup */}
-            <div className="hidden lg:flex flex-1 items-center justify-center gap-6 relative">
-              <div className="flex flex-col gap-4">
-                {[
-                  { icon: "calendar", label: "Easy", sub: "Online Booking", color: "text-blue-300", bg: "bg-blue-400/10" },
-                  { icon: "radio", label: "Live Token", sub: "Tracking", color: "text-teal-300", bg: "bg-teal-400/10" },
-                  { icon: "clock", label: "Less Waiting,", sub: "More Time for You", color: "text-amber-300", bg: "bg-amber-400/10" },
-                  { icon: "shield", label: "Trusted & Secure", sub: "", color: "text-emerald-300", bg: "bg-emerald-400/10" },
-                ].map((item, i) => (
-                  <div key={i} className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl px-4 py-3 backdrop-blur-sm">
-                    <div className="leading-tight">
-                      <p className="text-sm font-semibold text-white">{item.label}</p>
-                      {item.sub && <p className="text-xs text-teal-100/70">{item.sub}</p>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Phone mockup */}
-              <div className="w-52 shrink-0 rounded-[2rem] border-[6px] border-gray-900 bg-white shadow-2xl overflow-hidden">
-                <div className="bg-gray-900 h-5 flex items-center justify-center">
-                  <div className="w-16 h-2.5 bg-gray-800 rounded-full"></div>
-                </div>
-                <div className="p-4 flex flex-col items-center">
-                  <div className="w-12 h-12 rounded-full bg-teal-50 flex items-center justify-center mb-2">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0d9488" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.8 4.6a5 5 0 0 0-7.1 0L12 6.3l-1.7-1.7a5 5 0 1 0-7.1 7.1L12 20.3l8.8-8.8a5 5 0 0 0 0-7Z"/><path d="M8 13h2l1-2 2 4 1-2h2"/></svg>
-                  </div>
-                  <p className="text-gray-900 font-semibold text-sm text-center leading-snug mb-3">Book Your<br/>Appointment</p>
-                  <div className="grid grid-cols-7 gap-1 w-full mb-3">
-                    {Array.from({ length: 21 }).map((_, i) => (
-                      <div key={i} className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] ${i === 13 ? "bg-teal-500 text-white font-bold" : "text-gray-400"}`}>
-                        {i + 8}
-                      </div>
-                    ))}
-                  </div>
-                  <button className="w-full bg-teal-600 text-white text-xs font-semibold py-2 rounded-lg">Confirm Booking</button>
-                </div>
-              </div>
             </div>
           </div>
         </div>
