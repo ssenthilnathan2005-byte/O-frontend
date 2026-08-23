@@ -273,6 +273,14 @@ export default function TopNav() {
                 <span className="absolute -top-1 -right-2 w-2 h-2 bg-green-500 rounded-full border border-white" />
               )}
             </button>
+            <button
+              type="button"
+              className={`flex items-center gap-1.5 transition-colors ${isActive(["/pharmacies", "/pharmacy/detail"])} hover:text-teal-600`}
+              onClick={() => navigate({ path: "/pharmacies" })}
+              data-ocid="nav.link"
+            >
+              <Pill className="w-4 h-4" /> Pharmacies
+            </button>
           </nav>
 
           <div className="flex-1" />
@@ -379,6 +387,17 @@ export default function TopNav() {
               )}
             </span>
             <span className="text-[10px] font-medium">Prescriptions</span>
+          </button>
+
+          {/* Pharmacies */}
+          <button
+            type="button"
+            className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-colors ${isActive(["/pharmacies", "/pharmacy/detail"])}`}
+            onClick={() => navigate({ path: "/pharmacies" })}
+            data-ocid="nav.link"
+          >
+            <Pill className="w-5 h-5" />
+            <span className="text-[10px] font-medium">Pharmacy</span>
           </button>
 
           {/* Profile — opens menu instead of direct logout */}
