@@ -3,6 +3,8 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
+  useRef,
   useState,
 } from "react";
 type Route =
@@ -107,16 +109,61 @@ function getInitialRoute(): Route {
 }
 
 export function RouterProvider({ children }: { children: ReactNode }) {
+  // full in-app navigation stack (used for rendering)
   const [history, setHistory] = useState<Route[]>([getInitialRoute()]);
   const route = history[history.length - 1];
+
+  // keep a ref in sync so the popstate handler always reads the latest stack
+  const historyRef = useRef(history);
+  historyRef.current = history;
+
+  // On first mount, seed the browser's real history entry with our stack so
+  // that popstate events (from the hardware/browser back button) have
+  // something to compare against.
+  useEffect(() => {
+    window.history.replaceState({ stack: history }, "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const navigate = useCallback((r: Route) => {
-    // keep navigation in-memory only to avoid changing the browser pathname
-    // (some hosting environments return 404 for direct pathname refreshes)
-    setHistory((prev) => [...prev, r]);
+    setHistory((prev) => {
+      const next = [...prev, r];
+      // Push a REAL browser/webview history entry (same pathname, so hosts
+      // that 404 on a direct pathname refresh are unaffected) carrying our
+      // in-app stack in its state. This is what makes the hardware/browser
+      // back button step back through in-app pages instead of leaving the
+      // site immediately.
+      window.history.pushState({ stack: next }, "");
+      return next;
+    });
   }, []);
+
   const goBack = useCallback(() => {
-    setHistory((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
+    // Delegate to the browser's own back navigation. This fires a
+    // popstate event, which the listener below uses to update our
+    // in-app stack — so both the on-screen "back" buttons and the
+    // phone's hardware back button go through the same code path and
+    // stay in sync.
+    if (historyRef.current.length > 1) {
+      window.history.back();
+    }
   }, []);
+
+  useEffect(() => {
+    const onPopState = (e: PopStateEvent) => {
+      const stack = (e.state as { stack?: Route[] } | null)?.stack;
+      if (stack && stack.length > 0) {
+        setHistory(stack);
+      }
+      // If there's no stack in state (user has backed out past everything
+      // we pushed), we simply do nothing here and let the browser itself
+      // navigate away/exit — which is the correct, expected behavior once
+      // the in-app stack is exhausted.
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
   return (
     <RouterContext.Provider value={{ route, navigate, goBack }}>
       {children}
