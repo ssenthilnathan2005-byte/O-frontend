@@ -34,10 +34,16 @@ export default function PharmaciesPage() {
 
         {loading ? (
           <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-teal-500" /></div>
+        ) : pharmacies.length === 0 ? (
+          <div className="text-center py-16 text-gray-400">
+            <Pill className="w-8 h-8 mx-auto mb-2 opacity-40" />
+            <p className="font-medium">No pharmacies listed yet</p>
+            <p className="text-xs mt-1">Check back soon — pharmacies are being added</p>
+          </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
             <Pill className="w-8 h-8 mx-auto mb-2 opacity-40" />
-            <p>No pharmacies found</p>
+            <p>No pharmacies match your search</p>
           </div>
         ) : (
           <div className="space-y-3">

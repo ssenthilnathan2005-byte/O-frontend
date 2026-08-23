@@ -200,6 +200,16 @@ export default function TopNav() {
             <div className="space-y-1">
               <button
                 type="button"
+                className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-gray-700 hover:bg-teal-50 transition-colors text-sm font-medium"
+                onClick={() => { setShowProfileMenu(false); navigate({ path: "/pharmacies" }); }}
+              >
+                <div className="w-9 h-9 rounded-full bg-teal-50 flex items-center justify-center">
+                  <Pill className="w-4 h-4 text-teal-600" />
+                </div>
+                Pharmacies
+              </button>
+              <button
+                type="button"
                 className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-red-500 hover:bg-red-50 transition-colors text-sm font-medium"
                 onClick={() => { setShowProfileMenu(false); logout(); }}
               >
@@ -387,17 +397,6 @@ export default function TopNav() {
               )}
             </span>
             <span className="text-[10px] font-medium">Prescriptions</span>
-          </button>
-
-          {/* Pharmacies */}
-          <button
-            type="button"
-            className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-colors ${isActive(["/pharmacies", "/pharmacy/detail"])}`}
-            onClick={() => navigate({ path: "/pharmacies" })}
-            data-ocid="nav.link"
-          >
-            <Pill className="w-5 h-5" />
-            <span className="text-[10px] font-medium">Pharmacy</span>
           </button>
 
           {/* Profile — opens menu instead of direct logout */}
