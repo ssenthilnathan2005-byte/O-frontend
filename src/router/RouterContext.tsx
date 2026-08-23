@@ -31,7 +31,12 @@ type Route =
   | { path: "/hospital-admin/pharmacy" }
   | { path: "/hospital-admin/inward" }
   | { path: "/pharmacy/login" }
-  | { path: "/terms" };
+  | { path: "/terms" }
+  | { path: "/pharmacies" }
+  | { path: "/pharmacy/detail"; id: string }
+  | { path: "/pharmacy-owner/login" }
+  | { path: "/pharmacy-owner/register" }
+  | { path: "/pharmacy-owner/dashboard" };
 interface RouterCtx {
   route: Route;
   navigate: (r: Route) => void;
@@ -91,6 +96,11 @@ function getInitialRoute(): Route {
   if (pathname === "/pharmacy/login") return { path: "/pharmacy/login" };
   if (pathname === "/terms") return { path: "/terms" };
 
+  if (pathname === "/pharmacies") return { path: "/pharmacies" };
+  if (pathname === "/pharmacy/detail") return { path: "/pharmacy/detail", id: hospitalId };
+  if (pathname === "/pharmacy-owner/login") return { path: "/pharmacy-owner/login" };
+  if (pathname === "/pharmacy-owner/register") return { path: "/pharmacy-owner/register" };
+  if (pathname === "/pharmacy-owner/dashboard") return { path: "/pharmacy-owner/dashboard" };
   return { path: "/" };
 }
 

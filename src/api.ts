@@ -390,7 +390,7 @@ export const push = {
 };
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-export type UserRole = "patient" | "doctor" | "admin" | "hospital_admin" | "pharmacy";
+export type UserRole = "patient" | "doctor" | "admin" | "hospital_admin" | "pharmacy" | "pharmacy_owner";
 export interface Hospital {
   id: string; name: string; area: string; address?: string;
   phone?: string; rating: number; gradient: string;
@@ -432,8 +432,44 @@ export type AppUser =
   | { id: string; code: string; doctorId: string; role: "doctor" }
   | { id: string; role: "admin" }
   | { id: string; role: "hospital_admin"; hospitalId: string; hospitalName: string }
-  | { id: string; code: string; pharmacyStaffId: string; hospitalId: string; hospitalName: string; role: "pharmacy" };
+  | { id: string; code: string; pharmacyStaffId: string; hospitalId: string; hospitalName: string; role: "pharmacy" }
+  | { id: string; name: string; email: string; role: "pharmacy_owner"; pharmacyId: string; pharmacyName?: string };
 export interface Stats {
   totalHospitals: number; totalDoctors: number; totalPatients: number;
   totalBookings: number; activeSessions: number;
 }
+
+async function fetch_(path: string, method: string, body?: any) {
+  const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
+  const token = getToken();
+  const res = await fetch(BASE + path, {
+    method,
+    headers: { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Request failed");
+  return data;
+}
+
+// ── Pharmacy Owner & Public Pharmacies ───────────────────────────────────────
+export const pharmacyOwner = {
+  register: (data: Record<string, string>) =>
+    post<{ token: string; user: AppUser }>("/pharmacy-owner/register", data),
+  login: (email: string, password: string) =>
+    post<{ token: string; user: AppUser }>("/pharmacy-owner/login", { email, password }),
+  getMyPharmacy: () => get<any>("/pharmacy-owner/me/pharmacy"),
+  updateMyPharmacy: (data: Record<string, string>) =>
+    fetch_(`/pharmacy-owner/me/pharmacy`, "PATCH", data) as Promise<any>,
+  getMyEnquiries: () => get<any[]>("/pharmacy-owner/me/enquiries"),
+};
+
+export const pharmacies = {
+  list: (params?: { area?: string; q?: string }) => {
+    const qs = new URLSearchParams(params as any).toString();
+    return get<any[]>(`/pharmacies${qs ? "?" + qs : ""}`);
+  },
+  get: (id: string) => get<any>(`/pharmacies/${id}`),
+  enquire: (id: string, data: { name: string; phone: string; message?: string }) =>
+    post<{ success: boolean; id: string }>(`/pharmacies/${id}/enquire`, data),
+};

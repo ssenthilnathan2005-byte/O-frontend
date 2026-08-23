@@ -17,6 +17,11 @@ import HospitalsPage from "./pages/patient/HospitalsPage";
 import MyTokensPage from "./pages/patient/MyTokensPage";
 import MyPrescriptionsPage from "./pages/patient/MyPrescriptionsPage";
 import TokenTrackerPage from "./pages/patient/TokenTrackerPage";
+import PharmaciesPage from "./pages/patient/PharmaciesPage";
+import PharmacyDetailPage from "./pages/patient/PharmacyDetailPage";
+import PharmacyOwnerLogin from "./pages/PharmacyOwnerLogin";
+import PharmacyOwnerRegister from "./pages/PharmacyOwnerRegister";
+import PharmacyOwnerDashboard from "./pages/PharmacyOwnerDashboard";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ChatbotWidget from "./components/ChatbotWidget";
 import { RouterProvider, useRouter } from "./router/RouterContext";
@@ -40,6 +45,7 @@ function LandingPage() {
     { title: "Doctor Appointment", sub: "BOOK NOW", icon: "👨‍⚕️", bg: "bg-orange-50", text: "text-orange-900", path: "/patient/hospitals" as const },
     { title: "My Tokens", sub: "TRACK LIVE", icon: "🎟️", bg: "bg-blue-50", text: "text-blue-900", path: "/patient/tokens" as const },
     { title: "My Prescriptions", sub: "VIEW RECORDS", icon: "📄", bg: "bg-purple-50", text: "text-purple-900", path: "/patient/prescriptions" as const },
+    { title: "Pharmacies", sub: "FIND NEAR YOU", icon: "💊", bg: "bg-emerald-50", text: "text-emerald-900", path: "/pharmacies" as const },
   ];
 
   return (
@@ -203,6 +209,7 @@ function LandingPage() {
             <div className="flex flex-col gap-2 text-sm text-gray-500">
               <button onClick={() => navigate({ path: "/terms" })} className="text-left hover:text-teal-600 transition-colors">Terms & Conditions</button>
               <button onClick={() => navigate({ path: "/hospital-admin/login" })} className="text-left hover:text-teal-600 transition-colors">Hospital Admin Login</button>
+              <button onClick={() => navigate({ path: "/pharmacy-owner/login" })} className="text-left hover:text-teal-600 transition-colors">Pharmacy Owner Login</button>
             </div>
           </div>
           <div className="flex lg:items-start lg:justify-end">
@@ -226,6 +233,10 @@ function AppRoutes() {
       if (route.path === "/pharmacy/login") return <PharmacyLogin />;
       if (route.path === "/patient/hospitals") return <HospitalsPage city={(route as { city?: string }).city} />;
       if (route.path === "/patient/hospital") return <HospitalDoctorsPage id={(route as { id: string }).id} />;
+      if (route.path === "/pharmacies") return <PharmaciesPage />;
+      if (route.path === "/pharmacy/detail") return <PharmacyDetailPage id={(route as any).id} />;
+      if (route.path === "/pharmacy-owner/login") return <PharmacyOwnerLogin />;
+      if (route.path === "/pharmacy-owner/register") return <PharmacyOwnerRegister />;
       if (route.path === "/login") {
         const loginRoute = route as {
           tab?: "patient" | "doctor";
@@ -252,6 +263,9 @@ function AppRoutes() {
     if (route.path === "/patient/hospitals") return <HospitalsPage city={(route as { city?: string }).city} />;
     if (route.path === "/patient/hospital")
       return <HospitalDoctorsPage id={(route as { id: string }).id} />;
+    if (route.path === "/pharmacies") return <PharmaciesPage />;
+    if (route.path === "/pharmacy/detail") return <PharmacyDetailPage id={(route as any).id} />;
+    if (route.path === "/pharmacy-owner/dashboard") return <PharmacyOwnerDashboard />;
     if (route.path === "/patient/tokens") return <MyTokensPage />;
     if (route.path === "/patient/prescriptions") return <MyPrescriptionsPage />;
     if (route.path === "/patient/track") {
@@ -265,7 +279,7 @@ function AppRoutes() {
     return <HospitalsPage />;
   }
 
-  const isAdmin = user?.role === "admin" || user?.role === "hospital_admin" || user?.role === "pharmacy";
+  const isAdmin = user?.role === "admin" || user?.role === "hospital_admin" || user?.role === "pharmacy" || user?.role === "pharmacy_owner";
   // Only hide TopNav for routes that don't require login (landing/login/terms)
   // AND only when there's no logged-in user — a page refresh resets the
   // in-memory router to "/" even though the user is still authenticated
@@ -273,7 +287,7 @@ function AppRoutes() {
   // hide the nav purely based on route.path when `user` is already set.
   const hideTopNav =
     isAdmin ||
-    (!user && (route.path === "/" || route.path === "/login" || route.path === "/terms" || route.path === "/hospital-admin/login" || route.path === "/pharmacy/login")) ||
+    (!user && (route.path === "/" || route.path === "/login" || route.path === "/terms" || route.path === "/hospital-admin/login" || route.path === "/pharmacy/login" || route.path === "/pharmacy-owner/login" || route.path === "/pharmacy-owner/register")) ||
     (!!user && route.path === "/terms");
 
   return (
