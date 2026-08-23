@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { MapPin, Phone, Clock, Mail, Loader2, Pill, Send, ChevronLeft, ExternalLink } from "lucide-react";
+import { MapPin, Phone, Clock, Mail, Loader2, Pill, Send, ChevronLeft, ExternalLink, Map } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,10 +15,14 @@ export default function PharmacyDetailPage({ id }: { id: string }) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [showMap, setShowMap] = useState(false);
   const [form, setForm] = useState({ name: (user as any)?.name || "", phone: "", message: "" });
 
   useEffect(() => {
-    api.pharmacies.get(id).then(setPharmacy).catch(() => toast.error("Pharmacy not found")).finally(() => setLoading(false));
+    api.pharmacies.get(id)
+      .then(p => { setPharmacy(p); })
+      .catch(() => toast.error("Pharmacy not found"))
+      .finally(() => setLoading(false));
   }, [id]);
 
   async function handleEnquire() {
@@ -41,30 +45,43 @@ export default function PharmacyDetailPage({ id }: { id: string }) {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-400">Pharmacy not found</div>
   );
 
-  const mapsUrl = pharmacy.latitude && pharmacy.longitude
-    ? `https://maps.google.com/?q=${pharmacy.latitude},${pharmacy.longitude}`
-    : pharmacy.address ? `https://maps.google.com/?q=${encodeURIComponent(pharmacy.address)}` : null;
+  const hasCoords = pharmacy.latitude && pharmacy.longitude;
+  const mapsSearchUrl = pharmacy.address
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(pharmacy.name + " " + pharmacy.address)}`
+    : null;
+  const mapsDirectionsUrl = hasCoords
+    ? `https://www.google.com/maps/dir/?api=1&destination=${pharmacy.latitude},${pharmacy.longitude}`
+    : mapsSearchUrl;
+
+  // Google Maps embed URL
+  const embedUrl = hasCoords
+    ? `https://maps.google.com/maps?q=${pharmacy.latitude},${pharmacy.longitude}&z=16&output=embed`
+    : pharmacy.address
+    ? `https://maps.google.com/maps?q=${encodeURIComponent(pharmacy.name + " " + pharmacy.address)}&z=16&output=embed`
+    : null;
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-2xl mx-auto px-4 py-6 space-y-5">
-        <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-teal-600 transition-colors">
+      <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+
+        <button type="button" onClick={goBack}
+          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-teal-600 transition-colors">
           <ChevronLeft className="w-4 h-4" /> Back
         </button>
 
-        {/* Header card */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        {/* Header */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <div className="flex items-start gap-4">
             <div className="w-14 h-14 rounded-2xl bg-teal-50 flex items-center justify-center shrink-0">
               <Pill className="w-7 h-7 text-teal-600" />
             </div>
-            <div>
+            <div className="flex-1 min-w-0">
               <h1 className="text-xl font-bold text-gray-900">{pharmacy.name}</h1>
               {pharmacy.description && <p className="text-sm text-gray-500 mt-1">{pharmacy.description}</p>}
             </div>
           </div>
 
-          <div className="mt-5 space-y-3">
+          <div className="mt-4 space-y-2.5">
             {pharmacy.address && (
               <div className="flex items-start gap-2.5 text-sm text-gray-700">
                 <MapPin className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />
@@ -88,16 +105,49 @@ export default function PharmacyDetailPage({ id }: { id: string }) {
             )}
           </div>
 
-          {mapsUrl && (
-            <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
-              className="mt-4 flex items-center gap-2 text-sm text-teal-600 hover:underline font-medium">
-              <ExternalLink className="w-3.5 h-3.5" /> View on Google Maps
-            </a>
+          {/* Map buttons */}
+          {(embedUrl || mapsDirectionsUrl) && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {embedUrl && (
+                <button type="button" onClick={() => setShowMap(v => !v)}
+                  className="flex items-center gap-1.5 text-sm bg-teal-50 text-teal-700 hover:bg-teal-100 px-3 py-1.5 rounded-lg font-medium transition-colors">
+                  <Map className="w-3.5 h-3.5" /> {showMap ? "Hide Map" : "Show Map"}
+                </button>
+              )}
+              {mapsDirectionsUrl && (
+                <a href={mapsDirectionsUrl} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 text-sm bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded-lg font-medium transition-colors">
+                  <ExternalLink className="w-3.5 h-3.5" /> Get Directions
+                </a>
+              )}
+              {mapsSearchUrl && (
+                <a href={mapsSearchUrl} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 text-sm bg-gray-100 text-gray-600 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium transition-colors">
+                  <MapPin className="w-3.5 h-3.5" /> View on Maps
+                </a>
+              )}
+            </div>
           )}
         </div>
 
+        {/* Embedded Map */}
+        {showMap && embedUrl && (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <iframe
+              title="Pharmacy location"
+              src={embedUrl}
+              width="100%"
+              height="300"
+              style={{ border: 0 }}
+              allowFullScreen
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          </div>
+        )}
+
         {/* Enquiry form */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <h2 className="font-semibold text-gray-900 mb-4">Send an Enquiry</h2>
           {sent ? (
             <div className="text-center py-6">
@@ -128,6 +178,7 @@ export default function PharmacyDetailPage({ id }: { id: string }) {
             </div>
           )}
         </div>
+
       </div>
     </div>
   );
