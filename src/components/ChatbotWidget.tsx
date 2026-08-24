@@ -60,13 +60,13 @@ export default function ChatbotWidget() {
   const [lang, setLang]               = useState<Lang>("en");
   const [mode, setMode]               = useState<Mode>("chat");
 
-  // chat state
+  // ── chat state ──
   const [messages, setMessages]       = useState<Message[]>([{ role: "bot", text: WELCOME.en }]);
   const [input, setInput]             = useState("");
   const [loading, setLoading]         = useState(false);
   const [showQuickReplies, setShowQuickReplies] = useState(true);
 
-  // voice state
+  // ── voice state ──
   const [voiceHistory, setVoiceHistory] = useState<VoiceMessage[]>([]);
   const [voiceLog, setVoiceLog]         = useState<Message[]>([{ role: "bot", text: VOICE_WELCOME.en }]);
   const [listening, setListening]       = useState(false);
@@ -80,6 +80,7 @@ export default function ChatbotWidget() {
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, voiceLog, loading, voiceLoading]);
   useEffect(() => { if (open && mode === "chat") setTimeout(() => inputRef.current?.focus(), 100); }, [open, mode]);
 
+  // ── reset voice state when switching to voice mode ──
   useEffect(() => {
     if (mode === "voice") {
       setVoiceHistory([]);
@@ -102,7 +103,7 @@ export default function ChatbotWidget() {
     }
   }
 
-  // TEXT CHAT
+  // ── TEXT CHAT ──────────────────────────────────────────────────────────────
   async function sendToBot(text: string) {
     setMessages((prev) => [...prev, { role: "user", text }]);
     setShowQuickReplies(false);
@@ -130,7 +131,7 @@ export default function ChatbotWidget() {
     sendToBot(trimmed);
   }
 
-  // VOICE BOOKING
+  // ── VOICE BOOKING ──────────────────────────────────────────────────────────
   const sendVoiceTurn = useCallback(async (transcript: string) => {
     const jwt = getJwt();
     if (!jwt) {
@@ -181,7 +182,7 @@ export default function ChatbotWidget() {
   function startListening() {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) {
-      alert("Your browser does not support voice input. Please use Chrome.");
+      alert("Your browser doesn't support voice input. Please use Chrome.");
       return;
     }
     if (listening || voiceLoading) return;
@@ -210,6 +211,7 @@ export default function ChatbotWidget() {
     setListening(false);
   }
 
+  // ── RENDER ─────────────────────────────────────────────────────────────────
   const displayMessages = mode === "chat" ? messages : voiceLog;
   const isLoading       = mode === "chat" ? loading : voiceLoading;
 
@@ -246,11 +248,11 @@ export default function ChatbotWidget() {
           {/* Mode tabs */}
           <div className="flex border-b border-gray-200 bg-white">
             <button onClick={() => setMode("chat")}
-              className={`flex-1 text-xs font-semibold py-2.5 transition-colors ${mode === "chat" ? "text-teal-600 border-b-2 border-teal-600" : "text-gray-500 hover:text-gray-700"}`}>
+              className={`flex-1 text-xs font-semibold py-2 transition-colors ${mode === "chat" ? "text-teal-600 border-b-2 border-teal-600" : "text-gray-500 hover:text-gray-700"}`}>
               💬 Chat
             </button>
             <button onClick={() => setMode("voice")}
-              className={`flex-1 text-xs font-semibold py-2.5 transition-colors ${mode === "voice" ? "text-teal-600 border-b-2 border-teal-600" : "text-gray-500 hover:text-gray-700"}`}>
+              className={`flex-1 text-xs font-semibold py-2 transition-colors ${mode === "voice" ? "text-teal-600 border-b-2 border-teal-600" : "text-gray-500 hover:text-gray-700"}`}>
               🎙 Voice Book
             </button>
           </div>
@@ -273,6 +275,7 @@ export default function ChatbotWidget() {
                 </div>
               </div>
             )}
+            {/* Booking success card */}
             {mode === "voice" && bookedToken && (
               <div className="bg-teal-50 border border-teal-200 rounded-xl px-4 py-3 text-sm text-teal-900 mt-2">
                 <p className="font-bold text-base mb-1">✅ Token Booked!</p>
@@ -285,7 +288,7 @@ export default function ChatbotWidget() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Chat mode input */}
+          {/* Chat mode: quick replies + text input */}
           {mode === "chat" && (
             <>
               {showQuickReplies && !loading && (
@@ -314,16 +317,11 @@ export default function ChatbotWidget() {
             </>
           )}
 
-          {/* Voice mode mic */}
+          {/* Voice mode: mic button */}
           {mode === "voice" && (
             <div className="flex flex-col items-center gap-2 px-4 py-4 border-t border-gray-200 bg-white">
               {bookedToken ? (
-                <button onClick={() => {
-                  setBookedToken(null);
-                  setVoiceHistory([]);
-                  setVoiceLog([{ role: "bot", text: VOICE_WELCOME[lang] }]);
-                  speak(VOICE_WELCOME[lang], lang);
-                }}
+                <button onClick={() => { setBookedToken(null); setVoiceHistory([]); setVoiceLog([{ role: "bot", text: VOICE_WELCOME[lang] }]); speak(VOICE_WELCOME[lang], lang); }}
                   className="w-full py-2 rounded-full bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 transition-colors">
                   Book another token
                 </button>
