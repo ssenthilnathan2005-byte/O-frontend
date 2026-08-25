@@ -402,6 +402,10 @@ export interface Doctor {
   price: number; consultationFee?: number; tokensPerSession: number;
   sessions: string[];
   sessionTimings?: Partial<Record<string, { start: string; end: string }>>;
+  scheduleConfig?: {
+    weekday: Partial<Record<string, number>>;
+    weekend: Partial<Record<string, number>>;
+  };
   isAvailable?: boolean; yearsOfExperience?: string;
   education?: string; languages?: string[];
   statusOverride?: string;

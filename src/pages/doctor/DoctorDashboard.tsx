@@ -278,6 +278,7 @@ export default function DoctorDashboard() {
     sessions: ((doctor?.sessions ?? []) as string[]).filter((s): s is SessionType => ["morning","afternoon","evening"].includes(s)),
     contactPhone: (doctor as any)?.contactPhone || doctor?.phone || "",
     sessionTimings: sanitizeSessionTimings(doctor?.sessionTimings),
+    scheduleConfig: doctor?.scheduleConfig ?? { weekday: {}, weekend: {} },
   });
 
   // ── Sync profileForm when doctor reloads from server ─────────────────────
@@ -298,6 +299,7 @@ export default function DoctorDashboard() {
         sessions: ((doctor.sessions ?? []) as string[]).filter((s): s is SessionType => ["morning","afternoon","evening"].includes(s)),
         contactPhone: (doctor as any).contactPhone || doctor?.phone || "",
         sessionTimings: sanitizeSessionTimings(doctor.sessionTimings),
+        scheduleConfig: doctor.scheduleConfig ?? { weekday: {}, weekend: {} },
       });
     } else {
       // Background refresh — only update non-timing fields
@@ -467,6 +469,7 @@ export default function DoctorDashboard() {
       specialty: profileForm.specialty,
       price: 10,
       tokensPerSession: Number(profileForm.tokensPerSession),
+      scheduleConfig: profileForm.scheduleConfig,
       walkInInterval: walkInIntervalNum,
       avgMinutesPerPatient: finalAvgMinutes,
       sessions: profileForm.sessions,
@@ -1392,21 +1395,59 @@ export default function DoctorDashboard() {
                 Booking fee is fixed at Rs 10 for all doctors.
               </div>
               <div className="grid grid-cols-1 gap-4 mb-5">
-                <div className="space-y-1.5">
-                  <Label htmlFor="doc-tokens" className="text-sm font-medium">
-                    Tokens Per Session
-                  </Label>
+                {/* ── Schedule Config: weekday vs weekend tokens ── */}
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">Tokens Per Session</Label>
+                  <p className="text-xs text-gray-400">
+                    Set how many patients you see per session — separately for weekdays (Mon–Fri) and weekends (Sat–Sun).
+                  </p>
+                  {(["weekday", "weekend"] as const).map((dayType) => (
+                    <div key={dayType} className="rounded-xl border-2 border-gray-100 bg-gray-50 p-4">
+                      <p className="text-sm font-semibold mb-3 capitalize text-teal-700">
+                        {dayType === "weekday" ? "Weekdays (Mon–Fri)" : "Weekends (Sat–Sun)"}
+                      </p>
+                      <div className="grid grid-cols-3 gap-3">
+                        {(["morning", "afternoon", "evening"] as SessionType[]).map((s) => {
+                          const isEnabled = profileForm.sessions.includes(s);
+                          if (!isEnabled) return null;
+                          return (
+                            <div key={s} className="space-y-1">
+                              <Label className="text-xs text-gray-500 capitalize">{s}</Label>
+                              <Input
+                                type="number"
+                                min={1}
+                                max={100}
+                                placeholder="tokens"
+                                value={profileForm.scheduleConfig?.[dayType]?.[s] ?? ""}
+                                onChange={(e) =>
+                                  setProfileForm((p) => ({
+                                    ...p,
+                                    scheduleConfig: {
+                                      ...p.scheduleConfig,
+                                      [dayType]: {
+                                        ...(p.scheduleConfig?.[dayType] ?? {}),
+                                        [s]: Number(e.target.value),
+                                      },
+                                    },
+                                  }))
+                                }
+                                data-ocid="profile.input"
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                  <p className="text-xs text-gray-400">
+                    Overall fallback (used if a session has no per-day config):
+                  </p>
                   <Input
-                    id="doc-tokens"
                     type="number"
                     value={profileForm.tokensPerSession}
-                    onChange={(e) =>
-                      setProfileForm((p) => ({
-                        ...p,
-                        tokensPerSession: e.target.value,
-                      }))
-                    }
+                    onChange={(e) => setProfileForm((p) => ({ ...p, tokensPerSession: e.target.value }))}
                     data-ocid="profile.input"
+                    placeholder="Default tokens per session"
                   />
                 </div>
                 <div className="space-y-1.5">

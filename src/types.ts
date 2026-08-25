@@ -40,6 +40,10 @@ export interface Doctor {
   education?: string;
   languages?: string[];
   sessionTimings?: Partial<Record<SessionType, SessionTiming>>;
+  scheduleConfig?: {
+    weekday: Partial<Record<SessionType, number>>;
+    weekend: Partial<Record<SessionType, number>>;
+  };
   statusOverride?: string;
   walkInInterval?: number;
 }
