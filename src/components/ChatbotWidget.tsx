@@ -75,7 +75,7 @@ export default function ChatbotWidget() {
 
   const messagesEndRef  = useRef<HTMLDivElement>(null);
   const inputRef        = useRef<HTMLInputElement>(null);
-  const recognitionRef  = useRef<SpeechRecognition | null>(null);
+  const recognitionRef  = useRef<any>(null);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, voiceLog, loading, voiceLoading]);
   useEffect(() => { if (open && mode === "chat") setTimeout(() => inputRef.current?.focus(), 100); }, [open, mode]);
@@ -169,6 +169,8 @@ export default function ChatbotWidget() {
           doctorName: data.booking.doctorName,
           hospitalName: data.booking.hospitalName,
         });
+        // Signal StoreContext to re-fetch bookings so My Tokens updates live
+        window.dispatchEvent(new CustomEvent("voice-booking-success"));
       }
     } catch {
       const err = lang === "ta" ? "இணைப்பு பிழை. மீண்டும் முயற்சிக்கவும்." : "Connection error. Please try again.";
@@ -189,7 +191,7 @@ export default function ChatbotWidget() {
 
     window.speechSynthesis?.cancel();
 
-    const rec = new SR() as SpeechRecognition;
+    const rec = new SR();
     rec.lang = lang === "ta" ? "ta-IN" : "en-IN";
     rec.interimResults = false;
     rec.maxAlternatives = 1;
