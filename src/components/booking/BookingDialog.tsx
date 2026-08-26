@@ -460,7 +460,16 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
                 {(doctor.sessions as SessionType[]).map((session) => {
                   const available    = isSessionAvailableForDate(selectedDate, session, (doctor as any).scheduleConfig, doctor.sessionTimings);
                   const booked       = getBookedCount(selectedDate, session);
-                  const full         = booked >= doctor.tokensPerSession;
+                  const sc = (doctor as any).scheduleConfig;
+                  const dow = new Date(selectedDate + "T00:00:00").getDay();
+                  const dayType = dow === 0 || dow === 6 ? "weekend" : "weekday";
+                  const scEntry = sc?.[dayType]?.[session];
+                  const sessionCapacity = (() => {
+                    const count = typeof scEntry === "object" ? scEntry?.count : scEntry;
+                    if (count !== undefined && count !== null && Number.isFinite(Number(count))) return Number(count);
+                    return doctor.tokensPerSession;
+                  })();
+                  const full         = booked >= sessionCapacity;
                   const cancelled    = isSessionCancelled(doctor.id, selectedDate, session);
                   const closed       = tokenStates[makeSessionId(doctor.id, selectedDate, session)]?.isClosed === true;
                   const unavailable  = !available || full || cancelled || closed;
@@ -491,7 +500,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
                         }`}>
                           {cancelled ? "Cancelled" : closed ? "Ended" : full ? "Full"
                            : !available ? "Unavailable"
-                           : `${booked} / ${doctor.tokensPerSession} Booked`}
+                           : `${booked} / ${sessionCapacity} Booked`}
                         </span>
                       </div>
                     </button>
