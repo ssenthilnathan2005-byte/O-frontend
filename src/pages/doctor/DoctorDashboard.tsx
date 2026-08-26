@@ -733,7 +733,17 @@ export default function DoctorDashboard() {
     setPriorityDialog({ open: false, index: 0, slot: null });
   }
 
-  const maxTokens = doctor?.tokensPerSession ?? 20;
+  const maxTokens = (() => {
+    const sc = (doctor as any)?.scheduleConfig;
+    if (sc && regDate && regSession) {
+      const dow = new Date(regDate + "T00:00:00").getDay();
+      const dayType = dow === 0 || dow === 6 ? "weekend" : "weekday";
+      const entry = sc[dayType]?.[regSession];
+      const count = typeof entry === "object" ? entry?.count : entry;
+      if (count !== undefined && count !== null && Number.isFinite(Number(count))) return Number(count);
+    }
+    return doctor?.tokensPerSession ?? 20;
+  })();
   const walkInInterval = doctor?.walkInInterval && doctor.walkInInterval > 0 ? doctor.walkInInterval : 5;
 
   function renderTokenGrid() {
@@ -1467,23 +1477,6 @@ export default function DoctorDashboard() {
                 Booking fee is fixed at Rs 10 for all doctors.
               </div>
               <div className="grid grid-cols-1 gap-4 mb-5">
-                <div className="space-y-1.5">
-                  <Label htmlFor="doc-tokens" className="text-sm font-medium">
-                    Tokens Per Session
-                  </Label>
-                  <Input
-                    id="doc-tokens"
-                    type="number"
-                    value={profileForm.tokensPerSession}
-                    onChange={(e) =>
-                      setProfileForm((p) => ({
-                        ...p,
-                        tokensPerSession: e.target.value,
-                      }))
-                    }
-                    data-ocid="profile.input"
-                  />
-                </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="doc-walkin-interval" className="text-sm font-medium">
                     Walk-in Slot Interval
