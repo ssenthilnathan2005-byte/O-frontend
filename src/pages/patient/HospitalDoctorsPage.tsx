@@ -13,7 +13,7 @@ function resolvePhotoUrl(url: string | null | undefined): string | null {
   const base = (import.meta.env.VITE_API_URL as string || "").replace(/\/api$/, "");
   return base ? `${base}${url}` : url;
 }
-import { getSessionLabel } from "../../data/seed";
+import { getSessionLabelForDate } from "../../data/seed";
 import { useRouter } from "../../router/RouterContext";
 import type { Doctor } from "../../api";
 import type { SessionType } from "../../types";
@@ -195,7 +195,7 @@ export default function HospitalDoctorsPage({ id }: Props) {
                       {doctor.sessions.length > 0 ? (
                         doctor.sessions.map((s) => (
                           <span key={s} className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                            {getSessionLabel(s as SessionType, doctor.sessionTimings)}
+                            {getSessionLabelForDate(new Date().toISOString().split("T")[0], s as SessionType, (doctor as any).scheduleConfig, doctor.sessionTimings)}
                           </span>
                         ))
                       ) : (

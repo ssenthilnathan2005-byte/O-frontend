@@ -171,6 +171,28 @@ export function hasSessionEnded(
   return now >= endTime;
 }
 
+/** Date-aware version of hasSessionEnded — resolves weekday/weekend timing */
+export function hasSessionEndedForDate(
+  date: string,
+  session: string,
+  scheduleConfig?: {
+    weekday?: Partial<Record<SessionType, { start: string; end: string; count?: number }>>;
+    weekend?: Partial<Record<SessionType, { start: string; end: string; count?: number }>>;
+  },
+  customTimings?: Partial<Record<SessionType, SessionTiming>>,
+): boolean {
+  const now = new Date();
+  const today = now.toISOString().split("T")[0];
+  if (date < today) return true;
+  if (date > today) return false;
+  const times = resolveSessionTiming(date, session as SessionType, scheduleConfig, customTimings);
+  if (!times) return true;
+  const [endH, endM] = times.end.split(":").map(Number);
+  const endTime = new Date(now);
+  endTime.setHours(endH, endM, 0, 0);
+  return now >= endTime;
+}
+
 /**
  * Returns true only when the session can be actively regulated:
  * - The selected date must be TODAY

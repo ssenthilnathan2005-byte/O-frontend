@@ -5,7 +5,7 @@ import {
 import { motion } from "motion/react";
 import React, { useEffect, useState } from "react";
 import { useStore } from "../../context/StoreContext";
-import { hasSessionEnded, SESSION_TIMES , getSessionLabel} from "../../data/seed";
+import { hasSessionEndedForDate, SESSION_TIMES, getSessionLabelForDate } from "../../data/seed";
 import { useRouter } from "../../router/RouterContext";
 import type { SessionType, TokenStatus } from "../../types";
 import { useQueueNotifications } from "../../hooks/useQueueNotifications";
@@ -51,7 +51,7 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
   // looking back at history, so this popup shouldn't appear at all.
   const doctorForSession = doctors.find((d) => d.id === booking?.doctorId);
   const isPastSession = booking
-    ? hasSessionEnded(booking.date, booking.session, doctorForSession?.sessionTimings)
+    ? hasSessionEndedForDate(booking.date, booking.session, (doctorForSession as any)?.scheduleConfig, doctorForSession?.sessionTimings)
     : false;
 
   useEffect(() => {
@@ -216,7 +216,7 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
                 </span>
                 <span className="flex items-center gap-1">
                   <Clock className="w-3.5 h-3.5" />
-                  {getSessionLabel(booking.session as SessionType, doctorForSession?.sessionTimings)}
+                  {getSessionLabelForDate(booking.date, booking.session as SessionType, (doctorForSession as any)?.scheduleConfig, doctorForSession?.sessionTimings)}
                 </span>
               </div>
             )}

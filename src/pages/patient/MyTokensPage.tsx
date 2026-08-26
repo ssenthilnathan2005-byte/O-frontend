@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Activity, Calendar, Clock, Hospital } from "lucide-react";
 import { motion } from "motion/react";
 import { useStore } from "../../context/StoreContext";
-import { hasSessionEnded, SESSION_TIMES , getSessionLabel} from "../../data/seed";
+import { hasSessionEndedForDate, SESSION_TIMES, getSessionLabelForDate } from "../../data/seed";
 import { isLiveBookingStatus, normalizeBookingStatus } from "../../lib/bookingStatus";
 import { useRouter } from "../../router/RouterContext";
 import type { SessionType } from "../../types";
@@ -71,7 +71,7 @@ export default function MyTokensPage() {
     if (status === "cancelled") return false;
     if (!FINISHED_STATUSES.has(status) && !isLiveBookingStatus(b.status)) return false;
     const doctor = doctors.find((d) => d.id === b.doctorId);
-    return !hasSessionEnded(b.date, b.session, doctor?.sessionTimings);
+    return !hasSessionEndedForDate(b.date, b.session, (doctor as any)?.scheduleConfig, doctor?.sessionTimings);
   });
   const pastBookings = allMyBookings.filter((b) => {
     const status = normalizeBookingStatus(b.status);
@@ -80,7 +80,7 @@ export default function MyTokensPage() {
     if (bookingDate < cutoffDate) return false;
     if (status === "cancelled") return true;
     const doctor = doctors.find((d) => d.id === b.doctorId);
-    return hasSessionEnded(b.date, b.session, doctor?.sessionTimings);
+    return hasSessionEndedForDate(b.date, b.session, (doctor as any)?.scheduleConfig, doctor?.sessionTimings);
   });
   const hiddenPastCount = allMyBookings.filter((b) => {
     const status = normalizeBookingStatus(b.status);
@@ -174,7 +174,7 @@ export default function MyTokensPage() {
                             </span>
                             <span className="flex items-center gap-1">
                               <Clock className="w-3.5 h-3.5" />
-                              {getSessionLabel(booking.session as SessionType, doctors.find(d => d.id === booking.doctorId)?.sessionTimings)}
+                              {getSessionLabelForDate(booking.date, booking.session as SessionType, (doctors.find(d => d.id === booking.doctorId) as any)?.scheduleConfig, doctors.find(d => d.id === booking.doctorId)?.sessionTimings)}
                             </span>
                           </div>
                         </div>
@@ -303,7 +303,7 @@ export default function MyTokensPage() {
                             </span>
                             <span className="flex items-center gap-1">
                               <Clock className="w-3.5 h-3.5" />
-                              {getSessionLabel(booking.session as SessionType, doctors.find(d => d.id === booking.doctorId)?.sessionTimings)}
+                              {getSessionLabelForDate(booking.date, booking.session as SessionType, (doctors.find(d => d.id === booking.doctorId) as any)?.scheduleConfig, doctors.find(d => d.id === booking.doctorId)?.sessionTimings)}
                             </span>
                           </div>
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 import { useStore } from "@/context/StoreContext";
-import { SESSION_TIMES } from "@/data/seed";
+import { SESSION_TIMES, resolveSessionTiming } from "@/data/seed";
 import { isLiveBookingStatus } from "@/lib/bookingStatus";
 
 interface ActiveBooking {
@@ -86,10 +86,10 @@ export default function TokenStatusBar() {
   if (activeBooking.date !== today) return null;
 
   const doctor = (doctors as any[]).find((d: any) => d.id === activeBooking.sessionId.split("_")[0]);
-  const customTimings = doctor?.sessionTimings;
   const sessionKey = activeBooking.session;
-  const custom = customTimings?.[sessionKey];
-  const times = custom ?? SESSION_TIMES[sessionKey];
+  const times =
+    resolveSessionTiming(activeBooking.date, sessionKey as any, doctor?.scheduleConfig, doctor?.sessionTimings)
+    ?? SESSION_TIMES[sessionKey];
   if (!times) return null;
 
   const [startH, startM] = times.start.split(":").map(Number);
