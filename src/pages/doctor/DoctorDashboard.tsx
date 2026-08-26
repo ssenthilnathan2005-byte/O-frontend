@@ -577,9 +577,12 @@ export default function DoctorDashboard() {
     value: string,
   ) {
     setProfileForm((prev) => {
-      const existing = prev.scheduleConfig[dayType][session] ?? {
-        count: Number(prev.tokensPerSession) || 20,
-        ...(DEFAULT_TIMINGS[session] ?? { start: "09:00", end: "12:00" }),
+      const defaultTiming = DEFAULT_TIMINGS[session] ?? { start: "09:00", end: "12:00" };
+      const raw = prev.scheduleConfig[dayType][session];
+      const existing = {
+        count: raw?.count ?? (Number(prev.tokensPerSession) || 20),
+        start: raw?.start || defaultTiming.start,
+        end: raw?.end || defaultTiming.end,
       };
       let updated = { ...existing };
       if (field === "count") {
