@@ -67,7 +67,17 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
 
   const tokenState = tokenStates[sessionId];
   const doctor = booking ? doctors.find((d) => d.id === booking.doctorId) : null;
-  const maxTokens = doctor?.tokensPerSession ?? 30;
+  const scheduleConfig = (doctor as any)?.scheduleConfig;
+  const maxTokens = (() => {
+    if (scheduleConfig && booking?.date && booking?.session) {
+      const dow = new Date(booking.date + "T00:00:00").getDay();
+      const dayType = dow === 0 || dow === 6 ? "weekend" : "weekday";
+      const entry = scheduleConfig[dayType]?.[booking.session];
+      const count = typeof entry === "object" ? entry?.count : entry;
+      if (count !== undefined && count !== null && Number.isFinite(Number(count))) return Number(count);
+    }
+    return doctor?.tokensPerSession ?? 30;
+  })();
   const statuses = tokenState?.tokenStatuses ?? {};
   const myStatus: TokenStatus = (statuses[tokenNumber] as TokenStatus) ?? "red";
 
