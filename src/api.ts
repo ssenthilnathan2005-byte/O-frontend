@@ -403,8 +403,8 @@ export interface Doctor {
   sessions: string[];
   sessionTimings?: Partial<Record<string, { start: string; end: string }>>;
   scheduleConfig?: {
-    weekday: Partial<Record<string, number>>;
-    weekend: Partial<Record<string, number>>;
+    weekday: Partial<Record<string, { count: number; start: string; end: string }>>;
+    weekend: Partial<Record<string, { count: number; start: string; end: string }>>;
   };
   isAvailable?: boolean; yearsOfExperience?: string;
   education?: string; languages?: string[];

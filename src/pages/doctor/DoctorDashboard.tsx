@@ -278,8 +278,14 @@ export default function DoctorDashboard() {
     sessions: ((doctor?.sessions ?? []) as string[]).filter((s): s is SessionType => ["morning","afternoon","evening"].includes(s)),
     contactPhone: (doctor as any)?.contactPhone || doctor?.phone || "",
     sessionTimings: sanitizeSessionTimings(doctor?.sessionTimings),
-    scheduleConfig: doctor?.scheduleConfig ?? { weekday: {}, weekend: {} },
+    scheduleConfig: (doctor as any)?.scheduleConfig ?? { weekday: {}, weekend: {} } as {
+      weekday: Partial<Record<SessionType, { count: number; start: string; end: string }>>;
+      weekend: Partial<Record<SessionType, { count: number; start: string; end: string }>>;
+    },
   });
+
+  // Active tab for the weekday/weekend schedule toggle
+  const [scheduleTab, setScheduleTab] = useState<"weekday" | "weekend">("weekday");
 
   // ── Sync profileForm when doctor reloads from server ─────────────────────
   // Runs whenever the doctor object changes (30s background refresh)
@@ -299,7 +305,7 @@ export default function DoctorDashboard() {
         sessions: ((doctor.sessions ?? []) as string[]).filter((s): s is SessionType => ["morning","afternoon","evening"].includes(s)),
         contactPhone: (doctor as any).contactPhone || doctor?.phone || "",
         sessionTimings: sanitizeSessionTimings(doctor.sessionTimings),
-        scheduleConfig: doctor.scheduleConfig ?? { weekday: {}, weekend: {} },
+        scheduleConfig: (doctor as any).scheduleConfig ?? { weekday: {}, weekend: {} },
       });
     } else {
       // Background refresh — only update non-timing fields
@@ -464,17 +470,41 @@ export default function DoctorDashboard() {
     const avgMinutesNum = Number(profileForm.avgMinutesPerPatient);
     const finalAvgMinutes = Number.isInteger(avgMinutesNum) && avgMinutesNum >= 1 ? avgMinutesNum : 5;
 
+    // Validate scheduleConfig times for both weekday and weekend
+    for (const dayType of ["weekday", "weekend"] as const) {
+      for (const session of profileForm.sessions) {
+        const entry = profileForm.scheduleConfig[dayType][session];
+        if (entry && !isStartBeforeEnd(entry.start, entry.end)) {
+          const label = dayType.charAt(0).toUpperCase() + dayType.slice(1);
+          toast.error(`${label} ${session}: start time must be earlier than end time.`);
+          return;
+        }
+      }
+    }
+
+    // Derive legacy flat sessionTimings from weekday entries (used by patient-facing views)
+    const derivedTimings: Record<string, { start: string; end: string }> = {};
+    for (const session of profileForm.sessions) {
+      const wdEntry = profileForm.scheduleConfig.weekday[session as SessionType];
+      if (wdEntry) {
+        derivedTimings[session] = { start: wdEntry.start, end: wdEntry.end };
+      } else {
+        const t = normalizedTimings[session as SessionType] ?? DEFAULT_TIMINGS[session as SessionType];
+        if (t) derivedTimings[session] = t;
+      }
+    }
+
     const payload: Record<string, unknown> = {
       name: profileForm.name,
       specialty: profileForm.specialty,
       price: 10,
       tokensPerSession: Number(profileForm.tokensPerSession),
-      scheduleConfig: profileForm.scheduleConfig,
       walkInInterval: walkInIntervalNum,
       avgMinutesPerPatient: finalAvgMinutes,
       sessions: profileForm.sessions,
       consultationFee: 10,
-      sessionTimings: normalizedTimings,
+      sessionTimings: derivedTimings,
+      scheduleConfig: profileForm.scheduleConfig,
     };
     // Only send phone if it has a value — never overwrite with empty string
     // Phone is the doctor's login password so it must never be blanked
@@ -534,6 +564,45 @@ export default function DoctorDashboard() {
         sessionTimings: {
           ...prev.sessionTimings,
           [session]: nextTiming,
+        },
+      };
+    });
+  }
+
+  /** Writes scheduleConfig[dayType][session] = { count, start, end } */
+  function updateScheduleEntry(
+    dayType: "weekday" | "weekend",
+    session: SessionType,
+    field: "count" | "start" | "end",
+    value: string,
+  ) {
+    setProfileForm((prev) => {
+      const existing = prev.scheduleConfig[dayType][session] ?? {
+        count: Number(prev.tokensPerSession) || 20,
+        ...(DEFAULT_TIMINGS[session] ?? { start: "09:00", end: "12:00" }),
+      };
+      let updated = { ...existing };
+      if (field === "count") {
+        const n = Number(value);
+        if (!Number.isInteger(n) || n < 0) return prev;
+        updated.count = n;
+      } else {
+        const normalizedValue = normalizeTimeValue(value);
+        if (!normalizedValue) return prev;
+        updated = { ...updated, [field]: normalizedValue };
+        if (!isStartBeforeEnd(updated.start, updated.end)) {
+          toast.error("Start time must be earlier than end time.");
+          return prev;
+        }
+      }
+      return {
+        ...prev,
+        scheduleConfig: {
+          ...prev.scheduleConfig,
+          [dayType]: {
+            ...prev.scheduleConfig[dayType],
+            [session]: updated,
+          },
         },
       };
     });
@@ -1395,59 +1464,21 @@ export default function DoctorDashboard() {
                 Booking fee is fixed at Rs 10 for all doctors.
               </div>
               <div className="grid grid-cols-1 gap-4 mb-5">
-                {/* ── Schedule Config: weekday vs weekend tokens ── */}
-                <div className="space-y-3">
-                  <Label className="text-sm font-medium">Tokens Per Session</Label>
-                  <p className="text-xs text-gray-400">
-                    Set how many patients you see per session — separately for weekdays (Mon–Fri) and weekends (Sat–Sun).
-                  </p>
-                  {(["weekday", "weekend"] as const).map((dayType) => (
-                    <div key={dayType} className="rounded-xl border-2 border-gray-100 bg-gray-50 p-4">
-                      <p className="text-sm font-semibold mb-3 capitalize text-teal-700">
-                        {dayType === "weekday" ? "Weekdays (Mon–Fri)" : "Weekends (Sat–Sun)"}
-                      </p>
-                      <div className="grid grid-cols-3 gap-3">
-                        {(["morning", "afternoon", "evening"] as SessionType[]).map((s) => {
-                          const isEnabled = profileForm.sessions.includes(s);
-                          if (!isEnabled) return null;
-                          return (
-                            <div key={s} className="space-y-1">
-                              <Label className="text-xs text-gray-500 capitalize">{s}</Label>
-                              <Input
-                                type="number"
-                                min={1}
-                                max={100}
-                                placeholder="tokens"
-                                value={profileForm.scheduleConfig?.[dayType]?.[s] ?? ""}
-                                onChange={(e) =>
-                                  setProfileForm((p) => ({
-                                    ...p,
-                                    scheduleConfig: {
-                                      ...p.scheduleConfig,
-                                      [dayType]: {
-                                        ...(p.scheduleConfig?.[dayType] ?? {}),
-                                        [s]: Number(e.target.value),
-                                      },
-                                    },
-                                  }))
-                                }
-                                data-ocid="profile.input"
-                              />
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                  <p className="text-xs text-gray-400">
-                    Overall fallback (used if a session has no per-day config):
-                  </p>
+                <div className="space-y-1.5">
+                  <Label htmlFor="doc-tokens" className="text-sm font-medium">
+                    Tokens Per Session
+                  </Label>
                   <Input
+                    id="doc-tokens"
                     type="number"
                     value={profileForm.tokensPerSession}
-                    onChange={(e) => setProfileForm((p) => ({ ...p, tokensPerSession: e.target.value }))}
+                    onChange={(e) =>
+                      setProfileForm((p) => ({
+                        ...p,
+                        tokensPerSession: e.target.value,
+                      }))
+                    }
                     data-ocid="profile.input"
-                    placeholder="Default tokens per session"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -1495,89 +1526,125 @@ export default function DoctorDashboard() {
                 </div>
               </div>
 
-              {/* Session toggles + custom timings */}
+              {/* Weekday / Weekend schedule toggle */}
               <div className="space-y-3">
                 <Label className="text-sm font-medium">
-                  Available Sessions & Timings
+                  Sessions & Timings
                 </Label>
                 <p className="text-xs text-gray-400">
-                  Enable a session and set your own start/end time. Patients
-                  will see your custom timings when booking.
+                  Set independent schedules for weekdays and weekends. Each
+                  enabled session gets its own start time, end time, and token
+                  count. Patients will see the correct times for their chosen
+                  date.
                 </p>
-                {(["morning", "afternoon", "evening"] as SessionType[]).map(
-                  (s) => {
-                    const isEnabled = profileForm.sessions.includes(s);
-                    const timing =
-                      profileForm.sessionTimings[s] ?? DEFAULT_TIMINGS[s];
-                    const sessionName = s.charAt(0).toUpperCase() + s.slice(1);
-                    return (
-                      <div
-                        key={s}
-                        className={`rounded-xl border-2 p-4 transition-colors ${
-                          isEnabled
-                            ? "border-teal-200 bg-teal-50/50"
-                            : "border-gray-100 bg-gray-50"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 mb-3">
-                          <Checkbox
-                            id={`sess_${s}`}
-                            checked={isEnabled}
-                            onCheckedChange={() => toggleSession(s)}
-                            data-ocid="profile.checkbox"
-                          />
-                          <Label
-                            htmlFor={`sess_${s}`}
-                            className="font-semibold cursor-pointer text-sm"
-                          >
-                            {sessionName} Session
-                          </Label>
-                          {isEnabled && (
-                            <span className="ml-auto text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full font-medium">
-                              Active
-                            </span>
-                          )}
-                        </div>
+
+                {/* Weekday / Weekend tab switcher */}
+                <div className="flex rounded-lg border border-gray-200 bg-gray-50 p-1 gap-1">
+                  {(["weekday", "weekend"] as const).map((dt) => (
+                    <button
+                      key={dt}
+                      type="button"
+                      onClick={() => setScheduleTab(dt)}
+                      className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-colors ${
+                        scheduleTab === dt
+                          ? "bg-white shadow-sm text-teal-700"
+                          : "text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      {dt.charAt(0).toUpperCase() + dt.slice(1)}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Session cards for the active tab */}
+                {(["morning", "afternoon", "evening"] as SessionType[]).map((s) => {
+                  const isEnabled = profileForm.sessions.includes(s);
+                  const sessionName = s.charAt(0).toUpperCase() + s.slice(1);
+                  const entry = profileForm.scheduleConfig[scheduleTab][s] ?? {
+                    count: Number(profileForm.tokensPerSession) || 20,
+                    ...(DEFAULT_TIMINGS[s] ?? { start: "09:00", end: "12:00" }),
+                  };
+                  return (
+                    <div
+                      key={s}
+                      className={`rounded-xl border-2 p-4 transition-colors ${
+                        isEnabled
+                          ? "border-teal-200 bg-teal-50/50"
+                          : "border-gray-100 bg-gray-50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-3">
+                        <Checkbox
+                          id={`sess_${scheduleTab}_${s}`}
+                          checked={isEnabled}
+                          onCheckedChange={() => toggleSession(s)}
+                          data-ocid="profile.checkbox"
+                        />
+                        <Label
+                          htmlFor={`sess_${scheduleTab}_${s}`}
+                          className="font-semibold cursor-pointer text-sm"
+                        >
+                          {sessionName} Session
+                        </Label>
                         {isEnabled && (
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                              <Label className="text-xs text-gray-500 font-medium">
-                                Start Time
-                              </Label>
-                              <Input
-                                type="time"
-                                value={timing.start}
-                                onChange={(e) =>
-                                  updateSessionTiming(
-                                    s,
-                                    "start",
-                                    e.target.value,
-                                  )
-                                }
-                                className="text-sm"
-                                data-ocid="profile.input"
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs text-gray-500 font-medium">
-                                End Time
-                              </Label>
-                              <Input
-                                type="time"
-                                value={timing.end}
-                                onChange={(e) =>
-                                  updateSessionTiming(s, "end", e.target.value)
-                                }
-                                className="text-sm"
-                                data-ocid="profile.input"
-                              />
-                            </div>
-                          </div>
+                          <span className="ml-auto text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full font-medium">
+                            Active
+                          </span>
                         )}
                       </div>
-                    );
-                  },
-                )}
+                      {isEnabled && (
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs text-gray-500 font-medium">
+                              Start Time
+                            </Label>
+                            <Input
+                              type="time"
+                              value={entry.start}
+                              onChange={(e) =>
+                                updateScheduleEntry(scheduleTab, s, "start", e.target.value)
+                              }
+                              className="text-sm"
+                              data-ocid="profile.input"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-gray-500 font-medium">
+                              End Time
+                            </Label>
+                            <Input
+                              type="time"
+                              value={entry.end}
+                              onChange={(e) =>
+                                updateScheduleEntry(scheduleTab, s, "end", e.target.value)
+                              }
+                              className="text-sm"
+                              data-ocid="profile.input"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-gray-500 font-medium">
+                              Tokens
+                            </Label>
+                            <Input
+                              type="number"
+                              min={0}
+                              value={entry.count}
+                              onChange={(e) =>
+                                updateScheduleEntry(scheduleTab, s, "count", e.target.value)
+                              }
+                              className="text-sm"
+                              data-ocid="profile.input"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                <p className="text-xs text-gray-400">
+                  Token count of 0 means the session is deliberately closed for that day type.
+                </p>
               </div>
             </div>
 

@@ -40,6 +40,72 @@ export function getSessionLabel(
   return base?.label ?? session;
 }
 
+/** Helper: resolve start/end for a session given a specific date (weekday vs weekend aware) */
+export function resolveSessionTiming(
+  date: string,
+  session: SessionType,
+  scheduleConfig?: {
+    weekday?: Partial<Record<SessionType, { start: string; end: string; count?: number }>>;
+    weekend?: Partial<Record<SessionType, { start: string; end: string; count?: number }>>;
+  },
+  customTimings?: Partial<Record<SessionType, SessionTiming>>,
+): { start: string; end: string } | null {
+  if (scheduleConfig) {
+    const d = new Date(`${date}T00:00:00`);
+    const dow = d.getDay(); // 0 = Sunday, 6 = Saturday
+    const dayType = dow === 0 || dow === 6 ? "weekend" : "weekday";
+    const entry = scheduleConfig[dayType]?.[session];
+    if (entry?.start && entry?.end) return { start: entry.start, end: entry.end };
+  }
+  // Fall back to flat sessionTimings
+  const custom = customTimings?.[session];
+  if (custom?.start && custom?.end) return { start: custom.start, end: custom.end };
+  // Fall back to global defaults
+  const base = SESSION_TIMES[session];
+  if (base) return { start: base.start, end: base.end };
+  return null;
+}
+
+/** Date-aware version of getSessionLabel */
+export function getSessionLabelForDate(
+  date: string,
+  session: SessionType,
+  scheduleConfig?: {
+    weekday?: Partial<Record<SessionType, { start: string; end: string; count?: number }>>;
+    weekend?: Partial<Record<SessionType, { start: string; end: string; count?: number }>>;
+  },
+  customTimings?: Partial<Record<SessionType, SessionTiming>>,
+): string {
+  const timing = resolveSessionTiming(date, session, scheduleConfig, customTimings);
+  if (timing) {
+    const name = session.charAt(0).toUpperCase() + session.slice(1);
+    return `${name} (${formatTime12h(timing.start)} – ${formatTime12h(timing.end)})`;
+  }
+  return SESSION_TIMES[session]?.label ?? session;
+}
+
+/** Date-aware version of isSessionAvailable */
+export function isSessionAvailableForDate(
+  date: string,
+  session: SessionType,
+  scheduleConfig?: {
+    weekday?: Partial<Record<SessionType, { start: string; end: string; count?: number }>>;
+    weekend?: Partial<Record<SessionType, { start: string; end: string; count?: number }>>;
+  },
+  customTimings?: Partial<Record<SessionType, SessionTiming>>,
+): boolean {
+  const now = new Date();
+  const today = now.toISOString().split("T")[0];
+  if (date > today) return true;
+  if (date < today) return false;
+  const timing = resolveSessionTiming(date, session, scheduleConfig, customTimings);
+  if (!timing) return false;
+  const [endH, endM] = timing.end.split(":").map(Number);
+  const endTime = new Date(now);
+  endTime.setHours(endH, endM - 10, 0, 0);
+  return now < endTime;
+}
+
 export function makeSessionId(
   doctorId: string,
   date: string,

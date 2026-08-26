@@ -11,7 +11,8 @@ import { bookings as bookingsApi, payments } from "../../api";
 import { useStore } from "../../context/StoreContext";
 import { useRouter } from "../../router/RouterContext";
 import {
-  getAvailableDates, getSessionLabel, isSessionAvailable, makeSessionId,
+  getAvailableDates, getSessionLabel, getSessionLabelForDate,
+  isSessionAvailable, isSessionAvailableForDate, makeSessionId,
 } from "../../data/seed";
 import { getSymptomsForSpecialty } from "../../data/doctorSymptoms";
 import type { Doctor, Hospital } from "../../api";
@@ -457,7 +458,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
               <p className="text-xs text-gray-400 mb-3">{formatDate(selectedDate)}</p>
               <div className="space-y-2">
                 {(doctor.sessions as SessionType[]).map((session) => {
-                  const available    = isSessionAvailable(selectedDate, session, doctor.sessionTimings);
+                  const available    = isSessionAvailableForDate(selectedDate, session, (doctor as any).scheduleConfig, doctor.sessionTimings);
                   const booked       = getBookedCount(selectedDate, session);
                   const full         = booked >= doctor.tokensPerSession;
                   const cancelled    = isSessionCancelled(doctor.id, selectedDate, session);
@@ -481,7 +482,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Clock className="w-4 h-4 text-gray-400" />
-                          <span className="font-medium text-sm">{getSessionLabel(session, doctor.sessionTimings)}</span>
+                          <span className="font-medium text-sm">{getSessionLabelForDate(selectedDate, session, (doctor as any).scheduleConfig, doctor.sessionTimings)}</span>
                         </div>
                         <span className={`text-xs px-2 py-0.5 rounded-full ${
                           cancelled || closed || full ? "bg-red-100 text-red-600"
@@ -509,7 +510,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
                 <div>
                   <p className="text-xs text-teal-600 font-semibold uppercase tracking-wide">Your Token</p>
                   <p className="text-sm text-gray-600 mt-1">{doctor.name}</p>
-                  <p className="text-xs text-gray-400">{formatDate(selectedDate)} · {getSessionLabel(selectedSession as SessionType, doctor.sessionTimings)}</p>
+                  <p className="text-xs text-gray-400">{formatDate(selectedDate)} · {getSessionLabelForDate(selectedDate, selectedSession as SessionType, (doctor as any).scheduleConfig, doctor.sessionTimings)}</p>
                 </div>
                 <button type="button" onClick={() => setStep("complaint")}
                   className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-full text-sm font-semibold transition-colors"
@@ -681,7 +682,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Session</span>
-                <span className="font-medium text-gray-900">{getSessionLabel(selectedSession as SessionType, doctor.sessionTimings)}</span>
+                <span className="font-medium text-gray-900">{getSessionLabelForDate(selectedDate, selectedSession as SessionType, (doctor as any).scheduleConfig, doctor.sessionTimings)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Token</span>
@@ -828,7 +829,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
                 </div>
                 <div className="flex items-center gap-2 text-gray-500">
                   <Clock className="w-4 h-4 text-teal-500 shrink-0" />
-                  <span>{getSessionLabel(selectedSession as SessionType, doctor.sessionTimings)}</span>
+                  <span>{getSessionLabelForDate(selectedDate, selectedSession as SessionType, (doctor as any).scheduleConfig, doctor.sessionTimings)}</span>
                 </div>
               </div>
               <div className="flex gap-2 pt-2">
