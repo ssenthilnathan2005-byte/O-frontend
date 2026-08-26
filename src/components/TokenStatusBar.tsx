@@ -112,7 +112,7 @@ export default function TokenStatusBar() {
 
   const tokensAhead = Math.max(0, activeBooking.tokenNumber - currentToken - 1);
   const waitMinutes = tokensAhead * activeBooking.avgMinutesPerPatient;
-  const waitSeconds = Math.max(0, waitMinutes * 60);
+  const waitMs = waitMinutes * 60 * 1000;
 
   const isYourTurn = currentToken + 1 === activeBooking.tokenNumber;
   const isNow = currentToken === activeBooking.tokenNumber;
@@ -122,8 +122,8 @@ export default function TokenStatusBar() {
   let textColor = "text-green-800";
   let subColor = "text-green-600";
   let dotColor = "bg-green-500";
-  let mainText = `Token #${activeBooking.tokenNumber} · About ${formatCountdown(waitSeconds)} wait · ${tokensAhead} patient${tokensAhead !== 1 ? "s" : ""} ahead`;
-  let timerText = `Estimated wait: ${formatCountdown(waitSeconds)}`;
+  let mainText = `Token #${activeBooking.tokenNumber} · About ${formatCountdown(waitMs)} wait · ${tokensAhead} patient${tokensAhead !== 1 ? "s" : ""} ahead`;
+  let timerText = `Estimated wait: ${formatCountdown(waitMs)}`;
 
   const isVisited = currentToken > activeBooking.tokenNumber;
 
@@ -169,8 +169,8 @@ export default function TokenStatusBar() {
     textColor = "text-amber-800";
     subColor = "text-amber-600";
     dotColor = "bg-amber-500";
-    mainText = `Token #${activeBooking.tokenNumber} · About ${formatCountdown(waitSeconds)} wait · ${tokensAhead} patients ahead`;
-    timerText = `Estimated wait: ${formatCountdown(waitSeconds)}`;
+    mainText = `Token #${activeBooking.tokenNumber} · About ${formatCountdown(waitMs)} wait · ${tokensAhead} patients ahead`;
+    timerText = `Estimated wait: ${formatCountdown(waitMs)}`;
   }
 
   const subText = `${activeBooking.hospitalName} · ${activeBooking.session.charAt(0).toUpperCase() + activeBooking.session.slice(1)} session · ${timerText} · Tap to track`;
