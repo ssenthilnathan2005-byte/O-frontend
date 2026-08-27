@@ -91,24 +91,10 @@ function LandingPage() {
 
       <main className="flex-1 w-full max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 py-6 lg:py-10">
         {/* Banner */}
-        <div className="relative w-full mb-8 lg:mb-12 rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden px-8 py-8 lg:py-10">
-          {/* Corner decorations */}
-          <span className="absolute top-0 left-0 w-16 h-16 border-t-4 border-l-4 border-teal-400 rounded-tl-2xl"></span>
-          <span className="absolute top-0 right-0 w-16 h-16 border-t-4 border-r-4 border-teal-400 rounded-tr-2xl"></span>
-          <span className="absolute bottom-0 left-0 w-16 h-16 border-b-4 border-l-4 border-teal-400 rounded-bl-2xl"></span>
-          <span className="absolute bottom-0 right-0 w-16 h-16 border-b-4 border-r-4 border-teal-400 rounded-br-2xl"></span>
-          {/* Subtle dot grid */}
-          <div className="absolute inset-0 opacity-[0.03]" style={{backgroundImage:"radial-gradient(circle, #0f766e 1px, transparent 1px)", backgroundSize:"24px 24px"}}></div>
-          {/* Heading */}
-          <div className="relative z-10 text-center">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-gray-900 leading-tight">
-              Save Time on Your
-            </h2>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-teal-600 leading-tight mt-1 relative inline-block">
-              Doctor Visits
-              <span className="absolute left-0 -bottom-1 w-full h-1 bg-teal-400/60 rounded-full"></span>
-            </h2>
-          </div>
+        <div className="mb-6 lg:mb-8">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-gray-900 whitespace-nowrap">
+            Save Time on Your <span className="text-teal-600">Doctor Visits</span>
+          </h2>
         </div>
 
         {/* Quick Links: 2 cols on mobile (unchanged), 4 cols on desktop */}
