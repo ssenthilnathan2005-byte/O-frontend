@@ -91,9 +91,11 @@ function LandingPage() {
 
       <main className="flex-1 w-full max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 py-6 lg:py-10">
         {/* Banner */}
-        <div className="mb-6 lg:mb-8">
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-gray-900 whitespace-nowrap">
-            Save Time on Your <span className="text-teal-600">Doctor Visits</span>
+        <div className="mb-6 lg:mb-8 rounded-2xl bg-gradient-to-br from-teal-50 to-white border border-teal-100 px-5 py-8 lg:px-8 lg:py-10">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-gray-900 leading-tight">
+            Save Time on Your
+            <br />
+            <span className="text-teal-600">Doctor Visits</span>
           </h2>
         </div>
 
