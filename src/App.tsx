@@ -42,9 +42,6 @@ function LandingPage() {
 
   const quickLinks = [
     { title: "Find Hospitals", sub: "TOP CLINICS", path: "/patient/hospitals" as const },
-    { title: "Doctor Appointment", sub: "BOOK NOW", path: "/patient/hospitals" as const },
-    { title: "My Tokens", sub: "TRACK LIVE", path: "/patient/tokens" as const },
-    { title: "My Prescriptions", sub: "VIEW RECORDS", path: "/patient/prescriptions" as const },
     { title: "Pharmacies", sub: "FIND NEAR YOU", path: "/pharmacies" as const },
   ];
 
