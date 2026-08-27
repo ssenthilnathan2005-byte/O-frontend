@@ -41,11 +41,11 @@ function LandingPage() {
   const { hospitals } = useStore();
 
   const quickLinks = [
-    { title: "Find Hospitals", sub: "TOP CLINICS", icon: "🏥", bg: "bg-teal-50", text: "text-teal-900", path: "/patient/hospitals" as const },
-    { title: "Doctor Appointment", sub: "BOOK NOW", icon: "👨‍⚕️", bg: "bg-orange-50", text: "text-orange-900", path: "/patient/hospitals" as const },
-    { title: "My Tokens", sub: "TRACK LIVE", icon: "🎟️", bg: "bg-blue-50", text: "text-blue-900", path: "/patient/tokens" as const },
-    { title: "My Prescriptions", sub: "VIEW RECORDS", icon: "📄", bg: "bg-purple-50", text: "text-purple-900", path: "/patient/prescriptions" as const },
-    { title: "Pharmacies", sub: "FIND NEAR YOU", icon: "💊", bg: "bg-emerald-50", text: "text-emerald-900", path: "/pharmacies" as const },
+    { title: "Find Hospitals", sub: "TOP CLINICS", path: "/patient/hospitals" as const },
+    { title: "Doctor Appointment", sub: "BOOK NOW", path: "/patient/hospitals" as const },
+    { title: "My Tokens", sub: "TRACK LIVE", path: "/patient/tokens" as const },
+    { title: "My Prescriptions", sub: "VIEW RECORDS", path: "/patient/prescriptions" as const },
+    { title: "Pharmacies", sub: "FIND NEAR YOU", path: "/pharmacies" as const },
   ];
 
   return (
@@ -112,17 +112,14 @@ function LandingPage() {
         </div>
 
         {/* Quick Links: 2 cols on mobile (unchanged), 4 cols on desktop */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10 lg:mb-12">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 mb-10 lg:mb-12">
           {quickLinks.map((card, i) => (
-            <div key={i} onClick={() => navigate({ path: card.path })} className={`${card.bg} rounded-xl p-4 flex items-center justify-between cursor-pointer hover:shadow-md transition-shadow`}>
-              <div className="flex items-center gap-3">
-                <span className="text-3xl">{card.icon}</span>
-                <div>
-                  <h3 className={`font-bold text-sm sm:text-base ${card.text}`}>{card.title}</h3>
-                  <p className="text-[10px] font-bold text-gray-500 mt-0.5">{card.sub}</p>
-                </div>
+            <div key={i} onClick={() => navigate({ path: card.path })} className="bg-white border border-gray-200 rounded-lg px-4 py-3 flex items-center justify-between cursor-pointer hover:border-teal-400 hover:shadow-sm transition-all">
+              <div>
+                <h3 className="font-semibold text-sm text-gray-800">{card.title}</h3>
+                <p className="text-[10px] font-bold text-gray-400 mt-0.5 tracking-wide">{card.sub}</p>
               </div>
-              <ChevronRight className={`w-4 h-4 ${card.text} opacity-50`} />
+              <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
             </div>
           ))}
         </div>
