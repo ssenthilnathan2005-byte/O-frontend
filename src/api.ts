@@ -477,3 +477,34 @@ export const pharmacies = {
   enquire: (id: string, data: { name: string; phone: string; message?: string }) =>
     post<{ success: boolean; id: string }>(`/pharmacies/${id}/enquire`, data),
 };
+// ── Ambulance ─────────────────────────────────────────────────────────────────
+export interface AmbulanceBooking {
+  id: string;
+  patient_id: string | null;
+  patient_name: string;
+  phone: string;
+  pickup_address: string;
+  landmark?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  emergency_type: string;
+  status: "requested" | "dispatched" | "en_route" | "arrived" | "completed" | "cancelled";
+  hospital_id?: string | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const ambulance = {
+  book: (data: {
+    patientName: string; phone: string; pickupAddress: string;
+    landmark?: string; latitude?: number; longitude?: number;
+    emergencyType?: string; hospitalId?: string; notes?: string;
+  }) => post<AmbulanceBooking>("/ambulance", data),
+
+  listMy:  () => get<AmbulanceBooking[]>("/ambulance/my"),
+  listAll: () => get<AmbulanceBooking[]>("/ambulance"),
+  updateStatus: (id: string, data: {
+    status: AmbulanceBooking["status"]; hospitalId?: string; notes?: string;
+  }) => req<AmbulanceBooking>("PATCH", `/ambulance/${id}/status`, data),
+};

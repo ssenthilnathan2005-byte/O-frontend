@@ -1,4 +1,4 @@
-import { BookOpen, Hospital, LogOut, Mail, Phone, Pill, User, X } from "lucide-react";
+import { Ambulance, BookOpen, Hospital, LogOut, Mail, Phone, Pill, User, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useStore } from "../../context/StoreContext";
@@ -200,6 +200,16 @@ export default function TopNav() {
             <div className="space-y-1">
               <button
                 type="button"
+                className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-red-600 hover:bg-red-50 transition-colors text-sm font-medium"
+                onClick={() => { setShowProfileMenu(false); navigate({ path: "/ambulance" }); }}
+              >
+                <div className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center">
+                  <Ambulance className="w-4 h-4 text-red-600" />
+                </div>
+                Book Ambulance
+              </button>
+              <button
+                type="button"
                 className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-gray-700 hover:bg-teal-50 transition-colors text-sm font-medium"
                 onClick={() => { setShowProfileMenu(false); navigate({ path: "/pharmacies" }); }}
               >
@@ -290,6 +300,14 @@ export default function TopNav() {
               data-ocid="nav.link"
             >
               <Pill className="w-4 h-4" /> Pharmacies
+            </button>
+            <button
+              type="button"
+              className={`flex items-center gap-1.5 transition-colors ${isActive(["/ambulance"])} hover:text-red-600`}
+              onClick={() => navigate({ path: "/ambulance" })}
+              data-ocid="nav.link"
+            >
+              <Ambulance className="w-4 h-4" /> Ambulance
             </button>
           </nav>
 

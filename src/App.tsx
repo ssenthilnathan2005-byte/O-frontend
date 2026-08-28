@@ -22,6 +22,7 @@ import PharmacyDetailPage from "./pages/patient/PharmacyDetailPage";
 import PharmacyOwnerLogin from "./pages/PharmacyOwnerLogin";
 import PharmacyOwnerRegister from "./pages/PharmacyOwnerRegister";
 import PharmacyOwnerDashboard from "./pages/PharmacyOwnerDashboard";
+import AmbulancePage from "./pages/patient/AmbulancePage";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ChatbotWidget from "./components/ChatbotWidget";
 import { RouterProvider, useRouter } from "./router/RouterContext";
@@ -213,6 +214,7 @@ function AppRoutes() {
       if (route.path === "/pharmacy/detail") return <PharmacyDetailPage id={(route as any).id} />;
       if (route.path === "/pharmacy-owner/login") return <PharmacyOwnerLogin />;
       if (route.path === "/pharmacy-owner/register") return <PharmacyOwnerRegister />;
+      if (route.path === "/ambulance") return <AmbulancePage />;
       if (route.path === "/login") {
         const loginRoute = route as {
           tab?: "patient" | "doctor";
@@ -242,6 +244,7 @@ function AppRoutes() {
     if (route.path === "/pharmacies") return <PharmaciesPage />;
     if (route.path === "/pharmacy/detail") return <PharmacyDetailPage id={(route as any).id} />;
     if (route.path === "/pharmacy-owner/dashboard") return <PharmacyOwnerDashboard />;
+    if (route.path === "/ambulance") return <AmbulancePage />;
     if (route.path === "/patient/tokens") return <MyTokensPage />;
     if (route.path === "/patient/prescriptions") return <MyPrescriptionsPage />;
     if (route.path === "/patient/track") {

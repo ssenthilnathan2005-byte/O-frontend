@@ -1,4 +1,5 @@
 import {
+  Ambulance,
   BookOpen,
   Building2,
   CalendarCheck,
@@ -14,6 +15,7 @@ import { useState } from "react";
 import { useStore } from "../../context/StoreContext";
 import { useRouter } from "../../router/RouterContext";
 import AdminBookings from "./AdminBookings";
+import AdminAmbulance from "./AdminAmbulance";
 import AdminDashboard from "./AdminDashboard";
 import AdminDoctors from "./AdminDoctors";
 import AdminHospitals from "./AdminHospitals";
@@ -27,6 +29,7 @@ const NAV_ITEMS = [
   { path: "/admin/patients", label: "Patients", icon: Users },
   { path: "/admin/bookings", label: "Bookings", icon: BookOpen },
   { path: "/admin/pharmacies", label: "Pharmacies", icon: Pill },
+  { path: "/admin/ambulance", label: "Ambulance", icon: Ambulance },
 ] as const;
 
 export default function AdminPanel() {
@@ -46,6 +49,8 @@ export default function AdminPanel() {
         return <AdminBookings />;
       case "/admin/pharmacies":
         return <AdminPharmacies />;
+      case "/admin/ambulance":
+        return <AdminAmbulance />;
       default:
         return <AdminDashboard />;
     }

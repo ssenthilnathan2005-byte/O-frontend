@@ -27,6 +27,7 @@ type Route =
   | { path: "/admin/sessions" }
   | { path: "/admin/bookings" }
   | { path: "/admin/pharmacies" }
+  | { path: "/admin/ambulance" }
   | { path: "/hospital-admin/login" }
   | { path: "/hospital-admin" }
   | { path: "/hospital-admin/doctors" }
@@ -39,7 +40,8 @@ type Route =
   | { path: "/pharmacy/detail"; id: string }
   | { path: "/pharmacy-owner/login" }
   | { path: "/pharmacy-owner/register" }
-  | { path: "/pharmacy-owner/dashboard" };
+  | { path: "/pharmacy-owner/dashboard" }
+  | { path: "/ambulance" };
 interface RouterCtx {
   route: Route;
   navigate: (r: Route) => void;
@@ -91,6 +93,7 @@ function getInitialRoute(): Route {
   if (pathname === "/admin/sessions") return { path: "/admin/sessions" };
   if (pathname === "/admin/bookings") return { path: "/admin/bookings" };
   if (pathname === "/admin/pharmacies") return { path: "/admin/pharmacies" };
+  if (pathname === "/admin/ambulance") return { path: "/admin/ambulance" };
   if (pathname === "/hospital-admin/login") return { path: "/hospital-admin/login" };
   if (pathname === "/hospital-admin/doctors") return { path: "/hospital-admin/doctors" };
   if (pathname === "/hospital-admin/patients") return { path: "/hospital-admin/patients" };
@@ -105,6 +108,7 @@ function getInitialRoute(): Route {
   if (pathname === "/pharmacy-owner/login") return { path: "/pharmacy-owner/login" };
   if (pathname === "/pharmacy-owner/register") return { path: "/pharmacy-owner/register" };
   if (pathname === "/pharmacy-owner/dashboard") return { path: "/pharmacy-owner/dashboard" };
+  if (pathname === "/ambulance") return { path: "/ambulance" };
   return { path: "/" };
 }
 
