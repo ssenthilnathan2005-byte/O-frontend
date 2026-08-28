@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "611968623638",
+    "project_id": "doctor-booked-bc567",
+    "storage_bucket": "doctor-booked-bc567.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:611968623638:android:6219416c17af5c2fbd8137",
+        "android_client_info": {
+          "package_name": "in.doctorbooked.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDyEfWzJtSMOiTXQbXSIc07Cp0L1fUL4K0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

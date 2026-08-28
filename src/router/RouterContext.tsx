@@ -7,6 +7,8 @@ import {
   useRef,
   useState,
 } from "react";
+import { Capacitor } from "@capacitor/core";
+import { App as CapApp } from "@capacitor/app";
 type Route =
   | { path: "/" }
   | {
@@ -166,6 +168,19 @@ export function RouterProvider({ children }: { children: ReactNode }) {
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  // Hardware back button — native app only
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const handler = CapApp.addListener("backButton", () => {
+      if (historyRef.current.length > 1) {
+        window.history.back();
+      } else {
+        CapApp.exitApp();
+      }
+    });
+    return () => { handler.then(h => h.remove()); };
   }, []);
 
   return (

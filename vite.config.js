@@ -9,6 +9,7 @@ export default defineConfig({
     emptyOutDir: true,
     sourcemap: false,
     minify: true,
+    cssMinify: false,
   },
   css: {
     postcss: "./postcss.config.js",
