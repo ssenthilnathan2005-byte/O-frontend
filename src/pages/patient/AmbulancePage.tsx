@@ -29,6 +29,7 @@ export default function AmbulancePage() {
   const [booked, setBooked] = useState<AmbulanceBooking | null>(null);
   const [loading, setLoading] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [accuracyMeters, setAccuracyMeters] = useState<number | null>(null);
 
   const [form, setForm] = useState({
     patientName:   user?.role === "patient" ? user.name : "",
@@ -47,8 +48,16 @@ export default function AmbulancePage() {
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
-        const { latitude, longitude } = pos.coords;
+        const { latitude, longitude, accuracy } = pos.coords;
         setForm(f => ({ ...f, latitude, longitude }));
+        setAccuracyMeters(accuracy ?? null);
+
+        if (accuracy && accuracy > 100) {
+          toast.warning(
+            `Location accuracy is low (±${Math.round(accuracy)}m). Please double-check or edit the address below.`
+          );
+        }
+
         try {
           const r = await fetch(
             `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
@@ -61,7 +70,14 @@ export default function AmbulancePage() {
         }
         setLocating(false);
       },
-      () => { toast.error("Could not get your location. Please type your address."); setLocating(false); }
+      (err) => {
+        const msg = err.code === err.PERMISSION_DENIED
+          ? "Location permission denied. Please allow location access or type your address."
+          : "Could not get your precise location. Please type your address.";
+        toast.error(msg);
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   }
 
@@ -245,9 +261,10 @@ export default function AmbulancePage() {
           </div>
 
           {form.latitude && (
-            <p className="text-xs text-teal-600 flex items-center gap-1">
+            <p className={`text-xs flex items-center gap-1 ${accuracyMeters && accuracyMeters > 100 ? "text-amber-600" : "text-teal-600"}`}>
               <CheckCircle2 className="w-3.5 h-3.5" />
               GPS coordinates captured ({form.latitude.toFixed(4)}, {form.longitude?.toFixed(4)})
+              {accuracyMeters ? ` — accuracy ±${Math.round(accuracyMeters)}m` : ""}
             </p>
           )}
         </div>
