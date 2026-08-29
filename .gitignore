@@ -1,0 +1,8 @@
+android/app/keystore.properties
+node_modules/
+android/app-release*.apks
+android/app-release*.apk
+dist/
+android/app/build/
+android/build/
+android/.gradle/
