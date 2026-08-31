@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { Capacitor } from "@capacitor/core";
 import * as api from "../api";
 import { toast } from "sonner";
 import { useRouter } from "../router/RouterContext";
@@ -87,9 +88,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const u = JSON.parse(stored);
       if (u?.role === "patient") {
         import("../lib/push").then(({ registerServiceWorker, enablePushNotifications }) => {
-          registerServiceWorker().then(() => {
+          if (Capacitor.isNativePlatform()) {
             enablePushNotifications().catch(() => {});
-          });
+          } else {
+            registerServiceWorker().then(() => {
+              enablePushNotifications().catch(() => {});
+            });
+          }
         });
       }
     } catch {}
@@ -265,12 +270,57 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     // Auto-register push notifications for patients on login
     if (u.role === "patient") {
       import("../lib/push").then(({ registerServiceWorker, enablePushNotifications }) => {
-        registerServiceWorker().then(() => {
+        if (Capacitor.isNativePlatform()) {
           enablePushNotifications().catch(() => {});
-        });
+        } else {
+          registerServiceWorker().then(() => {
+            enablePushNotifications().catch(() => {});
+          });
+        }
       });
     }
   }, []);
+
+  // ── Global foreground push listener ────────────────────────────────────────
+  // Subscribed once per logged-in patient session, independent of which page
+  // they're on. Shows an in-app toast everywhere, and on native also fires a
+  // real system tray notification (foreground FCM messages don't auto-display
+  // on native, unlike backgrounded/killed states which Android handles itself).
+  useEffect(() => {
+    if (!user || user.role !== "patient") return;
+    let unsubscribe: (() => void) | null = null;
+    import("../lib/push").then(({ onForegroundPush }) => {
+      onForegroundPush(({ title, body, link }) => {
+        toast.info(title, {
+          description: body,
+          duration: 7000,
+          action: link ? { label: "View", onClick: () => navigate(link) } : undefined,
+        });
+
+        if (Capacitor.isNativePlatform()) {
+          import("@capacitor/local-notifications").then(({ LocalNotifications }) => {
+            LocalNotifications.requestPermissions()
+              .then(() => LocalNotifications.schedule({
+                notifications: [
+                  {
+                    id: Math.floor(Math.random() * 2147483647),
+                    title,
+                    body,
+                    extra: link ? { link } : undefined,
+                  },
+                ],
+              }))
+              .catch((err) => console.error("[push] Native local notification failed:", err));
+          });
+        }
+      }).then((fn) => {
+        unsubscribe = fn;
+      });
+    });
+    return () => {
+      unsubscribe?.();
+    };
+  }, [user?.id, user?.role]);
 
   const logout = useCallback(() => {
     import("../lib/push").then(({ disablePushNotifications }) => {
@@ -484,9 +534,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (!user || user.role !== 'patient') return;
     if (typeof window === 'undefined' || !('Notification' in window)) return;
 
-    const canUseNotifications = () => Notification.permission === 'granted';
+    const canUseNotifications = () => {
+      if (Capacitor.isNativePlatform()) return true;
+      return Notification.permission === 'granted';
+    };
 
-    if (Notification.permission === 'default') Notification.requestPermission();
+    if (!Capacitor.isNativePlatform() && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
 
     const activeBookings = bookings.filter(b => b.status === 'confirmed' && b.paymentDone);
     if (!activeBookings.length) return;
@@ -512,6 +567,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!canUseNotifications()) return;
 
       try { vibrate(vibratePattern); } catch {}
+
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const { LocalNotifications } = await import("@capacitor/local-notifications");
+          await LocalNotifications.requestPermissions();
+          await LocalNotifications.schedule({
+            notifications: [
+              {
+                id: Math.floor(Math.random() * 2147483647),
+                title,
+                body,
+                extra: { link: "/patient/hospitals" },
+              },
+            ],
+          });
+        } catch (err) {
+          console.error("[queue notifications] native local notification failed:", err);
+        }
+        return;
+      }
 
       try {
         const reg = await navigator.serviceWorker.ready;

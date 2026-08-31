@@ -1,14 +1,7 @@
 // src/lib/push.ts
-// Firebase Cloud Messaging (web push) — patient-side notification setup.
-//
-// Flow:
-//  1. registerServiceWorker() — registers /firebase-messaging-sw.js once.
-//  2. enablePushNotifications() — asks for browser permission, gets a device
-//     token from FCM, and POSTs it to the backend so it can be used to send
-//     pushes later (booking confirmed / token called / your turn).
-//  3. onForegroundPush() — shows an in-app toast-style callback when a push
-//     arrives WHILE the tab is open and focused (background pushes are
-//     handled by the service worker itself, not this file).
+// Firebase Cloud Messaging — patient-side notification setup.
+// Native (Capacitor/Android) uses @capacitor-firebase/messaging.
+// Web (browser) uses the Firebase JS SDK + service worker.
 
 import { initializeApp, type FirebaseApp } from "firebase/app";
 import {
@@ -19,6 +12,8 @@ import {
   type Messaging,
 } from "firebase/messaging";
 import { push as pushApi } from "../api";
+import { Capacitor } from "@capacitor/core";
+import { FirebaseMessaging } from "@capacitor-firebase/messaging";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY as string,
@@ -76,7 +71,22 @@ async function getMessagingInstance(): Promise<Messaging | null> {
  * Returns the FCM token on success, or null if permission was denied / unsupported.
  */
 export async function enablePushNotifications(): Promise<string | null> {
-  if (typeof window === "undefined" || !("Notification" in window)) return null;
+  if (typeof window === "undefined") return null;
+
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const permResult = await FirebaseMessaging.requestPermissions();
+      if (permResult.receive !== "granted") return null;
+      const { token } = await FirebaseMessaging.getToken();
+      if (!token) return null;
+      await pushApi.register(token);
+      localStorage.setItem("db_fcm_token", token);
+      return token;
+    } catch (err) {
+      console.error("[push] Native FCM registration failed:", err);
+      return null;
+    }
+  }
 
   const reg = await registerServiceWorker();
   if (!reg) return null;
@@ -120,13 +130,27 @@ export async function disablePushNotifications(): Promise<void> {
 }
 
 /**
- * Subscribes to pushes that arrive while the tab is open and focused.
+ * Subscribes to pushes that arrive while the app is open and focused.
  * Returns an unsubscribe function. Use this to show a toast (e.g. via `sonner`)
  * since the OS-level notification banner is suppressed for foreground messages.
  */
 export async function onForegroundPush(
   callback: (payload: { title: string; body: string; link?: string }) => void
 ): Promise<() => void> {
+  if (Capacitor.isNativePlatform()) {
+    const handle = await FirebaseMessaging.addListener("notificationReceived", (event) => {
+      const notif = event.notification;
+      callback({
+        title: notif?.title || "Doctor Booked",
+        body: notif?.body || "",
+        link: (notif?.data as Record<string, string>)?.link || undefined,
+      });
+    });
+    return () => {
+      handle.remove();
+    };
+  }
+
   const msg = await getMessagingInstance();
   if (!msg) return () => {};
 

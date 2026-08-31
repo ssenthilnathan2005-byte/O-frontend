@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
+import { Capacitor } from "@capacitor/core";
+import { LocalNotifications } from "@capacitor/local-notifications";
 import type { TokenStatus } from "../types";
-import { onForegroundPush } from "../lib/push";
  
 export function useQueueNotifications(
   sessionId: string,
@@ -17,6 +18,10 @@ export function useQueueNotifications(
   const pushSetupDone = useRef(false);
 
   function canShowSystemNotification(): boolean {
+    // Native permission is tracked separately via LocalNotifications/FirebaseMessaging,
+    // not the web Notification API — always allow through on native and let
+    // showNotification() handle its own native permission request.
+    if (Capacitor.isNativePlatform()) return true;
     return typeof Notification !== "undefined" && Notification.permission === "granted";
   }
  
@@ -37,6 +42,25 @@ export function useQueueNotifications(
   // On Android, `new Notification()` is not supported — you must go through
   // the service worker registration. This falls back gracefully on desktop.
   async function showNotification(title: string, options: NotificationOptions & { tag: string }) {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        await LocalNotifications.requestPermissions();
+        await LocalNotifications.schedule({
+          notifications: [
+            {
+              id: Math.floor(Math.random() * 2147483647),
+              title,
+              body: (options.body as string) || "",
+              extra: options.data as Record<string, unknown> | undefined,
+            },
+          ],
+        });
+      } catch (err) {
+        console.error("[push] Native local notification failed:", err);
+      }
+      return;
+    }
+
     try {
       const reg = await navigator.serviceWorker.ready;
       await reg.showNotification(title, options);
@@ -47,21 +71,6 @@ export function useQueueNotifications(
       }
     }
   }
- 
-  // ── Listen for foreground push messages (tab is open & focused) ──────────
-  useEffect(() => {
-    let unsubscribe: (() => void) | null = null;
- 
-    onForegroundPush(({ title, body }) => {
-      toast.info(title, { description: body, duration: 7000 });
-    }).then((fn) => {
-      unsubscribe = fn;
-    });
- 
-    return () => {
-      unsubscribe?.();
-    };
-  }, []); // empty deps — subscribe once, clean up on unmount
  
   // ── React to queue status changes ─────────────────────────────────────────
   useEffect(() => {
