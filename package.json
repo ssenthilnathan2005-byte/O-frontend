@@ -33,10 +33,12 @@
   },
   "dependencies": {
     "@capacitor-firebase/authentication": "^8.4.0",
+    "@capacitor-firebase/messaging": "^8.4.0",
     "@capacitor/android": "^8.5.0",
     "@capacitor/app": "^8.1.1",
     "@capacitor/cli": "^8.4.2",
     "@capacitor/core": "^8.5.0",
+    "@capacitor/local-notifications": "^8.3.1",
     "@dfinity/agent": "~3.3.0",
     "@dfinity/auth-client": "~3.3.0",
     "@dfinity/candid": "~3.3.0",
