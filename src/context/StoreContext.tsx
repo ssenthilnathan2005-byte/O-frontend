@@ -75,7 +75,7 @@ export function useStore(): Store {
   return c;
 }
 
-const REFRESH_MS = 300_000; // 5 minutes instead of 30 seconds
+const REFRESH_MS = 30_000; // 30 seconds
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const { navigate } = useRouter();
