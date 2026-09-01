@@ -88,7 +88,7 @@ export default function PrivacyPage() {
             <section>
               <h2 className="text-base font-semibold text-gray-900 mb-2">8. Contact Us</h2>
               <p>If you have any questions about this Privacy Policy, contact us at:</p>
-              <p className="mt-1"><strong>Email:</strong> support@doctorbooked.in</p>
+              <p className="mt-1"><strong>Email:</strong> doctorbookedsn1@gmail.com</p>
               <p><strong>Website:</strong> doctorbooked.in</p>
             </section>
 
