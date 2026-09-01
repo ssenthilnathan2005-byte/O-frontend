@@ -4,6 +4,8 @@ import { Ambulance, MapPin, Phone, User, AlertTriangle, CheckCircle2, Clock, Nav
 import * as api from "../../api";
 import type { AmbulanceBooking } from "../../api";
 import { useStore } from "../../context/StoreContext";
+import { Capacitor } from "@capacitor/core";
+import { Geolocation } from "@capacitor/geolocation";
 
 const EMERGENCY_TYPES = [
   { value: "general",   label: "General Emergency" },
@@ -43,7 +45,50 @@ export default function AmbulancePage() {
 
   function set(k: string, v: string) { setForm(f => ({ ...f, [k]: v })); }
 
+  async function reverseGeocodeAndSet(latitude: number, longitude: number) {
+    try {
+      const r = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
+      );
+      const d = await r.json();
+      const addr = d.display_name || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+      setForm(f => ({ ...f, pickupAddress: addr }));
+    } catch {
+      setForm(f => ({ ...f, pickupAddress: `${latitude.toFixed(5)}, ${longitude.toFixed(5)}` }));
+    }
+  }
+
   async function locateMe() {
+    if (Capacitor.isNativePlatform()) {
+      setLocating(true);
+      try {
+        const perm = await Geolocation.requestPermissions();
+        if (perm.location !== "granted" && perm.coarseLocation !== "granted") {
+          toast.error("Location permission denied. Please allow location access or type your address.");
+          setLocating(false);
+          return;
+        }
+        const pos = await Geolocation.getCurrentPosition({
+          enableHighAccuracy: true,
+          timeout: 15000,
+        });
+        const { latitude, longitude, accuracy } = pos.coords;
+        setForm(f => ({ ...f, latitude, longitude }));
+        setAccuracyMeters(accuracy ?? null);
+        if (accuracy && accuracy > 100) {
+          toast.warning(
+            `Location accuracy is low (±${Math.round(accuracy)}m). Please double-check or edit the address below.`
+          );
+        }
+        await reverseGeocodeAndSet(latitude, longitude);
+      } catch (err) {
+        console.error("[geolocation] native getCurrentPosition failed:", err);
+        toast.error("Could not get your precise location. Please type your address.");
+      } finally {
+        setLocating(false);
+      }
+      return;
+    }
     if (!navigator.geolocation) { toast.error("Geolocation not supported on this device"); return; }
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
@@ -51,23 +96,12 @@ export default function AmbulancePage() {
         const { latitude, longitude, accuracy } = pos.coords;
         setForm(f => ({ ...f, latitude, longitude }));
         setAccuracyMeters(accuracy ?? null);
-
         if (accuracy && accuracy > 100) {
           toast.warning(
             `Location accuracy is low (±${Math.round(accuracy)}m). Please double-check or edit the address below.`
           );
         }
-
-        try {
-          const r = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
-          );
-          const d = await r.json();
-          const addr = d.display_name || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
-          setForm(f => ({ ...f, pickupAddress: addr }));
-        } catch {
-          setForm(f => ({ ...f, pickupAddress: `${latitude.toFixed(5)}, ${longitude.toFixed(5)}` }));
-        }
+        await reverseGeocodeAndSet(latitude, longitude);
         setLocating(false);
       },
       (err) => {

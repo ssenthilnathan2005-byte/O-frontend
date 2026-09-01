@@ -17,7 +17,8 @@ import HospitalsPage from "./pages/patient/HospitalsPage";
 import MyTokensPage from "./pages/patient/MyTokensPage";
 import MyPrescriptionsPage from "./pages/patient/MyPrescriptionsPage";
 import TokenTrackerPage from "./pages/patient/TokenTrackerPage";
-import PharmaciesPage from "./pages/patient/PharmaciesPage";
+import PharmaciesPage from "./pages/patient/PharmaciesPage"; // eslint-disable-line -- kept for quick revert, see ComingSoonPage swap below
+import ComingSoonPage from "./pages/patient/ComingSoonPage";
 import PharmacyDetailPage from "./pages/patient/PharmacyDetailPage";
 import PharmacyOwnerLogin from "./pages/PharmacyOwnerLogin";
 import PharmacyOwnerRegister from "./pages/PharmacyOwnerRegister";
@@ -210,11 +211,11 @@ function AppRoutes() {
       if (route.path === "/pharmacy/login") return <PharmacyLogin />;
       if (route.path === "/patient/hospitals") return <HospitalsPage city={(route as { city?: string }).city} />;
       if (route.path === "/patient/hospital") return <HospitalDoctorsPage id={(route as { id: string }).id} />;
-      if (route.path === "/pharmacies") return <PharmaciesPage />;
+      if (route.path === "/pharmacies") return <ComingSoonPage title="Pharmacies" />; // was: <PharmaciesPage />
       if (route.path === "/pharmacy/detail") return <PharmacyDetailPage id={(route as any).id} />;
       if (route.path === "/pharmacy-owner/login") return <PharmacyOwnerLogin />;
       if (route.path === "/pharmacy-owner/register") return <PharmacyOwnerRegister />;
-      if (route.path === "/ambulance") return <AmbulancePage />;
+      if (route.path === "/ambulance") return <ComingSoonPage title="Ambulance" />; // was: <AmbulancePage />
       if (route.path === "/login") {
         const loginRoute = route as {
           tab?: "patient" | "doctor";
@@ -241,10 +242,10 @@ function AppRoutes() {
     if (route.path === "/patient/hospitals") return <HospitalsPage city={(route as { city?: string }).city} />;
     if (route.path === "/patient/hospital")
       return <HospitalDoctorsPage id={(route as { id: string }).id} />;
-    if (route.path === "/pharmacies") return <PharmaciesPage />;
+    if (route.path === "/pharmacies") return <ComingSoonPage title="Pharmacies" />; // was: <PharmaciesPage />
     if (route.path === "/pharmacy/detail") return <PharmacyDetailPage id={(route as any).id} />;
     if (route.path === "/pharmacy-owner/dashboard") return <PharmacyOwnerDashboard />;
-    if (route.path === "/ambulance") return <AmbulancePage />;
+    if (route.path === "/ambulance") return <ComingSoonPage title="Ambulance" />; // was: <AmbulancePage />
     if (route.path === "/patient/tokens") return <MyTokensPage />;
     if (route.path === "/patient/prescriptions") return <MyPrescriptionsPage />;
     if (route.path === "/patient/track") {

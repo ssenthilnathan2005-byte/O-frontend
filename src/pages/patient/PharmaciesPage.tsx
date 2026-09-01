@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback } from "react";
 import { Search, MapPin, Phone, Clock, ChevronRight, Loader2, Pill, Navigation } from "lucide-react";
 import * as api from "../../api";
 import { useRouter } from "../../router/RouterContext";
+import { Capacitor } from "@capacitor/core";
+import { Geolocation } from "@capacitor/geolocation";
 
 function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371;
@@ -28,7 +30,27 @@ export default function PharmaciesPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleNearMe = useCallback(() => {
+  const handleNearMe = useCallback(async () => {
+    if (Capacitor.isNativePlatform()) {
+      setLocating(true);
+      try {
+        const perm = await Geolocation.requestPermissions();
+        if (perm.location !== "granted" && perm.coarseLocation !== "granted") {
+          alert("Location permission denied. Please allow location access in app settings.");
+          setLocating(false);
+          return;
+        }
+        const pos = await Geolocation.getCurrentPosition();
+        setUserLocation({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+        setNearMe(true);
+      } catch (err) {
+        console.error("[geolocation] native getCurrentPosition failed:", err);
+        alert("Could not get your location. Please allow location access.");
+      } finally {
+        setLocating(false);
+      }
+      return;
+    }
     if (!navigator.geolocation) { alert("Geolocation not supported on this device"); return; }
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
