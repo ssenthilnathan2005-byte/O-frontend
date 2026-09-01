@@ -1,4 +1,5 @@
 import { Toaster } from "@/components/ui/sonner";
+import PullToRefresh from "./components/PullToRefresh";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Calendar, ChevronRight, Clock, MapPin, User } from "lucide-react";
 import { motion } from "motion/react";
@@ -200,7 +201,7 @@ function LandingPage() {
 }
 
 function AppRoutes() {
-  const { user, serverStatus } = useStore();
+  const { user, serverStatus, refreshFromStorage } = useStore();
   const { route } = useRouter();
 
   function renderPage() {
@@ -293,8 +294,10 @@ function AppRoutes() {
           <span>Taking longer than usual — still trying to connect, please wait…</span>
         </div>
       )}
-      <main className="flex-1 pb-24 md:pb-8">{renderPage()}</main>
-      <Toaster richColors position="top-right" />
+      <main className="flex-1 pb-24 md:pb-8">
+        <PullToRefresh onRefresh={refreshFromStorage}>{renderPage()}</PullToRefresh>
+      </main>
+      <Toaster position="top-right" />
       <ChatbotWidget />
     </div>
   );

@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { Capacitor } from "@capacitor/core";
+import { SpeechRecognition } from "@capacitor-community/speech-recognition";
 
 const API_BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
@@ -181,13 +183,38 @@ export default function ChatbotWidget() {
     }
   }, [voiceHistory, lang]);
 
-  function startListening() {
+  async function startListening() {
+    if (listening || voiceLoading) return;
+
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const perm = await SpeechRecognition.requestPermissions();
+        if (perm.speechRecognition !== "granted") {
+          alert("Microphone permission denied. Please allow microphone access in app settings.");
+          return;
+        }
+        setListening(true);
+        const result = await SpeechRecognition.start({
+          language: lang === "ta" ? "ta-IN" : "en-IN",
+          maxResults: 1,
+          partialResults: false,
+          popup: false,
+        });
+        const transcript = result?.matches?.[0]?.trim();
+        setListening(false);
+        if (transcript) sendVoiceTurn(transcript);
+      } catch (err) {
+        console.error("[voice] native speech recognition failed:", err);
+        setListening(false);
+      }
+      return;
+    }
+
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) {
       alert("Your browser doesn't support voice input. Please use Chrome.");
       return;
     }
-    if (listening || voiceLoading) return;
 
     window.speechSynthesis?.cancel();
 
@@ -209,6 +236,11 @@ export default function ChatbotWidget() {
   }
 
   function stopListening() {
+    if (Capacitor.isNativePlatform()) {
+      SpeechRecognition.stop().catch(() => {});
+      setListening(false);
+      return;
+    }
     recognitionRef.current?.stop();
     setListening(false);
   }
