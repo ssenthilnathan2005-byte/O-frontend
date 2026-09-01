@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { Geolocation } from "@capacitor/geolocation";
 import type { Hospital } from "../types";
 
 export interface HospitalWithDistance extends Hospital {
@@ -38,14 +39,19 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
 export function useNearMe(hospitals: Hospital[]) {
   const [state, setState] = useState<State>({ status: "idle" });
 
-  const locate = useCallback(() => {
-    if (!navigator.geolocation) { setState({ status: "unsupported" }); return; }
+  const locate = useCallback(async () => {
     setState({ status: "loading" });
-    navigator.geolocation.getCurrentPosition(
-      (pos) => setState({ status: "done", lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => setState({ status: "denied" }),
-      { timeout: 10000, maximumAge: 60000 }
-    );
+    try {
+      const permStatus = await Geolocation.requestPermissions();
+      if (permStatus.location !== "granted" && permStatus.coarseLocation !== "granted") {
+        setState({ status: "denied" });
+        return;
+      }
+      const pos = await Geolocation.getCurrentPosition({ timeout: 10000, maximumAge: 60000 });
+      setState({ status: "done", lat: pos.coords.latitude, lng: pos.coords.longitude });
+    } catch {
+      setState({ status: "denied" });
+    }
   }, []);
 
   const clear = useCallback(() => setState({ status: "idle" }), []);
