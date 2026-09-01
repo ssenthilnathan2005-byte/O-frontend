@@ -89,6 +89,28 @@ export default function PrivacyPage() {
               <h2 className="text-base font-semibold text-gray-900 mb-2">8. Contact Us</h2>
               <p>If you have any questions about this Privacy Policy, contact us at:</p>
               <p className="mt-1"><strong>Email:</strong> doctorbookedsn1@gmail.com</p>
+
+              <h2 id="account-deletion" className="text-base font-bold text-gray-900 mt-6 mb-3">Account Deletion</h2>
+              <p className="mt-1">
+                You can request deletion of your Doctor Booked account and all associated
+                personal data at any time.
+              </p>
+              <p className="mt-1">
+                <strong>How to request:</strong> Email{" "}
+                <a href="mailto:doctorbookedsn1@gmail.com" className="text-teal-600 underline">doctorbookedsn1@gmail.com</a>{" "}
+                from your registered email or phone number, with the subject line "Delete My Account."
+              </p>
+              <p className="mt-1">
+                <strong>What happens:</strong> Your account and personal data (profile information,
+                appointment history, and login credentials) will be automatically deleted within
+                6 days of your request. If automatic deletion does not occur, our team will
+                manually process and confirm the deletion.
+              </p>
+              <p className="mt-1">
+                <strong>Data retained:</strong> Payment transaction records processed through
+                Razorpay may be retained separately by Razorpay as required by Indian financial
+                regulations, independent of your Doctor Booked account deletion.
+              </p>
               <p><strong>Website:</strong> doctorbooked.in</p>
             </section>
 
