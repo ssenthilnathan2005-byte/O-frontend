@@ -75,7 +75,7 @@ export function useStore(): Store {
   return c;
 }
 
-const REFRESH_MS = 30_000; // 30 seconds
+const REFRESH_MS = 10_000; // 10 seconds
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const { navigate } = useRouter();
@@ -337,11 +337,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const addHospital = useCallback(async (data: Partial<Hospital>) => {
     const h = await api.hospitals.create(data);
     setHospitals(p => [...p, h]);
+    api.hospitals.list().then(setHospitals).catch(() => {});
   }, []);
 
   const updateHospital = useCallback(async (id: string, data: Partial<Hospital>) => {
     const h = await api.hospitals.update(id, data);
     setHospitals(p => p.map(x => x.id === id ? h : x));
+    api.hospitals.list().then(setHospitals).catch(() => {});
   }, []);
 
   const updateHospitalPhoto = useCallback(async (id: string, photoUrlOrBase64: string) => {
@@ -353,6 +355,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       photoUrl = photoUrlOrBase64;
     }
     setHospitals(p => p.map(x => x.id === id ? { ...x, photoUrl } : x));
+    api.hospitals.list().then(setHospitals).catch(() => {});
   }, []);
 
   const deleteHospital = useCallback(async (id: string, _docs: Doctor[]) => {
