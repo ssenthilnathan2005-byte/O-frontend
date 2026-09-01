@@ -38,6 +38,7 @@ type Route =
   | { path: "/hospital-admin/inward" }
   | { path: "/pharmacy/login" }
   | { path: "/terms" }
+  | { path: "/privacy" }
   | { path: "/pharmacies" }
   | { path: "/pharmacy/detail"; id: string }
   | { path: "/pharmacy-owner/login" }
@@ -104,6 +105,7 @@ function getInitialRoute(): Route {
   if (pathname === "/hospital-admin") return { path: "/hospital-admin" };
   if (pathname === "/pharmacy/login") return { path: "/pharmacy/login" };
   if (pathname === "/terms") return { path: "/terms" };
+  if (pathname === "/privacy") return { path: "/privacy" };
 
   if (pathname === "/pharmacies") return { path: "/pharmacies" };
   if (pathname === "/pharmacy/detail") return { path: "/pharmacy/detail", id: hospitalId };
