@@ -6,6 +6,7 @@ import { motion } from "motion/react";
 import TopNav from "./components/layout/TopNav";
 import { StoreProvider, useStore } from "./context/StoreContext";
 import TermsPage from "./pages/TermsPage";
+import PrivacyPage from "./pages/PrivacyPage";
 import LoginPage from "./pages/LoginPage";
 import HospitalAdminLogin from "./pages/HospitalAdminLogin";
 import PharmacyDashboard from "./pages/PharmacyDashboard";
@@ -208,6 +209,7 @@ function AppRoutes() {
     if (!user) {
       if (route.path === "/") return <LandingPage />;
       if (route.path === "/terms") return <TermsPage />;
+      if (route.path === "/privacy") return <PrivacyPage />;
       if (route.path === "/hospital-admin/login") return <HospitalAdminLogin />;
       if (route.path === "/pharmacy/login") return <PharmacyLogin />;
       if (route.path === "/patient/hospitals") return <HospitalsPage city={(route as { city?: string }).city} />;
@@ -268,7 +270,7 @@ function AppRoutes() {
   // hide the nav purely based on route.path when `user` is already set.
   const hideTopNav =
     isAdmin ||
-    (!user && (route.path === "/" || route.path === "/login" || route.path === "/terms" || route.path === "/hospital-admin/login" || route.path === "/pharmacy/login" || route.path === "/pharmacy-owner/login" || route.path === "/pharmacy-owner/register")) ||
+    (!user && (route.path === "/" || route.path === "/login" || route.path === "/terms" || route.path === "/privacy" || route.path === "/hospital-admin/login" || route.path === "/pharmacy/login" || route.path === "/pharmacy-owner/login" || route.path === "/pharmacy-owner/register")) ||
     (!!user && route.path === "/terms");
 
   return (
