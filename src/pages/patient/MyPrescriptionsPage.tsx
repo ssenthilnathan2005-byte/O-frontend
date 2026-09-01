@@ -111,11 +111,28 @@ export default function MyPrescriptionsPage() {
               {p.items.map((item, i) => (
                 <div key={i} className="flex items-start gap-2">
                   <Pill className="w-4 h-4 text-teal-500 mt-0.5 shrink-0" />
-                  <div>
+                  <div className="flex-1">
                     <p className="text-sm font-medium">{item.name}</p>
-                    <p className="text-xs text-gray-400">
-                      {[item.dosage, item.duration, item.instructions].filter(Boolean).join(" · ")}
-                    </p>
+                    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                      {item.dosage && (
+                        <span className="text-xs text-gray-500">
+                          <span className="text-gray-400">Dosage:</span>{" "}
+                          <span className="font-medium text-gray-700">{item.dosage}</span>
+                        </span>
+                      )}
+                      {item.duration && (
+                        <span className="text-xs text-gray-500">
+                          <span className="text-gray-400">Duration:</span>{" "}
+                          <span className="font-medium text-gray-700">{item.duration}</span>
+                        </span>
+                      )}
+                      {item.instructions && (
+                        <span className="text-xs text-gray-500">
+                          <span className="text-gray-400">When to take:</span>{" "}
+                          <span className="font-medium text-gray-700">{item.instructions}</span>
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
