@@ -42,10 +42,13 @@ export function useNearMe(hospitals: Hospital[]) {
   const locate = useCallback(async () => {
     setState({ status: "loading" });
     try {
-      const permStatus = await Geolocation.requestPermissions();
-      if (permStatus.location !== "granted" && permStatus.coarseLocation !== "granted") {
-        setState({ status: "denied" });
-        return;
+      const { Capacitor } = await import("@capacitor/core");
+      if (Capacitor.isNativePlatform()) {
+        const permStatus = await Geolocation.requestPermissions();
+        if (permStatus.location !== "granted" && permStatus.coarseLocation !== "granted") {
+          setState({ status: "denied" });
+          return;
+        }
       }
       const pos = await Geolocation.getCurrentPosition({ timeout: 10000, maximumAge: 60000 });
       setState({ status: "done", lat: pos.coords.latitude, lng: pos.coords.longitude });
