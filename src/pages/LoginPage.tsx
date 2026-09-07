@@ -203,7 +203,7 @@ export default function LoginPage({
       if (result.token && result.user) {
         login(result.user, result.token);
         toast.success(`Welcome, ${(result.user as any).name || ""}!`);
-        navigate({ path: "/patient/hospitals" });
+        navigate({ path: "/" });
       }
     } catch (err: any) {
       toast.error(err.message || "Google sign-in failed");
@@ -219,7 +219,7 @@ export default function LoginPage({
       if (result.token && result.user) {
         login(result.user, result.token);
         toast.success(`Welcome, ${(result.user as any).name || ""}!`);
-        navigate({ path: "/patient/hospitals" });
+        navigate({ path: "/" });
       }
     } catch (err: any) {
       toast.error(err.message || "Google sign-in failed");
@@ -250,7 +250,7 @@ export default function LoginPage({
       if (res.token && res.user) {
         login(res.user, res.token);
         toast.success("Account created! Welcome to Doctor Booked.");
-        navigate({ path: "/patient/hospitals" });
+        navigate({ path: "/" });
         return;
       }
     } catch (err: any) { toast.error(err.message || "Registration failed"); }
@@ -294,7 +294,7 @@ export default function LoginPage({
       const res = await auth.patientLogin(type === "email" ? id.toLowerCase() : id, pw);
       if (res.token && res.user) {
         login(res.user, res.token);
-        navigate({ path: "/patient/hospitals" });
+        navigate({ path: "/" });
         return;
       }
     } catch (err: any) { toast.error(err.message || "Login failed"); }
