@@ -76,6 +76,9 @@ function MobileLanding() {
   const markersRef = useRef<any[]>([]);
   const [search, setSearch] = useMobileState("");
   const [mapReady, setMapReady] = useMobileState(false);
+  const [mapHeight, setMapHeight] = useMobileState(220);
+  const dragStartY = useRef<number>(0);
+  const dragStartH = useRef<number>(220);
   const { state: nearState, locate, clear, sorted: sortedByDistance } = useNearMe(hospitals);
 
   const baseList = sortedByDistance ?? hospitals;
@@ -124,6 +127,23 @@ function MobileLanding() {
     }
   }, [nearState.status]);
 
+  // Drag handle logic
+  function onDragStart(clientY: number) {
+    dragStartY.current = clientY;
+    dragStartH.current = mapHeight;
+  }
+  function onDragMove(clientY: number) {
+    const delta = clientY - dragStartY.current;
+    const newH = Math.min(Math.max(dragStartH.current + delta, 160), window.innerHeight * 0.65);
+    setMapHeight(newH);
+  }
+  function onDragEnd(clientY: number) {
+    const delta = clientY - dragStartY.current;
+    // Snap: if dragged down >40px expand, up >40px collapse
+    if (delta > 40) setMapHeight(Math.round(window.innerHeight * 0.6));
+    else if (delta < -40) setMapHeight(220);
+  }
+
   function resolvePhoto(url: string | null | undefined) {
     if (!url) return null;
     if (url.startsWith("data:") || url.startsWith("http")) return url;
@@ -132,7 +152,8 @@ function MobileLanding() {
   }
 
   return (
-    <div className="flex flex-col bg-gray-50" style={{ height: "100dvh" }}>
+    <div className="flex flex-col bg-gray-50" style={{ minHeight: "100dvh" }}>
+      {/* Header */}
       <header className="bg-white border-b border-gray-200 z-20 shrink-0">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
@@ -150,13 +171,15 @@ function MobileLanding() {
         </div>
       </header>
 
-      <div className="relative shrink-0" style={{ height: "40vh" }}>
+      {/* Map — draggable height */}
+      <div className="relative shrink-0 transition-all duration-200" style={{ height: mapHeight }}>
         <div ref={mapRef} className="w-full h-full" />
         {!mapReady && (
           <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
             <Loader2 className="w-6 h-6 text-teal-500 animate-spin" />
           </div>
         )}
+        {/* Search bar over map */}
         <div className="absolute bottom-3 left-3 right-3 z-10 flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
@@ -178,8 +201,19 @@ function MobileLanding() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto bg-white rounded-t-2xl -mt-3 relative z-10 shadow-lg">
-        <div className="px-4 pt-4 pb-24">
+      {/* Drag handle — touch to resize map */}
+      <div
+        className="shrink-0 flex flex-col items-center justify-center bg-white z-10 cursor-row-resize"
+        style={{ height: 24, borderRadius: "16px 16px 0 0", marginTop: -12, boxShadow: "0 -2px 8px rgba(0,0,0,0.08)" }}
+        onMouseDown={e => { onDragStart(e.clientY); const mm = (ev: MouseEvent) => onDragMove(ev.clientY); const mu = (ev: MouseEvent) => { onDragEnd(ev.clientY); window.removeEventListener("mousemove", mm); window.removeEventListener("mouseup", mu); }; window.addEventListener("mousemove", mm); window.addEventListener("mouseup", mu); }}
+        onTouchStart={e => { onDragStart(e.touches[0].clientY); const tm = (ev: TouchEvent) => onDragMove(ev.touches[0].clientY); const te = (ev: TouchEvent) => { onDragEnd(ev.changedTouches[0].clientY); window.removeEventListener("touchmove", tm); window.removeEventListener("touchend", te); }; window.addEventListener("touchmove", tm); window.addEventListener("touchend", te); }}
+      >
+        <div className="w-8 h-1 bg-gray-300 rounded-full" />
+      </div>
+
+      {/* Scrollable hospital list */}
+      <div className="flex-1 overflow-y-auto bg-white">
+        <div className="px-4 pt-3 pb-28">
           <h2 className="text-base font-bold text-gray-900 mb-1">Find hospitals near you</h2>
           <p className="text-xs text-gray-400 mb-3">Book your token and skip the waiting time</p>
           <div className="flex gap-2 overflow-x-auto pb-2 mb-4" style={{ scrollbarWidth: "none" }}>
@@ -238,6 +272,7 @@ function MobileLanding() {
     </div>
   );
 }
+
 
 function LandingPage() {
   const { navigate } = useRouter();
@@ -400,7 +435,12 @@ function AppRoutes() {
         </ErrorBoundary>
       );
     }
-    return <HospitalsPage />;
+    return (
+      <>
+        <div className="md:hidden"><MobileLanding /></div>
+        <div className="hidden md:block"><HospitalsPage /></div>
+      </>
+    );
   }
 
   const isAdmin = user?.role === "admin" || user?.role === "hospital_admin" || user?.role === "pharmacy" || user?.role === "pharmacy_owner";
