@@ -71,7 +71,7 @@ export default function TopNav() {
   ).length ?? 0;
 
   // ── Doctor / non-patient: slim top bar ──────────────────────────────────
-  if (!isPatient) {
+  if (!isPatient && !!user) {
     return (
       <header className="sticky top-0 z-40 bg-white border-b border-gray-200 px-3 sm:px-6 py-3">
         <div className="max-w-7xl mx-auto flex items-center gap-2 sm:gap-6">

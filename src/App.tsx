@@ -153,24 +153,6 @@ function MobileLanding() {
 
   return (
     <div className="flex flex-col bg-gray-50" style={{ minHeight: "100dvh" }}>
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 z-20 shrink-0">
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-2">
-            <img src="/assets/Logo.jpg" alt="Logo" className="w-8 h-8 rounded-full object-contain"
-              onError={e => { (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='20' fill='%2314b8a6'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='18' font-family='sans-serif'%3EDB%3C/text%3E%3C/svg%3E"; }} />
-            <div>
-              <span className="text-base font-bold text-gray-800"><span className="text-teal-600">Doctor</span>Booked</span>
-              <p className="text-[10px] text-gray-400 leading-none">Find &amp; book hospital tokens</p>
-            </div>
-          </div>
-          <button onClick={() => navigate({ path: "/login", tab: "patient", patientMode: "login" })}
-            className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-            <User className="w-4 h-4 text-gray-600" />
-          </button>
-        </div>
-      </header>
-
       {/* Map — draggable height */}
       <div className="relative shrink-0 transition-all duration-200" style={{ height: mapHeight }}>
         <div ref={mapRef} className="w-full h-full" />
@@ -451,7 +433,7 @@ function AppRoutes() {
   // hide the nav purely based on route.path when `user` is already set.
   const hideTopNav =
     isAdmin ||
-    (!user && (route.path === "/" || route.path === "/login" || route.path === "/terms" || route.path === "/privacy" || route.path === "/hospital-admin/login" || route.path === "/pharmacy/login" || route.path === "/pharmacy-owner/login" || route.path === "/pharmacy-owner/register")) ||
+    (!user && (route.path === "/login" || route.path === "/terms" || route.path === "/privacy" || route.path === "/hospital-admin/login" || route.path === "/pharmacy/login" || route.path === "/pharmacy-owner/login" || route.path === "/pharmacy-owner/register")) ||
     (!!user && route.path === "/terms");
 
   return (
