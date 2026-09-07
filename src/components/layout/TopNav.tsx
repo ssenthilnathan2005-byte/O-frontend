@@ -70,6 +70,78 @@ export default function TopNav() {
     (b) => b.status === "confirmed" && b.date >= new Date().toISOString().split("T")[0]
   ).length ?? 0;
 
+  // ── Guest (not logged in): mobile bottom nav only, no desktop header ────
+  // LandingPage renders its own desktop header for guests already; showing
+  // the full patient header here on top of it produced a duplicate bar and
+  // a fake "Admin" label (displayName's fallback when there's no user).
+  if (!user) {
+    return (
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 safe-area-inset-bottom">
+        <div className="flex items-end justify-around px-2 py-2 max-w-lg mx-auto">
+          <button
+            type="button"
+            className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-gray-400 hover:text-teal-600 transition-colors"
+            onClick={() => navigate({ path: "/patient/hospitals" })}
+            data-ocid="nav.link"
+          >
+            <Hospital className="w-5 h-5" />
+            <span className="text-[10px] font-medium">Hospitals</span>
+          </button>
+
+          <button
+            type="button"
+            className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-gray-400 hover:text-teal-600 transition-colors"
+            onClick={() => navigate({ path: "/pharmacies" })}
+            data-ocid="nav.link"
+          >
+            <Pill className="w-5 h-5" />
+            <span className="text-[10px] font-medium">Pharmacies</span>
+          </button>
+
+          <button
+            type="button"
+            className="flex flex-col items-center -mt-5 focus:outline-none"
+            onClick={() => navigate({ path: "/" })}
+            data-ocid="nav.link"
+          >
+            <div className="w-14 h-14 rounded-full bg-teal-600 shadow-lg flex items-center justify-center border-4 border-white">
+              <img
+                src="/assets/Logo.jpg"
+                alt="Doctor Booked"
+                className="w-10 h-10 rounded-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src =
+                    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='20' fill='%23ffffff'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' fill='%2314b8a6' font-size='15' font-family='sans-serif' font-weight='bold'%3EDB%3C/text%3E%3C/svg%3E";
+                }}
+              />
+            </div>
+            <span className="text-[9px] font-bold text-teal-600 mt-0.5">HOME</span>
+          </button>
+
+          <button
+            type="button"
+            className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-gray-400 hover:text-red-500 transition-colors"
+            onClick={() => navigate({ path: "/ambulance" })}
+            data-ocid="nav.link"
+          >
+            <Ambulance className="w-5 h-5" />
+            <span className="text-[10px] font-medium">Ambulance</span>
+          </button>
+
+          <button
+            type="button"
+            className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-gray-400 hover:text-teal-600 transition-colors"
+            onClick={() => navigate({ path: "/login", tab: "patient", patientMode: "login" })}
+            data-ocid="nav.link"
+          >
+            <User className="w-5 h-5" />
+            <span className="text-[10px] font-medium">Login</span>
+          </button>
+        </div>
+      </nav>
+    );
+  }
+
   // ── Doctor / non-patient: slim top bar ──────────────────────────────────
   if (!isPatient && !!user) {
     return (
