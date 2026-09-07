@@ -294,7 +294,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         toast.info(title, {
           description: body,
           duration: 7000,
-          action: link ? { label: "View", onClick: () => navigate(link) } : undefined,
+          action: link ? { label: "View", onClick: () => navigate({ path: link as any }) } : undefined,
         });
 
         if (Capacitor.isNativePlatform()) {

@@ -14,6 +14,22 @@
       },
       "oauth_client": [
         {
+          "client_id": "611968623638-1cdt0halvntl8m21meg3477lu82j11et.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "in.doctorbooked.app",
+            "certificate_hash": "f52dcacc0a97164f7da64dca0f7ad0b81c909bcd"
+          }
+        },
+        {
+          "client_id": "611968623638-2vvuihb3ktril3s3p02qmqhg11e8lsmr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "in.doctorbooked.app",
+            "certificate_hash": "273092698a44e511e519d9594d8a0b40cf3d044e"
+          }
+        },
+        {
           "client_id": "611968623638-5j8gef3hvog25b8e7fofmh1t018eh8st.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
@@ -22,7 +38,7 @@
           }
         },
         {
-          "client_id": "611968623638-h611qtkshmin0hd5ghdt49ahj6f6udgt.apps.googleusercontent.com",
+          "client_id": "611968623638-t3buf8q4q458rgdmaoulao0lul3p5dpm.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
