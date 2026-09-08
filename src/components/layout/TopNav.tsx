@@ -457,7 +457,7 @@ export default function TopNav() {
           <button
             type="button"
             className="flex flex-col items-center -mt-5 focus:outline-none"
-            onClick={() => navigate({ path: "/patient/hospitals" })}
+            onClick={() => navigate({ path: "/" })}
             data-ocid="nav.link"
           >
             <div className="w-14 h-14 rounded-full bg-teal-600 shadow-lg flex items-center justify-center border-4 border-white">
