@@ -23,6 +23,7 @@ import PharmacyOwnerLogin from "./pages/PharmacyOwnerLogin";
 import PharmacyOwnerRegister from "./pages/PharmacyOwnerRegister";
 import PharmacyOwnerDashboard from "./pages/PharmacyOwnerDashboard";
 import AmbulancePage from "./pages/patient/AmbulancePage";
+import PatientHomePage from "./pages/patient/PatientHomePage";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ChatbotWidget from "./components/ChatbotWidget";
 import { RouterProvider, useRouter } from "./router/RouterContext";
@@ -255,6 +256,7 @@ function AppRoutes() {
         </ErrorBoundary>
       );
     }
+    if (route.path === "/") return <PatientHomePage />;
     return <HospitalsPage />;
   }
 
