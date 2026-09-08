@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import PullToRefresh from "./components/PullToRefresh";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Calendar, ChevronRight, MapPin, User, Search, Navigation, Loader2, XCircle, Users, Hospital, Pill, Ambulance, FileText } from "lucide-react";
+import { Calendar, ChevronRight, Clock, MapPin, User, Search, Navigation, Loader2, XCircle, Users, Hospital, Pill, Ambulance, FileText } from "lucide-react";
 import { useEffect, useRef, useCallback, useState as useMobileState } from "react";
 import { useNearMe } from "./hooks/useNearMe";
 import { motion } from "motion/react";
@@ -70,222 +70,64 @@ function parseCoords(str?: string): { lat: number; lng: number } | null {
 
 function MobileLanding() {
   const { navigate } = useRouter();
-  const { hospitals, doctors } = useStore();
-  const mapRef = useRef<HTMLDivElement>(null);
-  const mapObj = useRef<any>(null);
-  const markersRef = useRef<any[]>([]);
-  const [search, setSearch] = useMobileState("");
-  const [mapReady, setMapReady] = useMobileState(false);
-  const [mapHeight, setMapHeight] = useMobileState(220);
-  const dragStartY = useRef<number>(0);
-  const dragStartH = useRef<number>(220);
-  const { state: nearState, locate, clear, sorted: sortedByDistance } = useNearMe(hospitals);
-
-  const baseList = sortedByDistance ?? hospitals;
-  const filtered = baseList.filter(h =>
-    h.name.toLowerCase().includes(search.toLowerCase()) ||
-    h.area.toLowerCase().includes(search.toLowerCase())
-  );
-  const citySet = Array.from(new Set(hospitals.map(h => h.area).filter(Boolean))).sort();
-
-  useEffect(() => {
-    loadMapsScriptLanding().then(() => {
-      if (!mapRef.current || mapObj.current) return;
-      const google = (window as any).google;
-      const map = new google.maps.Map(mapRef.current, {
-        center: { lat: 9.9252, lng: 78.1198 }, zoom: 11,
-        mapTypeControl: false, streetViewControl: false, fullscreenControl: false, gestureHandling: "greedy",
-        styles: [
-          { elementType: "geometry", stylers: [{ color: "#f5f7f6" }] },
-          { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
-          { elementType: "labels.text.fill", stylers: [{ color: "#6b7280" }] },
-          { elementType: "labels.text.stroke", stylers: [{ color: "#ffffff" }] },
-
-          { featureType: "administrative", elementType: "geometry", stylers: [{ visibility: "off" }] },
-          { featureType: "administrative.land_parcel", stylers: [{ visibility: "off" }] },
-          { featureType: "administrative.neighborhood", stylers: [{ visibility: "off" }] },
-          { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#374151" }] },
-
-          { featureType: "poi", stylers: [{ visibility: "off" }] },
-
-          { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
-          { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#e5e7eb" }] },
-          { featureType: "road", elementType: "labels.icon", stylers: [{ visibility: "off" }] },
-          { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9ca3af" }] },
-
-          { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#ccebe6" }] },
-          { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#99d8cd" }] },
-          { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#0d9488" }] },
-          { featureType: "road.highway.controlled_access", elementType: "geometry", stylers: [{ color: "#99d8cd" }] },
-          { featureType: "road.local", elementType: "labels", stylers: [{ visibility: "off" }] },
-
-          { featureType: "transit", stylers: [{ visibility: "off" }] },
-
-          { featureType: "landscape", elementType: "geometry", stylers: [{ color: "#f5f7f6" }] },
-          { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: "#eef2f1" }] },
-
-          { featureType: "water", elementType: "geometry", stylers: [{ color: "#bfe8e2" }] },
-          { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#0d9488" }] },
-        ],
-      });
-      mapObj.current = map;
-      setMapReady(true);
-    }).catch(() => setMapReady(false));
-  }, []);
-
-  useEffect(() => {
-    if (!mapReady || !mapObj.current) return;
-    const google = (window as any).google;
-    markersRef.current.forEach(m => m.setMap(null));
-    markersRef.current = [];
-    filtered.forEach(h => {
-      const coords = parseCoords((h as any).address) || parseCoords(h.area);
-      if (!coords) return;
-      const marker = new google.maps.Marker({
-        position: coords, map: mapObj.current, title: h.name,
-        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: "#14b8a6", fillOpacity: 1, strokeColor: "#ffffff", strokeWeight: 2 },
-      });
-      const iw = new google.maps.InfoWindow({ content: `<div style="font-family:sans-serif;font-size:13px;font-weight:700">${h.name}</div><div style="font-size:11px;color:#6b7280">${h.area}</div>` });
-      marker.addListener("click", () => iw.open(mapObj.current, marker));
-      markersRef.current.push(marker);
-    });
-  }, [mapReady, filtered]);
-
-  useEffect(() => {
-    if (nearState.status === "done" && (nearState as any).userLat && mapObj.current) {
-      const google = (window as any).google;
-      mapObj.current.panTo(new google.maps.LatLng((nearState as any).userLat, (nearState as any).userLng));
-      mapObj.current.setZoom(13);
-    }
-  }, [nearState.status]);
-
-  // Drag handle logic
-  function onDragStart(clientY: number) {
-    dragStartY.current = clientY;
-    dragStartH.current = mapHeight;
-  }
-  function onDragMove(clientY: number) {
-    const delta = clientY - dragStartY.current;
-    const newH = Math.min(Math.max(dragStartH.current + delta, 160), window.innerHeight * 0.65);
-    setMapHeight(newH);
-  }
-  function onDragEnd(clientY: number) {
-    const delta = clientY - dragStartY.current;
-    // Snap: if dragged down >40px expand, up >40px collapse
-    if (delta > 40) setMapHeight(Math.round(window.innerHeight * 0.6));
-    else if (delta < -40) setMapHeight(220);
-  }
-
-  function resolvePhoto(url: string | null | undefined) {
-    if (!url) return null;
-    if (url.startsWith("data:") || url.startsWith("http")) return url;
-    const base = (import.meta.env.VITE_API_URL as string || "").replace(/\/api$/, "");
-    return base ? `${base}${url}` : url;
-  }
+  const { user } = useStore();
 
   return (
     <div className="flex flex-col bg-gray-50" style={{ minHeight: "100dvh" }}>
-      {/* Map — draggable height */}
-      <div className="relative shrink-0 transition-all duration-200" style={{ height: mapHeight }}>
-        <div ref={mapRef} className="w-full h-full" />
-        {!mapReady && (
-          <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
-            <Loader2 className="w-6 h-6 text-teal-500 animate-spin" />
-          </div>
-        )}
-        {/* Search bar over map */}
-        <div className="absolute bottom-5 left-3 right-3 z-10 flex gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-            <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search hospitals, doctors or areas"
-              className="w-full pl-9 pr-3 py-2.5 rounded-xl border-2 border-teal-600 bg-white text-sm font-medium shadow-xl focus:outline-none focus:ring-2 focus:ring-teal-400" />
-          </div>
-          {nearState.status === "done" ? (
-            <button onClick={clear} className="flex items-center gap-1 bg-teal-500 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap">
-              <XCircle className="w-3.5 h-3.5" /> Clear
-            </button>
-          ) : (
-            <button onClick={locate} disabled={nearState.status === "loading"}
-              className="flex items-center gap-1 bg-white border border-teal-300 text-teal-700 text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap disabled:opacity-60">
-              {nearState.status === "loading" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Navigation className="w-3.5 h-3.5" />}
-              Near me
-            </button>
-          )}
-        </div>
-      </div>
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-5 pt-8 pb-28">
+          <h1 className="text-xl font-bold text-gray-900 mb-1">Care, without the wait</h1>
+          <p className="text-sm text-gray-500 mb-7">Everything you need for your next visit</p>
 
-      {/* Drag handle — touch to resize map */}
-      <div
-        className="shrink-0 flex flex-col items-center justify-center bg-white z-10 cursor-row-resize"
-        style={{ height: 26, borderRadius: "16px 16px 0 0", marginTop: -10, boxShadow: "0 -2px 8px rgba(0,0,0,0.08)" }}
-        onMouseDown={e => { onDragStart(e.clientY); const mm = (ev: MouseEvent) => onDragMove(ev.clientY); const mu = (ev: MouseEvent) => { onDragEnd(ev.clientY); window.removeEventListener("mousemove", mm); window.removeEventListener("mouseup", mu); }; window.addEventListener("mousemove", mm); window.addEventListener("mouseup", mu); }}
-        onTouchStart={e => { onDragStart(e.touches[0].clientY); const tm = (ev: TouchEvent) => onDragMove(ev.touches[0].clientY); const te = (ev: TouchEvent) => { onDragEnd(ev.changedTouches[0].clientY); window.removeEventListener("touchmove", tm); window.removeEventListener("touchend", te); }; window.addEventListener("touchmove", tm); window.addEventListener("touchend", te); }}
-      >
-        <div className="w-8 h-1 bg-gray-300 rounded-full" />
-      </div>
+          <button
+            type="button"
+            onClick={() => navigate({ path: "/patient/hospitals" })}
+            className="w-full flex items-center gap-4 bg-teal-700 rounded-2xl px-5 py-5 text-left mb-4 shadow-sm active:bg-teal-800 transition-colors"
+          >
+            <div className="w-12 h-12 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
+              <Calendar className="w-6 h-6 text-white" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="font-semibold text-white text-[15px]">Book an appointment</h2>
+              <p className="text-teal-50/80 text-xs mt-0.5">Find a hospital and reserve your visit in minutes</p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-white/70 shrink-0" />
+          </button>
 
-      {/* Scrollable hospital list */}
-      <div className="flex-1 overflow-y-auto bg-white">
-        <div className="px-4 pt-6 pb-28">
-          <h2 className="text-base font-bold text-gray-900 mb-1">Find hospitals near you</h2>
-          <p className="text-xs text-gray-400 mb-4">Book your token and skip the waiting time</p>
-          <div className="flex gap-2 overflow-x-auto pb-2 mb-4" style={{ scrollbarWidth: "none" }}>
-            {citySet.map(c => (
-              <button key={c} onClick={() => navigate({ path: "/patient/hospitals", city: c })}
-                className="shrink-0 bg-gray-100 hover:bg-teal-50 hover:text-teal-700 text-gray-700 text-xs font-medium px-3 py-1.5 rounded-full transition-colors">
-                {c}
-              </button>
-            ))}
-          </div>
-          <div className="flex flex-col gap-4">
-            {filtered.length === 0 ? (
-              <div className="text-center py-10 text-gray-400">
-                <Search className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">No hospitals found</p>
+          <div className="grid grid-cols-2 gap-4">
+            <button
+              type="button"
+              onClick={() => navigate({ path: "/patient/tokens" })}
+              className="flex flex-col items-start gap-3 bg-white border border-gray-100 rounded-2xl px-4 py-5 text-left shadow-sm active:bg-gray-50 transition-colors"
+            >
+              <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center">
+                <Clock className="w-5 h-5 text-teal-700" />
               </div>
-            ) : filtered.map(h => {
-              const photo = resolvePhoto(h.photoUrl);
-              const docCount = doctors.filter(d => d.hospitalId === h.id).length;
-              const distKm = (h as any).distanceKm as number | undefined;
-              const specialties: string[] = (h as any).specialties || [];
-              return (
-                <div key={h.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
-                  onClick={() => navigate({ path: "/patient/hospital", id: h.id })}>
-                  <div className="relative h-40">
-                    {photo ? <img src={photo} alt={h.name} className="w-full h-full object-cover" /> : <div className={`w-full h-full bg-gradient-to-br ${h.gradient}`} />}
-                    {distKm != null && (
-                      <span className="absolute top-2 left-2 bg-teal-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                        {distKm < 1 ? `${Math.round(distKm * 1000)} m` : `${distKm.toFixed(1)} km`}
-                      </span>
-                    )}
-                    <button className="absolute top-2 right-2 flex items-center gap-1 bg-teal-500 text-white text-[10px] font-semibold px-2 py-1 rounded-full"
-                      onClick={e => { e.stopPropagation(); navigate({ path: "/patient/hospitals" }); }}>
-                      <Navigation className="w-2.5 h-2.5" /> Map
-                    </button>
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-bold text-gray-900 text-[15px] mb-1">{h.name}</h3>
-                    <p className="text-xs text-gray-500 flex items-center gap-1 mt-1"><MapPin className="w-3 h-3" />{h.area}</p>
-                    <div className="flex items-center gap-3 mt-1.5">
-                      <span className="flex items-center gap-1 text-xs text-teal-700"><Users className="w-3 h-3" />{docCount} Doctor{docCount !== 1 ? "s" : ""} available</span>
-                    </div>
-                    {specialties.length > 0 && (
-                      <div className="flex gap-1.5 flex-wrap mt-2">
-                        {specialties.slice(0, 3).map((s: string) => <span key={s} className="bg-gray-100 text-gray-600 text-[11px] px-2 py-0.5 rounded-full">{s}</span>)}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+              <div>
+                <h2 className="font-semibold text-gray-900 text-sm">Track your token</h2>
+                <p className="text-gray-500 text-xs mt-1">See your exact position in the queue</p>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate(user ? { path: "/patient/prescriptions" } : { path: "/login", tab: "patient", patientMode: "login" })}
+              className="flex flex-col items-start gap-3 bg-white border border-gray-100 rounded-2xl px-4 py-5 text-left shadow-sm active:bg-gray-50 transition-colors"
+            >
+              <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center">
+                <FileText className="w-5 h-5 text-teal-700" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-gray-900 text-sm">Prescriptions</h2>
+                <p className="text-gray-500 text-xs mt-1">View and download your records</p>
+              </div>
+            </button>
           </div>
         </div>
       </div>
     </div>
   );
 }
-
 
 function LandingPage() {
   const { navigate } = useRouter();
