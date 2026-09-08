@@ -199,7 +199,7 @@ function MobileLanding() {
             <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
             <input value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Search hospitals, doctors or areas"
-              className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 bg-white text-sm shadow-md focus:outline-none focus:ring-2 focus:ring-teal-400" />
+              className="w-full pl-9 pr-3 py-2 rounded-xl border-2 border-gray-300 bg-white text-sm shadow-lg focus:outline-none focus:ring-2 focus:ring-teal-400" />
           </div>
           {nearState.status === "done" ? (
             <button onClick={clear} className="flex items-center gap-1 bg-teal-500 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap">

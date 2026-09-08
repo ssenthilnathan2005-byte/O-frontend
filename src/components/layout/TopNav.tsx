@@ -84,7 +84,7 @@ export default function TopNav() {
             onClick={() => navigate({ path: "/patient/hospitals" })}
             data-ocid="nav.link"
           >
-            <Hospital className="w-5 h-5" />
+            <Hospital className="w-5 h-5"  strokeWidth={2} />
             <span className="text-[10px] font-medium">Hospitals</span>
           </button>
 
@@ -94,7 +94,7 @@ export default function TopNav() {
             onClick={() => navigate({ path: "/pharmacies" })}
             data-ocid="nav.link"
           >
-            <Pill className="w-5 h-5" />
+            <Pill className="w-5 h-5"  strokeWidth={2} />
             <span className="text-[10px] font-medium">Pharmacies</span>
           </button>
 
@@ -124,7 +124,7 @@ export default function TopNav() {
             onClick={() => navigate({ path: "/ambulance" })}
             data-ocid="nav.link"
           >
-            <Ambulance className="w-5 h-5" />
+            <Ambulance className="w-5 h-5"  strokeWidth={2} />
             <span className="text-[10px] font-medium">Ambulance</span>
           </button>
 
@@ -134,7 +134,7 @@ export default function TopNav() {
             onClick={() => navigate({ path: "/login", tab: "patient", patientMode: "login" })}
             data-ocid="nav.link"
           >
-            <User className="w-5 h-5" />
+            <User className="w-5 h-5"  strokeWidth={2} />
             <span className="text-[10px] font-medium">Login</span>
           </button>
         </div>
@@ -433,7 +433,7 @@ export default function TopNav() {
             onClick={() => navigate({ path: "/patient/hospitals" })}
             data-ocid="nav.link"
           >
-            <Hospital className="w-5 h-5" />
+            <Hospital className="w-5 h-5"  strokeWidth={2} />
             <span className="text-[10px] font-medium">Hospitals</span>
           </button>
 
@@ -445,7 +445,7 @@ export default function TopNav() {
             data-ocid="nav.link"
           >
             <span className="relative">
-              <BookOpen className="w-5 h-5" />
+              <BookOpen className="w-5 h-5"  strokeWidth={2} />
               {activeBookingCount > 0 && (
                 <span className="absolute -top-1 -right-1 w-2 h-2 bg-teal-500 rounded-full border border-white" />
               )}
@@ -481,7 +481,7 @@ export default function TopNav() {
             onClick={() => { clearPrescriptionDot(); navigate({ path: "/patient/prescriptions" }); }}
           >
             <span className="relative">
-              <Pill className="w-5 h-5" />
+              <Pill className="w-5 h-5"  strokeWidth={2} />
               {hasNewPrescription && (
                 <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full border border-white" />
               )}
@@ -495,7 +495,7 @@ export default function TopNav() {
             className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-colors ${navInactive} hover:text-teal-500`}
             onClick={() => setShowProfileMenu(true)}
           >
-            <User className="w-5 h-5" />
+            <User className="w-5 h-5"  strokeWidth={2} />
             <span className="text-[10px] font-medium truncate max-w-[52px]">{displayName.split(" ")[0]}</span>
           </button>
 
