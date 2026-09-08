@@ -96,14 +96,36 @@ function MobileLanding() {
         center: { lat: 9.9252, lng: 78.1198 }, zoom: 11,
         mapTypeControl: false, streetViewControl: false, fullscreenControl: false, gestureHandling: "greedy",
         styles: [
-          { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] },
-          { featureType: "poi", elementType: "geometry", stylers: [{ visibility: "off" }] },
-          { featureType: "poi.business", stylers: [{ visibility: "off" }] },
-          { featureType: "poi.attraction", stylers: [{ visibility: "off" }] },
-          { featureType: "poi.government", stylers: [{ visibility: "off" }] },
-          { featureType: "poi.school", stylers: [{ visibility: "off" }] },
-          { featureType: "poi.sports_complex", stylers: [{ visibility: "off" }] },
+          { elementType: "geometry", stylers: [{ color: "#f5f7f6" }] },
+          { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+          { elementType: "labels.text.fill", stylers: [{ color: "#6b7280" }] },
+          { elementType: "labels.text.stroke", stylers: [{ color: "#ffffff" }] },
+
+          { featureType: "administrative", elementType: "geometry", stylers: [{ visibility: "off" }] },
+          { featureType: "administrative.land_parcel", stylers: [{ visibility: "off" }] },
+          { featureType: "administrative.neighborhood", stylers: [{ visibility: "off" }] },
+          { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#374151" }] },
+
+          { featureType: "poi", stylers: [{ visibility: "off" }] },
+
+          { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
+          { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#e5e7eb" }] },
+          { featureType: "road", elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+          { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9ca3af" }] },
+
+          { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#ccebe6" }] },
+          { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#99d8cd" }] },
+          { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#0d9488" }] },
+          { featureType: "road.highway.controlled_access", elementType: "geometry", stylers: [{ color: "#99d8cd" }] },
+          { featureType: "road.local", elementType: "labels", stylers: [{ visibility: "off" }] },
+
           { featureType: "transit", stylers: [{ visibility: "off" }] },
+
+          { featureType: "landscape", elementType: "geometry", stylers: [{ color: "#f5f7f6" }] },
+          { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: "#eef2f1" }] },
+
+          { featureType: "water", elementType: "geometry", stylers: [{ color: "#bfe8e2" }] },
+          { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#0d9488" }] },
         ],
       });
       mapObj.current = map;
