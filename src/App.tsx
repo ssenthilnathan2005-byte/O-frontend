@@ -471,6 +471,7 @@ function AppRoutes() {
       );
     }
 <<<<<<< HEAD
+<<<<<<< HEAD
     return (
       <>
         <div className="md:hidden"><MobileLanding /></div>
@@ -478,6 +479,8 @@ function AppRoutes() {
       </>
     );
 =======
+=======
+>>>>>>> 846f802ddc20db04d78df5c56d4352620996da02
     if (route.path === "/") return <PatientHomePage />;
     return <HospitalsPage />;
 >>>>>>> 846f802d (Add time-of-day greeting (24px) with user name (16px) above home screen cards)
