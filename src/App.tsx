@@ -68,6 +68,13 @@ function parseCoords(str?: string): { lat: number; lng: number } | null {
   return { lat, lng };
 }
 
+function getTimeGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
 function MobileLanding() {
   const { navigate } = useRouter();
   const { hospitals, user } = useStore();
@@ -80,6 +87,7 @@ function MobileLanding() {
   const dragStartY = useRef<number>(0);
   const dragStartH = useRef<number>(220);
   const { state: nearState, locate, clear, sorted: sortedByDistance } = useNearMe(hospitals);
+  const [timeGreeting, setTimeGreeting] = useMobileState(getTimeGreeting());
 
   const baseList = sortedByDistance ?? hospitals;
   const filtered = baseList.filter(h =>
@@ -158,6 +166,11 @@ function MobileLanding() {
     }
   }, [nearState.status]);
 
+  useEffect(() => {
+    const id = setInterval(() => setTimeGreeting(getTimeGreeting()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   // Drag handle logic
   function onDragStart(clientY: number) {
     dragStartY.current = clientY;
@@ -218,7 +231,13 @@ function MobileLanding() {
 
       {/* Feature cards — replaces the hospital results list */}
       <div className="flex-1 overflow-y-auto bg-white">
-        <div className="px-5 pt-6 pb-28">
+        <div className="px-5 pt-12 pb-28">
+          <div className="mb-8">
+            <p style={{ fontSize: 24, lineHeight: 1.3 }} className="font-bold text-gray-900">{timeGreeting}</p>
+            {user && (
+              <p style={{ fontSize: 16 }} className="font-medium text-gray-500 mt-1">{(user as { name: string }).name}</p>
+            )}
+          </div>
           <button
             type="button"
             onClick={() => navigate({ path: "/patient/hospitals" })}
