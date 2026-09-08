@@ -162,7 +162,7 @@ function MobileLanding() {
           </div>
         )}
         {/* Search bar over map */}
-        <div className="absolute bottom-3 left-3 right-3 z-10 flex gap-2">
+        <div className="absolute bottom-5 left-3 right-3 z-10 flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
             <input value={search} onChange={e => setSearch(e.target.value)}
@@ -186,7 +186,7 @@ function MobileLanding() {
       {/* Drag handle — touch to resize map */}
       <div
         className="shrink-0 flex flex-col items-center justify-center bg-white z-10 cursor-row-resize"
-        style={{ height: 24, borderRadius: "16px 16px 0 0", marginTop: -12, boxShadow: "0 -2px 8px rgba(0,0,0,0.08)" }}
+        style={{ height: 26, borderRadius: "16px 16px 0 0", marginTop: -10, boxShadow: "0 -2px 8px rgba(0,0,0,0.08)" }}
         onMouseDown={e => { onDragStart(e.clientY); const mm = (ev: MouseEvent) => onDragMove(ev.clientY); const mu = (ev: MouseEvent) => { onDragEnd(ev.clientY); window.removeEventListener("mousemove", mm); window.removeEventListener("mouseup", mu); }; window.addEventListener("mousemove", mm); window.addEventListener("mouseup", mu); }}
         onTouchStart={e => { onDragStart(e.touches[0].clientY); const tm = (ev: TouchEvent) => onDragMove(ev.touches[0].clientY); const te = (ev: TouchEvent) => { onDragEnd(ev.changedTouches[0].clientY); window.removeEventListener("touchmove", tm); window.removeEventListener("touchend", te); }; window.addEventListener("touchmove", tm); window.addEventListener("touchend", te); }}
       >
@@ -195,7 +195,7 @@ function MobileLanding() {
 
       {/* Scrollable hospital list */}
       <div className="flex-1 overflow-y-auto bg-white">
-        <div className="px-4 pt-3 pb-28">
+        <div className="px-4 pt-6 pb-28">
           <h2 className="text-base font-bold text-gray-900 mb-1">Find hospitals near you</h2>
           <p className="text-xs text-gray-400 mb-3">Book your token and skip the waiting time</p>
           <div className="flex gap-2 overflow-x-auto pb-2 mb-4" style={{ scrollbarWidth: "none" }}>
