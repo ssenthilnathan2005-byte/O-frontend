@@ -77,7 +77,7 @@ export default function TopNav() {
   if (!user) {
     return (
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 safe-area-inset-bottom">
-        <div className="flex items-end justify-around px-2 py-2 max-w-lg mx-auto">
+        <div className="flex items-end justify-around px-2 py-1 max-w-lg mx-auto">
           <button
             type="button"
             className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-gray-400 hover:text-teal-600 transition-colors"
@@ -424,7 +424,7 @@ export default function TopNav() {
 
       {/* Bottom navigation bar — mobile only, untouched on phones */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 safe-area-inset-bottom">
-        <div className="flex items-end justify-around px-2 py-2 max-w-lg mx-auto">
+        <div className="flex items-end justify-around px-2 py-1 max-w-lg mx-auto">
 
           {/* Hospitals */}
           <button
