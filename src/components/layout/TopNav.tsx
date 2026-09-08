@@ -100,11 +100,11 @@ export default function TopNav() {
 
           <button
             type="button"
-            className="flex flex-col items-center -mt-5 focus:outline-none"
+            className="flex flex-col items-center gap-0.5 px-3 py-1 focus:outline-none"
             onClick={() => navigate({ path: "/" })}
             data-ocid="nav.link"
           >
-            <div className="w-14 h-14 rounded-full bg-teal-600 shadow-lg flex items-center justify-center border-4 border-white">
+            <div className="w-14 h-14 -mt-5 rounded-full bg-teal-600 shadow-lg flex items-center justify-center border-4 border-white">
               <img
                 src="/assets/Logo.jpg"
                 alt="Doctor Booked"
@@ -115,7 +115,7 @@ export default function TopNav() {
                 }}
               />
             </div>
-            <span className="text-[9px] font-bold text-teal-600 mt-0.5">HOME</span>
+            <span className="text-[10px] font-medium text-teal-600">Home</span>
           </button>
 
           <button
@@ -456,11 +456,11 @@ export default function TopNav() {
           {/* Centre logo pill */}
           <button
             type="button"
-            className="flex flex-col items-center -mt-5 focus:outline-none"
+            className="flex flex-col items-center gap-0.5 px-3 py-1 focus:outline-none"
             onClick={() => navigate({ path: "/" })}
             data-ocid="nav.link"
           >
-            <div className="w-14 h-14 rounded-full bg-teal-600 shadow-lg flex items-center justify-center border-4 border-white">
+            <div className="w-14 h-14 -mt-5 rounded-full bg-teal-600 shadow-lg flex items-center justify-center border-4 border-white">
               <img
                 src="/assets/Logo.jpg"
                 alt="Doctor Booked"
@@ -471,7 +471,7 @@ export default function TopNav() {
                 }}
               />
             </div>
-            <span className="text-[9px] font-bold text-teal-600 mt-0.5">HOME</span>
+            <span className="text-[10px] font-medium text-teal-600">Home</span>
           </button>
 
           {/* Prescriptions */}

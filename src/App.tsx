@@ -199,7 +199,7 @@ function MobileLanding() {
             <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
             <input value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Search hospitals, doctors or areas"
-              className="w-full pl-9 pr-3 py-2 rounded-xl border-2 border-gray-300 bg-white text-sm shadow-lg focus:outline-none focus:ring-2 focus:ring-teal-400" />
+              className="w-full pl-9 pr-3 py-2.5 rounded-xl border-2 border-teal-600 bg-white text-sm font-medium shadow-xl focus:outline-none focus:ring-2 focus:ring-teal-400" />
           </div>
           {nearState.status === "done" ? (
             <button onClick={clear} className="flex items-center gap-1 bg-teal-500 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap">
@@ -229,7 +229,7 @@ function MobileLanding() {
       <div className="flex-1 overflow-y-auto bg-white">
         <div className="px-4 pt-6 pb-28">
           <h2 className="text-base font-bold text-gray-900 mb-1">Find hospitals near you</h2>
-          <p className="text-xs text-gray-400 mb-3">Book your token and skip the waiting time</p>
+          <p className="text-xs text-gray-400 mb-4">Book your token and skip the waiting time</p>
           <div className="flex gap-2 overflow-x-auto pb-2 mb-4" style={{ scrollbarWidth: "none" }}>
             {citySet.map(c => (
               <button key={c} onClick={() => navigate({ path: "/patient/hospitals", city: c })}
@@ -264,15 +264,15 @@ function MobileLanding() {
                       <Navigation className="w-2.5 h-2.5" /> Map
                     </button>
                   </div>
-                  <div className="p-3">
-                    <h3 className="font-bold text-gray-900 text-sm">{h.name}</h3>
-                    <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5"><MapPin className="w-3 h-3" />{h.area}</p>
-                    <div className="flex items-center gap-3 mt-2">
+                  <div className="p-4">
+                    <h3 className="font-bold text-gray-900 text-[15px] mb-1">{h.name}</h3>
+                    <p className="text-xs text-gray-500 flex items-center gap-1 mt-1"><MapPin className="w-3 h-3" />{h.area}</p>
+                    <div className="flex items-center gap-3 mt-1.5">
                       <span className="flex items-center gap-1 text-xs text-teal-700"><Users className="w-3 h-3" />{docCount} Doctor{docCount !== 1 ? "s" : ""} available</span>
                     </div>
                     {specialties.length > 0 && (
                       <div className="flex gap-1.5 flex-wrap mt-2">
-                        {specialties.slice(0, 3).map((s: string) => <span key={s} className="bg-gray-100 text-gray-600 text-[10px] px-2 py-0.5 rounded-full">{s}</span>)}
+                        {specialties.slice(0, 3).map((s: string) => <span key={s} className="bg-gray-100 text-gray-600 text-[11px] px-2 py-0.5 rounded-full">{s}</span>)}
                       </div>
                     )}
                   </div>
