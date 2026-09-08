@@ -95,6 +95,16 @@ function MobileLanding() {
       const map = new google.maps.Map(mapRef.current, {
         center: { lat: 9.9252, lng: 78.1198 }, zoom: 11,
         mapTypeControl: false, streetViewControl: false, fullscreenControl: false, gestureHandling: "greedy",
+        styles: [
+          { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] },
+          { featureType: "poi", elementType: "geometry", stylers: [{ visibility: "off" }] },
+          { featureType: "poi.business", stylers: [{ visibility: "off" }] },
+          { featureType: "poi.attraction", stylers: [{ visibility: "off" }] },
+          { featureType: "poi.government", stylers: [{ visibility: "off" }] },
+          { featureType: "poi.school", stylers: [{ visibility: "off" }] },
+          { featureType: "poi.sports_complex", stylers: [{ visibility: "off" }] },
+          { featureType: "transit", stylers: [{ visibility: "off" }] },
+        ],
       });
       mapObj.current = map;
       setMapReady(true);
