@@ -304,7 +304,7 @@ function LandingPage() {
   ];
   return (
     <>
-      <div className="md:hidden"><MobileLanding /></div>
+      <div className="md:hidden"><PatientHomePage /></div>
       <div className="hidden md:flex flex-col min-h-screen bg-gray-50 font-sans">
         <header className="bg-white border-b border-gray-200 sticky top-0 z-20">
           <div className="max-w-7xl 2xl:max-w-[1600px] mx-auto flex items-center justify-between px-4 py-3">
