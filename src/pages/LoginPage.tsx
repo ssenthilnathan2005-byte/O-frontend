@@ -50,7 +50,7 @@ interface LoginPageProps {
 
 function loadGoogleScript(): Promise<void> {
   return new Promise((resolve) => {
-    if (window.google) { resolve(); return; }
+    if (window.google?.accounts?.id) { resolve(); return; }
     const existing = document.getElementById("google-gsi-script");
     if (existing) { existing.addEventListener("load", () => resolve(), { once: true }); return; }
     const s = document.createElement("script");
@@ -160,7 +160,7 @@ export default function LoginPage({
     async function setup() {
       await loadGoogleScript();
       if (!googleReady.current) {
-        window.google!.accounts.id.initialize({
+        window.google?.accounts?.id?.initialize({
           client_id: GOOGLE_CLIENT_ID,
           callback: handleGoogleCredential,
           auto_select: false, cancel_on_tap_outside: true,
