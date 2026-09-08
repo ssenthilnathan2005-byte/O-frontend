@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import PullToRefresh from "./components/PullToRefresh";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Calendar, ChevronRight, Clock, MapPin, User, Search, Navigation, Loader2, XCircle, Users } from "lucide-react";
+import { Calendar, ChevronRight, MapPin, User, Search, Navigation, Loader2, XCircle, Users } from "lucide-react";
 import { useEffect, useRef, useCallback, useState as useMobileState } from "react";
 import { useNearMe } from "./hooks/useNearMe";
 import { motion } from "motion/react";
@@ -237,7 +237,6 @@ function MobileLanding() {
                     <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5"><MapPin className="w-3 h-3" />{h.area}</p>
                     <div className="flex items-center gap-3 mt-2">
                       <span className="flex items-center gap-1 text-xs text-teal-700"><Users className="w-3 h-3" />{docCount} Doctor{docCount !== 1 ? "s" : ""} available</span>
-                      <span className="flex items-center gap-1 text-xs text-gray-400"><Clock className="w-3 h-3" />~15 min</span>
                     </div>
                     {specialties.length > 0 && (
                       <div className="flex gap-1.5 flex-wrap mt-2">
