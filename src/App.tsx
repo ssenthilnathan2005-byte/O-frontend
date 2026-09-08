@@ -28,6 +28,7 @@ import PharmacyOwnerLogin from "./pages/PharmacyOwnerLogin";
 import PharmacyOwnerRegister from "./pages/PharmacyOwnerRegister";
 import PharmacyOwnerDashboard from "./pages/PharmacyOwnerDashboard";
 import AmbulancePage from "./pages/patient/AmbulancePage";
+import PatientHomePage from "./pages/patient/PatientHomePage";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ChatbotWidget from "./components/ChatbotWidget";
 import { RouterProvider, useRouter } from "./router/RouterContext";
@@ -469,12 +470,17 @@ function AppRoutes() {
         </ErrorBoundary>
       );
     }
+<<<<<<< HEAD
     return (
       <>
         <div className="md:hidden"><MobileLanding /></div>
         <div className="hidden md:block"><HospitalsPage /></div>
       </>
     );
+=======
+    if (route.path === "/") return <PatientHomePage />;
+    return <HospitalsPage />;
+>>>>>>> 846f802d (Add time-of-day greeting (24px) with user name (16px) above home screen cards)
   }
 
   const isAdmin = user?.role === "admin" || user?.role === "hospital_admin" || user?.role === "pharmacy" || user?.role === "pharmacy_owner";
