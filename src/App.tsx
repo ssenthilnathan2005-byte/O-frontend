@@ -470,20 +470,8 @@ function AppRoutes() {
         </ErrorBoundary>
       );
     }
-<<<<<<< HEAD
-<<<<<<< HEAD
-    return (
-      <>
-        <div className="md:hidden"><MobileLanding /></div>
-        <div className="hidden md:block"><HospitalsPage /></div>
-      </>
-    );
-=======
-=======
->>>>>>> 846f802ddc20db04d78df5c56d4352620996da02
     if (route.path === "/") return <PatientHomePage />;
     return <HospitalsPage />;
->>>>>>> 846f802d (Add time-of-day greeting (24px) with user name (16px) above home screen cards)
   }
 
   const isAdmin = user?.role === "admin" || user?.role === "hospital_admin" || user?.role === "pharmacy" || user?.role === "pharmacy_owner";
