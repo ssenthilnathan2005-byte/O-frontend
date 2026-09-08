@@ -44,7 +44,8 @@ type Route =
   | { path: "/pharmacy-owner/login" }
   | { path: "/pharmacy-owner/register" }
   | { path: "/pharmacy-owner/dashboard" }
-  | { path: "/ambulance" };
+  | { path: "/ambulance" }
+  | { path: "/delete-account" };
 interface RouterCtx {
   route: Route;
   navigate: (r: Route) => void;
@@ -106,6 +107,7 @@ function getInitialRoute(): Route {
   if (pathname === "/pharmacy/login") return { path: "/pharmacy/login" };
   if (pathname === "/terms") return { path: "/terms" };
   if (pathname === "/privacy") return { path: "/privacy" };
+  if (pathname === "/delete-account") return { path: "/delete-account" };
 
   if (pathname === "/pharmacies") return { path: "/pharmacies" };
   if (pathname === "/pharmacy/detail") return { path: "/pharmacy/detail", id: hospitalId };
