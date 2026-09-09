@@ -338,6 +338,10 @@ export const payments = {
 // ── Patients ──────────────────────────────────────────────────────────────────
 export const patients = {
   list: () => get<PatientRecord[]>("/patients"),
+  getProfile: () =>
+    get<{ name: string; phone: string; age: string; isComplete: boolean }>("/patients/profile"),
+  updateProfile: (data: { name: string; phone: string; age: string }) =>
+    patch<{ success: boolean }>("/patients/profile", data),
 };
 
 // ── Forgot Password

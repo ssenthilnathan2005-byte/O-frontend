@@ -42,6 +42,7 @@
     "@capacitor/core": "^8.5.0",
     "@capacitor/geolocation": "^8.2.2",
     "@capacitor/local-notifications": "^8.3.1",
+    "@capacitor/splash-screen": "^8.0.2",
     "@dfinity/agent": "~3.3.0",
     "@dfinity/auth-client": "~3.3.0",
     "@dfinity/candid": "~3.3.0",

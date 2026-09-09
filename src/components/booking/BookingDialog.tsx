@@ -7,7 +7,7 @@ import { Activity, AlertCircle, Calendar, CheckCircle2, Clock,
          CreditCard, FileText, Hash, IndianRupee, Loader2, MapPin, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { bookings as bookingsApi, payments } from "../../api";
+import { bookings as bookingsApi, payments, patients } from "../../api";
 import { useStore } from "../../context/StoreContext";
 import { useRouter } from "../../router/RouterContext";
 import {
@@ -54,7 +54,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Step = "date" | "session" | "token" | "complaint" | "payment" | "tracking-info" | "success";
+type Step = "date" | "session" | "token" | "for-whom" | "complaint" | "payment" | "tracking-info" | "success";
 
 export default function BookingDialog({ doctor, hospital, open, onClose }: Props) {
   const { user, bookings, tokenStates, isSessionCancelled, getOrCreateTokenState, addBookingToStore, refreshFromStorage } = useStore();
@@ -69,6 +69,9 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
   const [patientName, setPatientName]   = useState("");
   const [patientPhone, setPatientPhone] = useState("");
   const [patientAge, setPatientAge]     = useState("");
+  const [bookingFor, setBookingFor]     = useState<"self" | "other" | "">("");
+  const [profile, setProfile] = useState<{ name: string; phone: string; age: string; isComplete: boolean } | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
   const [paying, setPaying]             = useState(false);
   const [payError, setPayError]         = useState("");
   const [isRazorpayReady, setIsRazorpayReady] = useState(false);
@@ -87,6 +90,16 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
 
   // Keep dialogOpen in sync with the external open prop, but hide dialog while paying
   useEffect(() => { setDialogOpen(open && !paying); }, [open, paying]);
+
+  // Fetch the patient's saved profile whenever the dialog opens
+  useEffect(() => {
+    if (!open) return;
+    setProfileLoading(true);
+    patients.getProfile()
+      .then(p => setProfile(p))
+      .catch(() => setProfile(null))
+      .finally(() => setProfileLoading(false));
+  }, [open]);
 
   const availableDates = useMemo(() => getAvailableDates(), []);
   const patientUser = user as { id: string; email: string; name: string; role: "patient" };
@@ -110,7 +123,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
 
   function handleClose() {
     setStep("date"); setSelectedDate(""); setSelectedSession("");
-    setTokenNumber(0); setComplaint(""); setSelectedSymptoms([]); setPatientName(""); setPatientPhone(""); setPatientAge(""); setPayError("");
+    setTokenNumber(0); setComplaint(""); setSelectedSymptoms([]); setPatientName(""); setPatientPhone(""); setPatientAge(""); setBookingFor(""); setPayError("");
     setTrackerSessionId("");
     setPrefetchedOrder(null); setPrefetchingOrder(false);
     onClose();
@@ -521,7 +534,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
                   <p className="text-sm text-gray-600 mt-1">{doctor.name}</p>
                   <p className="text-xs text-gray-400">{formatDate(selectedDate)} · {getSessionLabelForDate(selectedDate, selectedSession as SessionType, (doctor as any).scheduleConfig, doctor.sessionTimings)}</p>
                 </div>
-                <button type="button" onClick={() => setStep("complaint")}
+                <button type="button" onClick={() => setStep("for-whom")}
                   className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-full text-sm font-semibold transition-colors"
                   data-ocid="booking.confirm_button">
                   Generate Token →
@@ -536,6 +549,56 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
           </div>
         )}
 
+        {/* ── For whom ── */}
+        {step === "for-whom" && (
+          <div className="space-y-4">
+            <div className="text-center pb-1">
+              <h3 className="font-semibold text-gray-900 text-base">Who is this booking for?</h3>
+              <p className="text-sm text-gray-400 mt-1">This helps us fill in the right details.</p>
+            </div>
+            <div className="space-y-3">
+              <button
+                type="button"
+                disabled={profileLoading}
+                onClick={() => {
+                  if (!profile || !profile.isComplete) {
+                    handleClose();
+                    navigate({ path: "/patient/profile" });
+                    return;
+                  }
+                  setPatientName(profile.name);
+                  setPatientPhone(profile.phone);
+                  setPatientAge(profile.age);
+                  setBookingFor("self");
+                  setStep("complaint");
+                }}
+                className="w-full p-4 rounded-xl border-2 border-gray-200 hover:border-teal-500 hover:bg-teal-50 transition-all text-left disabled:opacity-50"
+              >
+                <p className="font-medium text-gray-900 text-sm">Booking for Myself</p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {profileLoading
+                    ? "Checking your profile…"
+                    : profile?.isComplete
+                    ? "We'll use your saved details"
+                    : "You'll need to complete your profile first"}
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPatientName(""); setPatientPhone(""); setPatientAge("");
+                  setBookingFor("other");
+                  setStep("complaint");
+                }}
+                className="w-full p-4 rounded-xl border-2 border-gray-200 hover:border-teal-500 hover:bg-teal-50 transition-all text-left"
+              >
+                <p className="font-medium text-gray-900 text-sm">Booking for Someone Else</p>
+                <p className="text-xs text-gray-400 mt-0.5">Fill in their details fully</p>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* ── Complaint ── */}
         {step === "complaint" && (
           <div className="space-y-4">
@@ -544,41 +607,61 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
                 <FileText className="w-6 h-6 text-teal-500" />
               </div>
               <h3 className="font-semibold text-gray-900 text-base">Patient Details</h3>
-              <p className="text-sm text-gray-400 mt-1">Please fill in all details before continuing.</p>
+              <p className="text-sm text-gray-400 mt-1">
+                {bookingFor === "self" ? "Just tell us what's wrong — we've filled in the rest." : "Please fill in all details before continuing."}
+              </p>
             </div>
             <div className="space-y-3">
-              <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">Patient Name <span className="text-red-500">*</span></label>
-                <input
-                  type="text"
-                  placeholder="Enter patient name"
-                  value={patientName}
-                  onChange={e => setPatientName(e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">Phone Number <span className="text-red-500">*</span></label>
-                <input
-                  type="tel"
-                  inputMode="numeric"
-                  placeholder="Enter 10-digit phone number"
-                  value={patientPhone}
-                  onChange={e => setPatientPhone(e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">Age <span className="text-red-500">*</span></label>
-                <input
-                  type="number"
-                  placeholder="Enter age"
-                  value={patientAge}
-                  onChange={e => setPatientAge(e.target.value)}
-                  min={0} max={120}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
-                />
-              </div>
+              {bookingFor === "self" ? (
+                <div className="bg-teal-50 border border-teal-200 rounded-xl p-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{patientName}</p>
+                    <p className="text-xs text-gray-500">{patientPhone} · {patientAge} yrs</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setStep("for-whom")}
+                    className="text-xs font-medium text-teal-600 hover:text-teal-700"
+                  >
+                    Change
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Patient Name <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      placeholder="Enter patient name"
+                      value={patientName}
+                      onChange={e => setPatientName(e.target.value)}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Phone Number <span className="text-red-500">*</span></label>
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      placeholder="Enter 10-digit phone number"
+                      value={patientPhone}
+                      onChange={e => setPatientPhone(e.target.value)}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Age <span className="text-red-500">*</span></label>
+                    <input
+                      type="number"
+                      placeholder="Enter age"
+                      value={patientAge}
+                      onChange={e => setPatientAge(e.target.value)}
+                      min={0} max={120}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
+                    />
+                  </div>
+                </>
+              )}
               <div>
                 <label className="text-xs font-medium text-gray-600 mb-1 block">
                   Symptoms / Reason for Visit <span className="text-red-500">*</span>

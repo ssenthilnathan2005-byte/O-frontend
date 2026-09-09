@@ -1,4 +1,4 @@
-import { Ambulance, BookOpen, Hospital, LogOut, Mail, Phone, Pill, User, X } from "lucide-react";
+import { Ambulance, BookOpen, Hospital, LogOut, Mail, Phone, Pill, User, UserCog, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useStore } from "../../context/StoreContext";
@@ -77,7 +77,7 @@ export default function TopNav() {
   if (!user) {
     return (
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 safe-area-inset-bottom">
-        <div className="flex items-end justify-around px-2 py-1 max-w-lg mx-auto">
+        <div className="flex items-end justify-around px-2 pt-1 pb-0.5 max-w-lg mx-auto">
           <button
             type="button"
             className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-gray-400 hover:text-teal-600 transition-colors"
@@ -272,6 +272,16 @@ export default function TopNav() {
             <div className="space-y-1">
               <button
                 type="button"
+                className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-gray-700 hover:bg-teal-50 transition-colors text-sm font-medium"
+                onClick={() => { setShowProfileMenu(false); navigate({ path: "/patient/profile" }); }}
+              >
+                <div className="w-9 h-9 rounded-full bg-teal-50 flex items-center justify-center">
+                  <UserCog className="w-4 h-4 text-teal-600" />
+                </div>
+                My Profile
+              </button>
+              <button
+                type="button"
                 className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-red-600 hover:bg-red-50 transition-colors text-sm font-medium"
                 onClick={() => { setShowProfileMenu(false); navigate({ path: "/ambulance" }); }}
               >
@@ -424,7 +434,7 @@ export default function TopNav() {
 
       {/* Bottom navigation bar — mobile only, untouched on phones */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 safe-area-inset-bottom">
-        <div className="flex items-end justify-around px-2 py-1 max-w-lg mx-auto">
+        <div className="flex items-end justify-around px-2 pt-1 pb-0.5 max-w-lg mx-auto">
 
           {/* Hospitals */}
           <button

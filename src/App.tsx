@@ -1,8 +1,9 @@
 import { Toaster } from "@/components/ui/sonner";
+import SplashScreen from "./components/SplashScreen";
 import PullToRefresh from "./components/PullToRefresh";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Calendar, ChevronRight, Clock, MapPin, User, Search, Navigation, Loader2, XCircle, Users, Hospital, Pill, Ambulance, FileText } from "lucide-react";
-import { useEffect, useRef, useCallback, useState as useMobileState } from "react";
+import { useEffect, useRef, useCallback, useState, useState as useMobileState } from "react";
 import { useNearMe } from "./hooks/useNearMe";
 import { motion } from "motion/react";
 import TopNav from "./components/layout/TopNav";
@@ -30,6 +31,7 @@ import PharmacyOwnerRegister from "./pages/PharmacyOwnerRegister";
 import PharmacyOwnerDashboard from "./pages/PharmacyOwnerDashboard";
 import AmbulancePage from "./pages/patient/AmbulancePage";
 import PatientHomePage from "./pages/patient/PatientHomePage";
+import ProfilePage from "./pages/patient/ProfilePage";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ChatbotWidget from "./components/ChatbotWidget";
 import { RouterProvider, useRouter } from "./router/RouterContext";
@@ -466,6 +468,7 @@ function AppRoutes() {
     if (route.path === "/pharmacy/detail") return <PharmacyDetailPage id={(route as any).id} />;
     if (route.path === "/pharmacy-owner/dashboard") return <PharmacyOwnerDashboard />;
     if (route.path === "/ambulance") return <ComingSoonPage title="Ambulance" />; // was: <AmbulancePage />
+    if (route.path === "/patient/profile") return <ProfilePage />;
     if (route.path === "/patient/tokens") return <MyTokensPage />;
     if (route.path === "/patient/prescriptions") return <MyPrescriptionsPage />;
     if (route.path === "/patient/track") {
@@ -524,8 +527,10 @@ function AppRoutes() {
 }
 
 export default function App() {
+  const [splashDone, setSplashDone] = useState(false);
   return (
     <ErrorBoundary fallbackLabel="Doctor Booked">
+      {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
       <QueryClientProvider client={queryClient}>
         <RouterProvider>
           <StoreProvider>
