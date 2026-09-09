@@ -20,6 +20,7 @@ type Route =
   | { path: "/patient/hospital"; id: string }
   | { path: "/patient/tokens" }
   | { path: "/patient/prescriptions" }
+  | { path: "/patient/profile" }
   | { path: "/patient/track"; sessionId: string; tokenNumber: number }
   | { path: "/doctor" }
   | { path: "/admin" }

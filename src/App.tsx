@@ -34,6 +34,7 @@ import PatientHomePage from "./pages/patient/PatientHomePage";
 import ProfilePage from "./pages/patient/ProfilePage";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ChatbotWidget from "./components/ChatbotWidget";
+import LocationAlwaysPrompt from "./components/LocationAlwaysPrompt";
 import { RouterProvider, useRouter } from "./router/RouterContext";
 
 function resolvePhotoUrl(url: string | null | undefined): string | null {
@@ -522,6 +523,7 @@ function AppRoutes() {
       </main>
       <Toaster position="top-right" />
       <ChatbotWidget />
+      <LocationAlwaysPrompt enabled={user?.role === "patient"} />
     </div>
   );
 }
