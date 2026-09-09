@@ -10,6 +10,7 @@ type State =
   | { status: "idle" }
   | { status: "loading" }
   | { status: "denied" }
+  | { status: "gps-off" }
   | { status: "unsupported" }
   | { status: "done"; lat: number; lng: number };
 
@@ -52,8 +53,13 @@ export function useNearMe(hospitals: Hospital[]) {
       }
       const pos = await Geolocation.getCurrentPosition({ timeout: 10000, maximumAge: 60000 });
       setState({ status: "done", lat: pos.coords.latitude, lng: pos.coords.longitude });
-    } catch {
-      setState({ status: "denied" });
+    } catch (err: any) {
+      const msg = err?.message || "";
+      if (msg.includes("location disabled") || msg.includes("Location services are disabled") || msg.includes("kCLErrorDomain") || err?.code === 2) {
+        setState({ status: "gps-off" });
+      } else {
+        setState({ status: "denied" });
+      }
     }
   }, []);
 

@@ -164,6 +164,10 @@ export default function PatientHomePage() {
             <button onClick={clear} className="flex items-center gap-1 bg-teal-500 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap">
               <XCircle className="w-3.5 h-3.5" /> Clear
             </button>
+          ) : nearState.status === "gps-off" ? (
+            <button onClick={() => { import("@capacitor/core").then(({ Capacitor }) => { if (Capacitor.isNativePlatform()) { import("@capacitor/geolocation").then(({ Geolocation }) => Geolocation.openSettings?.().catch(() => {})); } }); }} className="flex items-center gap-1 bg-orange-50 border border-orange-300 text-orange-600 text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap">
+              <Navigation className="w-3.5 h-3.5" /> Turn on GPS
+            </button>
           ) : nearState.status === "denied" ? (
             <button onClick={locate} className="flex items-center gap-1 bg-red-50 border border-red-300 text-red-600 text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap">
               <Navigation className="w-3.5 h-3.5" /> Allow location
