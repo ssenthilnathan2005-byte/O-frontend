@@ -8,6 +8,7 @@
 // ============================================================
 
 import { useEffect, useRef, useState } from "react";
+import { loadGoogleMaps } from "../../lib/googleMaps";
 import { X, Navigation } from "lucide-react";
 
 interface Props {
@@ -18,8 +19,6 @@ interface Props {
   };
   onClose: () => void;
 }
-
-const MAPS_API_KEY = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string) || "";
 
 // ── Detect if string contains coordinates like "9.5104, 77.6294" ─────────────
 function parseCoordinates(str?: string): { lat: number; lng: number } | null {
@@ -43,25 +42,6 @@ function buildDirectionsUrl(hospital: Props["hospital"]): string {
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(query)}`;
 }
 
-function loadMapsScript(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if ((window as any).google?.maps) { resolve(); return; }
-    const existing = document.getElementById("google-maps-script");
-    if (existing) {
-      existing.addEventListener("load", () => resolve(), { once: true });
-      return;
-    }
-    if (!MAPS_API_KEY) { reject(new Error("NO_KEY")); return; }
-    const s   = document.createElement("script");
-    s.id      = "google-maps-script";
-    s.src     = `https://maps.googleapis.com/maps/api/js?key=${MAPS_API_KEY}`;
-    // NOTE: No &libraries=places needed — we use coordinates directly
-    s.async   = true;
-    s.onload  = () => resolve();
-    s.onerror = () => reject(new Error("LOAD_FAILED"));
-    document.head.appendChild(s);
-  });
-}
 
 export default function HospitalMapModal({ hospital, onClose }: Props) {
   const mapRef                = useRef<HTMLDivElement>(null);
@@ -79,7 +59,7 @@ export default function HospitalMapModal({ hospital, onClose }: Props) {
   useEffect(() => {
     async function init() {
       try {
-        await loadMapsScript();
+        await loadGoogleMaps();
         const google = (window as any).google;
         if (!mapRef.current) return;
 

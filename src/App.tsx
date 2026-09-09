@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Calendar, ChevronRight, Clock, MapPin, User, Search, Navigation, Loader2, XCircle, Users, Hospital, Pill, Ambulance, FileText } from "lucide-react";
 import { useEffect, useRef, useCallback, useState, useState as useMobileState } from "react";
 import { useNearMe } from "./hooks/useNearMe";
+import { loadGoogleMaps } from "./lib/googleMaps";
 import { motion } from "motion/react";
 import TopNav from "./components/layout/TopNav";
 import { StoreProvider, useStore } from "./context/StoreContext";
@@ -48,21 +49,6 @@ function resolvePhotoUrl(url: string | null | undefined): string | null {
 const queryClient = new QueryClient();
 
 // ── helpers ──────────────────────────────────────────────────────────────────
-const MAPS_KEY = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string) || "";
-
-function loadMapsScriptLanding(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if ((window as any).google?.maps) { resolve(); return; }
-    const existing = document.getElementById("google-maps-script");
-    if (existing) { existing.addEventListener("load", () => resolve(), { once: true }); return; }
-    if (!MAPS_KEY) { reject(new Error("NO_KEY")); return; }
-    const s = document.createElement("script");
-    s.id = "google-maps-script";
-    s.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_KEY}`;
-    s.async = true; s.onload = () => resolve(); s.onerror = () => reject(new Error("LOAD_FAILED"));
-    document.head.appendChild(s);
-  });
-}
 
 function parseCoords(str?: string): { lat: number; lng: number } | null {
   if (!str) return null;
@@ -101,7 +87,7 @@ function MobileLanding() {
   );
 
   useEffect(() => {
-    loadMapsScriptLanding().then(() => {
+    loadGoogleMaps().then(() => {
       if (!mapRef.current || mapObj.current) return;
       const google = (window as any).google;
       const map = new google.maps.Map(mapRef.current, {
