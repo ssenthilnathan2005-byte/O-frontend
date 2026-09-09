@@ -164,6 +164,10 @@ export default function PatientHomePage() {
             <button onClick={clear} className="flex items-center gap-1 bg-teal-500 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap">
               <XCircle className="w-3.5 h-3.5" /> Clear
             </button>
+          ) : nearState.status === "denied" ? (
+            <button onClick={locate} className="flex items-center gap-1 bg-red-50 border border-red-300 text-red-600 text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap">
+              <Navigation className="w-3.5 h-3.5" /> Allow location
+            </button>
           ) : (
             <button onClick={locate} disabled={nearState.status === "loading"}
               className="flex items-center gap-1 bg-white border border-teal-300 text-teal-700 text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap disabled:opacity-60">

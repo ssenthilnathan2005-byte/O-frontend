@@ -96,6 +96,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             });
           }
         });
+        // Request location permission on startup
+        import("@capacitor/geolocation").then(({ Geolocation }) => {
+          Geolocation.requestPermissions().catch(() => {});
+        });
       }
     } catch {}
   }, []);
