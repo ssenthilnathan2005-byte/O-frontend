@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { Geolocation } from "@capacitor/geolocation";
+import { toast } from "sonner";
 import type { Hospital } from "../types";
 
 export interface HospitalWithDistance extends Hospital {
@@ -57,8 +58,10 @@ export function useNearMe(hospitals: Hospital[]) {
       const msg = err?.message || "";
       if (msg.includes("location disabled") || msg.includes("Location services are disabled") || msg.includes("kCLErrorDomain") || err?.code === 2) {
         setState({ status: "gps-off" });
+        toast.error("Location is turned off. Tap 'Turn on GPS' to enable it.");
       } else {
         setState({ status: "denied" });
+        toast.error("Location permission denied. Tap 'Allow location' to grant access.");
       }
     }
   }, []);
