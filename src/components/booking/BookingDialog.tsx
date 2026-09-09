@@ -438,7 +438,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
                 1. Select Date
               </p>
-              <div className="flex gap-2 overflow-x-auto pb-1">
+              <div className="flex flex-col gap-2">
                 {availableDates.map((date, i) => (
                   <button key={date} type="button"
                     onClick={() => {
@@ -448,13 +448,15 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
                       setPrefetchingOrder(false);
                       setStep("session");
                     }}
-                    className="flex flex-col items-center justify-center px-3 py-2 sm:px-4 sm:py-3 rounded-xl border-2 shrink-0 border-gray-200 hover:border-teal-300 hover:bg-teal-50 transition-all min-w-[4.7rem] sm:min-w-0"
+                    className="w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 border-gray-200 hover:border-teal-300 hover:bg-teal-50 transition-all"
                     data-ocid="booking.button">
-                    <span className="text-xs text-gray-500">{getDayName(date)}</span>
-                    <span className="text-lg sm:text-xl font-bold text-gray-900">{getDayNum(date)}</span>
-                    <span className="text-xs text-gray-500">{getMonth(date)}</span>
+                    <div className="flex items-baseline gap-3">
+                      <span className="text-sm font-medium text-gray-500 w-9">{getDayName(date)}</span>
+                      <span className="text-lg font-bold text-gray-900">{getDayNum(date)}</span>
+                      <span className="text-sm text-gray-500">{getMonth(date)}</span>
+                    </div>
                     {i === 0 && (
-                      <span className="text-[10px] bg-teal-100 text-teal-700 px-1.5 py-0.5 rounded-full mt-1">Today</span>
+                      <span className="text-[11px] font-medium bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">Today</span>
                     )}
                   </button>
                 ))}
