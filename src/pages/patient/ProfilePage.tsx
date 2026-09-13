@@ -6,6 +6,7 @@ import { useRouter } from "../../router/RouterContext";
 import { Capacitor } from "@capacitor/core";
 import { Geolocation } from "@capacitor/geolocation";
 import { enablePushNotifications } from "../../lib/push";
+import { Switch } from "@/components/ui/switch";
 
 type PermStatus = "granted" | "denied" | "prompt" | "gps-off" | "unknown";
 
@@ -105,8 +106,9 @@ export default function ProfilePage() {
       const status = res.location || res.coarseLocation;
       setLocStatus(status === "granted" ? "granted" : status === "denied" ? "denied" : "prompt");
       if (status === "granted") toast.success("Location access enabled");
-    } catch {
-      toast.error("Could not update location permission");
+      else if (status === "denied") toast.error("Location permission was denied");
+    } catch (err: any) {
+      toast.error(err?.message ? `Could not update location permission: ${err.message}` : "Could not update location permission");
     }
   }
 
@@ -115,14 +117,40 @@ export default function ProfilePage() {
       await openAppSettings("AppNotification");
       return;
     }
-    const token = await enablePushNotifications();
-    if (token) {
-      setNotifStatus("granted");
-      toast.success("Notifications enabled");
-    } else {
-      toast.error("Could not enable notifications");
-      await refreshPermissionStatuses();
+    try {
+      const token = await enablePushNotifications();
+      if (token) {
+        setNotifStatus("granted");
+        toast.success("Notifications enabled");
+      } else {
+        toast.error("Could not enable notifications");
+        await refreshPermissionStatuses();
+      }
+    } catch (err: any) {
+      toast.error(err?.message ? `Could not enable notifications: ${err.message}` : "Could not enable notifications");
     }
+  }
+
+  // Switches always reflect the REAL current permission state (set via
+  // refreshPermissionStatuses), not just whatever the user last tapped.
+  // Turning "on" runs the same request/settings-redirect flow as before.
+  // Turning "off" isn't something an app can do to a granted OS permission
+  // directly, so we send the user to Settings to do it themselves; the
+  // switch will snap back to reflect whatever they actually chose there.
+  async function handleLocationToggle() {
+    if (locStatus === "granted") {
+      await openAppSettings("ApplicationDetails");
+      return;
+    }
+    await handleLocationClick();
+  }
+
+  async function handleNotificationToggle() {
+    if (notifStatus === "granted") {
+      await openAppSettings("AppNotification");
+      return;
+    }
+    await handleNotificationClick();
   }
 
   useEffect(() => {
@@ -264,17 +292,11 @@ export default function ProfilePage() {
               </p>
             </div>
           </div>
-          {locStatus === "granted" ? (
-            <CheckCircle2 className="w-5 h-5 text-teal-500 shrink-0" />
-          ) : (
-            <button
-              type="button"
-              onClick={handleLocationClick}
-              className="shrink-0 flex items-center gap-1 text-xs font-semibold text-teal-600 border border-teal-300 rounded-full px-3 py-1.5 hover:bg-teal-50"
-            >
-              {locStatus === "denied" || locStatus === "gps-off" ? <><ExternalLink className="w-3.5 h-3.5" /> Settings</> : "Enable"}
-            </button>
-          )}
+          <Switch
+            checked={locStatus === "granted"}
+            onCheckedChange={handleLocationToggle}
+            className="shrink-0"
+          />
         </div>
 
         <div className="flex items-center justify-between gap-3 py-1">
@@ -289,17 +311,11 @@ export default function ProfilePage() {
               </p>
             </div>
           </div>
-          {notifStatus === "granted" ? (
-            <CheckCircle2 className="w-5 h-5 text-teal-500 shrink-0" />
-          ) : (
-            <button
-              type="button"
-              onClick={handleNotificationClick}
-              className="shrink-0 flex items-center gap-1 text-xs font-semibold text-teal-600 border border-teal-300 rounded-full px-3 py-1.5 hover:bg-teal-50"
-            >
-              {notifStatus === "denied" ? <><ExternalLink className="w-3.5 h-3.5" /> Settings</> : "Enable"}
-            </button>
-          )}
+          <Switch
+            checked={notifStatus === "granted"}
+            onCheckedChange={handleNotificationToggle}
+            className="shrink-0"
+          />
         </div>
       </div>
     </div>

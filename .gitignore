@@ -7,3 +7,10 @@ android/app/build/
 android/build/
 android/.gradle/
 .env.production
+
+# Backup files created by patch/edit scripts - never commit these
+*.bak
+*.bak2
+*.bak3
+.env.production.bak
+.env.local.bak
