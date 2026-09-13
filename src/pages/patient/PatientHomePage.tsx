@@ -5,6 +5,7 @@ import { useStore } from "../../context/StoreContext";
 import { useRouter } from "../../router/RouterContext";
 import { useNearMe } from "../../hooks/useNearMe";
 import { loadGoogleMaps } from "../../lib/googleMaps";
+import { getToken } from "@/api";
 
 function resolvePhotoUrl(url: string | null | undefined): string | null {
   if (!url) return null;
@@ -13,6 +14,8 @@ function resolvePhotoUrl(url: string | null | undefined): string | null {
   const base = (import.meta.env.VITE_API_URL as string || "").replace(/\/api$/, "");
   return base ? `${base}${url}` : url;
 }
+
+const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -126,7 +129,25 @@ export default function PatientHomePage() {
   const myTokenNum = activeBooking?.tokenNumber ?? null;
   const currentToken = tokenState?.currentToken ?? null;
   const aheadCount = myTokenNum != null && currentToken != null ? Math.max(0, myTokenNum - currentToken - 1) : null;
-  const prescriptionCount = patientBookings.length;
+  const [realPrescriptionCount, setRealPrescriptionCount] = useState<number | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = getToken();
+        if (!token) { if (!cancelled) setRealPrescriptionCount(0); return; }
+        const res = await fetch(`${BASE}/prescriptions/my`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (!cancelled) setRealPrescriptionCount(Array.isArray(data) ? data.length : 0);
+      } catch {
+        if (!cancelled) setRealPrescriptionCount(0);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
+  const prescriptionCount = realPrescriptionCount ?? 0;
   const nearbyHospitals = hospitals.slice(0, 6);
 
   return (
