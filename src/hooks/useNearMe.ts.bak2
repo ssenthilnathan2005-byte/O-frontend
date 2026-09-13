@@ -1,0 +1,89 @@
+import { useState, useCallback } from "react";
+import { Geolocation } from "@capacitor/geolocation";
+import { toast } from "sonner";
+import type { Hospital } from "../types";
+
+export interface HospitalWithDistance extends Hospital {
+  distanceKm: number | null;
+}
+
+type State =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "denied" }
+  | { status: "gps-off" }
+  | { status: "unsupported" }
+  | { status: "done"; lat: number; lng: number };
+
+function parseCoords(str?: string): { lat: number; lng: number } | null {
+  if (!str) return null;
+  const m = str.match(/(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)/);
+  if (!m) return null;
+  const lat = parseFloat(m[1]);
+  const lng = parseFloat(m[2]);
+  if (isNaN(lat) || isNaN(lng)) return null;
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  return { lat, lng };
+}
+
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+    Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+export function useNearMe(hospitals: Hospital[]) {
+  const [state, setState] = useState<State>({ status: "idle" });
+
+  const locate = useCallback(async () => {
+    setState({ status: "loading" });
+    try {
+      const { Capacitor } = await import("@capacitor/core");
+      if (Capacitor.isNativePlatform()) {
+        const permStatus = await Geolocation.requestPermissions();
+        if (permStatus.location !== "granted" && permStatus.coarseLocation !== "granted") {
+          setState({ status: "denied" });
+          return;
+        }
+      }
+      const pos = await Geolocation.getCurrentPosition({ timeout: 10000, maximumAge: 60000 });
+      setState({ status: "done", lat: pos.coords.latitude, lng: pos.coords.longitude });
+    } catch (err: any) {
+      const msg = err?.message || "";
+      if (msg.includes("location disabled") || msg.includes("Location services are disabled") || msg.includes("kCLErrorDomain") || err?.code === 2) {
+        setState({ status: "gps-off" });
+        toast.error("Location is turned off. Tap 'Turn on GPS' to enable it.");
+      } else {
+        setState({ status: "denied" });
+        toast.error("Location permission denied. Tap 'Allow location' to grant access.");
+      }
+    }
+  }, []);
+
+  const clear = useCallback(() => setState({ status: "idle" }), []);
+
+  const sorted: HospitalWithDistance[] | null =
+    state.status === "done"
+      ? [...hospitals]
+          .map((h) => {
+            const coords = parseCoords(h.address) || parseCoords(h.area);
+            const distanceKm = coords ? haversineKm(state.lat, state.lng, coords.lat, coords.lng) : null;
+            return { ...h, distanceKm };
+          })
+          .filter((h) => h.distanceKm === null || h.distanceKm <= 20)
+          .sort((a, b) => {
+            if (a.distanceKm === null && b.distanceKm === null) return 0;
+            if (a.distanceKm === null) return 1;
+            if (b.distanceKm === null) return -1;
+            return a.distanceKm - b.distanceKm;
+          })
+      : null;
+
+  return { state, locate, clear, sorted };
+}
