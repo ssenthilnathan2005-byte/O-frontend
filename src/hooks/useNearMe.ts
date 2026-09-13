@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Geolocation } from "@capacitor/geolocation";
 import { toast } from "sonner";
 import type { Hospital } from "../types";
@@ -64,6 +64,39 @@ export function useNearMe(hospitals: Hospital[]) {
         toast.error("Location permission denied. Tap 'Allow location' to grant access.");
       }
     }
+  }, []);
+
+  // Keep a ref to the latest state so the appStateChange listener (added
+  // once) always sees the current status without needing to re-subscribe.
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
+  // If the user was denied location and leaves the app to grant it in
+  // system Settings, automatically retry once they come back - so they
+  // don't have to remember to tap "Near me" again themselves.
+  useEffect(() => {
+    let listenerHandle: { remove: () => void } | null = null;
+    let cancelled = false;
+    (async () => {
+      const { Capacitor } = await import("@capacitor/core");
+      if (!Capacitor.isNativePlatform()) return;
+      const { App: CapApp } = await import("@capacitor/app");
+      const handle = await CapApp.addListener("appStateChange", ({ isActive }) => {
+        if (isActive && stateRef.current.status === "denied") {
+          locate();
+        }
+      });
+      if (cancelled) {
+        handle.remove();
+      } else {
+        listenerHandle = handle;
+      }
+    })();
+    return () => {
+      cancelled = true;
+      listenerHandle?.remove();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const clear = useCallback(() => setState({ status: "idle" }), []);
