@@ -7,7 +7,7 @@ import { Capacitor } from "@capacitor/core";
 import { Geolocation } from "@capacitor/geolocation";
 import { enablePushNotifications } from "../../lib/push";
 
-type PermStatus = "granted" | "denied" | "prompt" | "unknown";
+type PermStatus = "granted" | "denied" | "prompt" | "gps-off" | "unknown";
 
 export default function ProfilePage() {
   const { navigate } = useRouter();
@@ -20,11 +20,35 @@ export default function ProfilePage() {
   const [locStatus, setLocStatus] = useState<PermStatus>("unknown");
   const [notifStatus, setNotifStatus] = useState<PermStatus>("unknown");
 
+  function isGpsOffError(err: any): boolean {
+    const msg = String(err?.message || "");
+    const code = String(err?.code || "");
+    return (
+      code === "OS-PLUG-GLOC-0007" ||
+      code === "OS-PLUG-GLOC-0017" ||
+      /location services?.*(not enabled|disabled)/i.test(msg) ||
+      /network and location turned off/i.test(msg) ||
+      msg.includes("kCLErrorDomain") ||
+      err?.code === 2
+    );
+  }
+
   async function refreshPermissionStatuses() {
     try {
       const res = await Geolocation.checkPermissions();
       const status = res.location || res.coarseLocation;
-      setLocStatus(status === "granted" ? "granted" : status === "denied" ? "denied" : "prompt");
+      if (status === "granted") {
+        // Permission is granted, but that doesn't mean GPS itself is on -
+        // actually try to get a position (short timeout) to find out.
+        try {
+          await Geolocation.getCurrentPosition({ timeout: 5000, maximumAge: 60000 });
+          setLocStatus("granted");
+        } catch (posErr) {
+          setLocStatus(isGpsOffError(posErr) ? "gps-off" : "granted");
+        }
+      } else {
+        setLocStatus(status === "denied" ? "denied" : "prompt");
+      }
     } catch {
       setLocStatus("unknown");
     }
@@ -58,7 +82,7 @@ export default function ProfilePage() {
     return () => { cancelled = true; listenerHandle?.remove(); };
   }, []);
 
-  async function openAppSettings(option: "ApplicationDetails" | "AppNotification") {
+  async function openAppSettings(option: "ApplicationDetails" | "AppNotification" | "Location") {
     if (!Capacitor.isNativePlatform()) {
       toast.error("Please enable this in your browser's site settings.");
       return;
@@ -70,6 +94,10 @@ export default function ProfilePage() {
   async function handleLocationClick() {
     if (locStatus === "denied") {
       await openAppSettings("ApplicationDetails");
+      return;
+    }
+    if (locStatus === "gps-off") {
+      await openAppSettings("Location");
       return;
     }
     try {
@@ -232,7 +260,7 @@ export default function ProfilePage() {
             <div className="min-w-0">
               <p className="text-sm font-medium text-gray-900">Location</p>
               <p className="text-xs text-gray-400">
-                {locStatus === "granted" ? "Enabled" : locStatus === "denied" ? "Blocked" : "Not enabled"}
+                {locStatus === "granted" ? "Enabled" : locStatus === "denied" ? "Blocked" : locStatus === "gps-off" ? "GPS is off" : "Not enabled"}
               </p>
             </div>
           </div>
@@ -244,7 +272,7 @@ export default function ProfilePage() {
               onClick={handleLocationClick}
               className="shrink-0 flex items-center gap-1 text-xs font-semibold text-teal-600 border border-teal-300 rounded-full px-3 py-1.5 hover:bg-teal-50"
             >
-              {locStatus === "denied" ? <><ExternalLink className="w-3.5 h-3.5" /> Settings</> : "Enable"}
+              {locStatus === "denied" || locStatus === "gps-off" ? <><ExternalLink className="w-3.5 h-3.5" /> Settings</> : "Enable"}
             </button>
           )}
         </div>

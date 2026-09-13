@@ -55,13 +55,22 @@ export function useNearMe(hospitals: Hospital[]) {
       const pos = await Geolocation.getCurrentPosition({ timeout: 10000, maximumAge: 60000 });
       setState({ status: "done", lat: pos.coords.latitude, lng: pos.coords.longitude });
     } catch (err: any) {
-      const msg = err?.message || "";
-      if (msg.includes("location disabled") || msg.includes("Location services are disabled") || msg.includes("kCLErrorDomain") || err?.code === 2) {
+      const msg = String(err?.message || "");
+      const code = String(err?.code || "");
+      const isGpsOff =
+        code === "OS-PLUG-GLOC-0007" ||
+        code === "OS-PLUG-GLOC-0017" ||
+        /location services?.*(not enabled|disabled)/i.test(msg) ||
+        /network and location turned off/i.test(msg) ||
+        msg.includes("kCLErrorDomain") ||
+        err?.code === 2;
+
+      if (isGpsOff) {
         setState({ status: "gps-off" });
-        toast.error("Location is turned off. Tap 'Turn on GPS' to enable it.");
+        toast.error("Location is turned off. Go to Settings and turn on Location.");
       } else {
         setState({ status: "denied" });
-        toast.error("Location permission denied. Tap 'Allow location' to grant access.");
+        toast.error("Location permission denied. Go to Settings to allow access.");
       }
     }
   }, []);
