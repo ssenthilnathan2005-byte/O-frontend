@@ -85,7 +85,13 @@ export default function ProfilePage() {
 
   async function openAppSettings(option: "ApplicationDetails" | "AppNotification" | "Location") {
     if (!Capacitor.isNativePlatform()) {
-      toast.error("Please enable this in your browser's site settings.");
+      if (option === "Location") {
+        toast.error("Your phone's location (GPS) seems to be off. Turn it on in your phone's quick settings, then reload this page.", { duration: 6000 });
+      } else if (option === "AppNotification") {
+        toast.error("Tap the lock/info icon next to the address bar, then allow Notifications for this site.", { duration: 6000 });
+      } else {
+        toast.error("Tap the lock/info icon next to the address bar, then allow Location for this site.", { duration: 6000 });
+      }
       return;
     }
     const { NativeSettings, AndroidSettings } = await import("capacitor-native-settings");
