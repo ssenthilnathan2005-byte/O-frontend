@@ -371,6 +371,7 @@ export default function DoctorDashboard() {
   }>({ open: false, tokenNum: null });
   const [closeReason, setCloseReason] = useState("");
   const [showPrescription, setShowPrescription] = useState(false);
+  const [completionMode, setCompletionMode] = useState<"normal" | "skipped">("normal");
 
   const visibleSessions = useMemo((): SessionType[] => {
     if (!doctor) return [];
@@ -1745,7 +1746,7 @@ export default function DoctorDashboard() {
                 </p>
                 <Button
                   className="w-full bg-green-600 hover:bg-green-700 text-white font-bold h-11"
-                  onClick={() => hasPharmacy ? setShowPrescription(true) : handleMarkCompleted()}
+                  onClick={() => { if (hasPharmacy) { setCompletionMode("normal"); setShowPrescription(true); } else { handleMarkCompleted(); } }}
                   data-ocid="tokens.confirm_button"
                 >
                   <CheckCircle2 className="w-4 h-4 mr-2" />
@@ -1770,7 +1771,7 @@ export default function DoctorDashboard() {
                 </div>
                 <Button
                   className="w-full bg-green-600 hover:bg-green-700 text-white font-bold h-11"
-                  onClick={handleCompleteSkipped}
+                  onClick={() => { if (hasPharmacy) { setCompletionMode("skipped"); setShowPrescription(true); } else { handleCompleteSkipped(); } }}
                   data-ocid="tokens.confirm_button"
                 >
                   <CheckCircle2 className="w-4 h-4 mr-2" />
@@ -1893,7 +1894,7 @@ export default function DoctorDashboard() {
       <PrescriptionDialog
         open={showPrescription}
         onClose={() => setShowPrescription(false)}
-        onConfirm={() => { setShowPrescription(false); handleMarkCompleted(); }}
+        onConfirm={() => { setShowPrescription(false); if (completionMode === "skipped") { handleCompleteSkipped(); } else { handleMarkCompleted(); } }}
         booking={dialogTokenBooking ? { ...dialogTokenBooking, patientAge: dialogTokenBooking.patientAge ?? undefined } : null}
         doctorId={doctor?.id ?? ""}
         doctorName={doctor?.name ?? ""}
