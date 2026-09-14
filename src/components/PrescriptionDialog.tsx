@@ -202,7 +202,12 @@ export default function PrescriptionDialog({
   async function handleSave() {
     const validMeds = medicines
       .filter(m => m.name.trim())
-      .map(({ name, dosage, duration, instructions }) => ({ name, dosage, duration, instructions }));
+      .map(({ name, dosageAmount, dosageUnit, durationAmount, durationUnit, instructions }) => ({
+        name,
+        dosage: formatDosage(dosageAmount, dosageUnit),
+        duration: formatDuration(durationAmount, durationUnit),
+        instructions,
+      }));
     if (!booking?.id) { onConfirm(); return; }
     setSaving(true);
     try {
