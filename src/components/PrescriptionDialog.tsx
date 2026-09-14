@@ -34,12 +34,27 @@ interface Props {
 
 const EMPTY_MED: Medicine = { name: "", dosage: "", duration: "", instructions: "" };
 
-const DOSAGE_PRESETS = ["250mg", "500mg", "650mg", "1g"];
-const DURATION_PRESETS = ["3 days", "5 days", "7 days", "10 days"];
-const INSTRUCTION_PRESETS = ["After food", "Before food", "Once daily", "Twice daily", "Thrice daily"];
+const TIME_OPTIONS = ["Morning", "Afternoon", "Evening"];
+const FOOD_OPTIONS = ["After food", "Before food"];
+const CUSTOM_PREFIX = "Custom: ";
 
 function isMedFilled(m: Medicine) {
   return m.name.trim() && m.dosage.trim() && m.duration.trim();
+}
+
+function getParts(instructions: string): string[] {
+  return instructions.split(",").map(p => p.trim()).filter(Boolean);
+}
+
+function composeInstructions(parts: string[]): string {
+  const times = TIME_OPTIONS.filter(t => parts.includes(t));
+  const food = parts.find(p => FOOD_OPTIONS.includes(p) || p.startsWith(CUSTOM_PREFIX));
+  return [...times, food].filter(Boolean).join(", ");
+}
+
+function getCustomText(instructions: string): string {
+  const part = getParts(instructions).find(p => p.startsWith(CUSTOM_PREFIX));
+  return part ? part.slice(CUSTOM_PREFIX.length) : "";
 }
 
 export default function PrescriptionDialog({
@@ -51,6 +66,7 @@ export default function PrescriptionDialog({
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [activeMedIdx, setActiveMedIdx] = useState<number | null>(null);
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
+  const [otherOpen, setOtherOpen] = useState<Set<number>>(new Set());
 
   function updateMed(idx: number, field: keyof Medicine, value: string) {
     setMedicines(prev => prev.map((m, i) => i === idx ? { ...m, [field]: value } : m));
@@ -73,12 +89,43 @@ export default function PrescriptionDialog({
     setActiveMedIdx(null);
   }
 
-  function toggleInstruction(idx: number, phrase: string) {
-    const current = medicines[idx].instructions;
-    const parts = current.split(",").map(p => p.trim()).filter(Boolean);
-    const has = parts.includes(phrase);
-    const next = has ? parts.filter(p => p !== phrase) : [...parts, phrase];
-    updateMed(idx, "instructions", next.join(", "));
+  function toggleTime(idx: number, time: string) {
+    const parts = getParts(medicines[idx].instructions);
+    const has = parts.includes(time);
+    const next = has ? parts.filter(p => p !== time) : [...parts, time];
+    updateMed(idx, "instructions", composeInstructions(next));
+  }
+
+  function selectFood(idx: number, food: string) {
+    const parts = getParts(medicines[idx].instructions);
+    const cleaned = parts.filter(p => !FOOD_OPTIONS.includes(p) && !p.startsWith(CUSTOM_PREFIX));
+    const had = parts.includes(food);
+    const next = had ? cleaned : [...cleaned, food];
+    updateMed(idx, "instructions", composeInstructions(next));
+    setOtherOpen(prev => { const n = new Set(prev); n.delete(idx); return n; });
+  }
+
+  function toggleOther(idx: number) {
+    const parts = getParts(medicines[idx].instructions);
+    const hasCustom = parts.some(p => p.startsWith(CUSTOM_PREFIX));
+    const isOpen = otherOpen.has(idx);
+    if (hasCustom || isOpen) {
+      // turn off: clear custom text and close the box
+      const cleaned = parts.filter(p => !p.startsWith(CUSTOM_PREFIX));
+      updateMed(idx, "instructions", composeInstructions(cleaned));
+      setOtherOpen(prev => { const n = new Set(prev); n.delete(idx); return n; });
+    } else {
+      // turn on: clear any After/Before food selection, open the text box
+      const cleaned = parts.filter(p => !FOOD_OPTIONS.includes(p));
+      updateMed(idx, "instructions", composeInstructions(cleaned));
+      setOtherOpen(prev => new Set(prev).add(idx));
+    }
+  }
+
+  function updateCustomText(idx: number, text: string) {
+    const parts = getParts(medicines[idx].instructions).filter(p => !p.startsWith(CUSTOM_PREFIX));
+    const next = text.trim() ? [...parts, `${CUSTOM_PREFIX}${text}`] : parts;
+    updateMed(idx, "instructions", composeInstructions(next));
   }
 
   function addMed() {
@@ -93,11 +140,13 @@ export default function PrescriptionDialog({
 
   function removeMed(idx: number) {
     setMedicines(prev => prev.filter((_, i) => i !== idx));
-    setCollapsed(prev => {
+    const shift = (prev: Set<number>) => {
       const next = new Set<number>();
       prev.forEach(i => { if (i < idx) next.add(i); else if (i > idx) next.add(i - 1); });
       return next;
-    });
+    };
+    setCollapsed(shift);
+    setOtherOpen(shift);
   }
 
   function toggleCollapsed(idx: number) {
@@ -141,6 +190,7 @@ export default function PrescriptionDialog({
       setMedicines([{ ...EMPTY_MED }]);
       setNotes("");
       setCollapsed(new Set());
+      setOtherOpen(new Set());
       onConfirm();
     }
   }
@@ -149,6 +199,7 @@ export default function PrescriptionDialog({
     setMedicines([{ ...EMPTY_MED }]);
     setNotes("");
     setCollapsed(new Set());
+    setOtherOpen(new Set());
     onConfirm();
   }
 
@@ -171,6 +222,8 @@ export default function PrescriptionDialog({
         <div className="space-y-4">
           {medicines.map((med, idx) => {
             const isCollapsed = collapsed.has(idx) && isMedFilled(med);
+            const parts = getParts(med.instructions);
+            const isOtherActive = otherOpen.has(idx) || parts.some(p => p.startsWith(CUSTOM_PREFIX));
 
             if (isCollapsed) {
               return (
@@ -191,7 +244,7 @@ export default function PrescriptionDialog({
             }
 
             return (
-              <div key={idx} className="border rounded-xl p-3 space-y-2 bg-gray-50 relative">
+              <div key={idx} className="border rounded-xl p-3 space-y-3 bg-gray-50 relative">
                 <div className="flex items-center justify-between">
                   <Badge variant="outline" className="text-xs">Medicine {idx + 1}</Badge>
                   <div className="flex items-center gap-2">
@@ -236,55 +289,61 @@ export default function PrescriptionDialog({
                   <div>
                     <Label className="text-xs text-gray-500">Dosage</Label>
                     <Input placeholder="e.g. 500mg" value={med.dosage} onChange={e => updateMed(idx, "dosage", e.target.value)} />
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {DOSAGE_PRESETS.map(p => (
-                        <button
-                          key={p}
-                          type="button"
-                          onClick={() => updateMed(idx, "dosage", p)}
-                          className={`text-xs px-2 py-0.5 rounded-full border ${med.dosage === p ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-200 hover:border-blue-300"}`}
-                        >
-                          {p}
-                        </button>
-                      ))}
-                    </div>
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">Duration</Label>
                     <Input placeholder="e.g. 5 days" value={med.duration} onChange={e => updateMed(idx, "duration", e.target.value)} />
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {DURATION_PRESETS.map(p => (
-                        <button
-                          key={p}
-                          type="button"
-                          onClick={() => updateMed(idx, "duration", p)}
-                          className={`text-xs px-2 py-0.5 rounded-full border ${med.duration === p ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-200 hover:border-blue-300"}`}
-                        >
-                          {p}
-                        </button>
-                      ))}
-                    </div>
                   </div>
                 </div>
 
                 <div>
                   <Label className="text-xs text-gray-500">Instructions</Label>
-                  <Input placeholder="e.g. After food, twice daily" value={med.instructions} onChange={e => updateMed(idx, "instructions", e.target.value)} />
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {INSTRUCTION_PRESETS.map(p => {
-                      const active = med.instructions.split(",").map(s => s.trim()).includes(p);
-                      return (
-                        <button
-                          key={p}
-                          type="button"
-                          onClick={() => toggleInstruction(idx, p)}
-                          className={`text-xs px-2 py-0.5 rounded-full border ${active ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-200 hover:border-blue-300"}`}
-                        >
-                          {p}
-                        </button>
-                      );
-                    })}
+                  <div className="grid grid-cols-2 gap-3 mt-1">
+                    <div className="space-y-1.5">
+                      {TIME_OPTIONS.map(t => (
+                        <label key={t} className="flex items-center gap-2 text-sm cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={parts.includes(t)}
+                            onChange={() => toggleTime(idx, t)}
+                            className="w-4 h-4 accent-blue-600"
+                          />
+                          {t}
+                        </label>
+                      ))}
+                    </div>
+                    <div className="space-y-1.5">
+                      {FOOD_OPTIONS.map(f => (
+                        <label key={f} className="flex items-center gap-2 text-sm cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={parts.includes(f)}
+                            onChange={() => selectFood(idx, f)}
+                            className="w-4 h-4 accent-blue-600"
+                          />
+                          {f}
+                        </label>
+                      ))}
+                      <label className="flex items-center gap-2 text-sm cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={isOtherActive}
+                          onChange={() => toggleOther(idx)}
+                          className="w-4 h-4 accent-blue-600"
+                        />
+                        Other
+                      </label>
+                    </div>
                   </div>
+                  {isOtherActive && (
+                    <Input
+                      className="mt-2"
+                      placeholder="Type custom instruction..."
+                      value={getCustomText(med.instructions)}
+                      onChange={e => updateCustomText(idx, e.target.value)}
+                      autoFocus
+                    />
+                  )}
                 </div>
               </div>
             );
