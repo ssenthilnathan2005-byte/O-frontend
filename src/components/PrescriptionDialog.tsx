@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Pill, Send } from "lucide-react";
+import { Plus, Trash2, Pill, Send, Pencil, Check } from "lucide-react";
 import { getToken } from "@/api";
 import { toast } from "sonner";
 
@@ -34,6 +34,14 @@ interface Props {
 
 const EMPTY_MED: Medicine = { name: "", dosage: "", duration: "", instructions: "" };
 
+const DOSAGE_PRESETS = ["250mg", "500mg", "650mg", "1g"];
+const DURATION_PRESETS = ["3 days", "5 days", "7 days", "10 days"];
+const INSTRUCTION_PRESETS = ["After food", "Before food", "Once daily", "Twice daily", "Thrice daily"];
+
+function isMedFilled(m: Medicine) {
+  return m.name.trim() && m.dosage.trim() && m.duration.trim();
+}
+
 export default function PrescriptionDialog({
   open, onClose, onConfirm, booking, doctorId, doctorName, hospitalId, hospitalName
 }: Props) {
@@ -42,6 +50,7 @@ export default function PrescriptionDialog({
   const [saving, setSaving] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [activeMedIdx, setActiveMedIdx] = useState<number | null>(null);
+  const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
 
   function updateMed(idx: number, field: keyof Medicine, value: string) {
     setMedicines(prev => prev.map((m, i) => i === idx ? { ...m, [field]: value } : m));
@@ -64,8 +73,40 @@ export default function PrescriptionDialog({
     setActiveMedIdx(null);
   }
 
-  function addMed() { setMedicines(prev => [...prev, { ...EMPTY_MED }]); }
-  function removeMed(idx: number) { setMedicines(prev => prev.filter((_, i) => i !== idx)); }
+  function toggleInstruction(idx: number, phrase: string) {
+    const current = medicines[idx].instructions;
+    const parts = current.split(",").map(p => p.trim()).filter(Boolean);
+    const has = parts.includes(phrase);
+    const next = has ? parts.filter(p => p !== phrase) : [...parts, phrase];
+    updateMed(idx, "instructions", next.join(", "));
+  }
+
+  function addMed() {
+    setCollapsed(prev => {
+      const next = new Set(prev);
+      const lastIdx = medicines.length - 1;
+      if (isMedFilled(medicines[lastIdx])) next.add(lastIdx);
+      return next;
+    });
+    setMedicines(prev => [...prev, { ...EMPTY_MED }]);
+  }
+
+  function removeMed(idx: number) {
+    setMedicines(prev => prev.filter((_, i) => i !== idx));
+    setCollapsed(prev => {
+      const next = new Set<number>();
+      prev.forEach(i => { if (i < idx) next.add(i); else if (i > idx) next.add(i - 1); });
+      return next;
+    });
+  }
+
+  function toggleCollapsed(idx: number) {
+    setCollapsed(prev => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx); else next.add(idx);
+      return next;
+    });
+  }
 
   async function handleSave() {
     const validMeds = medicines.filter(m => m.name.trim());
@@ -99,6 +140,7 @@ export default function PrescriptionDialog({
       setSaving(false);
       setMedicines([{ ...EMPTY_MED }]);
       setNotes("");
+      setCollapsed(new Set());
       onConfirm();
     }
   }
@@ -106,6 +148,7 @@ export default function PrescriptionDialog({
   function handleSkip() {
     setMedicines([{ ...EMPTY_MED }]);
     setNotes("");
+    setCollapsed(new Set());
     onConfirm();
   }
 
@@ -126,57 +169,126 @@ export default function PrescriptionDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          {medicines.map((med, idx) => (
-            <div key={idx} className="border rounded-xl p-3 space-y-2 bg-gray-50 relative">
-              <div className="flex items-center justify-between">
-                <Badge variant="outline" className="text-xs">Medicine {idx + 1}</Badge>
-                {medicines.length > 1 && (
-                  <button onClick={() => removeMed(idx)} className="text-red-400 hover:text-red-600">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
+          {medicines.map((med, idx) => {
+            const isCollapsed = collapsed.has(idx) && isMedFilled(med);
 
-              <div className="relative">
-                <Label className="text-xs text-gray-500">Medicine Name</Label>
-                <Input
-                  placeholder="e.g. Paracetamol"
-                  value={med.name}
-                  onChange={e => searchMedicines(idx, e.target.value)}
-                  onFocus={() => setActiveMedIdx(idx)}
-                />
-                {activeMedIdx === idx && suggestions.length > 0 && (
-                  <div className="absolute z-10 bg-white border rounded-lg shadow-lg mt-1 w-full">
-                    {suggestions.map(s => (
-                      <button
-                        key={s}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50"
-                        onClick={() => pickSuggestion(idx, s)}
-                      >
-                        {s}
-                      </button>
-                    ))}
+            if (isCollapsed) {
+              return (
+                <div
+                  key={idx}
+                  className="border rounded-xl px-3 py-2 flex items-center justify-between bg-white cursor-pointer"
+                  onClick={() => toggleCollapsed(idx)}
+                >
+                  <div className="flex items-center gap-2 text-sm">
+                    <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
+                    <span className="font-medium">{med.name}</span>
+                    <span className="text-gray-400">·</span>
+                    <span className="text-gray-500">{med.dosage} · {med.duration}</span>
                   </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label className="text-xs text-gray-500">Dosage</Label>
-                  <Input placeholder="e.g. 500mg" value={med.dosage} onChange={e => updateMed(idx, "dosage", e.target.value)} />
+                  <Pencil className="w-3.5 h-3.5 text-gray-400" />
                 </div>
+              );
+            }
+
+            return (
+              <div key={idx} className="border rounded-xl p-3 space-y-2 bg-gray-50 relative">
+                <div className="flex items-center justify-between">
+                  <Badge variant="outline" className="text-xs">Medicine {idx + 1}</Badge>
+                  <div className="flex items-center gap-2">
+                    {isMedFilled(med) && (
+                      <button onClick={() => toggleCollapsed(idx)} className="text-gray-400 hover:text-gray-600">
+                        <Check className="w-4 h-4" />
+                      </button>
+                    )}
+                    {medicines.length > 1 && (
+                      <button onClick={() => removeMed(idx)} className="text-red-400 hover:text-red-600">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <Label className="text-xs text-gray-500">Medicine Name</Label>
+                  <Input
+                    placeholder="e.g. Paracetamol"
+                    value={med.name}
+                    onChange={e => searchMedicines(idx, e.target.value)}
+                    onFocus={() => setActiveMedIdx(idx)}
+                    autoFocus={idx === medicines.length - 1}
+                  />
+                  {activeMedIdx === idx && suggestions.length > 0 && (
+                    <div className="absolute z-10 bg-white border rounded-lg shadow-lg mt-1 w-full">
+                      {suggestions.map(s => (
+                        <button
+                          key={s}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50"
+                          onClick={() => pickSuggestion(idx, s)}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs text-gray-500">Dosage</Label>
+                    <Input placeholder="e.g. 500mg" value={med.dosage} onChange={e => updateMed(idx, "dosage", e.target.value)} />
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {DOSAGE_PRESETS.map(p => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => updateMed(idx, "dosage", p)}
+                          className={`text-xs px-2 py-0.5 rounded-full border ${med.dosage === p ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-200 hover:border-blue-300"}`}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-gray-500">Duration</Label>
+                    <Input placeholder="e.g. 5 days" value={med.duration} onChange={e => updateMed(idx, "duration", e.target.value)} />
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {DURATION_PRESETS.map(p => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => updateMed(idx, "duration", p)}
+                          className={`text-xs px-2 py-0.5 rounded-full border ${med.duration === p ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-200 hover:border-blue-300"}`}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
                 <div>
-                  <Label className="text-xs text-gray-500">Duration</Label>
-                  <Input placeholder="e.g. 5 days" value={med.duration} onChange={e => updateMed(idx, "duration", e.target.value)} />
+                  <Label className="text-xs text-gray-500">Instructions</Label>
+                  <Input placeholder="e.g. After food, twice daily" value={med.instructions} onChange={e => updateMed(idx, "instructions", e.target.value)} />
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {INSTRUCTION_PRESETS.map(p => {
+                      const active = med.instructions.split(",").map(s => s.trim()).includes(p);
+                      return (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => toggleInstruction(idx, p)}
+                          className={`text-xs px-2 py-0.5 rounded-full border ${active ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-200 hover:border-blue-300"}`}
+                        >
+                          {p}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
-
-              <div>
-                <Label className="text-xs text-gray-500">Instructions</Label>
-                <Input placeholder="e.g. After food, twice daily" value={med.instructions} onChange={e => updateMed(idx, "instructions", e.target.value)} />
-              </div>
-            </div>
-          ))}
+            );
+          })}
 
           <Button variant="outline" size="sm" onClick={addMed} className="w-full border-dashed">
             <Plus className="w-4 h-4 mr-1" /> Add Medicine
