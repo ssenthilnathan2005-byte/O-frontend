@@ -14,6 +14,10 @@ interface Medicine {
   dosage: string;
   duration: string;
   instructions: string;
+  dosageAmount: string;
+  dosageUnit: string;
+  durationAmount: string;
+  durationUnit: string;
 }
 
 interface Props {
@@ -32,14 +36,36 @@ interface Props {
   hospitalName: string;
 }
 
-const EMPTY_MED: Medicine = { name: "", dosage: "", duration: "", instructions: "" };
+const EMPTY_MED: Medicine = {
+  name: "", dosage: "", duration: "", instructions: "",
+  dosageAmount: "", dosageUnit: "mg", durationAmount: "", durationUnit: "day",
+};
 
 const TIME_OPTIONS = ["Morning", "Afternoon", "Evening"];
 const FOOD_OPTIONS = ["After food", "Before food"];
 const CUSTOM_PREFIX = "Custom: ";
 
+const DOSAGE_UNITS = ["mg", "g", "ml", "mcg", "tablet", "capsule", "drop", "puff"];
+const DURATION_UNITS = ["day", "week"];
+const UNIT_NO_SPACE = new Set(["mg", "g", "ml", "mcg"]);
+
+function pluralize(unit: string, amount: string): string {
+  const n = parseFloat(amount);
+  return n === 1 ? unit : `${unit}s`;
+}
+
+function formatDosage(amount: string, unit: string): string {
+  if (!amount.trim()) return "";
+  return UNIT_NO_SPACE.has(unit) ? `${amount}${unit}` : `${amount} ${pluralize(unit, amount)}`;
+}
+
+function formatDuration(amount: string, unit: string): string {
+  if (!amount.trim()) return "";
+  return `${amount} ${pluralize(unit, amount)}`;
+}
+
 function isMedFilled(m: Medicine) {
-  return m.name.trim() && m.dosage.trim() && m.duration.trim();
+  return m.name.trim() && m.dosageAmount.trim() && m.durationAmount.trim();
 }
 
 function getParts(instructions: string): string[] {
@@ -70,6 +96,22 @@ export default function PrescriptionDialog({
 
   function updateMed(idx: number, field: keyof Medicine, value: string) {
     setMedicines(prev => prev.map((m, i) => i === idx ? { ...m, [field]: value } : m));
+  }
+
+  function updateDosageAmount(idx: number, amount: string) {
+    setMedicines(prev => prev.map((m, i) => i === idx ? { ...m, dosageAmount: amount, dosage: formatDosage(amount, m.dosageUnit) } : m));
+  }
+
+  function updateDosageUnit(idx: number, unit: string) {
+    setMedicines(prev => prev.map((m, i) => i === idx ? { ...m, dosageUnit: unit, dosage: formatDosage(m.dosageAmount, unit) } : m));
+  }
+
+  function updateDurationAmount(idx: number, amount: string) {
+    setMedicines(prev => prev.map((m, i) => i === idx ? { ...m, durationAmount: amount, duration: formatDuration(amount, m.durationUnit) } : m));
+  }
+
+  function updateDurationUnit(idx: number, unit: string) {
+    setMedicines(prev => prev.map((m, i) => i === idx ? { ...m, durationUnit: unit, duration: formatDuration(m.durationAmount, unit) } : m));
   }
 
   async function searchMedicines(idx: number, q: string) {
@@ -158,7 +200,9 @@ export default function PrescriptionDialog({
   }
 
   async function handleSave() {
-    const validMeds = medicines.filter(m => m.name.trim());
+    const validMeds = medicines
+      .filter(m => m.name.trim())
+      .map(({ name, dosage, duration, instructions }) => ({ name, dosage, duration, instructions }));
     if (!booking?.id) { onConfirm(); return; }
     setSaving(true);
     try {
@@ -288,11 +332,45 @@ export default function PrescriptionDialog({
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <Label className="text-xs text-gray-500">Dosage</Label>
-                    <Input placeholder="e.g. 500mg" value={med.dosage} onChange={e => updateMed(idx, "dosage", e.target.value)} />
+                    <div className="flex gap-1">
+                      <Input
+                        type="number"
+                        min="0"
+                        step="any"
+                        placeholder="e.g. 500"
+                        value={med.dosageAmount}
+                        onChange={e => updateDosageAmount(idx, e.target.value)}
+                        className="flex-1"
+                      />
+                      <select
+                        value={med.dosageUnit}
+                        onChange={e => updateDosageUnit(idx, e.target.value)}
+                        className="border rounded-md text-sm px-2 bg-white shrink-0"
+                      >
+                        {DOSAGE_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                      </select>
+                    </div>
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">Duration</Label>
-                    <Input placeholder="e.g. 5 days" value={med.duration} onChange={e => updateMed(idx, "duration", e.target.value)} />
+                    <div className="flex gap-1">
+                      <Input
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="e.g. 5"
+                        value={med.durationAmount}
+                        onChange={e => updateDurationAmount(idx, e.target.value)}
+                        className="flex-1"
+                      />
+                      <select
+                        value={med.durationUnit}
+                        onChange={e => updateDurationUnit(idx, e.target.value)}
+                        className="border rounded-md text-sm px-2 bg-white shrink-0"
+                      >
+                        {DURATION_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                      </select>
+                    </div>
                   </div>
                 </div>
 
