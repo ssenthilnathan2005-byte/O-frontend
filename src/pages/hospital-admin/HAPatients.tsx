@@ -8,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Download, Search } from "lucide-react";
+import { Download, Search, Pill } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useStore } from "../../context/StoreContext";
 import { normalizeBookingStatus } from "../../lib/bookingStatus";
@@ -46,6 +46,8 @@ export default function HAPatients() {
   const [dateFilter, setDateFilter] = useState<"all" | "today" | "week">("all");
   const [exporting, setExporting]   = useState(false);
   const [fallbackBookings, setFallbackBookings] = useState<any[]>([]);
+  const [prescriptionMap, setPrescriptionMap] = useState<Record<string, any[]>>({});
+
 
   const myDoctorIds = useMemo(
     () => new Set(doctors.filter((d) => d.hospitalId === hospitalId).map((d) => d.id)),
@@ -117,7 +119,27 @@ export default function HAPatients() {
     return () => { cancelled = true; };
   }, [bookings.length, hospitalId]);
 
+  // Fetch prescriptions for this hospital and map by bookingId
+  useEffect(() => {
+    if (!hospitalId) return;
+    const API = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
+    fetch(`${API}/pharmacy/prescriptions?hospitalId=${encodeURIComponent(hospitalId)}`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (!Array.isArray(data)) return;
+        const map: Record<string, any[]> = {};
+        data.forEach((p: any) => {
+          if (p.bookingId) map[p.bookingId] = p.items ?? [];
+        });
+        setPrescriptionMap(map);
+      })
+      .catch(() => {});
+  }, [hospitalId]);
+
   // export uses same from/to but falls back to ±7 days if "all"
+
   const exportFrom = from || weekStartStr();
   const exportTo   = to   || weekEndStr();
 
@@ -228,6 +250,7 @@ export default function HAPatients() {
               <TableHead>Session</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Complaint</TableHead>
+              <TableHead>Medicines</TableHead>
               <TableHead className="text-center">Status</TableHead>
             </TableRow>
           </TableHeader>
@@ -266,6 +289,22 @@ export default function HAPatients() {
                   <p className="text-xs text-muted-foreground italic truncate">
                     {b.complaint || "—"}
                   </p>
+                </TableCell>
+                <TableCell className="max-w-[200px]">
+                  {prescriptionMap[b.id] && prescriptionMap[b.id].length > 0 ? (
+                    <div className="space-y-0.5">
+                      {prescriptionMap[b.id].map((item: any, i: number) => (
+                        <div key={i} className="flex items-center gap-1">
+                          <Pill className="w-3 h-3 text-teal-500 shrink-0" />
+                          <span className="text-xs font-medium text-gray-700">{item.name}</span>
+                          {item.dosage && <span className="text-xs text-gray-400">{item.dosage}</span>}
+                          {item.duration && <span className="text-xs text-gray-400">· {item.duration}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  )}
                 </TableCell>
                 <TableCell className="text-center">
                   <Badge
