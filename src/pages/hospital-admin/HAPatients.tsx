@@ -131,7 +131,11 @@ export default function HAPatients() {
         if (!Array.isArray(data)) return;
         const map: Record<string, any[]> = {};
         data.forEach((p: any) => {
-          if (p.bookingId) map[p.bookingId] = p.items ?? [];
+          const name = (p.patient_name ?? "").toLowerCase().trim();
+          const date = (p.created_at ?? "").slice(0, 10);
+          const key = `${name}_${date}`;
+          if (!map[key]) map[key] = [];
+          map[key].push(...(p.items ?? []));
         });
         setPrescriptionMap(map);
       })
@@ -291,7 +295,7 @@ export default function HAPatients() {
                   </p>
                 </TableCell>
                 <TableCell className="max-w-[200px]">
-                  {prescriptionMap[b.id] && prescriptionMap[b.id].length > 0 ? (
+                  {(() => { const key = `${(b.patientName ?? "").toLowerCase().trim()}_${b.date}`; const meds = prescriptionMap[key] ?? []; return meds.length > 0 ? (
                     <div className="space-y-0.5">
                       {prescriptionMap[b.id].map((item: any, i: number) => (
                         <div key={i} className="flex items-center gap-1">
@@ -304,7 +308,7 @@ export default function HAPatients() {
                     </div>
                   ) : (
                     <span className="text-xs text-muted-foreground">—</span>
-                  )}
+                  ); })()} 
                 </TableCell>
                 <TableCell className="text-center">
                   <Badge
