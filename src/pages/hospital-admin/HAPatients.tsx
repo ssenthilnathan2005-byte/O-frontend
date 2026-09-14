@@ -128,6 +128,7 @@ export default function HAPatients() {
     })
       .then(r => r.json())
       .then(data => {
+        console.log("PRESCRIPTIONS RAW:", JSON.stringify(data?.slice(0,2)));
         if (!Array.isArray(data)) return;
         const map: Record<string, any[]> = {};
         data.forEach((p: any) => {
