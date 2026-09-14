@@ -298,7 +298,7 @@ export default function HAPatients() {
                 <TableCell className="max-w-[200px]">
                   {(() => { const key = `${(b.patientName ?? "").toLowerCase().trim()}_${b.date}`; const meds = prescriptionMap[key] ?? []; return meds.length > 0 ? (
                     <div className="space-y-0.5">
-                      {prescriptionMap[b.id].map((item: any, i: number) => (
+                      {meds.map((item: any, i: number) => (
                         <div key={i} className="flex items-center gap-1">
                           <Pill className="w-3 h-3 text-teal-500 shrink-0" />
                           <span className="text-xs font-medium text-gray-700">{item.name}</span>
