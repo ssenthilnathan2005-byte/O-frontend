@@ -1274,29 +1274,43 @@ export default function DoctorDashboard() {
                   </button>
                 </div>
                 {liveTokensView === "visited" && (
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const token = localStorage.getItem("db_jwt") ?? "";
-                      const API = (import.meta.env.VITE_API_URL ?? "").replace(/\/api$/, "");
-                      const r = await fetch(`${API}/api/doctor/exports/download-and-delete`, {
-                        method: "POST",
-                        headers: { Authorization: `Bearer ${token}` },
-                      });
-                      if (r.status === 404) { alert("No completed records older than 6 days to export."); return; }
-                      if (!r.ok) { alert("Export failed. Please try again."); return; }
-                      const blob = await r.blob();
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement("a");
-                      a.href = url;
-                      a.download = "my_patients.xlsx";
-                      a.click();
-                      URL.revokeObjectURL(url);
-                    }}
-                    className="px-4 py-1.5 rounded-full text-sm font-medium border border-teal-300 bg-teal-50 text-teal-700 hover:bg-teal-100 transition flex items-center gap-1.5"
-                  >
-                    <Download className="w-3.5 h-3.5" /> Download Patients
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <select
+                      id="download-range"
+                      className="px-3 py-1.5 rounded-full text-sm font-medium border border-teal-300 bg-white text-teal-700 focus:outline-none"
+                      defaultValue="all"
+                      onChange={(e) => (window as any)._doctorDownloadRange = e.target.value}
+                    >
+                      <option value="today">Today</option>
+                      <option value="week">Last 7 Days</option>
+                      <option value="month">Last 30 Days</option>
+                      <option value="all">All Records</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const token = localStorage.getItem("db_jwt") ?? "";
+                        const API = (import.meta.env.VITE_API_URL ?? "").replace(/\/api$/, "");
+                        const range = (window as any)._doctorDownloadRange ?? "all";
+                        const r = await fetch(`${API}/api/doctor/exports/download-and-delete?range=${range}`, {
+                          method: "POST",
+                          headers: { Authorization: `Bearer ${token}` },
+                        });
+                        if (r.status === 404) { alert("No records found for the selected period."); return; }
+                        if (!r.ok) { alert("Export failed. Please try again."); return; }
+                        const blob = await r.blob();
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = `my_patients_${range}.xlsx`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      }}
+                      className="px-4 py-1.5 rounded-full text-sm font-medium border border-teal-300 bg-teal-50 text-teal-700 hover:bg-teal-100 transition flex items-center gap-1.5"
+                    >
+                      <Download className="w-3.5 h-3.5" /> Download Patients
+                    </button>
+                  </div>
                 )}
               </div>
 
