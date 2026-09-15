@@ -43,7 +43,6 @@ export default function MyTokensPage() {
     navigate({ path: "/patient/track", sessionId, tokenNumber });
   }
 
-  const RETENTION_DAYS = 6;
   const FINISHED_STATUSES = new Set(["completed", "unvisited", "cancelled", "confirmed", "booked", "waiting", "live", "checked_in"]);
   const patientId = (user as { id: string }).id;
 
@@ -56,9 +55,8 @@ export default function MyTokensPage() {
       return b.id.localeCompare(a.id);
     });
 
-  const cutoffDate = new Date();
-  cutoffDate.setHours(0, 0, 0, 0);
-  cutoffDate.setDate(cutoffDate.getDate() - RETENTION_DAYS);
+  // No cutoff — all past bookings are shown since records are no longer deleted
+  const cutoffDate = new Date(0); // epoch — nothing is hidden
 
   // A booking stays "live" (tracker available, shown at top) until its
   // session has actually ended — not based on this patient's individual
@@ -213,18 +211,18 @@ export default function MyTokensPage() {
                 <h2 className="text-lg font-semibold text-gray-900">Past Bookings</h2>
                 <span className="text-sm font-semibold text-gray-500">{pastBookings.length}</span>
               </div>
-              <p className="text-xs text-gray-400">Finished bookings are shown for {RETENTION_DAYS} days only.</p>
+              <p className="text-xs text-gray-400">All your past bookings are shown here.</p>
             </div>
 
             {hiddenPastCount > 0 && (
               <p className="text-xs text-gray-500">
-                {hiddenPastCount} older finished booking{hiddenPastCount > 1 ? "s" : ""} hidden after {RETENTION_DAYS} days.
+
               </p>
             )}
 
             {pastBookings.length === 0 ? (
               <div className="bg-white rounded-2xl border border-gray-100 p-4 text-sm text-gray-500">
-                No past bookings in the last {RETENTION_DAYS} days.
+                No past bookings yet.
               </div>
             ) : (
               <div className="space-y-4">

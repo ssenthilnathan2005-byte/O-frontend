@@ -102,6 +102,17 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
     ? 0
     : (tokensAheadFromCurrent ?? tokensAheadFromStatuses);
 
+  // Estimated wait time based on avg minutes per patient
+  const avgMins = (doctor as any)?.avgMinutesPerPatient ?? 5;
+  const estimatedWaitMins = myStatus === "green" || myStatus === "orange" ? 0 : tokensAhead * avgMins;
+  const estimatedWaitLabel = myStatus === "orange"
+    ? "Now"
+    : estimatedWaitMins === 0
+      ? "< 1 min"
+      : estimatedWaitMins < 60
+        ? `~${estimatedWaitMins} min`
+        : `~${Math.floor(estimatedWaitMins / 60)}h ${estimatedWaitMins % 60}m`;
+
   useQueueNotifications(
     sessionId, tokenNumber, myStatus, nowSeeingToken,
     booking?.doctorName, booking?.hospitalName,
@@ -333,12 +344,13 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
       </div>
 
       {/* ── Stats row ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
           { icon: <CheckCircle className="w-4 h-4 text-teal-600" />,  bg: "bg-teal-100",   value: totalBookedCount,   label: "Total Booked" },
           { icon: <CheckCircle className="w-4 h-4 text-green-600" />, bg: "bg-green-100",  value: completedCount,     label: "Completed" },
           { icon: <Clock className="w-4 h-4 text-orange-600" />,      bg: "bg-orange-100", value: nowSeeingToken ?? "-", label: "Now Seeing" },
           { icon: <Activity className="w-4 h-4 text-blue-600" />,     bg: "bg-blue-100",   value: tokensAhead,        label: "Tokens Ahead" },
+        { icon: <Clock className="w-4 h-4 text-purple-600" />,      bg: "bg-purple-100", value: estimatedWaitLabel,  label: "Est. Wait" },
         ].map((stat) => (
           <div key={stat.label} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
             <div className={`w-8 h-8 ${stat.bg} rounded-lg flex items-center justify-center mb-2`}>
