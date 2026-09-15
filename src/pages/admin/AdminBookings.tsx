@@ -7,7 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { BookOpen, Trash2, Download, Settings2, RefreshCw, CheckCircle2, XCircle } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import { useStore } from "../../context/StoreContext";
 import { useState, useEffect, useCallback } from "react";
 
@@ -39,98 +39,7 @@ export default function AdminBookings() {
   const { bookings } = useStore();
   const recentBookings = [...bookings].reverse().slice(0, 100);
 
-  const [config, setConfig]           = useState<CleanupConfig | null>(null);
-  const [logs, setLogs]               = useState<CleanupLog[]>([]);
-  const [editThreshold, setEditThreshold] = useState("");
-  const [editDays, setEditDays]       = useState("");
-  const [showConfig, setShowConfig]   = useState(false);
-  const [runStatus, setRunStatus]     = useState<null | "loading" | "success" | "error">(null);
-  const [runMessage, setRunMessage]   = useState("");
-  const [lastFile, setLastFile]       = useState<string | null>(null);
-  const [savingConfig, setSavingConfig] = useState(false);
 
-  const token = localStorage.getItem("db_jwt") ?? "";
-
-  const fetchConfig = useCallback(async () => {
-    try {
-      const r = await fetch(`${API}/api/admin/cleanup/config`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await r.json();
-      setConfig(data);
-      setEditThreshold(String(data.thresholdCount));
-      setEditDays(String(data.olderThanDays));
-    } catch {}
-  }, [token]);
-
-  const fetchLogs = useCallback(async () => {
-    try {
-      const r = await fetch(`${API}/api/admin/cleanup/logs`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await r.json();
-      setLogs(data);
-      // Pick last successful export file
-      const last = data.find((l: CleanupLog) => l.export_file);
-      if (last) setLastFile(last.export_file);
-    } catch {}
-  }, [token]);
-
-  useEffect(() => {
-    fetchConfig();
-    fetchLogs();
-  }, [fetchConfig, fetchLogs]);
-
-  async function runCleanup() {
-    setRunStatus("loading");
-    setRunMessage("");
-    try {
-      const r = await fetch(`${API}/api/admin/cleanup/run`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.error ?? "Unknown error");
-      if (data.result?.skipped) {
-        setRunStatus("error");
-        setRunMessage(data.result.reason);
-      } else {
-        setRunStatus("success");
-        setRunMessage(`✓ Deleted ${data.result.deleted} bookings. Exported as ${data.result.file}`);
-        setLastFile(data.result.file);
-        fetchLogs();
-      }
-    } catch (err: any) {
-      setRunStatus("error");
-      setRunMessage(err.message);
-    }
-  }
-
-  async function saveConfig() {
-    setSavingConfig(true);
-    try {
-      const r = await fetch(`${API}/api/admin/cleanup/config`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          thresholdCount: parseInt(editThreshold),
-          olderThanDays:  parseInt(editDays),
-        }),
-      });
-      const data = await r.json();
-      setConfig(data.config);
-      setShowConfig(false);
-    } catch {}
-    setSavingConfig(false);
-  }
-
-  function downloadArchive() {
-    if (!lastFile) return;
-    window.open(`${API}/api/admin/cleanup/export/${lastFile}`, "_blank");
-  }
 
   return (
     <div className="p-8">
