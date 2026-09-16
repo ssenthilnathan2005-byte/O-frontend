@@ -359,12 +359,20 @@ export default function DoctorDashboard() {
   }
 
   // Live Tokens tab state
-  const [liveTokensView, setLiveTokensView] = useState<"tovisit" | "visited">("tovisit");
+  const [liveTokensView, setLiveTokensView] = useState<"tovisit" | "visited" | "archived">("tovisit");
   const allDoctorBookings = doctor
     ? bookings.filter((b: any) => b.doctorId === doctor.id)
     : [];
+  const todayStr = new Date().toISOString().split("T")[0];
   const liveToVisit = allDoctorBookings.filter((b: any) => isLiveBookingStatus(b.status));
-  const liveVisited = allDoctorBookings.filter((b: any) => ["completed", "unvisited"].includes(normalizeBookingStatus(b.status)));
+  // Visited = only today's completed/unvisited (resets at midnight)
+  const liveVisited = allDoctorBookings.filter((b: any) =>
+    ["completed", "unvisited"].includes(normalizeBookingStatus(b.status)) && b.date === todayStr
+  );
+  // Archived = all past days completed/unvisited (before today)
+  const liveArchived = allDoctorBookings.filter((b: any) =>
+    ["completed", "unvisited"].includes(normalizeBookingStatus(b.status)) && b.date < todayStr
+  );
   const [tokenDialog, setTokenDialog] = useState<{
     open: boolean;
     tokenNum: number | null;
@@ -1257,7 +1265,7 @@ export default function DoctorDashboard() {
                   <p className="font-semibold text-gray-900">All patients in one view</p>
                   <p className="text-xs text-gray-400 mt-0.5">Switch between patients who are waiting and patients who already visited.</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   <button
                     type="button"
                     onClick={() => setLiveTokensView("tovisit")}
@@ -1272,8 +1280,40 @@ export default function DoctorDashboard() {
                   >
                     Visited ({liveVisited.length})
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setLiveTokensView("archived")}
+                    className={`px-4 py-1.5 rounded-full text-sm font-medium border transition ${liveTokensView === "archived" ? "bg-white border-gray-300 text-gray-800 shadow-sm" : "border-transparent text-gray-400 hover:text-gray-600"}`}
+                  >
+                    Archived ({liveArchived.length})
+                  </button>
                 </div>
                 {liveTokensView === "visited" && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const token = localStorage.getItem("db_jwt") ?? "";
+                      const API = (import.meta.env.VITE_API_URL ?? "").replace(/\/api$/, "");
+                      const r = await fetch(`${API}/api/doctor/exports/download-and-delete?range=today`, {
+                        method: "POST",
+                        headers: { Authorization: `Bearer ${token}` },
+                      });
+                      if (r.status === 404) { alert("No patient records for today."); return; }
+                      if (!r.ok) { alert("Export failed. Please try again."); return; }
+                      const blob = await r.blob();
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `patients_today_${todayStr}.xlsx`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                    className="px-4 py-1.5 rounded-full text-sm font-medium border border-teal-300 bg-teal-50 text-teal-700 hover:bg-teal-100 transition flex items-center gap-1.5"
+                  >
+                    <Download className="w-3.5 h-3.5" /> Download Today
+                  </button>
+                )}
+                {liveTokensView === "archived" && (
                   <button
                     type="button"
                     onClick={async () => {
@@ -1283,32 +1323,32 @@ export default function DoctorDashboard() {
                         method: "POST",
                         headers: { Authorization: `Bearer ${token}` },
                       });
-                      if (r.status === 404) { alert("No completed patient records found."); return; }
+                      if (r.status === 404) { alert("No archived patient records found."); return; }
                       if (!r.ok) { alert("Export failed. Please try again."); return; }
                       const blob = await r.blob();
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement("a");
                       a.href = url;
-                      a.download = "my_patients.xlsx";
+                      a.download = "all_patients_archive.xlsx";
                       a.click();
                       URL.revokeObjectURL(url);
                     }}
-                    className="px-4 py-1.5 rounded-full text-sm font-medium border border-teal-300 bg-teal-50 text-teal-700 hover:bg-teal-100 transition flex items-center gap-1.5"
+                    className="px-4 py-1.5 rounded-full text-sm font-medium border border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100 transition flex items-center gap-1.5"
                   >
-                    <Download className="w-3.5 h-3.5" /> Download Patients
+                    <Download className="w-3.5 h-3.5" /> Download All Archive
                   </button>
                 )}
               </div>
 
-              {(liveTokensView === "tovisit" ? liveToVisit : liveVisited).length === 0 ? (
+              {(liveTokensView === "tovisit" ? liveToVisit : liveTokensView === "visited" ? liveVisited : liveArchived).length === 0 ? (
                 <div className="py-16 flex flex-col items-center gap-3 text-gray-400">
                   <Clock className="w-12 h-12" />
                   <p className="font-medium text-gray-500">No patients in this view</p>
-                  <p className="text-xs">Switch to the other view or wait for bookings to appear.</p>
+                  <p className="text-xs">{liveTokensView === "visited" ? "Today's visited patients will appear here." : liveTokensView === "archived" ? "Past days' records will appear here." : "Switch to the other view or wait for bookings to appear."}</p>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {(liveTokensView === "tovisit" ? liveToVisit : liveVisited).map((b) => (
+                  {(liveTokensView === "tovisit" ? liveToVisit : liveTokensView === "visited" ? liveVisited : liveArchived).map((b) => (
                     <div key={b.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
                       <div>
                         <p className="font-semibold text-gray-900 text-sm flex items-center gap-1.5 flex-wrap">
