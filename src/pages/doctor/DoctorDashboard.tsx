@@ -645,7 +645,7 @@ export default function DoctorDashboard() {
       setShowPrescription(true);
       // Store the next token to call after prescription
       (window as any)._pendingRegulateToken = calledNum;
-      setTokenDialog({ open: false, tokenNum: null });
+      setTokenDialog({ open: false, tokenNum: Number(ongoingToken) });
       return;
     }
 
