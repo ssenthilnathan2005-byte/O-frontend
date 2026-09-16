@@ -636,8 +636,24 @@ export default function DoctorDashboard() {
   function handleMarkAsOngoing() {
     if (tokenDialog.tokenNum === null) return;
     const calledNum = tokenDialog.tokenNum;
+
+    // If there's already an ongoing token (orange), show prescription first
+    // then proceed to regulate after prescription is done/skipped
+    const ongoingToken = Object.entries(statuses).find(([, s]) => s === "orange")?.[0];
+    if (ongoingToken && hasPharmacy) {
+      setCompletionMode("normal");
+      setShowPrescription(true);
+      // Store the next token to call after prescription
+      (window as any)._pendingRegulateToken = calledNum;
+      setTokenDialog({ open: false, tokenNum: null });
+      return;
+    }
+
+    proceedWithRegulate(calledNum);
+  }
+
+  function proceedWithRegulate(calledNum: number) {
     regulateToken(sessionId, calledNum);
-    // Find the next token that will become "next up" (yellow)
     const nextRed = Object.entries(statuses)
       .filter(([n, s]) => s === "red" && Number(n) !== calledNum)
       .map(([n]) => Number(n))
@@ -1934,7 +1950,18 @@ export default function DoctorDashboard() {
       <PrescriptionDialog
         open={showPrescription}
         onClose={() => setShowPrescription(false)}
-        onConfirm={() => { setShowPrescription(false); if (completionMode === "skipped") { handleCompleteSkipped(); } else { handleMarkCompleted(); } }}
+        onConfirm={() => {
+          setShowPrescription(false);
+          const pendingToken = (window as any)._pendingRegulateToken;
+          if (pendingToken != null) {
+            (window as any)._pendingRegulateToken = null;
+            proceedWithRegulate(pendingToken);
+          } else if (completionMode === "skipped") {
+            handleCompleteSkipped();
+          } else {
+            handleMarkCompleted();
+          }
+        }}
         booking={dialogTokenBooking ? { ...dialogTokenBooking, patientAge: dialogTokenBooking.patientAge ?? undefined } : null}
         doctorId={doctor?.id ?? ""}
         doctorName={doctor?.name ?? ""}
