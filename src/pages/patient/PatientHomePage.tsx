@@ -93,7 +93,16 @@ export default function PatientHomePage() {
       if (!coords) return;
       const marker = new google.maps.Marker({
         position: coords, map: mapObj.current, title: h.name,
-        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: "#14b8a6", fillOpacity: 1, strokeColor: "#ffffff", strokeWeight: 2 },
+        icon: {
+          url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(
+            `<svg width="36" height="36" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+              <rect x="20" y="20" width="60" height="60" rx="14" fill="#14b8a6"/>
+              <path d="M50 32 L50 68 M32 50 L68 50" stroke="#ffffff" stroke-width="9" stroke-linecap="round"/>
+            </svg>`
+          ),
+          scaledSize: new google.maps.Size(36, 36),
+          anchor: new google.maps.Point(18, 18),
+        },
       });
       const iw = new google.maps.InfoWindow({ content: `<div style="font-family:sans-serif;font-size:13px;font-weight:700">${h.name}</div><div style="font-size:11px;color:#6b7280">${h.area}</div>` });
       marker.addListener("click", () => iw.open(mapObj.current, marker));

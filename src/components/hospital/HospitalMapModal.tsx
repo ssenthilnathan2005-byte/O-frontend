@@ -87,12 +87,14 @@ export default function HospitalMapModal({ hospital, onClose }: Props) {
             title:     hospital.name,
             animation: google.maps.Animation.DROP,
             icon: {
-              path:        google.maps.SymbolPath.CIRCLE,
-              scale:       10,
-              fillColor:   "#14b8a6",
-              fillOpacity: 1,
-              strokeColor: "#ffffff",
-              strokeWeight: 2,
+              url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(
+                `<svg width="40" height="40" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="20" y="20" width="60" height="60" rx="14" fill="#14b8a6"/>
+                  <path d="M50 32 L50 68 M32 50 L68 50" stroke="#ffffff" stroke-width="9" stroke-linecap="round"/>
+                </svg>`
+              ),
+              scaledSize: new google.maps.Size(40, 40),
+              anchor: new google.maps.Point(20, 20),
             },
           });
 
