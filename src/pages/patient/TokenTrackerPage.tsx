@@ -9,6 +9,7 @@ import { hasSessionEndedForDate, SESSION_TIMES, getSessionLabelForDate } from ".
 import { useRouter } from "../../router/RouterContext";
 import type { SessionType, TokenStatus } from "../../types";
 import { useQueueNotifications } from "../../hooks/useQueueNotifications";
+import QueueProgressAnimation from "../../components/QueueProgressAnimation";
 
 const TOKEN_CLASSES: Record<TokenStatus, string> = {
   white:    "bg-gray-100 border-2 border-gray-200 text-gray-400",
@@ -264,6 +265,8 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
         <h3 className="font-bold text-gray-900 mb-1">Your Queue Position</h3>
         <p className={`text-sm font-medium ${msg.color}`}>{msg.text}</p>
       </div>
+
+      <QueueProgressAnimation myStatus={myStatus} />
 
       {/* ── Queue Board ── */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-4">
