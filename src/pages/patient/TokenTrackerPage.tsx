@@ -6,7 +6,7 @@ import { motion } from "motion/react";
 import React, { useEffect, useState } from "react";
 import { useStore } from "../../context/StoreContext";
 import { bookings as bookingsApi } from "../../api";
-import { hasSessionEndedForDate, SESSION_TIMES, getSessionLabelForDate } from "../../data/seed";
+import { hasSessionEndedForDate, SESSION_TIMES, getSessionLabelForDate, resolveSessionTiming } from "../../data/seed";
 import { useRouter } from "../../router/RouterContext";
 import type { SessionType, TokenStatus } from "../../types";
 import { useQueueNotifications } from "../../hooks/useQueueNotifications";
@@ -45,6 +45,12 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
   // "Running late?" ETA picker
   const [showLateOptions, setShowLateOptions] = useState(false);
   const [markingLate, setMarkingLate] = useState(false);
+  // Re-check the clock every 30s so the late option appears/disappears by itself
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   const booking = bookings.find(
     (b) => b.sessionId === sessionId && b.tokenNumber === tokenNumber,
@@ -72,6 +78,25 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
   const tokenState = tokenStates[sessionId];
   const doctor = booking ? doctors.find((d) => d.id === booking.doctorId) : null;
   const scheduleConfig = (doctor as any)?.scheduleConfig;
+
+  // "Running late?" is only available from 10 min before the session starts
+  // until it ends, on the booking's own date (local time).
+  const lateWindow = (() => {
+    if (!booking) return { open: false, opensAt: null as Date | null };
+    const times = resolveSessionTiming(
+      booking.date,
+      booking.session as SessionType,
+      scheduleConfig,
+      doctor?.sessionTimings,
+    );
+    if (!times) return { open: false, opensAt: null as Date | null };
+    const [y, mo, d] = booking.date.split("-").map(Number);
+    const [sh, sm] = times.start.split(":").map(Number);
+    const [eh, em] = times.end.split(":").map(Number);
+    const opensAt = new Date(y, mo - 1, d, sh, sm - 10, 0, 0);
+    const endsAt = new Date(y, mo - 1, d, eh, em, 0, 0);
+    return { open: nowMs >= opensAt.getTime() && nowMs < endsAt.getTime(), opensAt };
+  })();
   const maxTokens = (() => {
     if (scheduleConfig && booking?.date && booking?.session) {
       const dow = new Date(booking.date + "T00:00:00").getDay();
@@ -140,7 +165,7 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
   }
 
   async function handleMarkLate(etaMinutes: number) {
-    if (!booking) return;
+    if (!booking || !lateWindow.open) return;
     setMarkingLate(true);
     try {
       await bookingsApi.markLate(booking.id, etaMinutes);
@@ -285,8 +310,20 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
       </div>
 
 
-      {/* ── Running Late ── */}
-      {!isPastSession && (myStatus === "red" || myStatus === "yellow") && (
+      {/* ── Running Late (locked until 10 min before the session) ── */}
+      {!isPastSession && (myStatus === "red" || myStatus === "yellow") &&
+        !booking.lateFlag && !lateWindow.open && lateWindow.opensAt && (
+          <div className="bg-gray-50 rounded-2xl border border-gray-100 px-5 py-3 mb-4 flex items-start gap-2 text-xs text-gray-500">
+            <Clock className="w-4 h-4 mt-0.5 shrink-0" />
+            <span>
+              The "running late" option opens 10 minutes before your session starts (
+              {lateWindow.opensAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })},{" "}
+              {lateWindow.opensAt.toLocaleDateString([], { day: "numeric", month: "short" })}).
+            </span>
+          </div>
+        )}
+      {!isPastSession && (myStatus === "red" || myStatus === "yellow") &&
+        (lateWindow.open || booking.lateFlag) && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-4">
           {booking.lateFlag ? (
             <div className="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
