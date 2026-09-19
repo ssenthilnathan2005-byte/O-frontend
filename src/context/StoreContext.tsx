@@ -229,6 +229,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           }))
           .catch(() => {});
       }
+      else if (msg.type === "patient_late") {
+        // Instant update for the doctor's live queue — no need to wait for the poll.
+        setBookings(p => p.map(b =>
+          b.sessionId === sid && b.tokenNumber === msg.tokenNumber
+            ? { ...b, lateFlag: true, lateEtaMinutes: msg.etaMinutes ?? null }
+            : b
+        ));
+      }
       else if (msg.type === "prescription_created") {
         const doctorName = (msg as { doctorName?: string }).doctorName;
         setHasNewPrescription(true);

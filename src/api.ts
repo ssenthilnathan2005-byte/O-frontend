@@ -355,7 +355,7 @@ export const resetPasswordByToken = (token: string, newPassword: string) =>
 // ── WebSocket — resilient, Railway-aware ──────────────────────────────────────
 export function connectTokenSocket(
   sessionId: string,
-  onMessage: (payload: { type: string; state?: SessionTokenState; tokenNumber?: number }) => void,
+  onMessage: (payload: { type: string; state?: SessionTokenState; tokenNumber?: number; etaMinutes?: number; patientName?: string }) => void,
 ): () => void {
   const url = `${WS_BASE}/ws?session=${encodeURIComponent(sessionId)}`;
   let ws: WebSocket | null = null;
