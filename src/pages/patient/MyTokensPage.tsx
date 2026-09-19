@@ -16,7 +16,7 @@ const STATUS_BADGE: Record<string, { label: string; className: string; descripti
   expired: {
     label: "Session Expired",
     className: "bg-gray-100 text-gray-500",
-    description: "This session expired without any action. Your refund will be credited within 4 to 5 working days.",
+    description: "This session expired without any action.",
   },
   completed: {
     label: "Consultation Done",
@@ -31,7 +31,7 @@ const STATUS_BADGE: Record<string, { label: string; className: string; descripti
   cancelled: {
     label: "Session Cancelled",
     className: "bg-red-100 text-red-700",
-    description: "This session was cancelled. Your refund will be credited within 4 to 5 working days.",
+    description: "This session was cancelled.",
   },
 };
 
@@ -275,12 +275,12 @@ export default function MyTokensPage() {
 
                           {booking.status === "cancelled" && (
                             <p className="text-xs text-orange-600 mt-1.5 bg-orange-50 rounded-lg px-2 py-1 border border-orange-100">
-                              Session was cancelled. Refund will be credited within 4–5 working days.
+                              Session was cancelled.
                             </p>
                           )}
                           {booking.status === "confirmed" && (
                             <p className="text-xs text-orange-600 mt-1.5 bg-orange-50 rounded-lg px-2 py-1 border border-orange-100">
-                              This session expired. Refund will be credited within 4–5 working days.
+                              This session expired.
                             </p>
                           )}
                           {booking.status === "unvisited" && (
