@@ -26,7 +26,7 @@ const STATUS_BADGE: Record<string, { label: string; className: string; descripti
   unvisited: {
     label: "Skipped / Not Seen",
     className: "bg-orange-100 text-orange-700",
-    description: "Session ended without your token being called. Your refund will be credited within 4 to 5 working days.",
+    description: "Session ended without your token being called.",
   },
   cancelled: {
     label: "Session Cancelled",
@@ -285,7 +285,7 @@ export default function MyTokensPage() {
                           )}
                           {booking.status === "unvisited" && (
                             <p className="text-xs text-gray-500 mt-1.5 bg-gray-50 rounded-lg px-2 py-1 border border-gray-100">
-                              You were not seen during this session. No refund applicable.
+                              You were not seen during this session.
                             </p>
                           )}
                           {booking.status === "completed" && (
