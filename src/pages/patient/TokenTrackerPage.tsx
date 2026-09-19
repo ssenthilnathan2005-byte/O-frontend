@@ -5,6 +5,7 @@ import {
 import { motion } from "motion/react";
 import React, { useEffect, useState } from "react";
 import { useStore } from "../../context/StoreContext";
+import { bookings as bookingsApi } from "../../api";
 import { hasSessionEndedForDate, SESSION_TIMES, getSessionLabelForDate } from "../../data/seed";
 import { useRouter } from "../../router/RouterContext";
 import type { SessionType, TokenStatus } from "../../types";
@@ -41,6 +42,9 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
   const [showWarningPopup, setShowWarningPopup] = useState(true);
   // "You're Next" banner (dismissable)
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  // "Running late?" ETA picker
+  const [showLateOptions, setShowLateOptions] = useState(false);
+  const [markingLate, setMarkingLate] = useState(false);
 
   const booking = bookings.find(
     (b) => b.sessionId === sessionId && b.tokenNumber === tokenNumber,
@@ -132,6 +136,21 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
         return { text, color: "text-red-600", bg: "bg-red-50 border-red-200" };
       }
       default:        return { text: "", color: "", bg: "" };
+    }
+  }
+
+  async function handleMarkLate(etaMinutes: number) {
+    if (!booking) return;
+    setMarkingLate(true);
+    try {
+      await bookingsApi.markLate(booking.id, etaMinutes);
+      setShowLateOptions(false);
+      refreshFromStorage();
+    } catch (err) {
+      console.error(err);
+      alert("Couldn't send your update. Please try again.");
+    } finally {
+      setMarkingLate(false);
     }
   }
 
@@ -264,6 +283,51 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
         <h3 className="font-bold text-gray-900 mb-1">Your Queue Position</h3>
         <p className={`text-sm font-medium ${msg.color}`}>{msg.text}</p>
       </div>
+
+
+      {/* ── Running Late ── */}
+      {!isPastSession && (myStatus === "red" || myStatus === "yellow") && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-4">
+          {booking.lateFlag ? (
+            <div className="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+              <Clock className="w-4 h-4 mt-0.5 shrink-0" />
+              <span>You've let the doctor know you're running about {booking.lateEtaMinutes} min late.</span>
+            </div>
+          ) : showLateOptions ? (
+            <div>
+              <p className="text-sm font-semibold text-gray-900 mb-2">How late will you be?</p>
+              <div className="flex flex-wrap gap-2">
+                {[10, 15, 20, 30, 45].map((mins) => (
+                  <button
+                    key={mins}
+                    type="button"
+                    disabled={markingLate}
+                    onClick={() => handleMarkLate(mins)}
+                    className="px-3 py-1.5 rounded-full border border-amber-300 text-amber-700 text-sm font-medium hover:bg-amber-50 disabled:opacity-50"
+                  >
+                    ~{mins} min
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setShowLateOptions(false)}
+                  className="px-3 py-1.5 rounded-full border border-gray-200 text-gray-500 text-sm font-medium hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowLateOptions(true)}
+              className="flex items-center gap-2 text-sm font-semibold text-amber-700 border border-amber-300 rounded-xl px-4 py-2.5 hover:bg-amber-50"
+            >
+              <Clock className="w-4 h-4" /> Running late? Let the doctor know
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ── Queue Board ── */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-4">

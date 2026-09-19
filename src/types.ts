@@ -74,6 +74,8 @@ export interface Booking {
   patientAge?: number | null;
   createdAt: string;
   closeReason?: string | null;
+  lateFlag?: boolean;
+  lateEtaMinutes?: number | null;
 }
 
 export interface SessionTokenState {

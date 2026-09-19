@@ -298,6 +298,7 @@ export const bookings = {
   create:     (data: { doctorId: string; date: string; session: string; complaint?: string; phone: string; patientName?: string; patientAge?: string | number }) =>
     post<Booking>("/bookings", data),
   updateStatus: (id: string, status: string)  => patch<Booking>(`/bookings/${id}/status`, { status }),
+  markLate:   (id: string, etaMinutes: number) => post<{ success: boolean; etaMinutes: number }>(`/bookings/${id}/mark-late`, { etaMinutes }),
   stats:      ()                              => get<Stats>("/bookings/stats/summary"),
 };
 
@@ -422,6 +423,7 @@ export interface Booking {
   paymentDone: boolean; status: "confirmed" | "completed" | "unvisited" | "cancelled";
   phone: string; complaint?: string; patientAge?: number | null; createdAt: string;
   closeReason?: string | null;
+  lateFlag?: boolean; lateEtaMinutes?: number | null;
 }
 export type TokenStatus = "white" | "red" | "orange" | "yellow" | "green" | "unvisited";
 export interface SessionTokenState {

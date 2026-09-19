@@ -1377,6 +1377,11 @@ export default function DoctorDashboard() {
                               <XCircle className="w-3 h-3" /> Unvisited
                             </span>
                           )}
+                          {b.lateFlag && b.status === "confirmed" && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+                              ⏰ Running ~{b.lateEtaMinutes} min late
+                            </span>
+                          )}
                         </p>
                         <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1.5">
                           <Phone className="w-3 h-3 text-gray-400" />
