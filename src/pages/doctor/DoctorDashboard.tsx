@@ -773,6 +773,12 @@ export default function DoctorDashboard() {
 
   function renderTokenGrid() {
     const elements: React.ReactNode[] = [];
+    // Tokens whose patients have told us they're running late
+    const lateTokens = new Set<number>(
+      getBookingsForSession(sessionId)
+        .filter((b) => b.lateFlag && b.status === "confirmed")
+        .map((b) => b.tokenNumber),
+    );
     for (let n = 1; n <= maxTokens; n++) {
       const st: TokenStatus = (statuses[n] as TokenStatus) ?? "white";
       const isClickable =
@@ -785,7 +791,7 @@ export default function DoctorDashboard() {
       elements.push(
         <button
           key={n}
-          className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center text-sm font-semibold border-2 transition-all select-none ${
+          className={`relative w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center text-sm font-semibold border-2 transition-all select-none ${
             TOKEN_CLASSES[st] ?? "token-white"
           } ${isClickable ? "cursor-pointer hover:scale-110" : ""} ${
             st === "orange" ? "scale-110 shadow-lg" : ""
@@ -807,6 +813,14 @@ export default function DoctorDashboard() {
           data-ocid={`tokens.item.${n}`}
         >
           {n}
+          {lateTokens.has(n) && (st === "red" || st === "yellow") && (
+            <span
+              className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center shadow ring-2 ring-white"
+              title="Patient is running late"
+            >
+              <Clock className="w-3 h-3" />
+            </span>
+          )}
         </button>,
       );
       if (n % walkInInterval === 0 && n <= maxTokens) {
@@ -1769,6 +1783,30 @@ export default function DoctorDashboard() {
                 </p>
               )}
             </div>
+
+            {/* ── Running-late notice from the patient ── */}
+            {dialogTokenBooking?.lateFlag &&
+              (dialogTokenStatus === "red" || dialogTokenStatus === "yellow") && (
+                <div
+                  className="bg-amber-50 border border-amber-300 rounded-xl p-3 flex items-start gap-2.5"
+                  data-ocid="tokens.late_notice"
+                >
+                  <Clock className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">
+                      Patient is running late
+                    </p>
+                    <p className="text-sm text-amber-900 font-medium mt-0.5">
+                      {dialogTokenBooking.lateEtaMinutes
+                        ? `Will arrive in about ${dialogTokenBooking.lateEtaMinutes} min`
+                        : "Delay time not specified"}
+                    </p>
+                    <p className="text-xs text-amber-700 mt-0.5">
+                      You may want to call the next patient first.
+                    </p>
+                  </div>
+                </div>
+              )}
 
             {/* Action buttons based on token status */}
 
