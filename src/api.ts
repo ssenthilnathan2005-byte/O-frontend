@@ -142,6 +142,20 @@ async function req<T>(
         : {};
 
       if (!res.ok) {
+        // 401 — the session itself is no longer valid (expired/invalid token).
+        // Without this, pages just failed silently and looked like data loss.
+        // Clear the stale token and send the user back to log in.
+        if (res.status === 401) {
+          emitStatus("ok"); // server is reachable — this is an auth issue, not connectivity
+          clearToken();
+          const authErr = new Error((data as any).error || "Your session has expired. Please log in again.");
+          (authErr as any).isClientError = true;
+          (authErr as any).isAuthError = true;
+          if (typeof window !== "undefined") {
+            setTimeout(() => { window.location.href = "/"; }, 400);
+          }
+          throw authErr;
+        }
         // 4xx — client error, never retry
         if (res.status >= 400 && res.status < 500) {
           emitStatus("ok"); // server is reachable
