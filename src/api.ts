@@ -540,6 +540,7 @@ export const ambulance = {
 export interface Lab {
   id: string; name: string; area: string; address?: string;
   phone?: string; rating: number; photo_url?: string | null; is_active: boolean;
+  home_collection?: boolean; home_collection_fee?: number;
 }
 export interface LabTest {
   id: string; name: string; category: string; sample_type: string;
@@ -621,6 +622,11 @@ export const labs = {
   updateMyTest: (testId: string, data: { price?: number; isActive?: boolean }) =>
     patch<any>(`/labs/me/tests/${testId}`, data),
   myLabBookings: () => get<LabBooking[]>("/labs/me/bookings"),
+
+  // Home collection setting (lab staff)
+  getSettings: () => get<{ homeCollection: boolean; homeCollectionFee: number }>("/labs/me/settings"),
+  updateSettings: (data: { homeCollection?: boolean; homeCollectionFee?: number }) =>
+    patch<{ homeCollection: boolean; homeCollectionFee: number }>("/labs/me/settings", data),
 
   // Token queue
   getSession: (labId: string, testId: string, date: string, session: string) =>

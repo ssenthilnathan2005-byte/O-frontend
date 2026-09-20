@@ -124,13 +124,14 @@ function LabBookingDialog({
   const { navigate } = useRouter();
   const [slotDate, setSlotDate] = useState("");
   const [slotTime, setSlotTime] = useState("");
-  const [collectionType, setCollectionType] = useState<"home" | "walk_in">("home");
+  const [collectionType, setCollectionType] = useState<"home" | "walk_in">("walk_in");
   const [address, setAddress] = useState("");
   const [patientName, setPatientName] = useState("");
   const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [booked, setBooked] = useState<api.LabBooking | null>(null);
+  const homeFee = Number(lab.home_collection_fee || 0);
 
   if (!open) return null;
 
@@ -248,13 +249,13 @@ function LabBookingDialog({
             </div>
           </div>
 
-          <div>
+          <div className={lab.home_collection ? "" : "hidden"}>
             <label className="text-xs font-medium text-gray-600 mb-2 block">Collection Type</label>
             <div className="grid grid-cols-2 gap-2">
               <button type="button" onClick={() => setCollectionType("home")}
                 className={`px-3 py-2 rounded-lg border text-xs font-medium ${
                   collectionType === "home" ? "border-teal-500 bg-teal-50 text-teal-700" : "border-gray-200 text-gray-600"
-                }`}>Home Collection</button>
+                }`}>Home Collection{homeFee > 0 ? ` (+₹${homeFee})` : ""}</button>
               <button type="button" onClick={() => setCollectionType("walk_in")}
                 className={`px-3 py-2 rounded-lg border text-xs font-medium ${
                   collectionType === "walk_in" ? "border-teal-500 bg-teal-50 text-teal-700" : "border-gray-200 text-gray-600"
@@ -287,7 +288,7 @@ function LabBookingDialog({
 
           <div className="border-t border-gray-100 pt-3 flex justify-between text-sm">
             <span className="text-gray-500">Total</span>
-            <span className="font-bold text-gray-900">₹{test.price}</span>
+            <span className="font-bold text-gray-900">₹{(test.price ?? 0) + (collectionType === "home" ? homeFee : 0)}</span>
           </div>
 
           {error && <p className="text-xs text-red-600">{error}</p>}

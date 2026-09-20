@@ -15,6 +15,7 @@ import * as api from "../api";
 import type { LabTest, LabBooking } from "../api";
 import { useStore } from "../context/StoreContext";
 import LabQueueBoard from "./LabQueueBoard";
+import LabHomeCollectionSetting from "./LabHomeCollectionSetting";
 
 const STATUS_OPTIONS: LabBooking["status"][] = [
   "booked", "technician_assigned", "sample_collected", "processing", "report_ready", "cancelled",
@@ -74,6 +75,7 @@ export default function LabDashboard() {
           </button>
         </div>
 
+        {tab === "tests" && <LabHomeCollectionSetting />}
         {tab === "bookings" ? <BookingsTab /> : <TestsTab />}
       </div>
     </div>
