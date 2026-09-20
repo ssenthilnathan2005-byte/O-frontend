@@ -1,6 +1,9 @@
 import { Button } from "@/components/ui/button";
-import { Activity, Calendar, Clock, Hospital } from "lucide-react";
+import { Activity, Calendar, Clock, FlaskConical, Hospital } from "lucide-react";
 import { motion } from "motion/react";
+import { useEffect, useState } from "react";
+import * as api from "../../api";
+import type { LabBooking } from "../../api";
 import { useStore } from "../../context/StoreContext";
 import { hasSessionEndedForDate, SESSION_TIMES, getSessionLabelForDate } from "../../data/seed";
 import { isLiveBookingStatus, normalizeBookingStatus } from "../../lib/bookingStatus";
@@ -35,9 +38,27 @@ const STATUS_BADGE: Record<string, { label: string; className: string; descripti
   },
 };
 
+const LAB_STATUS_BADGE: Record<string, { label: string; className: string }> = {
+  booked: { label: "Booked", className: "bg-teal-100 text-teal-700" },
+  technician_assigned: { label: "Technician Assigned", className: "bg-blue-100 text-blue-700" },
+  sample_collected: { label: "Sample Collected", className: "bg-blue-100 text-blue-700" },
+  processing: { label: "Processing", className: "bg-amber-100 text-amber-700" },
+  report_ready: { label: "Report Ready", className: "bg-green-100 text-green-700" },
+  cancelled: { label: "Cancelled", className: "bg-red-100 text-red-700" },
+};
+
 export default function MyTokensPage() {
   const { user, bookings, doctors } = useStore();
   const { navigate } = useRouter();
+
+  const [labBookings, setLabBookings] = useState<LabBooking[]>([]);
+  const [labBookingsLoading, setLabBookingsLoading] = useState(true);
+  useEffect(() => {
+    api.labs.myBookings()
+      .then(setLabBookings)
+      .catch(() => {})
+      .finally(() => setLabBookingsLoading(false));
+  }, []);
 
   function openTokenTracker(sessionId: string, tokenNumber: number) {
     navigate({ path: "/patient/track", sessionId, tokenNumber });
@@ -100,6 +121,67 @@ export default function MyTokensPage() {
         <h1 className="text-2xl font-bold text-gray-900">My Bookings</h1>
         <p className="text-gray-500 text-sm mt-1">Track all your booked tokens and appointments</p>
       </div>
+
+      {/* ── Lab Bookings ── */}
+      {!labBookingsLoading && labBookings.length > 0 && (
+        <section className="space-y-3 mb-8">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">Lab Bookings</h2>
+            <span className="text-sm font-semibold w-7 h-7 flex items-center justify-center rounded-full bg-sky-100 text-sky-700">
+              {labBookings.length}
+            </span>
+          </div>
+          <div className="space-y-4">
+            {labBookings.map((b, idx) => (
+              <motion.div
+                key={b.id}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.05 }}
+              >
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigate({ path: "/labs/track", bookingId: b.id })}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      navigate({ path: "/labs/track", bookingId: b.id });
+                    }
+                  }}
+                  className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 cursor-pointer transition hover:border-sky-200 hover:shadow"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-bold text-gray-900">{b.test_name || "Lab Test"}</h3>
+                        <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${LAB_STATUS_BADGE[b.status]?.className ?? "bg-gray-100 text-gray-600"}`}>
+                          {LAB_STATUS_BADGE[b.status]?.label ?? b.status}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 text-xs text-gray-500 mt-1.5">
+                        <FlaskConical className="w-3 h-3" />
+                        {b.lab_name} · {b.lab_area}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5" /> {b.slot_date}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5" /> {b.slot_time}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="font-bold text-gray-900 text-sm">₹{b.price}</p>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {allMyBookings.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-2xl border border-gray-100 shadow-sm" data-ocid="tokens.empty_state">
