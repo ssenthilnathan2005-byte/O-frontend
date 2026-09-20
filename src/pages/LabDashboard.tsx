@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import * as api from "../api";
 import type { LabTest, LabBooking } from "../api";
 import { useStore } from "../context/StoreContext";
-import LabQueueBoard from "./LabQueueBoard";
+import LabTokenPanel from "./LabTokenPanel";
 import LabHomeCollectionSetting from "./LabHomeCollectionSetting";
 
 const STATUS_OPTIONS: LabBooking["status"][] = [
@@ -34,7 +34,7 @@ export default function LabDashboard() {
   const { user, logout } = useStore();
   const labName = (user as any)?.labName || "Your Lab";
 
-  const [tab, setTab] = useState<"bookings" | "tests">("bookings");
+  const [tab, setTab] = useState<"tokens" | "bookings" | "tests">("tokens");
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -57,6 +57,15 @@ export default function LabDashboard() {
         <div className="flex gap-2 mb-6">
           <button
             type="button"
+            onClick={() => setTab("tokens")}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+              tab === "tokens" ? "bg-teal-500 text-white" : "bg-white text-gray-600 border border-gray-200"
+            }`}
+          >
+            Token Control
+          </button>
+          <button
+            type="button"
             onClick={() => setTab("bookings")}
             className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
               tab === "bookings" ? "bg-teal-500 text-white" : "bg-white text-gray-600 border border-gray-200"
@@ -75,8 +84,10 @@ export default function LabDashboard() {
           </button>
         </div>
 
+        {tab === "tokens" && <LabTokenPanel />}
+        {tab === "bookings" && <BookingsTab />}
         {tab === "tests" && <LabHomeCollectionSetting />}
-        {tab === "bookings" ? <BookingsTab /> : <TestsTab />}
+        {tab === "tests" && <TestsTab />}
       </div>
     </div>
   );
@@ -109,7 +120,6 @@ function BookingsTab() {
 
   return (
     <>
-    <LabQueueBoard bookings={bookings} />
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
         <h2 className="font-semibold text-gray-900 text-sm">{bookings.length} bookings</h2>

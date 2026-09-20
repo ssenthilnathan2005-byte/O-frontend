@@ -178,7 +178,7 @@ function LabBookingDialog({
   const availableDates = Array.from({ length: 5 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() + i);
-    return d.toISOString().split("T")[0];
+    return d.toLocaleDateString("en-CA");
   });
   const timeSlots = [{ key: "morning", label: "Morning" }, { key: "afternoon", label: "Afternoon" }];
 
