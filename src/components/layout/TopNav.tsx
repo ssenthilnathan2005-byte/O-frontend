@@ -1,4 +1,4 @@
-import { Ambulance, BookOpen, Hospital, LogOut, Mail, Phone, Pill, User, UserCog, X } from "lucide-react";
+import { Ambulance, BookOpen, FlaskConical, Hospital, LogOut, Mail, Phone, Pill, User, UserCog, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useStore } from "../../context/StoreContext";
@@ -353,6 +353,14 @@ export default function TopNav() {
               data-ocid="nav.link"
             >
               <Hospital className="w-4 h-4" /> Hospitals
+            </button>
+            <button
+              type="button"
+              className={`flex items-center gap-1.5 transition-colors ${isActive(["/labs", "/labs/detail", "/labs/track"])} hover:text-teal-600`}
+              onClick={() => navigate({ path: "/labs" })}
+              data-ocid="nav.link"
+            >
+              <FlaskConical className="w-4 h-4" /> Labs
             </button>
             <button
               type="button"
