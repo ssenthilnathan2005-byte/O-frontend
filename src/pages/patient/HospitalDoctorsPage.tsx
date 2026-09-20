@@ -185,7 +185,7 @@ export default function HospitalDoctorsPage({ id }: Props) {
                     handleDoctorClick(doctor);
                   }
                 }}
-                className="bg-white rounded-xl border border-gray-200 p-5 cursor-pointer hover:border-gray-300 hover:shadow-sm transition-all"
+                className="bg-white rounded-xl border-2 border-gray-300 p-5 cursor-pointer hover:border-teal-600 hover:shadow-sm transition-all"
               >
                 {(() => {
                   const fee = (doctor as any).doctorFee;
