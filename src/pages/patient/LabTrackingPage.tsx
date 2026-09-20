@@ -8,7 +8,7 @@ interface Props {
   bookingId: string;
 }
 
-const STATUS_STEPS: { key: api.LabBooking["status"]; label: string }[] = [
+const ALL_STEPS: { key: api.LabBooking["status"]; label: string }[] = [
   { key: "booked", label: "Booked" },
   { key: "technician_assigned", label: "Technician Assigned" },
   { key: "sample_collected", label: "Sample Collected" },
@@ -52,8 +52,9 @@ export default function LabTrackingPage({ bookingId }: Props) {
 
   if (!booking) return <div className="p-8 text-center text-gray-500">Booking not found.</div>;
 
+  const steps = booking.collection_type === "home" ? ALL_STEPS : ALL_STEPS.filter((x) => x.key !== "technician_assigned");
   const isCancelled = booking.status === "cancelled";
-  const currentIndex = STATUS_STEPS.findIndex((s) => s.key === booking.status);
+  const currentIndex = steps.findIndex((s) => s.key === booking.status);
 
   return (
     <div className="max-w-2xl mx-auto px-3 sm:px-4 pt-2 pb-6">
@@ -96,7 +97,7 @@ export default function LabTrackingPage({ bookingId }: Props) {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Sample Status</p>
           <div className="space-y-0">
-            {STATUS_STEPS.map((step, idx) => {
+            {steps.map((step, idx) => {
               const done = idx <= currentIndex;
               const active = idx === currentIndex;
               return (
@@ -107,7 +108,7 @@ export default function LabTrackingPage({ bookingId }: Props) {
                     ) : (
                       <Circle className="w-5 h-5 text-gray-300" />
                     )}
-                    {idx < STATUS_STEPS.length - 1 && (
+                    {idx < steps.length - 1 && (
                       <div className={`w-0.5 h-8 ${done && idx < currentIndex ? "bg-teal-300" : "bg-gray-200"}`} />
                     )}
                   </div>

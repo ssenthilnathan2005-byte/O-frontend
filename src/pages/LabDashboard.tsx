@@ -15,20 +15,8 @@ import * as api from "../api";
 import type { LabTest, LabBooking } from "../api";
 import { useStore } from "../context/StoreContext";
 import LabTokenPanel from "./LabTokenPanel";
+import LabStatusControl from "./LabStatusControl";
 import LabHomeCollectionSetting from "./LabHomeCollectionSetting";
-
-const STATUS_OPTIONS: LabBooking["status"][] = [
-  "booked", "technician_assigned", "sample_collected", "processing", "report_ready", "cancelled",
-];
-
-const STATUS_LABELS: Record<LabBooking["status"], string> = {
-  booked: "Booked",
-  technician_assigned: "Technician Assigned",
-  sample_collected: "Sample Collected",
-  processing: "Processing",
-  report_ready: "Report Ready",
-  cancelled: "Cancelled",
-};
 
 export default function LabDashboard() {
   const { user, logout } = useStore();
@@ -97,26 +85,12 @@ export default function LabDashboard() {
 function BookingsTab() {
   const [bookings, setBookings] = useState<LabBooking[]>([]);
   const [loading, setLoading] = useState(true);
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   function load() {
     setLoading(true);
     api.labs.myLabBookings().then(setBookings).catch(() => {}).finally(() => setLoading(false));
   }
   useEffect(() => { load(); }, []);
-
-  async function handleStatusChange(booking: LabBooking, status: LabBooking["status"]) {
-    setUpdatingId(booking.id);
-    try {
-      await api.labs.updateStatus(booking.id, { status });
-      toast.success(`Status updated to "${STATUS_LABELS[status]}"`);
-      load();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to update status");
-    } finally {
-      setUpdatingId(null);
-    }
-  }
 
   return (
     <>
@@ -164,16 +138,7 @@ function BookingsTab() {
                 </TableCell>
                 <TableCell className="text-sm font-medium">₹{b.price}</TableCell>
                 <TableCell>
-                  <select
-                    value={b.status}
-                    disabled={updatingId === b.id}
-                    onChange={(e) => handleStatusChange(b, e.target.value as LabBooking["status"])}
-                    className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-teal-300 disabled:opacity-50"
-                  >
-                    {STATUS_OPTIONS.map((s) => (
-                      <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-                    ))}
-                  </select>
+                  <LabStatusControl booking={b} onChanged={(u) => setBookings((prev) => prev.map((x) => (x.id === u.id ? { ...x, ...u } : x)))} />
                 </TableCell>
               </TableRow>
             ))}

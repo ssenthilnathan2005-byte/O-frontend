@@ -8,19 +8,10 @@ import {
 } from "@/components/ui/dialog";
 import * as api from "../api";
 import type { LabBooking } from "../api";
+import LabStatusControl from "./LabStatusControl";
 
 type Act = "call" | "complete" | "skip";
 type Sess = "morning" | "afternoon";
-
-const STATUS_LABELS: Record<LabBooking["status"], string> = {
-  booked: "Booked",
-  technician_assigned: "Technician Assigned",
-  sample_collected: "Sample Collected",
-  processing: "Processing",
-  report_ready: "Report Ready",
-  cancelled: "Cancelled",
-};
-const STATUS_ORDER = Object.keys(STATUS_LABELS) as LabBooking["status"][];
 
 const TOKEN_CLASS: Record<string, string> = {
   red: "bg-red-50 text-red-600 border-red-300",
@@ -133,15 +124,6 @@ export default function LabTokenPanel() {
   async function skipToken(n: number) {
     if (await act("skip", n)) toast.success(`Token #${n} skipped`);
     setDlg(null);
-  }
-  async function changeStatus(b: LabBooking, status: LabBooking["status"]) {
-    try {
-      await api.labs.updateStatus(b.id, { status });
-      toast.success(`Sample status: ${STATUS_LABELS[status]}`);
-      await loadBookings();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to update status");
-    }
   }
 
   if (loading) {
@@ -288,32 +270,26 @@ export default function LabTokenPanel() {
               {dlgBooking.status === "cancelled" && <p className="text-xs font-semibold text-red-600">This booking was cancelled.</p>}
               <div className="pt-1">
                 <label className="text-xs font-medium text-gray-600 mb-1 block">Sample status</label>
-                <select
-                  value={dlgBooking.status}
-                  onChange={(e) => changeStatus(dlgBooking, e.target.value as LabBooking["status"])}
-                  className="w-full text-sm border border-gray-200 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-teal-300"
-                >
-                  {STATUS_ORDER.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
-                </select>
+                <LabStatusControl booking={dlgBooking} onChanged={(u) => { setBookings((prev) => prev.map((x) => (x.id === u.id ? { ...x, ...u } : x))); if (u.status === "cancelled") loadBookings(); }} />
               </div>
             </div>
           ) : (
             <p className="text-sm text-gray-500">Loading patient details...</p>
           )}
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            {(dlgStatus === "red" || dlgStatus === "yellow") && dlg !== null && (
+            {(dlgStatus === "red" || dlgStatus === "yellow") && dlg !== null && dlgBooking?.status !== "cancelled" && (
               <>
                 <Button disabled={busy} onClick={() => callToken(dlg)} className="bg-teal-500 hover:bg-teal-600 text-white">Call now</Button>
                 <Button variant="outline" disabled={busy} onClick={() => skipToken(dlg)}>Skip (not present)</Button>
               </>
             )}
-            {dlgStatus === "orange" && dlg !== null && (
+            {dlgStatus === "orange" && dlg !== null && dlgBooking?.status !== "cancelled" && (
               <>
                 <Button disabled={busy} onClick={completeCurrent} className="bg-green-600 hover:bg-green-700 text-white">Mark completed</Button>
                 <Button variant="outline" disabled={busy} onClick={() => skipToken(dlg)}>Skip</Button>
               </>
             )}
-            {dlgStatus === "purple" && dlg !== null && (
+            {dlgStatus === "purple" && dlg !== null && dlgBooking?.status !== "cancelled" && (
               <Button disabled={busy} onClick={() => callToken(dlg)} className="bg-teal-500 hover:bg-teal-600 text-white">Call again</Button>
             )}
           </DialogFooter>
