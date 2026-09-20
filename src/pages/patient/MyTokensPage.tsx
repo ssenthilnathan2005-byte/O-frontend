@@ -172,9 +172,12 @@ export default function MyTokensPage() {
                         </span>
                       </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="font-bold text-gray-900 text-sm">₹{b.price}</p>
-                    </div>
+                    {b.token_number != null && (
+                      <div className="text-right shrink-0 leading-none">
+                        <span className="text-sm font-bold italic text-teal-500 mr-0.5">#</span>
+                        <span className="text-4xl font-extrabold text-teal-500">{b.token_number}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </motion.div>
