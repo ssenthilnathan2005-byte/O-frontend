@@ -273,6 +273,7 @@ export default function DoctorDashboard() {
     name: doctor?.name ?? "",
     specialty: doctor?.specialty ?? "",
     tokensPerSession: String(doctor?.tokensPerSession ?? 20),
+    doctorFee: (doctor as any)?.doctorFee != null ? String((doctor as any).doctorFee) : "",
     walkInInterval: String(doctor?.walkInInterval ?? 5),
     avgMinutesPerPatient: String((doctor as any)?.avgMinutesPerPatient ?? 5),
     sessions: ((doctor?.sessions ?? []) as string[]).filter((s): s is SessionType => ["morning","afternoon","evening"].includes(s)),
@@ -300,6 +301,7 @@ export default function DoctorDashboard() {
         name: doctor.name ?? "",
         specialty: doctor.specialty ?? "",
         tokensPerSession: String(doctor.tokensPerSession ?? 20),
+        doctorFee: (doctor as any).doctorFee != null ? String((doctor as any).doctorFee) : "",
         walkInInterval: String(doctor.walkInInterval ?? 5),
         avgMinutesPerPatient: String((doctor as any).avgMinutesPerPatient ?? 5),
         sessions: ((doctor.sessions ?? []) as string[]).filter((s): s is SessionType => ["morning","afternoon","evening"].includes(s)),
@@ -503,6 +505,15 @@ export default function DoctorDashboard() {
       }
     }
 
+    let feeNum: number | undefined;
+    if (profileForm.doctorFee.trim() !== "") {
+      feeNum = Number(profileForm.doctorFee);
+      if (!Number.isFinite(feeNum) || feeNum < 0 || feeNum > 100000) {
+        toast.error("Enter a valid consultation fee.");
+        return;
+      }
+    }
+
     const payload: Record<string, unknown> = {
       name: profileForm.name,
       specialty: profileForm.specialty,
@@ -512,6 +523,7 @@ export default function DoctorDashboard() {
       avgMinutesPerPatient: finalAvgMinutes,
       sessions: profileForm.sessions,
       consultationFee: 10,
+      doctorFee: feeNum,
       sessionTimings: derivedTimings,
       scheduleConfig: profileForm.scheduleConfig,
     };
@@ -1513,6 +1525,13 @@ export default function DoctorDashboard() {
                     }
                     data-ocid="profile.input"
                   />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="doc-fee">Consultation Fee (₹)</Label>
+                  <Input id="doc-fee" type="number" min="0" inputMode="numeric" placeholder="e.g. 500"
+                    value={profileForm.doctorFee}
+                    onChange={(e) => setProfileForm((prev) => ({ ...prev, doctorFee: e.target.value }))} />
+                  <p className="text-xs text-gray-500">Shown in bold to patients on your card. Online booking payment is unaffected.</p>
                 </div>
                 <div className="space-y-1.5">
                   <Label

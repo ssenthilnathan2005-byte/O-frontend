@@ -424,7 +424,7 @@ export interface Hospital {
 export interface Doctor {
   id: string; hospitalId: string; code?: string; name: string;
   specialty: string; phone?: string; contactPhone?: string; bio?: string; photo?: string | null;
-  price: number; consultationFee?: number; tokensPerSession: number;
+  price: number; consultationFee?: number; tokensPerSession: number; doctorFee?: number | null;
   sessions: string[];
   sessionTimings?: Partial<Record<string, { start: string; end: string }>>;
   scheduleConfig?: {

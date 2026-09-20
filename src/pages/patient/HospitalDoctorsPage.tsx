@@ -191,6 +191,9 @@ export default function HospitalDoctorsPage({ id }: Props) {
                       <Activity className="w-3 h-3" />
                       {doctor.specialty}
                     </div>
+                    {(doctor as any).doctorFee != null && (
+                      <p className="text-sm font-bold text-gray-900 mt-1">Consultation fee: ₹{(doctor as any).doctorFee}</p>
+                    )}
                     <div className="flex flex-wrap gap-1.5 mt-1.5 text-[11px]">
                       {doctor.sessions.length > 0 ? (
                         doctor.sessions.map((s) => (

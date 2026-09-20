@@ -33,7 +33,7 @@ export interface Doctor {
   bio?: string;
   photo?: string;
   phone?: string;
-  consultationFee?: number;
+  consultationFee?: number; doctorFee?: number | null;
   isAvailable?: boolean;
   contactPhone?: string;
   yearsOfExperience?: string;
