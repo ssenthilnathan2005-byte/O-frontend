@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import * as api from "../api";
 import type { LabTest, LabBooking } from "../api";
 import { useStore } from "../context/StoreContext";
+import LabQueueBoard from "./LabQueueBoard";
 
 const STATUS_OPTIONS: LabBooking["status"][] = [
   "booked", "technician_assigned", "sample_collected", "processing", "report_ready", "cancelled",
@@ -105,6 +106,8 @@ function BookingsTab() {
   }
 
   return (
+    <>
+    <LabQueueBoard bookings={bookings} />
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
         <h2 className="font-semibold text-gray-900 text-sm">{bookings.length} bookings</h2>
@@ -123,6 +126,7 @@ function BookingsTab() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Token</TableHead>
               <TableHead>Patient</TableHead>
               <TableHead>Test</TableHead>
               <TableHead>Date / Time</TableHead>
@@ -134,6 +138,7 @@ function BookingsTab() {
           <TableBody>
             {bookings.map((b) => (
               <TableRow key={b.id}>
+                <TableCell className="text-sm font-bold text-teal-700">{b.token_number != null ? `#${b.token_number}` : "—"}</TableCell>
                 <TableCell>
                   <p className="font-medium text-sm">{b.patient_name}</p>
                   <p className="text-xs text-gray-400">{b.phone}</p>
@@ -164,6 +169,7 @@ function BookingsTab() {
         </Table>
       )}
     </div>
+    </>
   );
 }
 

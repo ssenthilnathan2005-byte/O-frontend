@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, CheckCircle2, Circle, Loader2, FlaskConical, FileText, Home } from "lucide-react";
 import * as api from "../../api";
 import { useRouter } from "../../router/RouterContext";
+import LabQueuePanel from "./LabQueuePanel";
 
 interface Props {
   bookingId: string;
@@ -65,10 +66,16 @@ export default function LabTrackingPage({ bookingId }: Props) {
           <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center shrink-0">
             <FlaskConical className="w-5 h-5 text-teal-600" />
           </div>
-          <div>
+          <div className="flex-1">
             <p className="font-bold text-gray-900 text-sm">{booking.test_name || "Lab Test"}</p>
             <p className="text-xs text-gray-500">{booking.lab_name} · {booking.lab_area}</p>
           </div>
+          {booking.token_number != null && (
+            <div className="text-center bg-teal-50 border border-teal-100 rounded-xl px-3 py-1.5">
+              <p className="text-[10px] uppercase tracking-wide text-teal-600 font-semibold">Token</p>
+              <p className="text-xl font-extrabold text-teal-700 leading-none">#{booking.token_number}</p>
+            </div>
+          )}
         </div>
         <div className="grid grid-cols-2 gap-2 text-xs text-gray-500 mt-3 pt-3 border-t border-gray-100">
           <span>Date: <span className="text-gray-800 font-medium">{booking.slot_date}</span></span>
@@ -78,6 +85,8 @@ export default function LabTrackingPage({ bookingId }: Props) {
         </div>
       </div>
 
+      {!isCancelled && <LabQueuePanel booking={booking} />}
+
       {isCancelled ? (
         <div className="bg-red-50 border border-red-200 rounded-2xl p-5 text-center">
           <p className="font-semibold text-red-700 text-sm">This booking was cancelled.</p>
@@ -85,7 +94,7 @@ export default function LabTrackingPage({ bookingId }: Props) {
         </div>
       ) : (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Live Status</p>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Sample Status</p>
           <div className="space-y-0">
             {STATUS_STEPS.map((step, idx) => {
               const done = idx <= currentIndex;

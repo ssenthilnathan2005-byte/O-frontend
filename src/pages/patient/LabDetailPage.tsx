@@ -130,8 +130,49 @@ function LabBookingDialog({
   const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [booked, setBooked] = useState<api.LabBooking | null>(null);
 
   if (!open) return null;
+
+  if (booked) {
+    return (
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md p-6 text-center">
+          <div className="w-12 h-12 rounded-full bg-teal-50 flex items-center justify-center mx-auto mb-3">
+            <CheckCircle2 className="w-6 h-6 text-teal-600" />
+          </div>
+          <h3 className="text-base font-bold text-gray-900">Booking confirmed</h3>
+          <p className="text-xs text-gray-500 mt-0.5">{test.name} · {lab.name}</p>
+
+          {booked.token_number != null && (
+            <div className="my-5 rounded-2xl bg-teal-50 border border-teal-100 py-4">
+              <p className="text-[11px] uppercase tracking-wide text-teal-600 font-semibold">Your token number</p>
+              <p className="text-5xl font-extrabold text-teal-700 leading-none mt-1">#{booked.token_number}</p>
+            </div>
+          )}
+
+          <p className="text-xs text-gray-500 mb-5">
+            {booked.slot_date} · {booked.slot_time}
+          </p>
+
+          <button
+            type="button"
+            onClick={() => navigate({ path: "/labs/track", bookingId: booked.id })}
+            className="w-full bg-teal-500 hover:bg-teal-600 text-white rounded-full py-3 text-sm font-semibold"
+          >
+            Track my token
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full mt-2 border border-gray-200 rounded-full py-3 text-sm font-medium text-gray-600 hover:bg-gray-50"
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const availableDates = Array.from({ length: 5 }, (_, i) => {
     const d = new Date();
@@ -162,7 +203,7 @@ function LabBookingDialog({
         address: collectionType === "home" ? address.trim() : undefined,
       });
       toast.success("Lab test booked!");
-      navigate({ path: "/labs/track", bookingId: booking.id });
+      setBooked(booking);
     } catch (err: any) {
       setError(err.message || "Could not book. Please try again.");
     } finally {

@@ -1,0 +1,101 @@
+import { useEffect, useState } from "react";
+import * as api from "../../api";
+
+const TOKEN_STYLE: Record<string, string> = {
+  red: "bg-red-50 text-red-600 border-red-200",
+  yellow: "bg-yellow-100 text-yellow-700 border-yellow-300",
+  orange: "bg-orange-500 text-white border-orange-500",
+  green: "bg-green-100 text-green-700 border-green-300",
+  purple: "bg-purple-100 text-purple-700 border-purple-300",
+};
+
+const LEGEND: [string, string][] = [
+  ["red", "Booked"],
+  ["yellow", "Next up"],
+  ["orange", "Now serving"],
+  ["green", "Completed"],
+  ["purple", "Skipped"],
+];
+
+export default function LabQueuePanel({ booking }: { booking: api.LabBooking }) {
+  const [session, setSession] = useState<api.LabSessionState | null>(null);
+  const labId = booking.lab_id;
+  const testId = booking.test_id;
+  const slotDate = booking.slot_date;
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const s = await api.labs.getSession(labId, testId, slotDate);
+        if (mounted) setSession(s);
+      } catch {
+        // keep last known state
+      }
+    };
+    load();
+    const interval = setInterval(load, 10_000);
+    const closeSocket = api.connectTokenSocket(`${labId}_${testId}_${slotDate}`, (p: any) => {
+      if (mounted && p?.type === "state_update" && p.state) setSession(p.state as api.LabSessionState);
+    });
+    return () => { mounted = false; clearInterval(interval); closeSocket(); };
+  }, [labId, testId, slotDate]);
+
+  const myToken = booking.token_number ?? null;
+  if (myToken == null) return null;
+
+  const statuses = session?.tokenStatuses ?? {};
+  const myState = statuses[String(myToken)];
+  const ahead = Object.entries(statuses).filter(
+    ([n, st]) => Number(n) < myToken && (st === "red" || st === "yellow" || st === "orange")
+  ).length;
+  const nums = Object.keys(statuses).map(Number).sort((a, b) => a - b);
+
+  let banner = "";
+  let cls = "bg-gray-50 text-gray-700 border-gray-200";
+  if (myState === "orange") { banner = "It's your turn — please proceed now"; cls = "bg-orange-50 text-orange-700 border-orange-200"; }
+  else if (myState === "yellow") { banner = "You're next — please be ready"; cls = "bg-yellow-50 text-yellow-700 border-yellow-200"; }
+  else if (myState === "green") { banner = "Your token has been completed"; cls = "bg-green-50 text-green-700 border-green-200"; }
+  else if (myState === "purple") { banner = "Your token was skipped — please contact the lab"; cls = "bg-purple-50 text-purple-700 border-purple-200"; }
+  else if (myState === "red") { banner = ahead === 0 ? "You're first in line" : `${ahead} ${ahead === 1 ? "person" : "people"} ahead of you`; }
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-5">
+      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Live Queue</p>
+      {banner && (
+        <div className={`rounded-xl border px-4 py-3 text-sm font-semibold text-center mb-4 ${cls}`}>{banner}</div>
+      )}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="rounded-xl bg-gray-50 border border-gray-100 p-3 text-center">
+          <p className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Now serving</p>
+          <p className="text-2xl font-extrabold text-orange-500">{session?.currentToken != null ? `#${session.currentToken}` : "—"}</p>
+        </div>
+        <div className="rounded-xl bg-gray-50 border border-gray-100 p-3 text-center">
+          <p className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Next up</p>
+          <p className="text-2xl font-extrabold text-yellow-600">{session?.nextToken != null ? `#${session.nextToken}` : "—"}</p>
+        </div>
+      </div>
+      {nums.length > 0 && (
+        <>
+          <div className="grid grid-cols-5 sm:grid-cols-8 gap-2">
+            {nums.map((n) => (
+              <div
+                key={n}
+                className={`h-10 rounded-lg border text-sm font-bold flex items-center justify-center ${TOKEN_STYLE[statuses[String(n)]] || TOKEN_STYLE.red} ${n === myToken ? "ring-2 ring-teal-500 ring-offset-1" : ""}`}
+              >
+                {n}
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-3">
+            {LEGEND.map(([k, label]) => (
+              <span key={k} className="flex items-center gap-1 text-[11px] text-gray-500">
+                <span className={`w-2.5 h-2.5 rounded-sm border ${TOKEN_STYLE[k]}`} /> {label}
+              </span>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

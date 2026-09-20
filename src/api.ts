@@ -557,6 +557,7 @@ export interface LabBooking {
   test_name?: string;
   slot_date: string;
   slot_time: string;
+  token_number?: number | null;
   collection_type: "home" | "walk_in";
   address?: string | null;
   price: number;
@@ -566,6 +567,17 @@ export interface LabBooking {
   notes?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface LabSessionState {
+  sessionId: string;
+  labId: string;
+  testId: string;
+  date: string;
+  tokenStatuses: Record<string, "red" | "yellow" | "orange" | "green" | "purple">;
+  currentToken: number | null;
+  nextToken: number | null;
+  isClosed: boolean;
 }
 
 export const labs = {
@@ -604,4 +616,10 @@ export const labs = {
   updateMyTest: (testId: string, data: { price?: number; isActive?: boolean }) =>
     patch<any>(`/labs/me/tests/${testId}`, data),
   myLabBookings: () => get<LabBooking[]>("/labs/me/bookings"),
+
+  // Token queue
+  getSession: (labId: string, testId: string, date: string) =>
+    get<LabSessionState | null>(`/labs/sessions/${labId}/${testId}/${date}`),
+  sessionAction: (labId: string, testId: string, date: string, action: "call" | "complete" | "skip", token?: number) =>
+    post<LabSessionState>(`/labs/sessions/${labId}/${testId}/${date}/${action}`, token != null ? { token } : {}),
 };
