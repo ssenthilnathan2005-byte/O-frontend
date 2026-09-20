@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Activity } from "lucide-react";
 import { ArrowLeft, Calendar, ChevronRight, LogIn, Phone, User } from "lucide-react";
+import { Award, GraduationCap, Languages, Moon, Sun, Sunset } from "lucide-react";
 import { motion } from "motion/react";
 import { type KeyboardEvent, type MouseEvent, useState } from "react";
 import BookingDialog from "../../components/booking/BookingDialog";
@@ -17,6 +18,24 @@ import { getSessionLabelForDate } from "../../data/seed";
 import { useRouter } from "../../router/RouterContext";
 import type { Doctor } from "../../api";
 import type { SessionType } from "../../types";
+
+const SESSION_STYLE: Record<string, { Icon: typeof Sun; box: string; icon: string }> = {
+  morning: { Icon: Sun, box: "bg-amber-50 border-amber-100", icon: "text-amber-500" },
+  afternoon: { Icon: Sunset, box: "bg-orange-50 border-orange-100", icon: "text-orange-500" },
+  evening: { Icon: Moon, box: "bg-indigo-50 border-indigo-100", icon: "text-indigo-500" },
+};
+
+// "Morning (9:00 AM - 10:00 AM)" -> { name: "Morning", time: "9:00 AM - 10:00 AM" }
+function splitSessionLabel(label: string): { name: string; time: string } {
+  const m = label.match(/^(.*?)\s*\((.*)\)\s*$/);
+  return m ? { name: m[1], time: m[2] } : { name: label, time: "" };
+}
+
+function formatExperience(v?: string | null): string {
+  const t = v ? String(v).trim() : "";
+  if (!t) return "";
+  return /^\d+(\.\d+)?$/.test(t) ? t + " yrs experience" : t;
+}
 
 interface Props {
   id: string;
@@ -176,37 +195,89 @@ export default function HospitalDoctorsPage({ id }: Props) {
                 }}
                 className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:border-teal-300 hover:shadow-md transition-all"
               >
-                {/* Doctor info row */}
-                <div className="flex items-start gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-teal-100 flex items-center justify-center shrink-0">
-                    {doctor.photo ? (
-                      <img src={doctor.photo} alt={doctor.name} className="w-12 h-12 rounded-xl object-cover" />
-                    ) : (
-                      <User className="w-6 h-6 text-teal-600" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-gray-900 text-sm">{doctor.name}</p>
-                    <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
-                      <Activity className="w-3 h-3" />
-                      {doctor.specialty}
-                    </div>
-                    {(doctor as any).doctorFee != null && (
-                      <p className="text-sm font-bold text-gray-900 mt-1">Consultation fee: ₹{(doctor as any).doctorFee}</p>
-                    )}
-                    <div className="flex flex-wrap gap-1.5 mt-1.5 text-[11px]">
-                      {doctor.sessions.length > 0 ? (
-                        doctor.sessions.map((s) => (
-                          <span key={s} className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                            {getSessionLabelForDate(new Date().toISOString().split("T")[0], s as SessionType, (doctor as any).scheduleConfig, doctor.sessionTimings)}
+                {(() => {
+                  const fee = (doctor as any).doctorFee;
+                  const exp = formatExperience(doctor.yearsOfExperience);
+                  const edu = doctor.education ? String(doctor.education).trim() : "";
+                  const langs = Array.isArray(doctor.languages) ? doctor.languages.filter(Boolean) : [];
+                  const bio = doctor.bio ? String(doctor.bio).trim() : "";
+                  const photo = resolvePhotoUrl(doctor.photo);
+                  const today = new Date().toLocaleDateString("en-CA");
+                  return (
+                    <>
+                      {/* Doctor header */}
+                      <div className="flex items-start gap-3.5">
+                        <div className="w-16 h-16 rounded-2xl bg-teal-100 flex items-center justify-center shrink-0 overflow-hidden ring-2 ring-teal-50">
+                          {photo ? (
+                            <img src={photo} alt={doctor.name} className="w-16 h-16 object-cover" />
+                          ) : (
+                            <User className="w-8 h-8 text-teal-600" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-gray-900 text-base leading-tight">{doctor.name}</p>
+                          <span className="inline-flex items-center gap-1 mt-1 text-xs font-medium text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full">
+                            <Activity className="w-3 h-3" /> {doctor.specialty}
                           </span>
-                        ))
-                      ) : (
-                        <span className="bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">No sessions today</span>
+                          {exp && (
+                            <p className="flex items-center gap-1.5 text-xs text-gray-600 mt-1.5">
+                              <Award className="w-3.5 h-3.5 text-teal-500 shrink-0" /> {exp}
+                            </p>
+                          )}
+                          {edu && (
+                            <p className="flex items-center gap-1.5 text-xs text-gray-600 mt-1">
+                              <GraduationCap className="w-3.5 h-3.5 text-teal-500 shrink-0" /> <span className="min-w-0">{edu}</span>
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {bio && <p className="text-xs text-gray-500 mt-3 leading-relaxed line-clamp-2">{bio}</p>}
+
+                      {langs.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5 mt-3">
+                          <Languages className="w-3.5 h-3.5 text-gray-400" />
+                          {langs.map((l) => (
+                            <span key={l} className="text-[11px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{l}</span>
+                          ))}
+                        </div>
                       )}
-                    </div>
-                  </div>
-                </div>
+
+                      {fee != null && (
+                        <div className="mt-3 flex items-center justify-between rounded-xl bg-teal-50 border border-teal-100 px-3.5 py-2.5">
+                          <span className="text-xs font-semibold text-teal-700 uppercase tracking-wide">Consultation fee</span>
+                          <span className="text-xl font-extrabold text-gray-900 leading-none">₹{fee}</span>
+                        </div>
+                      )}
+
+                      {/* Sessions */}
+                      <div className="mt-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1.5">Today's sessions</p>
+                        {doctor.sessions.length > 0 ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            {doctor.sessions.map((sess) => {
+                              const { name, time } = splitSessionLabel(
+                                getSessionLabelForDate(today, sess as SessionType, (doctor as any).scheduleConfig, doctor.sessionTimings),
+                              );
+                              const st = SESSION_STYLE[sess] ?? { Icon: Sun, box: "bg-gray-50 border-gray-100", icon: "text-gray-400" };
+                              return (
+                                <div key={sess} className={`flex items-center gap-2.5 rounded-xl border px-3 py-2 ${st.box}`}>
+                                  <st.Icon className={`w-4 h-4 shrink-0 ${st.icon}`} />
+                                  <div className="min-w-0">
+                                    <p className="text-xs font-semibold text-gray-800 leading-tight">{name}</p>
+                                    {time && <p className="text-[11px] text-gray-500 leading-tight mt-0.5">{time}</p>}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-gray-400 bg-gray-50 rounded-xl px-3 py-2">No sessions today</p>
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
 
                 {/* Current position status box */}
                 <div className={`mt-3 rounded-xl border p-3 ${sc.bg} ${sc.border}`}>
@@ -219,13 +290,8 @@ export default function HospitalDoctorsPage({ id }: Props) {
                 </div>
 
                 {/* Check Schedule indicator (visual only — the whole card above is clickable) */}
-                <hr className="my-3 border-gray-100" />
-                <div className="w-full flex items-center justify-between text-sm text-teal-600 font-medium">
-                  <span className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4" />
-                    Check Schedule
-                  </span>
-                  <ChevronRight className="w-4 h-4" />
+                <div className="mt-3 w-full flex items-center justify-center gap-2 rounded-xl bg-teal-500 text-white text-sm font-semibold py-2.5">
+                  <Calendar className="w-4 h-4" /> Check Schedule &amp; Book <ChevronRight className="w-4 h-4" />
                 </div>
               </div>
             </motion.div>
