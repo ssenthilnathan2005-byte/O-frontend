@@ -1,7 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Activity } from "lucide-react";
 import { ArrowLeft, Calendar, ChevronRight, LogIn, Phone, User } from "lucide-react";
-import { Award, GraduationCap, Languages, Moon, Sun, Sunset } from "lucide-react";
 import { motion } from "motion/react";
 import { type KeyboardEvent, type MouseEvent, useState } from "react";
 import BookingDialog from "../../components/booking/BookingDialog";
@@ -18,12 +16,6 @@ import { getSessionLabelForDate } from "../../data/seed";
 import { useRouter } from "../../router/RouterContext";
 import type { Doctor } from "../../api";
 import type { SessionType } from "../../types";
-
-const SESSION_STYLE: Record<string, { Icon: typeof Sun; box: string; icon: string }> = {
-  morning: { Icon: Sun, box: "bg-amber-50 border-amber-100", icon: "text-amber-500" },
-  afternoon: { Icon: Sunset, box: "bg-orange-50 border-orange-100", icon: "text-orange-500" },
-  evening: { Icon: Moon, box: "bg-indigo-50 border-indigo-100", icon: "text-indigo-500" },
-};
 
 // "Morning (9:00 AM - 10:00 AM)" -> { name: "Morning", time: "9:00 AM - 10:00 AM" }
 function splitSessionLabel(label: string): { name: string; time: string } {
@@ -193,7 +185,7 @@ export default function HospitalDoctorsPage({ id }: Props) {
                     handleDoctorClick(doctor);
                   }
                 }}
-                className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:border-teal-300 hover:shadow-md transition-all"
+                className="bg-white rounded-xl border border-gray-200 p-5 cursor-pointer hover:border-gray-300 hover:shadow-sm transition-all"
               >
                 {(() => {
                   const fee = (doctor as any).doctorFee;
@@ -203,95 +195,69 @@ export default function HospitalDoctorsPage({ id }: Props) {
                   const bio = doctor.bio ? String(doctor.bio).trim() : "";
                   const photo = resolvePhotoUrl(doctor.photo);
                   const today = new Date().toLocaleDateString("en-CA");
+                  const qualification = [edu, exp].filter(Boolean).join(" · ");
                   return (
                     <>
-                      {/* Doctor header */}
-                      <div className="flex items-start gap-3.5">
-                        <div className="w-16 h-16 rounded-2xl bg-teal-100 flex items-center justify-center shrink-0 overflow-hidden ring-2 ring-teal-50">
+                      <div className="flex items-start gap-4">
+                        <div className="w-14 h-14 rounded-lg bg-gray-100 flex items-center justify-center shrink-0 overflow-hidden">
                           {photo ? (
-                            <img src={photo} alt={doctor.name} className="w-16 h-16 object-cover" />
+                            <img src={photo} alt={doctor.name} className="w-14 h-14 object-cover" />
                           ) : (
-                            <User className="w-8 h-8 text-teal-600" />
+                            <User className="w-6 h-6 text-gray-400" />
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-bold text-gray-900 text-base leading-tight">{doctor.name}</p>
-                          <span className="inline-flex items-center gap-1 mt-1 text-xs font-medium text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full">
-                            <Activity className="w-3 h-3" /> {doctor.specialty}
-                          </span>
-                          {exp && (
-                            <p className="flex items-center gap-1.5 text-xs text-gray-600 mt-1.5">
-                              <Award className="w-3.5 h-3.5 text-teal-500 shrink-0" /> {exp}
-                            </p>
-                          )}
-                          {edu && (
-                            <p className="flex items-center gap-1.5 text-xs text-gray-600 mt-1">
-                              <GraduationCap className="w-3.5 h-3.5 text-teal-500 shrink-0" /> <span className="min-w-0">{edu}</span>
-                            </p>
-                          )}
+                          <p className="font-semibold text-gray-900 text-base leading-tight">{doctor.name}</p>
+                          <p className="text-sm text-teal-700 mt-0.5">{doctor.specialty}</p>
+                          {qualification && <p className="text-xs text-gray-500 mt-1">{qualification}</p>}
+                          {langs.length > 0 && <p className="text-xs text-gray-500 mt-0.5">Languages: {langs.join(", ")}</p>}
                         </div>
+                        {fee != null && (
+                          <div className="text-right shrink-0">
+                            <p className="text-[11px] text-gray-500">Consultation fee</p>
+                            <p className="text-base font-bold text-gray-900 mt-0.5">₹{fee}</p>
+                          </div>
+                        )}
                       </div>
 
-                      {bio && <p className="text-xs text-gray-500 mt-3 leading-relaxed line-clamp-2">{bio}</p>}
+                      {bio && <p className="text-xs text-gray-600 mt-3 leading-relaxed line-clamp-2">{bio}</p>}
 
-                      {langs.length > 0 && (
-                        <div className="flex flex-wrap items-center gap-1.5 mt-3">
-                          <Languages className="w-3.5 h-3.5 text-gray-400" />
-                          {langs.map((l) => (
-                            <span key={l} className="text-[11px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{l}</span>
-                          ))}
-                        </div>
-                      )}
-
-                      {fee != null && (
-                        <div className="mt-3 flex items-center justify-between rounded-xl bg-teal-50 border border-teal-100 px-3.5 py-2.5">
-                          <span className="text-xs font-semibold text-teal-700 uppercase tracking-wide">Consultation fee</span>
-                          <span className="text-xl font-extrabold text-gray-900 leading-none">₹{fee}</span>
-                        </div>
-                      )}
-
-                      {/* Sessions */}
-                      <div className="mt-3">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1.5">Today's sessions</p>
+                      <div className="mt-4 border-t border-gray-100 pt-3">
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500 mb-1">Sessions today</p>
                         {doctor.sessions.length > 0 ? (
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          <div className="divide-y divide-gray-100">
                             {doctor.sessions.map((sess) => {
                               const { name, time } = splitSessionLabel(
                                 getSessionLabelForDate(today, sess as SessionType, (doctor as any).scheduleConfig, doctor.sessionTimings),
                               );
-                              const st = SESSION_STYLE[sess] ?? { Icon: Sun, box: "bg-gray-50 border-gray-100", icon: "text-gray-400" };
                               return (
-                                <div key={sess} className={`flex items-center gap-2.5 rounded-xl border px-3 py-2 ${st.box}`}>
-                                  <st.Icon className={`w-4 h-4 shrink-0 ${st.icon}`} />
-                                  <div className="min-w-0">
-                                    <p className="text-xs font-semibold text-gray-800 leading-tight">{name}</p>
-                                    {time && <p className="text-[11px] text-gray-500 leading-tight mt-0.5">{time}</p>}
-                                  </div>
+                                <div key={sess} className="flex items-center justify-between py-1.5">
+                                  <span className="text-sm text-gray-800">{name}</span>
+                                  <span className="text-xs text-gray-500">{time}</span>
                                 </div>
                               );
                             })}
                           </div>
                         ) : (
-                          <p className="text-xs text-gray-400 bg-gray-50 rounded-xl px-3 py-2">No sessions today</p>
+                          <p className="text-xs text-gray-500 py-1">No sessions today</p>
                         )}
                       </div>
                     </>
                   );
                 })()}
 
-                {/* Current position status box */}
-                <div className={`mt-3 rounded-xl border p-3 ${sc.bg} ${sc.border}`}>
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <span className={`w-2 h-2 rounded-full ${sc.dot}`} />
-                    <span className={`text-[10px] font-bold uppercase tracking-wider ${sc.label}`}>Current Position</span>
+                {/* Current status */}
+                <div className="mt-3 flex items-start gap-2.5 border-t border-gray-100 pt-3">
+                  <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${sc.dot}`} />
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Current status</p>
+                    <p className="text-sm font-medium text-gray-900 mt-0.5">{status.label}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{status.detail}</p>
                   </div>
-                  <p className={`text-sm font-semibold ${sc.label}`}>{status.label}</p>
-                  <p className={`text-xs mt-0.5 ${sc.detail}`}>{status.detail}</p>
                 </div>
 
-                {/* Check Schedule indicator (visual only — the whole card above is clickable) */}
-                <div className="mt-3 w-full flex items-center justify-center gap-2 rounded-xl bg-teal-500 text-white text-sm font-semibold py-2.5">
-                  <Calendar className="w-4 h-4" /> Check Schedule &amp; Book <ChevronRight className="w-4 h-4" />
+                <div className="mt-4 w-full flex items-center justify-center gap-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium py-2.5 transition-colors">
+                  View schedule &amp; book <ChevronRight className="w-4 h-4" />
                 </div>
               </div>
             </motion.div>
