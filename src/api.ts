@@ -541,6 +541,7 @@ export interface Lab {
   id: string; name: string; area: string; address?: string;
   phone?: string; rating: number; photo_url?: string | null; is_active: boolean;
   home_collection?: boolean; home_collection_fee?: number;
+  map_location?: string | null;
 }
 export interface LabTest {
   id: string; name: string; category: string; sample_type: string;
@@ -607,9 +608,9 @@ export const labs = {
     patch<LabBooking>(`/labs/bookings/${id}/status`, data),
 
   // Admin-only management
-  create: (data: { name: string; area: string; address?: string; phone?: string; rating?: number }) =>
+  create: (data: { name: string; area: string; address?: string; phone?: string; rating?: number; mapLocation?: string }) =>
     post<Lab>("/labs", data),
-  update: (id: string, data: Partial<Lab>) => patch<Lab>(`/labs/${id}`, data),
+  update: (id: string, data: Partial<Lab> & { mapLocation?: string }) => patch<Lab>(`/labs/${id}`, data),
   getAdminInfo: (id: string) =>
     get<{ loginId: string | null; hasAdminAccount: boolean; firstLogin: boolean }>(`/labs/${id}/admin-info`),
   resetLogin: (id: string, newLoginId?: string) =>

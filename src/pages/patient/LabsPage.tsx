@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Search, MapPin, Phone, Star, ChevronRight, Loader2, FlaskConical } from "lucide-react";
+import { Search, MapPin, Phone, ChevronRight, Loader2, FlaskConical } from "lucide-react";
+import LabMapButton from "./LabMapButton";
 import * as api from "../../api";
 import { useRouter } from "../../router/RouterContext";
 
@@ -56,11 +57,13 @@ export default function LabsPage() {
       ) : (
         <div className="space-y-3">
           {filtered.map((lab) => (
-            <button
+            <div
               key={lab.id}
-              type="button"
+              role="button"
+              tabIndex={0}
               onClick={() => navigate({ path: "/labs/detail", id: lab.id })}
-              className="w-full bg-white rounded-2xl shadow-sm border border-gray-100 p-4 text-left hover:border-teal-300 hover:shadow-md transition-all"
+              onKeyDown={(e) => { if (e.key === "Enter") navigate({ path: "/labs/detail", id: lab.id }); }}
+              className="w-full cursor-pointer bg-white rounded-2xl shadow-sm border border-gray-100 p-4 text-left hover:border-teal-300 hover:shadow-md transition-all"
             >
               <div className="flex items-start gap-3">
                 <div className="w-12 h-12 rounded-xl bg-teal-100 flex items-center justify-center shrink-0">
@@ -69,10 +72,7 @@ export default function LabsPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <p className="font-bold text-gray-900 text-sm truncate">{lab.name}</p>
-                    <div className="flex items-center gap-1 text-xs text-amber-500 shrink-0">
-                      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                      {lab.rating.toFixed(1)}
-                    </div>
+                    <LabMapButton lab={lab} />
                   </div>
                   <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
                     <MapPin className="w-3.5 h-3.5 shrink-0" />
@@ -87,7 +87,7 @@ export default function LabsPage() {
                 </div>
                 <ChevronRight className="w-5 h-5 text-gray-300 shrink-0 self-center" />
               </div>
-            </button>
+            </div>
           ))}
         </div>
       )}

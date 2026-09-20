@@ -8,23 +8,24 @@ import { Label }  from "@/components/ui/label";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Edit2, FlaskConical, KeyRound, Loader2, Plus, RefreshCw, Star } from "lucide-react";
+import { Edit2, FlaskConical, KeyRound, Loader2, Plus, RefreshCw, MapPin } from "lucide-react";
+import { locOrThrow } from "../../lib/labLocation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import * as api from "../../api";
 import type { Lab } from "../../api";
 
-type EditLabForm = { name: string; area: string; address: string; phone: string };
+type EditLabForm = { name: string; area: string; address: string; phone: string; mapLocation: string };
 
 export default function AdminLabs() {
   const [labsList, setLabsList] = useState<Lab[]>([]);
   const [loading, setLoading]   = useState(true);
   const [addOpen, setAddOpen]   = useState(false);
-  const [form, setForm] = useState({ name: "", area: "", address: "", phone: "", loginId: "" });
+  const [form, setForm] = useState({ name: "", area: "", address: "", phone: "", mapLocation: "", loginId: "" });
   const [adding, setAdding] = useState(false);
 
   const [editLab, setEditLab] = useState<Lab | null>(null);
-  const [editForm, setEditForm] = useState<EditLabForm>({ name: "", area: "", address: "", phone: "" });
+  const [editForm, setEditForm] = useState<EditLabForm>({ name: "", area: "", address: "", phone: "", mapLocation: "" });
   const [saving, setSaving] = useState(false);
 
   const [loginDialogLab, setLoginDialogLab] = useState<Lab | null>(null);
@@ -46,7 +47,7 @@ export default function AdminLabs() {
     try {
       const newLab = await api.labs.create({
         name: form.name, area: form.area,
-        address: form.address || undefined, phone: form.phone || undefined,
+        address: form.address || undefined, phone: form.phone || undefined, mapLocation: locOrThrow(form.mapLocation) || undefined,
       });
       if (form.loginId.trim()) {
         await api.labs.resetLogin(newLab.id, form.loginId.trim());
@@ -54,7 +55,7 @@ export default function AdminLabs() {
       } else {
         toast.success(`Lab "${form.name}" added`);
       }
-      setForm({ name: "", area: "", address: "", phone: "", loginId: "" });
+      setForm({ name: "", area: "", address: "", phone: "", mapLocation: "", loginId: "" });
       setAddOpen(false);
       loadLabs();
     } catch (err: any) {
@@ -67,14 +68,14 @@ export default function AdminLabs() {
   // ── Edit lab ─────────────────────────────────────────────────────────────
   function openEditLab(lab: Lab) {
     setEditLab(lab);
-    setEditForm({ name: lab.name, area: lab.area, address: lab.address ?? "", phone: lab.phone ?? "" });
+    setEditForm({ name: lab.name, area: lab.area, address: lab.address ?? "", phone: lab.phone ?? "", mapLocation: lab.map_location ?? "" });
   }
   async function handleEditLab() {
     if (!editLab) return;
     if (!editForm.name || !editForm.area) { toast.error("Name and location are required"); return; }
     setSaving(true);
     try {
-      await api.labs.update(editLab.id, editForm);
+      await api.labs.update(editLab.id, { ...editForm, mapLocation: locOrThrow(editForm.mapLocation) });
       toast.success("Lab updated");
       setEditLab(null);
       loadLabs();
@@ -134,7 +135,7 @@ export default function AdminLabs() {
               {[
                 { label: "Lab Name *", key: "name", placeholder: "e.g. City Diagnostics" },
                 { label: "Location / Area *", key: "area", placeholder: "e.g. Gandhipuram" },
-                { label: "Full Address", key: "address", placeholder: "e.g. 45 Main Rd" },
+                { label: "Full Address", key: "address", placeholder: "e.g. 45 Main Rd" }, { label: "Map Location (lat, lng)", key: "mapLocation", placeholder: "e.g. 9.5104, 77.6294" },
                 { label: "Phone", key: "phone", placeholder: "e.g. 9876543210" },
               ].map(({ label, key, placeholder }) => (
                 <div key={key} className="space-y-1.5">
@@ -171,7 +172,7 @@ export default function AdminLabs() {
               <TableHead>Location</TableHead>
               <TableHead>Address</TableHead>
               <TableHead>Phone</TableHead>
-              <TableHead className="text-center">Rating</TableHead>
+              <TableHead className="text-center">Map</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -198,9 +199,11 @@ export default function AdminLabs() {
                 <TableCell className="text-muted-foreground text-sm">{lab.address ?? "—"}</TableCell>
                 <TableCell className="text-muted-foreground text-sm">{lab.phone ?? "—"}</TableCell>
                 <TableCell className="text-center">
-                  <Badge variant="secondary" className="gap-1">
-                    <Star className="w-3 h-3 fill-amber-400 text-amber-400" /> {lab.rating.toFixed(1)}
-                  </Badge>
+                  {lab.map_location ? (
+                    <Badge variant="secondary" className="gap-1"><MapPin className="w-3 h-3 text-teal-600" /> Set</Badge>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Not set</span>
+                  )}
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2 justify-end">
@@ -226,7 +229,7 @@ export default function AdminLabs() {
             {[
               { label: "Lab Name *", key: "name", placeholder: "e.g. City Diagnostics" },
               { label: "Location / Area *", key: "area", placeholder: "e.g. Gandhipuram" },
-              { label: "Full Address", key: "address", placeholder: "e.g. 45 Main Rd" },
+              { label: "Full Address", key: "address", placeholder: "e.g. 45 Main Rd" }, { label: "Map Location (lat, lng)", key: "mapLocation", placeholder: "e.g. 9.5104, 77.6294" },
               { label: "Phone", key: "phone", placeholder: "e.g. 9876543210" },
             ].map(({ label, key, placeholder }) => (
               <div key={key} className="space-y-1.5">

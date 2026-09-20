@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, MapPin, Phone, Star, Clock, FlaskConical, Loader2, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, MapPin, Phone, Clock, FlaskConical, Loader2, CheckCircle2 } from "lucide-react";
 import * as api from "../../api";
 import { useRouter } from "../../router/RouterContext";
 import { useStore } from "../../context/StoreContext";
 import { toast } from "sonner";
+import LabMapButton from "./LabMapButton";
 
 interface Props {
   id: string;
@@ -51,7 +52,7 @@ export default function LabDetailPage({ id }: Props) {
           <h1 className="text-xl sm:text-2xl font-bold text-white">{lab.name}</h1>
           <p className="text-white/80 text-sm flex items-center gap-3 mt-0.5">
             <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{lab.area}</span>
-            <span className="flex items-center gap-1"><Star className="w-3.5 h-3.5 fill-white" />{lab.rating.toFixed(1)}</span>
+            <LabMapButton lab={lab} />
           </p>
         </div>
       </div>
