@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/sonner";
 import SplashScreen from "./components/SplashScreen";
 import PullToRefresh from "./components/PullToRefresh";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Calendar, ChevronRight, Clock, MapPin, User, Search, Navigation, Loader2, XCircle, Users, Hospital, Pill, Ambulance, FileText } from "lucide-react";
+import { Calendar, ChevronRight, Clock, MapPin, User, Search, Navigation, Loader2, XCircle, Users, Hospital, Pill, Ambulance, FileText, FlaskConical } from "lucide-react";
 import { useEffect, useRef, useCallback, useState, useState as useMobileState } from "react";
 import { useNearMe } from "./hooks/useNearMe";
 import { loadGoogleMaps } from "./lib/googleMaps";
@@ -28,11 +28,13 @@ import PharmaciesPage from "./pages/patient/PharmaciesPage"; // eslint-disable-l
 import LabsPage from "./pages/patient/LabsPage";
 import LabDetailPage from "./pages/patient/LabDetailPage";
 import LabTrackingPage from "./pages/patient/LabTrackingPage";
+import LabLogin from "./pages/LabLogin";
 import ComingSoonPage from "./pages/patient/ComingSoonPage";
 import PharmacyDetailPage from "./pages/patient/PharmacyDetailPage";
 import PharmacyOwnerLogin from "./pages/PharmacyOwnerLogin";
 import PharmacyOwnerRegister from "./pages/PharmacyOwnerRegister";
 import PharmacyOwnerDashboard from "./pages/PharmacyOwnerDashboard";
+import LabDashboard from "./pages/LabDashboard";
 import AmbulancePage from "./pages/patient/AmbulancePage";
 import PatientHomePage from "./pages/patient/PatientHomePage";
 import ProfilePage from "./pages/patient/ProfilePage";
@@ -279,6 +281,20 @@ function MobileLanding() {
                 <p className="text-gray-500 text-xs mt-1">View and download your records</p>
               </div>
             </button>
+
+            <button
+              type="button"
+              onClick={() => navigate({ path: "/labs" })}
+              className="flex flex-col items-start gap-3 bg-white border border-gray-100 rounded-2xl px-4 py-5 text-left shadow-sm active:bg-gray-50 transition-colors"
+            >
+              <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center">
+                <FlaskConical className="w-5 h-5 text-teal-700" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-gray-900 text-sm">Lab Tests</h2>
+                <p className="text-gray-500 text-xs mt-1">Book a test with home sample collection</p>
+              </div>
+            </button>
           </div>
         </div>
       </div>
@@ -399,6 +415,7 @@ function LandingPage() {
                 <button onClick={() => navigate({ path: "/terms" })} className="text-left hover:text-teal-600 transition-colors">Terms &amp; Conditions</button>
                 <button onClick={() => navigate({ path: "/hospital-admin/login" })} className="text-left hover:text-teal-600 transition-colors">Hospital Admin Login</button>
                 <button onClick={() => navigate({ path: "/pharmacy-owner/login" })} className="text-left hover:text-teal-600 transition-colors">Pharmacy Owner Login</button>
+                <button onClick={() => navigate({ path: "/lab-admin/login" })} className="text-left hover:text-teal-600 transition-colors">Lab Staff Login</button>
               </div>
             </div>
             <div className="flex lg:items-start lg:justify-end"><p className="text-xs text-gray-400">2026 Doctor Booked. All rights reserved.</p></div>
@@ -420,6 +437,7 @@ function AppRoutes() {
       if (route.path === "/privacy") return <PrivacyPage />;
       if (route.path === "/delete-account") return <DeleteAccountPage />;
       if (route.path === "/hospital-admin/login") return <HospitalAdminLogin />;
+      if (route.path === "/lab-admin/login") return <LabLogin />;
       if (route.path === "/pharmacy/login") return <PharmacyLogin />;
       if (route.path === "/patient/hospitals") return <HospitalsPage city={(route as { city?: string }).city} />;
       if (route.path === "/patient/hospital") return <HospitalDoctorsPage id={(route as { id: string }).id} />;
@@ -453,6 +471,7 @@ function AppRoutes() {
     if (user.role === "admin") return <AdminPanel />;
     if (user.role === "hospital_admin") return <HospitalAdminPanel />;
     if (user.role === "pharmacy") return <PharmacyDashboard />;
+    if (user.role === "lab_admin") return <LabDashboard />;
     if (user.role === "doctor") return <DoctorDashboard />;
     if (route.path === "/patient/hospitals") return <HospitalsPage city={(route as { city?: string }).city} />;
     if (route.path === "/patient/hospital")
@@ -487,7 +506,7 @@ function AppRoutes() {
   // hide the nav purely based on route.path when `user` is already set.
   const hideTopNav =
     isAdmin ||
-    (!user && (route.path === "/login" || route.path === "/terms" || route.path === "/privacy" || route.path === "/delete-account" || route.path === "/hospital-admin/login" || route.path === "/pharmacy/login" || route.path === "/pharmacy-owner/login" || route.path === "/pharmacy-owner/register")) ||
+    (!user && (route.path === "/login" || route.path === "/terms" || route.path === "/privacy" || route.path === "/delete-account" || route.path === "/hospital-admin/login" || route.path === "/pharmacy/login" || route.path === "/pharmacy-owner/login" || route.path === "/pharmacy-owner/register" || route.path === "/lab-admin/login")) ||
     (!!user && route.path === "/terms");
 
   return (

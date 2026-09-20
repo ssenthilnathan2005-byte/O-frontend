@@ -258,6 +258,12 @@ export const auth = {
     post<{ token: string; user: AppUser }>("/auth/hospital/set-password", { loginId, newPassword }),
   pharmacyLogin: (code: string, phone: string) =>
     post<{ token: string; user: AppUser }>("/auth/pharmacy/login", { code, phone }),
+  labLogin: (loginId: string, password: string) =>
+    post<{ firstLogin?: boolean; loginId?: string; labId?: string; labName?: string; token?: string; user?: AppUser }>(
+      "/auth/lab/login", { loginId, password }
+    ),
+  labSetPassword: (loginId: string, newPassword: string) =>
+    post<{ token: string; user: AppUser }>("/auth/lab/set-password", { loginId, newPassword }),
 };
 
 
@@ -409,7 +415,7 @@ export const push = {
 };
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-export type UserRole = "patient" | "doctor" | "admin" | "hospital_admin" | "pharmacy" | "pharmacy_owner";
+export type UserRole = "patient" | "doctor" | "admin" | "hospital_admin" | "pharmacy" | "pharmacy_owner" | "lab_admin";
 export interface Hospital {
   id: string; name: string; area: string; address?: string;
   phone?: string; rating: number; gradient: string;
@@ -456,6 +462,7 @@ export type AppUser =
   | { id: string; code: string; doctorId: string; role: "doctor" }
   | { id: string; role: "admin" }
   | { id: string; role: "hospital_admin"; hospitalId: string; hospitalName: string }
+  | { id: string; role: "lab_admin"; labId: string; labName: string }
   | { id: string; code: string; pharmacyStaffId: string; hospitalId: string; hospitalName: string; role: "pharmacy" }
   | { id: string; name: string; email: string; role: "pharmacy_owner"; pharmacyId: string; pharmacyName?: string };
 export interface Stats {
@@ -580,4 +587,21 @@ export const labs = {
   allBookings: () => get<LabBooking[]>("/labs/bookings"),
   updateStatus: (id: string, data: { status: LabBooking["status"]; reportUrl?: string; notes?: string }) =>
     patch<LabBooking>(`/labs/bookings/${id}/status`, data),
+
+  // Admin-only management
+  create: (data: { name: string; area: string; address?: string; phone?: string; rating?: number }) =>
+    post<Lab>("/labs", data),
+  update: (id: string, data: Partial<Lab>) => patch<Lab>(`/labs/${id}`, data),
+  getAdminInfo: (id: string) =>
+    get<{ loginId: string | null; hasAdminAccount: boolean; firstLogin: boolean }>(`/labs/${id}/admin-info`),
+  resetLogin: (id: string, newLoginId?: string) =>
+    post<{ loginId: string | null; hasAdminAccount: boolean }>(`/labs/${id}/reset-login`, newLoginId ? { newLoginId } : undefined),
+
+  // Lab self-management (logged in as lab_admin)
+  myTests: () => get<LabTest[]>("/labs/me/tests"),
+  addTest: (data: { testName: string; category?: string; sampleType?: string; reportHours?: number; description?: string; price: number }) =>
+    post<{ success: boolean; testId: string }>("/labs/me/tests", data),
+  updateMyTest: (testId: string, data: { price?: number; isActive?: boolean }) =>
+    patch<any>(`/labs/me/tests/${testId}`, data),
+  myLabBookings: () => get<LabBooking[]>("/labs/me/bookings"),
 };

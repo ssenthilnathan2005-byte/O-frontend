@@ -3,6 +3,7 @@ import {
   BookOpen,
   Building2,
   CalendarCheck,
+  FlaskConical,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -19,6 +20,7 @@ import AdminAmbulance from "./AdminAmbulance";
 import AdminDashboard from "./AdminDashboard";
 import AdminDoctors from "./AdminDoctors";
 import AdminHospitals from "./AdminHospitals";
+import AdminLabs from "./AdminLabs";
 import AdminPatients from "./AdminPatients";
 import AdminPharmacies from "./AdminPharmacies";
 
@@ -30,6 +32,7 @@ const NAV_ITEMS = [
   { path: "/admin/bookings", label: "Bookings", icon: BookOpen },
   { path: "/admin/pharmacies", label: "Pharmacies", icon: Pill },
   { path: "/admin/ambulance", label: "Ambulance", icon: Ambulance },
+  { path: "/admin/labs", label: "Labs", icon: FlaskConical },
 ] as const;
 
 export default function AdminPanel() {
@@ -51,6 +54,8 @@ export default function AdminPanel() {
         return <AdminPharmacies />;
       case "/admin/ambulance":
         return <AdminAmbulance />;
+      case "/admin/labs":
+        return <AdminLabs />;
       default:
         return <AdminDashboard />;
     }

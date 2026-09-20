@@ -382,7 +382,7 @@ export default function LoginPage({
     navigate({ path: "/" });
   }
 
-  function handleStaffLogin(type: "hospital" | "doctor" | "pharmacy") {
+  function handleStaffLogin(type: "hospital" | "doctor" | "pharmacy" | "lab") {
     setShowStaffOptions(false);
 
     if (type === "hospital") {
@@ -392,6 +392,11 @@ export default function LoginPage({
 
     if (type === "pharmacy") {
       navigate({ path: "/pharmacy/login" });
+      return;
+    }
+
+    if (type === "lab") {
+      navigate({ path: "/lab-admin/login" });
       return;
     }
 
@@ -809,6 +814,13 @@ export default function LoginPage({
                     className="rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-200"
                   >
                     Pharmacy login
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleStaffLogin("lab")}
+                    className="rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-200"
+                  >
+                    Lab admin login
                   </button>
                 </div>
               </div>
