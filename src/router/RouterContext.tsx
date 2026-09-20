@@ -41,6 +41,9 @@ type Route =
   | { path: "/terms" }
   | { path: "/privacy" }
   | { path: "/pharmacies" }
+  | { path: "/labs" }
+  | { path: "/labs/detail"; id: string }
+  | { path: "/labs/track"; bookingId: string }
   | { path: "/pharmacy/detail"; id: string }
   | { path: "/pharmacy-owner/login" }
   | { path: "/pharmacy-owner/register" }
@@ -115,6 +118,9 @@ function getInitialRoute(): Route {
   if (pathname === "/pharmacy-owner/login") return { path: "/pharmacy-owner/login" };
   if (pathname === "/pharmacy-owner/register") return { path: "/pharmacy-owner/register" };
   if (pathname === "/pharmacy-owner/dashboard") return { path: "/pharmacy-owner/dashboard" };
+  if (pathname === "/labs") return { path: "/labs" };
+  if (pathname === "/labs/detail") return { path: "/labs/detail", id: hospitalId };
+  if (pathname === "/labs/track") return { path: "/labs/track", bookingId: params.get("bookingId") ?? "" };
   if (pathname === "/ambulance") return { path: "/ambulance" };
   return { path: "/" };
 }

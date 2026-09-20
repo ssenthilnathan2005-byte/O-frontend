@@ -528,3 +528,56 @@ export const ambulance = {
     status: AmbulanceBooking["status"]; hospitalId?: string; notes?: string;
   }) => req<AmbulanceBooking>("PATCH", `/ambulance/${id}/status`, data),
 };
+
+// ── Labs ──────────────────────────────────────────────────────────────────────
+export interface Lab {
+  id: string; name: string; area: string; address?: string;
+  phone?: string; rating: number; photo_url?: string | null; is_active: boolean;
+}
+export interface LabTest {
+  id: string; name: string; category: string; sample_type: string;
+  report_hours: number; description?: string | null; price?: number;
+}
+export interface LabBooking {
+  id: string;
+  patient_id: string | null;
+  patient_name: string;
+  phone: string;
+  lab_id: string;
+  test_id: string;
+  lab_name?: string;
+  lab_area?: string;
+  test_name?: string;
+  slot_date: string;
+  slot_time: string;
+  collection_type: "home" | "walk_in";
+  address?: string | null;
+  price: number;
+  payment_done: boolean;
+  status: "booked" | "technician_assigned" | "sample_collected" | "processing" | "report_ready" | "cancelled";
+  report_url?: string | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const labs = {
+  list: (params?: { area?: string; q?: string }) => {
+    const qs = new URLSearchParams(params as any).toString();
+    return get<Lab[]>(`/labs${qs ? "?" + qs : ""}`);
+  },
+  get: (id: string) => get<Lab>(`/labs/${id}`),
+  getTests: (id: string) => get<LabTest[]>(`/labs/${id}/tests`),
+  searchCatalog: (q?: string) => get<LabTest[]>(`/labs/tests/catalog${q ? `?q=${encodeURIComponent(q)}` : ""}`),
+
+  book: (data: {
+    patientName: string; phone: string; labId: string; testId: string;
+    slotDate: string; slotTime: string; collectionType?: "home" | "walk_in";
+    address?: string; notes?: string;
+  }) => post<LabBooking>("/labs/bookings", data),
+
+  myBookings: () => get<LabBooking[]>("/labs/bookings/my"),
+  allBookings: () => get<LabBooking[]>("/labs/bookings"),
+  updateStatus: (id: string, data: { status: LabBooking["status"]; reportUrl?: string; notes?: string }) =>
+    patch<LabBooking>(`/labs/bookings/${id}/status`, data),
+};

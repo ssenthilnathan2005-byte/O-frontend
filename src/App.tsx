@@ -25,6 +25,9 @@ import MyTokensPage from "./pages/patient/MyTokensPage";
 import MyPrescriptionsPage from "./pages/patient/MyPrescriptionsPage";
 import TokenTrackerPage from "./pages/patient/TokenTrackerPage";
 import PharmaciesPage from "./pages/patient/PharmaciesPage"; // eslint-disable-line -- kept for quick revert, see ComingSoonPage swap below
+import LabsPage from "./pages/patient/LabsPage";
+import LabDetailPage from "./pages/patient/LabDetailPage";
+import LabTrackingPage from "./pages/patient/LabTrackingPage";
 import ComingSoonPage from "./pages/patient/ComingSoonPage";
 import PharmacyDetailPage from "./pages/patient/PharmacyDetailPage";
 import PharmacyOwnerLogin from "./pages/PharmacyOwnerLogin";
@@ -424,6 +427,9 @@ function AppRoutes() {
       if (route.path === "/pharmacy/detail") return <PharmacyDetailPage id={(route as any).id} />;
       if (route.path === "/pharmacy-owner/login") return <PharmacyOwnerLogin />;
       if (route.path === "/pharmacy-owner/register") return <PharmacyOwnerRegister />;
+      if (route.path === "/labs") return <LabsPage />;
+      if (route.path === "/labs/detail") return <LabDetailPage id={(route as any).id} />;
+      if (route.path === "/labs/track") return <LabTrackingPage bookingId={(route as any).bookingId} />;
       if (route.path === "/ambulance") return <ComingSoonPage title="Ambulance" />; // was: <AmbulancePage />
       if (route.path === "/login") {
         const loginRoute = route as {
@@ -454,6 +460,9 @@ function AppRoutes() {
     if (route.path === "/pharmacies") return <ComingSoonPage title="Pharmacies" />; // was: <PharmaciesPage />
     if (route.path === "/pharmacy/detail") return <PharmacyDetailPage id={(route as any).id} />;
     if (route.path === "/pharmacy-owner/dashboard") return <PharmacyOwnerDashboard />;
+    if (route.path === "/labs") return <LabsPage />;
+    if (route.path === "/labs/detail") return <LabDetailPage id={(route as any).id} />;
+    if (route.path === "/labs/track") return <LabTrackingPage bookingId={(route as any).bookingId} />;
     if (route.path === "/ambulance") return <ComingSoonPage title="Ambulance" />; // was: <AmbulancePage />
     if (route.path === "/patient/profile") return <ProfilePage />;
     if (route.path === "/patient/tokens") return <MyTokensPage />;
