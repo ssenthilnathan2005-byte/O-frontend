@@ -152,7 +152,7 @@ function LabBookingDialog({
           )}
 
           <p className="text-xs text-gray-500 mb-5">
-            {booked.slot_date} · {booked.slot_time}
+            {booked.slot_date} · {api.labSessionLabel(booked.slot_time)} session
           </p>
 
           <button
@@ -179,7 +179,7 @@ function LabBookingDialog({
     d.setDate(d.getDate() + i);
     return d.toISOString().split("T")[0];
   });
-  const timeSlots = ["07:00 AM - 09:00 AM", "09:00 AM - 11:00 AM", "11:00 AM - 01:00 PM", "04:00 PM - 06:00 PM"];
+  const timeSlots = [{ key: "morning", label: "Morning" }, { key: "afternoon", label: "Afternoon" }];
 
   async function handleSubmit() {
     setError("");
@@ -187,7 +187,7 @@ function LabBookingDialog({
       setError("Please enter a valid name and 10-digit phone number.");
       return;
     }
-    if (!slotDate || !slotTime) { setError("Please select a date and time slot."); return; }
+    if (!slotDate || !slotTime) { setError("Please select a date and session."); return; }
     if (collectionType === "home" && !address.trim()) { setError("Please enter your address for home collection."); return; }
 
     setSubmitting(true);
@@ -235,14 +235,14 @@ function LabBookingDialog({
           </div>
 
           <div>
-            <label className="text-xs font-medium text-gray-600 mb-2 block">Select Time Slot</label>
+            <label className="text-xs font-medium text-gray-600 mb-2 block">Select Session</label>
             <div className="grid grid-cols-2 gap-2">
               {timeSlots.map((t) => (
-                <button key={t} type="button" onClick={() => setSlotTime(t)}
+                <button key={t.key} type="button" onClick={() => setSlotTime(t.key)}
                   className={`px-3 py-2 rounded-lg border text-xs font-medium ${
-                    slotTime === t ? "border-teal-500 bg-teal-50 text-teal-700" : "border-gray-200 text-gray-600"
+                    slotTime === t.key ? "border-teal-500 bg-teal-50 text-teal-700" : "border-gray-200 text-gray-600"
                   }`}>
-                  {t}
+                  {t.label}
                 </button>
               ))}
             </div>

@@ -168,7 +168,7 @@ export default function MyTokensPage() {
                           <Calendar className="w-3.5 h-3.5" /> {b.slot_date}
                         </span>
                         <span className="flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5" /> {b.slot_time}
+                          <Clock className="w-3.5 h-3.5" /> {api.labSessionLabel(b.slot_time)}
                         </span>
                       </div>
                     </div>

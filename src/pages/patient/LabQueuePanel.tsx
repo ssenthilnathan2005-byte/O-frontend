@@ -22,12 +22,13 @@ export default function LabQueuePanel({ booking }: { booking: api.LabBooking }) 
   const labId = booking.lab_id;
   const testId = booking.test_id;
   const slotDate = booking.slot_date;
+  const slotTime = booking.slot_time;
 
   useEffect(() => {
     let mounted = true;
     const load = async () => {
       try {
-        const s = await api.labs.getSession(labId, testId, slotDate);
+        const s = await api.labs.getSession(labId, testId, slotDate, slotTime);
         if (mounted) setSession(s);
       } catch {
         // keep last known state
@@ -35,11 +36,11 @@ export default function LabQueuePanel({ booking }: { booking: api.LabBooking }) 
     };
     load();
     const interval = setInterval(load, 10_000);
-    const closeSocket = api.connectTokenSocket(`${labId}_${testId}_${slotDate}`, (p: any) => {
+    const closeSocket = api.connectTokenSocket(`${labId}_${testId}_${slotDate}_${slotTime}`, (p: any) => {
       if (mounted && p?.type === "state_update" && p.state) setSession(p.state as api.LabSessionState);
     });
     return () => { mounted = false; clearInterval(interval); closeSocket(); };
-  }, [labId, testId, slotDate]);
+  }, [labId, testId, slotDate, slotTime]);
 
   const myToken = booking.token_number ?? null;
   if (myToken == null) return null;
@@ -61,7 +62,7 @@ export default function LabQueuePanel({ booking }: { booking: api.LabBooking }) 
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-5">
-      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Live Queue</p>
+      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Live Queue · {api.labSessionLabel(slotTime)}</p>
       {banner && (
         <div className={`rounded-xl border px-4 py-3 text-sm font-semibold text-center mb-4 ${cls}`}>{banner}</div>
       )}

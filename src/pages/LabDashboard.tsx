@@ -129,7 +129,7 @@ function BookingsTab() {
               <TableHead>Token</TableHead>
               <TableHead>Patient</TableHead>
               <TableHead>Test</TableHead>
-              <TableHead>Date / Time</TableHead>
+              <TableHead>Date / Session</TableHead>
               <TableHead>Collection</TableHead>
               <TableHead>Price</TableHead>
               <TableHead>Status</TableHead>
@@ -144,7 +144,7 @@ function BookingsTab() {
                   <p className="text-xs text-gray-400">{b.phone}</p>
                 </TableCell>
                 <TableCell className="text-sm">{b.test_name}</TableCell>
-                <TableCell className="text-sm text-gray-500">{b.slot_date} · {b.slot_time}</TableCell>
+                <TableCell className="text-sm text-gray-500">{b.slot_date} · {api.labSessionLabel(b.slot_time)}</TableCell>
                 <TableCell>
                   <Badge variant="secondary" className="text-xs">
                     {b.collection_type === "home" ? "Home" : "Walk-in"}

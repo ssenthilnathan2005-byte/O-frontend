@@ -569,6 +569,11 @@ export interface LabBooking {
   updated_at: string;
 }
 
+export const LAB_SESSION_LABELS: Record<string, string> = { morning: "Morning", afternoon: "Afternoon" };
+export function labSessionLabel(v?: string | null): string {
+  return (v && LAB_SESSION_LABELS[v]) || v || "";
+}
+
 export interface LabSessionState {
   sessionId: string;
   labId: string;
@@ -618,8 +623,8 @@ export const labs = {
   myLabBookings: () => get<LabBooking[]>("/labs/me/bookings"),
 
   // Token queue
-  getSession: (labId: string, testId: string, date: string) =>
-    get<LabSessionState | null>(`/labs/sessions/${labId}/${testId}/${date}`),
-  sessionAction: (labId: string, testId: string, date: string, action: "call" | "complete" | "skip", token?: number) =>
-    post<LabSessionState>(`/labs/sessions/${labId}/${testId}/${date}/${action}`, token != null ? { token } : {}),
+  getSession: (labId: string, testId: string, date: string, session: string) =>
+    get<LabSessionState | null>(`/labs/sessions/${labId}/${testId}/${date}/${session}`),
+  sessionAction: (labId: string, testId: string, date: string, session: string, action: "call" | "complete" | "skip", token?: number) =>
+    post<LabSessionState>(`/labs/sessions/${labId}/${testId}/${date}/${session}/${action}`, token != null ? { token } : {}),
 };

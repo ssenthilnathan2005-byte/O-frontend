@@ -12,8 +12,8 @@ const CHIP: Record<string, string> = {
   purple: "bg-purple-100 text-purple-700 border-purple-300",
 };
 
-function GroupCard({ labId, testId, date, testName, bookings }: {
-  labId: string; testId: string; date: string; testName: string; bookings: LabBooking[];
+function GroupCard({ labId, testId, date, session: sess, testName, bookings }: {
+  labId: string; testId: string; date: string; session: string; testName: string; bookings: LabBooking[];
 }) {
   const [session, setSession] = useState<api.LabSessionState | null>(null);
   const [busy, setBusy] = useState(false);
@@ -21,19 +21,19 @@ function GroupCard({ labId, testId, date, testName, bookings }: {
   useEffect(() => {
     let mounted = true;
     const load = () =>
-      api.labs.getSession(labId, testId, date).then((s) => { if (mounted) setSession(s); }).catch(() => {});
+      api.labs.getSession(labId, testId, date, sess).then((s) => { if (mounted) setSession(s); }).catch(() => {});
     load();
     const t = setInterval(load, 10_000);
-    const close = api.connectTokenSocket(`${labId}_${testId}_${date}`, (p: any) => {
+    const close = api.connectTokenSocket(`${labId}_${testId}_${date}_${sess}`, (p: any) => {
       if (mounted && p?.type === "state_update" && p.state) setSession(p.state as api.LabSessionState);
     });
     return () => { mounted = false; clearInterval(t); close(); };
-  }, [labId, testId, date]);
+  }, [labId, testId, date, sess]);
 
   async function act(action: "call" | "complete" | "skip", token?: number) {
     setBusy(true);
     try {
-      setSession(await api.labs.sessionAction(labId, testId, date, action, token));
+      setSession(await api.labs.sessionAction(labId, testId, date, sess, action, token));
     } catch (err: any) {
       toast.error(err.message || "Queue update failed");
     } finally {
@@ -50,7 +50,7 @@ function GroupCard({ labId, testId, date, testName, bookings }: {
       <div className="flex items-center justify-between mb-3">
         <div>
           <p className="font-semibold text-gray-900 text-sm">{testName}</p>
-          <p className="text-xs text-gray-400">{date} · {nums.length} tokens</p>
+          <p className="text-xs text-gray-400">{date} · {api.labSessionLabel(sess)} · {nums.length} tokens</p>
         </div>
         <div className="flex gap-4 text-center">
           <div>
@@ -103,10 +103,10 @@ export default function LabQueueBoard({ bookings }: { bookings: LabBooking[] }) 
   const groups = new Map<string, LabBooking[]>();
   for (const b of bookings) {
     if (b.status === "cancelled" || b.token_number == null || b.slot_date < cutoff) continue;
-    const k = `${b.lab_id}|${b.test_id}|${b.slot_date}`;
+    const k = `${b.lab_id}|${b.test_id}|${b.slot_date}|${b.slot_time}`;
     groups.set(k, [...(groups.get(k) ?? []), b]);
   }
-  const list = Array.from(groups.values()).sort((a, b) => a[0].slot_date.localeCompare(b[0].slot_date));
+  const list = Array.from(groups.values()).sort((a, b) => a[0].slot_date.localeCompare(b[0].slot_date) || (a[0].slot_time === b[0].slot_time ? 0 : a[0].slot_time === "morning" ? -1 : 1));
   if (list.length === 0) return null;
 
   return (
@@ -114,10 +114,11 @@ export default function LabQueueBoard({ bookings }: { bookings: LabBooking[] }) 
       <h2 className="font-semibold text-gray-900 text-sm mb-3">Live Queues</h2>
       {list.map((g) => (
         <GroupCard
-          key={`${g[0].test_id}|${g[0].slot_date}`}
+          key={`${g[0].test_id}|${g[0].slot_date}|${g[0].slot_time}`}
           labId={g[0].lab_id}
           testId={g[0].test_id}
           date={g[0].slot_date}
+          session={g[0].slot_time}
           testName={g[0].test_name || "Lab Test"}
           bookings={g}
         />

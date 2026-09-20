@@ -79,7 +79,7 @@ export default function LabTrackingPage({ bookingId }: Props) {
         </div>
         <div className="grid grid-cols-2 gap-2 text-xs text-gray-500 mt-3 pt-3 border-t border-gray-100">
           <span>Date: <span className="text-gray-800 font-medium">{booking.slot_date}</span></span>
-          <span>Time: <span className="text-gray-800 font-medium">{booking.slot_time}</span></span>
+          <span>Session: <span className="text-gray-800 font-medium">{api.labSessionLabel(booking.slot_time)}</span></span>
           <span>Type: <span className="text-gray-800 font-medium">{booking.collection_type === "home" ? "Home Collection" : "Walk-in"}</span></span>
           <span>Amount: <span className="text-gray-800 font-medium">₹{booking.price}</span></span>
         </div>
