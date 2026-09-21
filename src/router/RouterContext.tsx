@@ -38,6 +38,12 @@ type Route =
   | { path: "/hospital-admin/patients" }
   | { path: "/hospital-admin/pharmacy" }
   | { path: "/hospital-admin/inward" }
+  | { path: "/hospital-admin/ipd" }
+  | { path: "/hospital-admin/lab" }
+  | { path: "/hospital-admin/nursing" }
+  | { path: "/hospital-admin/wards" }
+  | { path: "/hospital-admin/inventory" }
+  | { path: "/hospital-admin/hr" }
   | { path: "/pharmacy/login" }
   | { path: "/terms" }
   | { path: "/privacy" }
@@ -110,6 +116,12 @@ function getInitialRoute(): Route {
   if (pathname === "/hospital-admin/patients") return { path: "/hospital-admin/patients" };
   if (pathname === "/hospital-admin/pharmacy") return { path: "/hospital-admin/pharmacy" };
   if (pathname === "/hospital-admin/inward") return { path: "/hospital-admin/inward" };
+  if (pathname === "/hospital-admin/ipd") return { path: "/hospital-admin/ipd" };
+  if (pathname === "/hospital-admin/lab") return { path: "/hospital-admin/lab" };
+  if (pathname === "/hospital-admin/nursing") return { path: "/hospital-admin/nursing" };
+  if (pathname === "/hospital-admin/wards") return { path: "/hospital-admin/wards" };
+  if (pathname === "/hospital-admin/inventory") return { path: "/hospital-admin/inventory" };
+  if (pathname === "/hospital-admin/hr") return { path: "/hospital-admin/hr" };
   if (pathname === "/hospital-admin") return { path: "/hospital-admin" };
   if (pathname === "/pharmacy/login") return { path: "/pharmacy/login" };
   if (pathname === "/terms") return { path: "/terms" };
