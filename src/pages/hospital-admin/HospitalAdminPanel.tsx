@@ -1,4 +1,4 @@
-import { BedDouble, Building2, LayoutDashboard, LogOut, Menu, UserCog, Users2, X } from "lucide-react";
+import { Activity, BedDouble, Building2, ClipboardList, FlaskConical, LayoutDashboard, LogOut, Menu, Package, Pill, Stethoscope, UserCog, Users2, X } from "lucide-react";
 import { useState } from "react";
 import { useStore } from "../../context/StoreContext";
 import { useRouter } from "../../router/RouterContext";
@@ -7,13 +7,23 @@ import HADoctors from "./HADoctors";
 import HAPatients from "./HAPatients";
 import HAPharmacy from "./HAPharmacy";
 import HAInward from "./HAInward";
+import HAWards from "./HAWards";
+import HAHR from "./HAHR";
+import HAInventory from "./HAInventory";
+import HALab from "./HALab";
+import HANursing from "./HANursing";
 
 const NAV_ITEMS = [
   { path: "/hospital-admin", label: "Dashboard", icon: LayoutDashboard },
-  { path: "/hospital-admin/doctors", label: "Doctors", icon: UserCog },
   { path: "/hospital-admin/patients", label: "Live Patients", icon: Users2 },
-  { path: "/hospital-admin/pharmacy", label: "Pharmacy", icon: Building2 },
-  { path: "/hospital-admin/inward", label: "Inward", icon: BedDouble },
+  { path: "/hospital-admin/ipd", label: "IPD / Inward", icon: BedDouble },
+  { path: "/hospital-admin/doctors", label: "Doctors", icon: UserCog },
+  { path: "/hospital-admin/lab", label: "Laboratory", icon: FlaskConical },
+  { path: "/hospital-admin/pharmacy", label: "Pharmacy", icon: Pill },
+  { path: "/hospital-admin/nursing", label: "Nursing", icon: Activity },
+  { path: "/hospital-admin/wards", label: "Beds & Wards", icon: Stethoscope },
+  { path: "/hospital-admin/inventory", label: "Inventory", icon: Package },
+  { path: "/hospital-admin/hr", label: "HR / Staff", icon: ClipboardList },
 ] as const;
 
 export default function HospitalAdminPanel() {
@@ -24,10 +34,15 @@ export default function HospitalAdminPanel() {
   const hospitalName = user && user.role === "hospital_admin" ? user.hospitalName : "Hospital Admin";
 
   function renderContent() {
-    if (route.path === "/hospital-admin/inward") return <HAInward />;
+    if (route.path === "/hospital-admin/ipd") return <HAInward />;
     if (route.path === "/hospital-admin/patients") return <HAPatients />;
     if (route.path === "/hospital-admin/pharmacy") return <HAPharmacy />;
     if (route.path === "/hospital-admin/doctors") return <HADoctors />;
+    if (route.path === "/hospital-admin/lab") return <HALab />;
+    if (route.path === "/hospital-admin/nursing") return <HANursing />;
+    if (route.path === "/hospital-admin/wards") return <HAWards />;
+    if (route.path === "/hospital-admin/inventory") return <HAInventory />;
+    if (route.path === "/hospital-admin/hr") return <HAHR />;
     return <HADashboard />;
   }
 
