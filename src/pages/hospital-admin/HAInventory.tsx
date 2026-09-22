@@ -3,6 +3,7 @@ import { useStore } from "../../context/StoreContext";
 import { Package, Plus, X, Pencil, Trash2, ArrowUp, ArrowDown, History, Download } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { getToken } from "../../api";
+import { downloadFile } from "../../lib/downloadFile";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
@@ -82,14 +83,7 @@ export default function HAInventory() {
       });
       if (!res.ok) throw new Error("Export failed");
       const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `inventory_${exportFrom}_to_${exportTo}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
+      await downloadFile(blob, `inventory_${exportFrom}_to_${exportTo}.xlsx`);
       setShowExport(false);
     } catch {
       alert("Export failed. Please try again.");
