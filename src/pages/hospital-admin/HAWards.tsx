@@ -27,6 +27,19 @@ type Bed = {
 
 const EMPTY_OCCUPY = { patientName:"", phone:"", age:"", gender:"", admittingDoctorName:"", diagnosis:"", notes:"" };
 
+type Vitals = {
+  id: string; temperature: number | null; pulse: number | null;
+  bp_systolic: number | null; bp_diastolic: number | null;
+  spo2: number | null; resp_rate: number | null;
+  recorded_by: string | null; recorded_at: string;
+};
+type NoteEntry = {
+  id: string; note: string; shift: string;
+  recorded_by: string | null; recorded_at: string;
+};
+const EMPTY_VITALS = { temperature:"", pulse:"", bpSystolic:"", bpDiastolic:"", spo2:"", respRate:"", recordedBy:"" };
+const EMPTY_NOTE = { note:"", shift:"day", recordedBy:"" };
+
 const WARD_TYPES = ["general", "icu", "emergency", "maternity", "paediatric", "surgical", "orthopaedic", "private"];
 
 const STATUS_COLORS: Record<string, string> = {
@@ -49,6 +62,15 @@ export default function HAWards() {
   const [occupyTarget, setOccupyTarget] = useState<{ wardId: string; bed: Bed } | null>(null);
   const [occupyForm, setOccupyForm] = useState({ ...EMPTY_OCCUPY });
   const [detailsTarget, setDetailsTarget] = useState<{ wardId: string; bed: Bed } | null>(null);
+  const [vitals, setVitals] = useState<Vitals[]>([]);
+  const [notes, setNotes] = useState<NoteEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [showVitalsAdd, setShowVitalsAdd] = useState(false);
+  const [showNoteAdd, setShowNoteAdd] = useState(false);
+  const [vitalsForm, setVitalsForm] = useState({ ...EMPTY_VITALS });
+  const [noteForm, setNoteForm] = useState({ ...EMPTY_NOTE });
+  const [vitalsSaving, setVitalsSaving] = useState(false);
+  const [noteSaving, setNoteSaving] = useState(false);
 
   async function api(path: string, method = "GET", body?: any) {
     const res = await fetch(`${BASE}${path}`, {
@@ -129,12 +151,64 @@ export default function HAWards() {
     } catch {} finally { setBedLoading(null); }
   }
 
+  async function loadHistory(bed: Bed) {
+    if (!bed.inward_id) { setVitals([]); setNotes([]); return; }
+    setHistoryLoading(true);
+    try {
+      const [v, n] = await Promise.all([
+        api(`/nursing/vitals?patientId=${bed.inward_id}`),
+        api(`/nursing/notes?patientId=${bed.inward_id}`),
+      ]);
+      setVitals(Array.isArray(v) ? v : []);
+      setNotes(Array.isArray(n) ? n : []);
+    } catch { setVitals([]); setNotes([]); } finally { setHistoryLoading(false); }
+  }
+
+  async function handleAddVitalsInline() {
+    if (!detailsTarget) return;
+    const { wardId, bed } = detailsTarget;
+    setVitalsSaving(true);
+    try {
+      await api("/nursing/vitals", "POST", {
+        patientName: bed.occupant_name || bed.patient_name,
+        patientId: bed.inward_id, bedId: bed.id, wardId,
+        temperature: vitalsForm.temperature ? Number(vitalsForm.temperature) : null,
+        pulse: vitalsForm.pulse ? Number(vitalsForm.pulse) : null,
+        bpSystolic: vitalsForm.bpSystolic ? Number(vitalsForm.bpSystolic) : null,
+        bpDiastolic: vitalsForm.bpDiastolic ? Number(vitalsForm.bpDiastolic) : null,
+        spo2: vitalsForm.spo2 ? Number(vitalsForm.spo2) : null,
+        respRate: vitalsForm.respRate ? Number(vitalsForm.respRate) : null,
+        recordedBy: vitalsForm.recordedBy || null,
+      });
+      setVitalsForm({ ...EMPTY_VITALS }); setShowVitalsAdd(false);
+      await loadHistory(bed);
+    } catch {} finally { setVitalsSaving(false); }
+  }
+
+  async function handleAddNoteInline() {
+    if (!detailsTarget || !noteForm.note.trim()) return;
+    const { wardId, bed } = detailsTarget;
+    setNoteSaving(true);
+    try {
+      await api("/nursing/notes", "POST", {
+        patientName: bed.occupant_name || bed.patient_name,
+        patientId: bed.inward_id, bedId: bed.id, wardId,
+        note: noteForm.note, shift: noteForm.shift, recordedBy: noteForm.recordedBy || null,
+      });
+      setNoteForm({ ...EMPTY_NOTE }); setShowNoteAdd(false);
+      await loadHistory(bed);
+    } catch {} finally { setNoteSaving(false); }
+  }
+
   function handleBedClick(wardId: string, bed: Bed) {
     if (bed.status === "available") {
       setOccupyForm({ ...EMPTY_OCCUPY });
       setOccupyTarget({ wardId, bed });
     } else if (bed.status === "occupied") {
       setDetailsTarget({ wardId, bed });
+      setShowVitalsAdd(false); setShowNoteAdd(false);
+      setVitalsForm({ ...EMPTY_VITALS }); setNoteForm({ ...EMPTY_NOTE });
+      loadHistory(bed);
     } else {
       handleReady(wardId, bed.id);
     }
@@ -342,7 +416,7 @@ export default function HAWards() {
       {/* Bed Details Modal */}
       {detailsTarget && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b">
               <h2 className="font-semibold text-lg">Bed {detailsTarget.bed.bed_number}</h2>
               <button onClick={() => setDetailsTarget(null)}><X className="w-4 h-4" /></button>
@@ -368,6 +442,109 @@ export default function HAWards() {
                 <p><span className="text-gray-500">Admitted:</span> {new Date(detailsTarget.bed.occupant_admitted_at).toLocaleString()}</p>
               )}
             </div>
+
+            <div className="px-6 pb-2 space-y-3 border-t pt-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-gray-700">Vitals</h3>
+                <button onClick={() => setShowVitalsAdd(s => !s)} className="text-xs text-teal-600 font-medium hover:underline">
+                  {showVitalsAdd ? "Cancel" : "+ Add"}
+                </button>
+              </div>
+              {showVitalsAdd && (
+                <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input type="number" placeholder="Temp (°F)" value={vitalsForm.temperature}
+                      onChange={e => setVitalsForm(f => ({ ...f, temperature: e.target.value }))} />
+                    <Input type="number" placeholder="Pulse (bpm)" value={vitalsForm.pulse}
+                      onChange={e => setVitalsForm(f => ({ ...f, pulse: e.target.value }))} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input type="number" placeholder="BP Systolic" value={vitalsForm.bpSystolic}
+                      onChange={e => setVitalsForm(f => ({ ...f, bpSystolic: e.target.value }))} />
+                    <Input type="number" placeholder="BP Diastolic" value={vitalsForm.bpDiastolic}
+                      onChange={e => setVitalsForm(f => ({ ...f, bpDiastolic: e.target.value }))} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input type="number" placeholder="SpO2 (%)" value={vitalsForm.spo2}
+                      onChange={e => setVitalsForm(f => ({ ...f, spo2: e.target.value }))} />
+                    <Input type="number" placeholder="Resp Rate" value={vitalsForm.respRate}
+                      onChange={e => setVitalsForm(f => ({ ...f, respRate: e.target.value }))} />
+                  </div>
+                  <Input placeholder="Recorded by (nurse name)" value={vitalsForm.recordedBy}
+                    onChange={e => setVitalsForm(f => ({ ...f, recordedBy: e.target.value }))} />
+                  <button onClick={handleAddVitalsInline} disabled={vitalsSaving}
+                    className="w-full px-3 py-1.5 rounded-md text-xs bg-teal-600 hover:bg-teal-700 text-white font-medium disabled:opacity-50">
+                    {vitalsSaving ? "Saving..." : "Save Vitals"}
+                  </button>
+                </div>
+              )}
+              {historyLoading ? (
+                <p className="text-xs text-gray-400">Loading...</p>
+              ) : vitals.length === 0 ? (
+                <p className="text-xs text-gray-400">No vitals recorded yet.</p>
+              ) : (
+                <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                  {vitals.slice(0, 5).map(v => (
+                    <div key={v.id} className="text-xs bg-gray-50 rounded px-2 py-1.5">
+                      <div className="flex flex-wrap gap-x-3 text-gray-600">
+                        {v.temperature != null && <span>{v.temperature}°F</span>}
+                        {v.pulse != null && <span>{v.pulse} bpm</span>}
+                        {(v.bp_systolic != null && v.bp_diastolic != null) && <span>BP {v.bp_systolic}/{v.bp_diastolic}</span>}
+                        {v.spo2 != null && <span>SpO2 {v.spo2}%</span>}
+                        {v.resp_rate != null && <span>RR {v.resp_rate}</span>}
+                      </div>
+                      <p className="text-[10px] text-gray-400 mt-0.5">
+                        {new Date(v.recorded_at).toLocaleString()}{v.recorded_by ? ` · ${v.recorded_by}` : ""}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 pb-4 space-y-3 border-t pt-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-gray-700">Notes</h3>
+                <button onClick={() => setShowNoteAdd(s => !s)} className="text-xs text-teal-600 font-medium hover:underline">
+                  {showNoteAdd ? "Cancel" : "+ Add"}
+                </button>
+              </div>
+              {showNoteAdd && (
+                <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                  <select value={noteForm.shift} onChange={e => setNoteForm(f => ({ ...f, shift: e.target.value }))}
+                    className="w-full border rounded-md px-2 py-1.5 text-xs bg-white">
+                    <option value="day">Day shift</option>
+                    <option value="night">Night shift</option>
+                  </select>
+                  <textarea value={noteForm.note} onChange={e => setNoteForm(f => ({ ...f, note: e.target.value }))}
+                    rows={2} placeholder="Observation, condition update..."
+                    className="w-full border rounded-md px-2 py-1.5 text-xs bg-white resize-none" />
+                  <Input placeholder="Recorded by (nurse name)" value={noteForm.recordedBy}
+                    onChange={e => setNoteForm(f => ({ ...f, recordedBy: e.target.value }))} />
+                  <button onClick={handleAddNoteInline} disabled={noteSaving || !noteForm.note.trim()}
+                    className="w-full px-3 py-1.5 rounded-md text-xs bg-teal-600 hover:bg-teal-700 text-white font-medium disabled:opacity-50">
+                    {noteSaving ? "Saving..." : "Save Note"}
+                  </button>
+                </div>
+              )}
+              {historyLoading ? (
+                <p className="text-xs text-gray-400">Loading...</p>
+              ) : notes.length === 0 ? (
+                <p className="text-xs text-gray-400">No notes yet.</p>
+              ) : (
+                <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                  {notes.slice(0, 5).map(n => (
+                    <div key={n.id} className="text-xs bg-gray-50 rounded px-2 py-1.5">
+                      <p className="text-gray-600">{n.note}</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5 capitalize">
+                        {n.shift} shift · {new Date(n.recorded_at).toLocaleString()}{n.recorded_by ? ` · ${n.recorded_by}` : ""}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="px-6 py-4 border-t flex gap-3 justify-end">
               <button onClick={() => setDetailsTarget(null)}
                 className="px-4 py-2 rounded-lg text-sm border hover:bg-gray-50 transition-colors">Close</button>

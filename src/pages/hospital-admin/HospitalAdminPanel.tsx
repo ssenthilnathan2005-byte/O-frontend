@@ -11,7 +11,6 @@ import HAWards from "./HAWards";
 import HAHR from "./HAHR";
 import HAInventory from "./HAInventory";
 import HALab from "./HALab";
-import HANursing from "./HANursing";
 
 const NAV_ITEMS = [
   { path: "/hospital-admin", label: "Dashboard", icon: LayoutDashboard },
@@ -20,7 +19,6 @@ const NAV_ITEMS = [
   { path: "/hospital-admin/doctors", label: "Doctors", icon: UserCog },
   { path: "/hospital-admin/lab", label: "Laboratory", icon: FlaskConical },
   { path: "/hospital-admin/pharmacy", label: "Pharmacy", icon: Pill },
-  { path: "/hospital-admin/nursing", label: "Nursing", icon: Activity },
   { path: "/hospital-admin/wards", label: "Beds & Wards", icon: Stethoscope },
   { path: "/hospital-admin/inventory", label: "Inventory", icon: Package },
   { path: "/hospital-admin/hr", label: "HR / Staff", icon: ClipboardList },
@@ -39,7 +37,6 @@ export default function HospitalAdminPanel() {
     if (route.path === "/hospital-admin/pharmacy") return <HAPharmacy />;
     if (route.path === "/hospital-admin/doctors") return <HADoctors />;
     if (route.path === "/hospital-admin/lab") return <HALab />;
-    if (route.path === "/hospital-admin/nursing") return <HANursing />;
     if (route.path === "/hospital-admin/wards") return <HAWards />;
     if (route.path === "/hospital-admin/inventory") return <HAInventory />;
     if (route.path === "/hospital-admin/hr") return <HAHR />;

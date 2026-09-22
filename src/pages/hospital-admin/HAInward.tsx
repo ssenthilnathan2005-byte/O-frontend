@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, Fragment } from "react";
 import * as api from "../../api";
 import { useStore } from "../../context/StoreContext";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { BedDouble, Plus, X, Pencil, LogOut } from "lucide-react";
+import { BedDouble, Plus, X, Pencil, LogOut, ChevronDown, ChevronUp, Thermometer, HeartPulse } from "lucide-react";
 
 type InwardPatient = {
   id: string; patient_name: string; phone: string | null; age: number | null;
@@ -31,12 +31,27 @@ export default function HAInward() {
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [history, setHistory] = useState<Record<string, { vitals: any[]; notes: any[] }>>({});
+  const [historyLoading, setHistoryLoading] = useState<string | null>(null);
 
   const hospitalId = user?.role === "hospital_admin" ? (user as any).hospitalId : "";
   const myDoctors = doctors.filter((d: any) => d.hospitalId === hospitalId);
 
   async function load() {
     try { setPatients(await api.inward.list()); } catch (_) {}
+  }
+
+  async function toggleHistory(id: string) {
+    if (expandedId === id) { setExpandedId(null); return; }
+    setExpandedId(id);
+    if (!history[id]) {
+      setHistoryLoading(id);
+      try {
+        const [v, n] = await Promise.all([api.nursing.listVitals(id), api.nursing.listNotes(id)]);
+        setHistory(h => ({ ...h, [id]: { vitals: Array.isArray(v) ? v : [], notes: Array.isArray(n) ? n : [] } }));
+      } catch { setHistory(h => ({ ...h, [id]: { vitals: [], notes: [] } })); } finally { setHistoryLoading(null); }
+    }
   }
 
   useEffect(() => { load(); }, []);
@@ -120,7 +135,8 @@ export default function HAInward() {
               <tr><td colSpan={7} className="text-center py-10 text-muted-foreground">No {tab} patients</td></tr>
             )}
             {filtered.map(p => (
-              <tr key={p.id} className="border-t hover:bg-muted/20 transition-colors">
+              <Fragment key={p.id}>
+              <tr className="border-t hover:bg-muted/20 transition-colors">
                 <td className="px-4 py-3">
                   <p className="font-medium">{p.patient_name}</p>
                   {p.phone && <p className="text-xs text-muted-foreground">{p.phone}</p>}
@@ -140,6 +156,9 @@ export default function HAInward() {
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex gap-2">
+                    <button onClick={() => toggleHistory(p.id)} className="p-1.5 rounded hover:bg-muted transition-colors" title="Vitals & notes">
+                      {expandedId === p.id ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
+                    </button>
                     <button onClick={() => openEdit(p)} className="p-1.5 rounded hover:bg-muted transition-colors">
                       <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
                     </button>
@@ -151,6 +170,58 @@ export default function HAInward() {
                   </div>
                 </td>
               </tr>
+              {expandedId === p.id && (
+                <tr className="border-t bg-muted/10">
+                  <td colSpan={7} className="px-4 py-3">
+                    {historyLoading === p.id ? (
+                      <p className="text-xs text-muted-foreground">Loading history...</p>
+                    ) : (
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs font-semibold text-muted-foreground mb-1.5">Vitals</p>
+                          {(history[p.id]?.vitals.length ?? 0) === 0 ? (
+                            <p className="text-xs text-muted-foreground">No vitals recorded.</p>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {history[p.id].vitals.slice(0, 5).map((v: any) => (
+                                <div key={v.id} className="text-xs bg-background rounded px-2 py-1.5 border">
+                                  <div className="flex flex-wrap gap-x-3 text-muted-foreground">
+                                    {v.temperature != null && <span className="flex items-center gap-1"><Thermometer className="w-3 h-3" /> {v.temperature}°F</span>}
+                                    {v.pulse != null && <span className="flex items-center gap-1"><HeartPulse className="w-3 h-3" /> {v.pulse} bpm</span>}
+                                    {(v.bp_systolic != null && v.bp_diastolic != null) && <span>BP {v.bp_systolic}/{v.bp_diastolic}</span>}
+                                    {v.spo2 != null && <span>SpO2 {v.spo2}%</span>}
+                                  </div>
+                                  <p className="text-[10px] text-muted-foreground/70 mt-0.5">
+                                    {new Date(v.recorded_at).toLocaleString()}{v.recorded_by ? ` · ${v.recorded_by}` : ""}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-muted-foreground mb-1.5">Notes</p>
+                          {(history[p.id]?.notes.length ?? 0) === 0 ? (
+                            <p className="text-xs text-muted-foreground">No notes recorded.</p>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {history[p.id].notes.slice(0, 5).map((n: any) => (
+                                <div key={n.id} className="text-xs bg-background rounded px-2 py-1.5 border">
+                                  <p className="text-muted-foreground">{n.note}</p>
+                                  <p className="text-[10px] text-muted-foreground/70 mt-0.5 capitalize">
+                                    {n.shift} shift · {new Date(n.recorded_at).toLocaleString()}{n.recorded_by ? ` · ${n.recorded_by}` : ""}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              )}
+              </Fragment>
             ))}
           </tbody>
         </table>

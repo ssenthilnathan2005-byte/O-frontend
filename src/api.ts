@@ -305,6 +305,15 @@ export const inward = {
   discharge: (id: string)            => patch<any>(`/inward/${id}/discharge`, {}),
 };
 
+export const nursing = {
+  listVitals:   (patientId: string) => get<any[]>(`/nursing/vitals?patientId=${patientId}`),
+  addVitals:    (data: any)         => post<any>(`/nursing/vitals`, data),
+  deleteVitals: (id: string)        => del<any>(`/nursing/vitals/${id}`),
+  listNotes:    (patientId: string) => get<any[]>(`/nursing/notes?patientId=${patientId}`),
+  addNote:      (data: any)         => post<any>(`/nursing/notes`, data),
+  deleteNote:   (id: string)        => del<any>(`/nursing/notes/${id}`),
+};
+
 export const bookings = {
   list:       (hospitalId?: string)           => get<Booking[]>(hospitalId ? `/bookings?hospitalId=${encodeURIComponent(hospitalId)}` : "/bookings"),
   forSession: (sid: string)                   => get<Booking[]>(`/bookings/session/${sid}`),
