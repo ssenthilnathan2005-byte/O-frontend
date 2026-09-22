@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useStore } from "../../context/StoreContext";
-import { Package, Plus, X, Pencil, Trash2, ArrowUp, ArrowDown } from "lucide-react";
+import { Package, Plus, X, Pencil, Trash2, ArrowUp, ArrowDown, History } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { getToken } from "../../api";
 
@@ -36,6 +36,9 @@ export default function HAInventory() {
   const [txModal, setTxModal] = useState<{ item: Item; type: "in"|"out" } | null>(null);
   const [txQty, setTxQty] = useState("");
   const [txReason, setTxReason] = useState("");
+  const [historyModal, setHistoryModal] = useState<Item | null>(null);
+  const [historyRows, setHistoryRows] = useState<Array<{ id:string; type:string; quantity:number; reason:string|null; created_at:string }>>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   async function apiFetch(path: string, method="GET", body?: any) {
     const res = await fetch(`${BASE}${path}`, {
@@ -47,6 +50,14 @@ export default function HAInventory() {
 
   async function load() {
     try { setItems(await apiFetch("/inventory")); } catch {}
+  }
+
+  async function openHistory(item: Item) {
+    setHistoryModal(item);
+    setHistoryLoading(true);
+    try { setHistoryRows(await apiFetch(`/inventory/${item.id}/transactions`)); }
+    catch { setHistoryRows([]); }
+    finally { setHistoryLoading(false); }
   }
 
   useEffect(() => { if (hospitalId) load(); }, [hospitalId]);
@@ -175,6 +186,10 @@ export default function HAInventory() {
                           className="p-1.5 rounded hover:bg-orange-50 transition-colors" title="Stock Out">
                           <ArrowUp className="w-3.5 h-3.5 text-orange-500" />
                         </button>
+                        <button onClick={() => openHistory(item)}
+                          className="p-1.5 rounded hover:bg-blue-50 transition-colors" title="History">
+                          <History className="w-3.5 h-3.5 text-blue-500" />
+                        </button>
                         <button onClick={() => openEdit(item)} className="p-1.5 rounded hover:bg-muted transition-colors">
                           <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
                         </button>
@@ -271,6 +286,56 @@ export default function HAInventory() {
                 className={`px-4 py-2 rounded-lg text-sm text-white font-medium transition-colors disabled:opacity-50 ${txModal.type==="in" ? "bg-green-600 hover:bg-green-700" : "bg-orange-500 hover:bg-orange-600"}`}>
                 {loading ? "Saving..." : txModal.type === "in" ? "Add Stock" : "Remove Stock"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Stock History Modal */}
+      {historyModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b sticky top-0 bg-white">
+              <h2 className="font-semibold text-lg">Stock History — {historyModal.name}</h2>
+              <button onClick={() => setHistoryModal(null)}><X className="w-4 h-4" /></button>
+            </div>
+            <div className="px-6 py-4">
+              {historyLoading ? (
+                <p className="text-sm text-gray-500">Loading...</p>
+              ) : historyRows.length === 0 ? (
+                <p className="text-sm text-gray-500">No stock movements recorded yet.</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-gray-500 border-b">
+                      <th className="py-2 pr-2">Date</th>
+                      <th className="py-2 pr-2">Type</th>
+                      <th className="py-2 pr-2">Qty</th>
+                      <th className="py-2 pr-2">Reason</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {historyRows.map(row => (
+                      <tr key={row.id} className="border-b last:border-0">
+                        <td className="py-2 pr-2 text-gray-500 whitespace-nowrap">
+                          {new Date(row.created_at).toLocaleString()}
+                        </td>
+                        <td className="py-2 pr-2">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${row.type === "in" ? "bg-green-50 text-green-700" : "bg-orange-50 text-orange-600"}`}>
+                            {row.type === "in" ? "Stock In" : "Stock Out"}
+                          </span>
+                        </td>
+                        <td className="py-2 pr-2 font-medium">{row.quantity}</td>
+                        <td className="py-2 pr-2 text-gray-600">{row.reason || "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            <div className="px-6 py-4 border-t flex justify-end">
+              <button onClick={() => setHistoryModal(null)}
+                className="px-4 py-2 rounded-lg text-sm border hover:bg-gray-50 transition-colors">Close</button>
             </div>
           </div>
         </div>
