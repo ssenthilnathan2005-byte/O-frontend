@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useStore } from "../../context/StoreContext";
-import { FlaskConical, Plus, X, Trash2, CheckCircle, Clock, AlertCircle } from "lucide-react";
+import { FlaskConical, Plus, X, Trash2, CheckCircle, XCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { getToken } from "../../api";
 
@@ -17,13 +17,17 @@ type LabOrder = {
   notes: string | null; result_value: string | null; ordered_at: string;
 };
 
-const STATUS_FLOW = ["ordered","sample_collected","processing","report_ready"];
+const STATUS_FILTERS = ["ordered","report_ready","cancelled"];
 const STATUS_COLORS: Record<string,string> = {
   ordered:"bg-blue-50 text-blue-700",
-  sample_collected:"bg-yellow-50 text-yellow-700",
-  processing:"bg-purple-50 text-purple-700",
+  sample_collected:"bg-blue-50 text-blue-700",
+  processing:"bg-blue-50 text-blue-700",
   report_ready:"bg-green-50 text-green-700",
   cancelled:"bg-gray-100 text-gray-400",
+};
+const STATUS_LABELS: Record<string,string> = {
+  ordered:"ordered", sample_collected:"ordered", processing:"ordered",
+  report_ready:"report ready", cancelled:"cancelled",
 };
 const CATEGORIES = ["general","haematology","biochemistry","microbiology","radiology","pathology","cardiology","other"];
 const SAMPLE_TYPES = ["blood","urine","stool","sputum","swab","tissue","other"];
@@ -91,12 +95,13 @@ export default function HALab() {
     } catch {} finally { setLoading(false); }
   }
 
-  async function handleStatusNext(order: LabOrder) {
-    const idx = STATUS_FLOW.indexOf(order.status);
-    if (idx === -1 || idx === STATUS_FLOW.length - 1) return;
-    const next = STATUS_FLOW[idx + 1];
-    if (next === "report_ready") { setResultModal(order); setResultValue(""); return; }
-    try { await apiFetch(`/hospital-lab/orders/${order.id}`, "PATCH", { status: next }); await loadOrders(); } catch {}
+  function handleAddResult(order: LabOrder) {
+    setResultModal(order); setResultValue(order.result_value || "");
+  }
+
+  async function handleCancelOrder(order: LabOrder) {
+    if (!confirm(`Cancel the ${order.test_name} order for ${order.patient_name}?`)) return;
+    try { await apiFetch(`/hospital-lab/orders/${order.id}`, "PATCH", { status: "cancelled" }); await loadOrders(); } catch {}
   }
 
   async function handleReportReady() {
@@ -114,15 +119,22 @@ export default function HALab() {
     try { await apiFetch(`/hospital-lab/tests/${id}`, "DELETE"); await loadTests(); } catch {}
   }
 
-  const filteredOrders = orders.filter(o =>
-    (statusFilter === "all" || o.status === statusFilter) &&
-    (o.patient_name.toLowerCase().includes(search.toLowerCase()) ||
-     o.test_name.toLowerCase().includes(search.toLowerCase()))
-  );
+  const filteredOrders = orders.filter(o => {
+    const matchesStatus = statusFilter === "all"
+      ? true
+      : statusFilter === "ordered"
+        ? ["ordered","sample_collected","processing"].includes(o.status)
+        : o.status === statusFilter;
+    return matchesStatus &&
+      (o.patient_name.toLowerCase().includes(search.toLowerCase()) ||
+       o.test_name.toLowerCase().includes(search.toLowerCase()));
+  });
 
-  const counts = STATUS_FLOW.reduce((acc, s) => {
-    acc[s] = orders.filter(o => o.status === s).length; return acc;
-  }, {} as Record<string,number>);
+  const counts = {
+    ordered: orders.filter(o => ["ordered","sample_collected","processing"].includes(o.status)).length,
+    report_ready: orders.filter(o => o.status === "report_ready").length,
+    cancelled: orders.filter(o => o.status === "cancelled").length,
+  } as Record<string,number>;
 
   return (
     <div className="p-4 md:p-6 space-y-4">
@@ -170,10 +182,10 @@ export default function HALab() {
               className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${statusFilter==="all" ? "bg-teal-600 text-white" : "bg-muted text-muted-foreground"}`}>
               All ({orders.length})
             </button>
-            {STATUS_FLOW.map(s => (
+            {STATUS_FILTERS.map(s => (
               <button key={s} onClick={() => setStatusFilter(s)}
                 className={`px-3 py-1 rounded-full text-xs font-medium capitalize transition-colors ${statusFilter===s ? "bg-teal-600 text-white" : "bg-muted text-muted-foreground"}`}>
-                {s.replace(/_/g," ")} ({counts[s]||0})
+                {STATUS_LABELS[s]} ({counts[s]||0})
               </button>
             ))}
           </div>
@@ -204,14 +216,23 @@ export default function HALab() {
                     </div>
                     <div className="flex flex-col items-end gap-2">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${STATUS_COLORS[order.status]||""}`}>
-                        {order.status.replace(/_/g," ")}
+                        {STATUS_LABELS[order.status] || order.status.replace(/_/g," ")}
                       </span>
                       {order.status !== "report_ready" && order.status !== "cancelled" && (
-                        <button onClick={() => handleStatusNext(order)}
-                          className="flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-medium bg-teal-50 text-teal-700 hover:bg-teal-100 transition-colors">
-                          <CheckCircle className="w-3 h-3" />
-                          {STATUS_FLOW[STATUS_FLOW.indexOf(order.status)+1]?.replace(/_/g," ")||"done"}
-                        </button>
+                        <div className="flex gap-1.5">
+                          <button onClick={() => handleAddResult(order)}
+                            className="flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-medium bg-teal-50 text-teal-700 hover:bg-teal-100 transition-colors">
+                            <CheckCircle className="w-3 h-3" /> Add Result
+                          </button>
+                          <button onClick={() => handleCancelOrder(order)}
+                            className="flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-medium bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
+                            <XCircle className="w-3 h-3" /> Cancel
+                          </button>
+                        </div>
+                      )}
+                      {order.status === "report_ready" && (
+                        <button onClick={() => handleAddResult(order)}
+                          className="text-xs text-teal-600 hover:underline">Edit result</button>
                       )}
                     </div>
                   </div>
