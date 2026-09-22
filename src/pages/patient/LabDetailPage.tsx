@@ -72,7 +72,26 @@ export default function LabDetailPage({ id }: Props) {
           {tests.map((test) => (
             <div
               key={test.id}
-              className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex items-center justify-between gap-3"
+              role="button"
+              tabIndex={0}
+              onClick={() => {
+                if (!user) {
+                  navigate({ path: "/login", tab: "patient", patientMode: "login" });
+                  return;
+                }
+                setBookingTest(test);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  if (!user) {
+                    navigate({ path: "/login", tab: "patient", patientMode: "login" });
+                    return;
+                  }
+                  setBookingTest(test);
+                }
+              }}
+              className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex items-center justify-between gap-3 cursor-pointer hover:border-teal-200 hover:shadow-md transition-colors"
             >
               <div className="flex items-start gap-3 min-w-0">
                 <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center shrink-0">
@@ -87,19 +106,9 @@ export default function LabDetailPage({ id }: Props) {
               </div>
               <div className="text-right shrink-0">
                 <p className="font-bold text-gray-900 text-sm">₹{test.price}</p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!user) {
-                      navigate({ path: "/login", tab: "patient", patientMode: "login" });
-                      return;
-                    }
-                    setBookingTest(test);
-                  }}
-                  className="mt-1 text-xs font-semibold text-teal-600 hover:text-teal-700"
-                >
+                <span className="mt-1 text-xs font-semibold text-teal-600 block">
                   Book →
-                </button>
+                </span>
               </div>
             </div>
           ))}
