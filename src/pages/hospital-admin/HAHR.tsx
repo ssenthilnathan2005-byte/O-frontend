@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useStore } from "../../context/StoreContext";
 import { ClipboardList, Plus, X, Pencil, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { getToken } from "../../api";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
@@ -10,7 +9,7 @@ const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/
 type Staff = {
   id: string; name: string; role: string; department: string | null;
   phone: string | null; email: string | null; shift: string; shifts: string[] | null;
-  join_date: string | null; is_active: number; notes: string | null;
+  join_date: string | null; is_active: number; notes: string | null; salary?: number | null;
 };
 
 const ROLES = ["nurse","lab_technician","pharmacist","receptionist","housekeeping","maintenance","security","accountant","other"];
@@ -29,6 +28,26 @@ const ROLE_COLORS: Record<string,string> = {
   other:"bg-gray-100 text-gray-500",
 };
 
+// ── Salary payment helpers (localStorage, resets each month) ─────────────────
+function getPaymentKey(hospitalId: string): string {
+  const now = new Date();
+  const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  return `hr_salary_paid_${hospitalId}_${month}`;
+}
+
+function loadPaidSet(hospitalId: string): Set<string> {
+  try {
+    const raw = localStorage.getItem(getPaymentKey(hospitalId));
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch { return new Set(); }
+}
+
+function savePaidSet(hospitalId: string, set: Set<string>) {
+  try {
+    localStorage.setItem(getPaymentKey(hospitalId), JSON.stringify([...set]));
+  } catch {}
+}
+
 export default function HAHR() {
   const { user } = useStore();
   const hospitalId = user?.role === "hospital_admin" ? (user as any).hospitalId : "";
@@ -40,6 +59,7 @@ export default function HAHR() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...EMPTY });
   const [loading, setLoading] = useState(false);
+  const [paidSet, setPaidSet] = useState<Set<string>>(new Set());
 
   async function apiFetch(path: string, method="GET", body?: any) {
     const res = await fetch(`${BASE}${path}`, {
@@ -53,12 +73,28 @@ export default function HAHR() {
     try { setStaff(await apiFetch("/hr")); } catch {}
   }
 
-  useEffect(() => { if (hospitalId) load(); }, [hospitalId]);
+  useEffect(() => {
+    if (hospitalId) {
+      load();
+      setPaidSet(loadPaidSet(hospitalId));
+    }
+  }, [hospitalId]);
+
+  function togglePaid(staffId: string) {
+    setPaidSet(prev => {
+      const next = new Set(prev);
+      if (next.has(staffId)) next.delete(staffId);
+      else next.add(staffId);
+      savePaidSet(hospitalId, next);
+      return next;
+    });
+  }
 
   function openAdd() { setForm({ ...EMPTY }); setEditId(null); setShowForm(true); }
   function openEdit(s: Staff) {
     setForm({ name:s.name, role:s.role, department:s.department||"", phone:s.phone||"",
-      email:s.email||"", shifts:(Array.isArray(s.shifts) && s.shifts.length ? s.shifts : [s.shift]), joinDate:s.join_date||"", salary:s.salary != null ? String(s.salary) : "", notes:s.notes||"" });
+      email:s.email||"", shifts:(Array.isArray(s.shifts) && s.shifts.length ? s.shifts : [s.shift]),
+      joinDate:s.join_date||"", salary:s.salary != null ? String(s.salary) : "", notes:s.notes||"" });
     setEditId(s.id); setShowForm(true);
   }
 
@@ -92,6 +128,8 @@ export default function HAHR() {
     acc[r] = staff.filter(s => s.role === r).length;
     return acc;
   }, {} as Record<string,number>);
+
+  const currentMonthLabel = new Date().toLocaleString("default", { month: "long", year: "numeric" });
 
   return (
     <div className="p-4 md:p-6 space-y-4">
@@ -127,47 +165,69 @@ export default function HAHR() {
         <div className="text-center py-16 text-gray-400">No staff found.</div>
       ) : (
         <div className="rounded-xl border overflow-hidden bg-white">
+          {/* Month label */}
+          <div className="px-4 py-2 border-b bg-muted/30 text-xs text-muted-foreground font-medium">
+            Salary Status — {currentMonthLabel} (resets automatically each month)
+          </div>
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr>
-                {["Name","Role","Department","Phone","Shift","Status",""].map(h => (
+                {["Name","Role","Department","Phone","Shift","Status","Salary",""].map(h => (
                   <th key={h} className="text-left px-4 py-3 font-medium text-muted-foreground">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {filtered.map(s => (
-                <tr key={s.id} className="border-t hover:bg-muted/20 transition-colors">
-                  <td className="px-4 py-3">
-                    <p className="font-medium">{s.name}</p>
-                    {s.email && <p className="text-xs text-muted-foreground">{s.email}</p>}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${ROLE_COLORS[s.role]||"bg-gray-100 text-gray-500"}`}>
-                      {s.role.replace("_"," ")}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">{s.department||"—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{s.phone||"—"}</td>
-                  <td className="px-4 py-3 capitalize text-muted-foreground">{Array.isArray(s.shifts) && s.shifts.length ? s.shifts.join(", ") : s.shift}</td>
-                  <td className="px-4 py-3">
-                    <button onClick={() => toggleActive(s)}
-                      className={`px-2 py-0.5 rounded-full text-xs font-medium ${s.is_active ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-400"}`}>
-                      {s.is_active ? "Active" : "Inactive"}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-2">
-                      <button onClick={() => openEdit(s)} className="p-1.5 rounded hover:bg-muted transition-colors">
-                        <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+              {filtered.map(s => {
+                const isPaid = paidSet.has(s.id);
+                return (
+                  <tr key={s.id} className="border-t hover:bg-muted/20 transition-colors">
+                    <td className="px-4 py-3">
+                      <p className="font-medium">{s.name}</p>
+                      {s.email && <p className="text-xs text-muted-foreground">{s.email}</p>}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${ROLE_COLORS[s.role]||"bg-gray-100 text-gray-500"}`}>
+                        {s.role.replace("_"," ")}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">{s.department||"—"}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{s.phone||"—"}</td>
+                    <td className="px-4 py-3 capitalize text-muted-foreground">
+                      {Array.isArray(s.shifts) && s.shifts.length ? s.shifts.join(", ") : s.shift}
+                    </td>
+                    <td className="px-4 py-3">
+                      <button onClick={() => toggleActive(s)}
+                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${s.is_active ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-400"}`}>
+                        {s.is_active ? "Active" : "Inactive"}
                       </button>
-                      <button onClick={() => handleDelete(s.id)} className="p-1.5 rounded hover:bg-red-50 transition-colors">
-                        <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                    </td>
+                    {/* ── Salary Paid/Unpaid badge ── */}
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => togglePaid(s.id)}
+                        className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${
+                          isPaid
+                            ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                            : "bg-red-50 text-red-500 hover:bg-red-100"
+                        }`}
+                      >
+                        {isPaid ? "Paid" : "Unpaid"}
                       </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-2">
+                        <button onClick={() => openEdit(s)} className="p-1.5 rounded hover:bg-muted transition-colors">
+                          <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                        </button>
+                        <button onClick={() => handleDelete(s.id)} className="p-1.5 rounded hover:bg-red-50 transition-colors">
+                          <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -207,16 +267,10 @@ export default function HAHR() {
                 <div className="flex flex-wrap gap-3 border rounded-md px-3 py-2 bg-white">
                   {SHIFTS.map(s => (
                     <label key={s} className="flex items-center gap-1.5 text-sm capitalize cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={form.shifts.includes(s)}
+                      <input type="checkbox" checked={form.shifts.includes(s)}
                         onChange={e => setForm(f => ({
-                          ...f,
-                          shifts: e.target.checked
-                            ? [...f.shifts, s]
-                            : f.shifts.filter(x => x !== s),
-                        }))}
-                      />
+                          ...f, shifts: e.target.checked ? [...f.shifts, s] : f.shifts.filter(x => x !== s),
+                        }))} />
                       {s}
                     </label>
                   ))}
