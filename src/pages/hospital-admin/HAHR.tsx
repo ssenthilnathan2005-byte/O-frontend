@@ -9,13 +9,13 @@ const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/
 
 type Staff = {
   id: string; name: string; role: string; department: string | null;
-  phone: string | null; email: string | null; shift: string;
+  phone: string | null; email: string | null; shift: string; shifts: string[] | null;
   join_date: string | null; is_active: number; notes: string | null;
 };
 
 const ROLES = ["nurse","lab_technician","pharmacist","receptionist","housekeeping","maintenance","security","accountant","other"];
 const SHIFTS = ["morning","afternoon","evening","night"];
-const EMPTY = { name:"", role:"nurse", department:"", phone:"", email:"", shift:"morning", joinDate:"", salary:"", notes:"" };
+const EMPTY = { name:"", role:"nurse", department:"", phone:"", email:"", shifts:["morning"] as string[], joinDate:"", salary:"", notes:"" };
 
 const ROLE_COLORS: Record<string,string> = {
   nurse:"bg-pink-50 text-pink-700",
@@ -58,7 +58,7 @@ export default function HAHR() {
   function openAdd() { setForm({ ...EMPTY }); setEditId(null); setShowForm(true); }
   function openEdit(s: Staff) {
     setForm({ name:s.name, role:s.role, department:s.department||"", phone:s.phone||"",
-      email:s.email||"", shift:s.shift, joinDate:s.join_date||"", salary:"", notes:s.notes||"" });
+      email:s.email||"", shifts:(Array.isArray(s.shifts) && s.shifts.length ? s.shifts : [s.shift]), joinDate:s.join_date||"", salary:s.salary != null ? String(s.salary) : "", notes:s.notes||"" });
     setEditId(s.id); setShowForm(true);
   }
 
@@ -149,7 +149,7 @@ export default function HAHR() {
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{s.department||"—"}</td>
                   <td className="px-4 py-3 text-muted-foreground">{s.phone||"—"}</td>
-                  <td className="px-4 py-3 capitalize text-muted-foreground">{s.shift}</td>
+                  <td className="px-4 py-3 capitalize text-muted-foreground">{Array.isArray(s.shifts) && s.shifts.length ? s.shifts.join(", ") : s.shift}</td>
                   <td className="px-4 py-3">
                     <button onClick={() => toggleActive(s)}
                       className={`px-2 py-0.5 rounded-full text-xs font-medium ${s.is_active ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-400"}`}>
@@ -203,11 +203,24 @@ export default function HAHR() {
                 </select>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-600 mb-1 block">Shift</label>
-                <select value={form.shift} onChange={e => setForm(f => ({ ...f, shift: e.target.value }))}
-                  className="w-full border rounded-md px-3 py-2 text-sm bg-white">
-                  {SHIFTS.map(s => <option key={s} value={s} className="capitalize">{s}</option>)}
-                </select>
+                <label className="text-sm font-medium text-gray-600 mb-1 block">Shift (select one or more)</label>
+                <div className="flex flex-wrap gap-3 border rounded-md px-3 py-2 bg-white">
+                  {SHIFTS.map(s => (
+                    <label key={s} className="flex items-center gap-1.5 text-sm capitalize cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={form.shifts.includes(s)}
+                        onChange={e => setForm(f => ({
+                          ...f,
+                          shifts: e.target.checked
+                            ? [...f.shifts, s]
+                            : f.shifts.filter(x => x !== s),
+                        }))}
+                      />
+                      {s}
+                    </label>
+                  ))}
+                </div>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600 mb-1 block">Notes</label>
