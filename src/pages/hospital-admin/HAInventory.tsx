@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useStore } from "../../context/StoreContext";
-import { Package, Plus, X, Pencil, Trash2, ArrowUp, ArrowDown, History } from "lucide-react";
+import { Package, Plus, X, Pencil, Trash2, ArrowUp, ArrowDown, History, Download } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { getToken } from "../../api";
 
@@ -39,6 +39,10 @@ export default function HAInventory() {
   const [historyModal, setHistoryModal] = useState<Item | null>(null);
   const [historyRows, setHistoryRows] = useState<Array<{ id:string; type:string; quantity:number; reason:string|null; created_at:string }>>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [showExport, setShowExport] = useState(false);
+  const [exportFrom, setExportFrom] = useState("");
+  const [exportTo, setExportTo] = useState("");
+  const [exporting, setExporting] = useState(false);
 
   async function apiFetch(path: string, method="GET", body?: any) {
     const res = await fetch(`${BASE}${path}`, {
@@ -58,6 +62,40 @@ export default function HAInventory() {
     try { setHistoryRows(await apiFetch(`/inventory/${item.id}/transactions`)); }
     catch { setHistoryRows([]); }
     finally { setHistoryLoading(false); }
+  }
+
+  function setExportPreset(month: number, year = 2026) {
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const lastDay = new Date(year, month, 0).getDate();
+    setExportFrom(`${year}-${pad(month)}-01`);
+    setExportTo(`${year}-${pad(month)}-${pad(lastDay)}`);
+  }
+
+  async function handleExport() {
+    if (!exportFrom || !exportTo) return;
+    setExporting(true);
+    try {
+      const qs = new URLSearchParams({ from: exportFrom, to: exportTo });
+      if (hospitalId) qs.set("hospitalId", hospitalId);
+      const res = await fetch(`${BASE}/inventory/export?${qs.toString()}`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `inventory_${exportFrom}_to_${exportTo}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      setShowExport(false);
+    } catch {
+      alert("Export failed. Please try again.");
+    } finally {
+      setExporting(false);
+    }
   }
 
   useEffect(() => { if (hospitalId) load(); }, [hospitalId]);
@@ -118,10 +156,16 @@ export default function HAInventory() {
             </span>
           )}
         </div>
-        <button onClick={openAdd}
-          className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-          <Plus className="w-4 h-4" /> Add Item
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => { setShowExport(true); setExportFrom(""); setExportTo(""); }}
+            className="flex items-center gap-2 border px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
+            <Download className="w-4 h-4" /> Export
+          </button>
+          <button onClick={openAdd}
+            className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            <Plus className="w-4 h-4" /> Add Item
+          </button>
+        </div>
       </div>
 
       {/* Category filter */}
@@ -336,6 +380,50 @@ export default function HAInventory() {
             <div className="px-6 py-4 border-t flex justify-end">
               <button onClick={() => setHistoryModal(null)}
                 className="px-4 py-2 rounded-lg text-sm border hover:bg-gray-50 transition-colors">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Export Modal */}
+      {showExport && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm">
+            <div className="flex items-center justify-between px-6 py-4 border-b">
+              <h2 className="font-semibold text-lg">Export Inventory</h2>
+              <button onClick={() => setShowExport(false)}><X className="w-4 h-4" /></button>
+            </div>
+            <div className="px-6 py-4 space-y-3">
+              <p className="text-xs text-gray-500">Quick select:</p>
+              <div className="flex gap-2">
+                <button onClick={() => setExportPreset(5)}
+                  className="flex-1 border rounded-lg py-1.5 text-sm hover:bg-gray-50">May</button>
+                <button onClick={() => setExportPreset(6)}
+                  className="flex-1 border rounded-lg py-1.5 text-sm hover:bg-gray-50">June</button>
+                <button onClick={() => setExportPreset(7)}
+                  className="flex-1 border rounded-lg py-1.5 text-sm hover:bg-gray-50">July</button>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-600 mb-1 block">From</label>
+                <input type="date" value={exportFrom} onChange={e => setExportFrom(e.target.value)}
+                  className="w-full border rounded-md px-3 py-2 text-sm bg-white" />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-600 mb-1 block">To</label>
+                <input type="date" value={exportTo} onChange={e => setExportTo(e.target.value)}
+                  className="w-full border rounded-md px-3 py-2 text-sm bg-white" />
+              </div>
+              <p className="text-xs text-gray-400">
+                Includes current stock levels, every stock in/out entry with reasons, and per-item totals for the selected period.
+              </p>
+            </div>
+            <div className="px-6 py-4 border-t flex gap-3 justify-end">
+              <button onClick={() => setShowExport(false)}
+                className="px-4 py-2 rounded-lg text-sm border hover:bg-gray-50 transition-colors">Cancel</button>
+              <button onClick={handleExport} disabled={exporting || !exportFrom || !exportTo}
+                className="px-4 py-2 rounded-lg text-sm bg-teal-600 hover:bg-teal-700 text-white font-medium transition-colors disabled:opacity-50">
+                {exporting ? "Preparing..." : "Download Excel"}
+              </button>
             </div>
           </div>
         </div>
