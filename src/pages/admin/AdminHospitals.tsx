@@ -108,9 +108,21 @@ export default function AdminHospitals() {
 
   // ── Delete hospital ─────────────────────────────────────────────────────────
   async function handleDelete(id: string) {
-    const ok = await deleteHospital(id, doctors);
-    if (!ok) toast.error("Cannot delete hospital with assigned doctors. Remove doctors first.");
-    else toast.success("Hospital deleted");
+    try {
+      const ok = await deleteHospital(id, doctors);
+      if (!ok) {
+        const hasDoctors = doctors.some(d => d.hospitalId === id);
+        toast.error(
+          hasDoctors
+            ? "Cannot delete: this hospital has assigned doctors. Remove them first."
+            : "Failed to delete hospital. Please try again."
+        );
+      } else {
+        toast.success("Hospital deleted successfully");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete hospital. Please try again.");
+    }
   }
 
   // ── Open photo dialog ───────────────────────────────────────────────────────

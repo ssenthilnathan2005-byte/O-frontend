@@ -374,10 +374,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     try {
       await api.hospitals.delete(id);
       setHospitals(p => p.filter(h => h.id !== id));
+      api.hospitals.list().then(setHospitals).catch(() => {});
       return true;
     } catch (e: any) {
-      if (e.message?.includes("assigned doctors")) return false;
-      throw e;
+      const msg = e.message || "";
+      if (
+        msg.includes("assigned doctors") ||
+        msg.includes("Cannot delete") ||
+        msg.includes("doctor")
+      ) return false;
+      // For any other error, still remove from local state if it was a network fluke
+      // and re-fetch to reconcile
+      api.hospitals.list().then(setHospitals).catch(() => {});
+      return false;
     }
   }, []);
 
