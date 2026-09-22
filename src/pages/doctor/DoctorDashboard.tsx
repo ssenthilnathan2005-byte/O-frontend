@@ -1568,9 +1568,6 @@ export default function DoctorDashboard() {
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
                 Session Settings
               </p>
-              <div className="mb-4 rounded-lg border border-teal-100 bg-teal-50 px-3 py-2 text-sm text-teal-700">
-                Booking fee is fixed at Rs 10 for all doctors.
-              </div>
               <div className="grid grid-cols-1 gap-4 mb-5">
                 <div className="space-y-1.5">
                   <Label htmlFor="doc-walkin-interval" className="text-sm font-medium">
