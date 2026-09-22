@@ -1,8 +1,9 @@
 import { useMemo } from "react";
-import { UserCog, Users2, CalendarCheck, Pill, Activity } from "lucide-react";
+import { UserCog, Users2, CalendarCheck, Pill, Activity, BedDouble, FlaskConical, Package, Wrench } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useStore } from "../../context/StoreContext";
 import { isLiveBookingStatus, normalizeBookingStatus } from "../../lib/bookingStatus";
+import { useRouter } from "../../router/RouterContext";
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -10,12 +11,17 @@ function todayStr() {
 
 export default function HADashboard() {
   const { doctors, bookings, user } = useStore();
+  const { navigate } = useRouter();
 
   const hospitalId = user?.role === "hospital_admin" ? user.hospitalId : "";
   const hospitalName = user?.role === "hospital_admin" ? user.hospitalName : "Hospital";
 
   const [pharmacyCount, setPharmacyCount] = useState(0);
   const [hasPharmacy, setHasPharmacy] = useState(false);
+  const [bedStats, setBedStats] = useState({ occupied: 0, total: 0, maintenance: 0 });
+  const [pendingLabOrders, setPendingLabOrders] = useState(0);
+  const [activeInward, setActiveInward] = useState(0);
+  const [lowStockCount, setLowStockCount] = useState(0);
 
   const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
@@ -33,6 +39,42 @@ export default function HADashboard() {
       } catch { }
     }
     fetchPharmacy();
+
+    async function fetchOpsStats() {
+      try {
+        const { getToken } = await import("../../api");
+        const headers = { Authorization: `Bearer ${getToken()}` };
+
+        const [wardsRes, labRes, inwardRes, invRes] = await Promise.all([
+          fetch(`${BASE}/wards?hospitalId=${hospitalId}`, { headers }).then(r => r.json()).catch(() => []),
+          fetch(`${BASE}/hospital-lab/orders?hospitalId=${hospitalId}`, { headers }).then(r => r.json()).catch(() => []),
+          fetch(`${BASE}/inward?hospitalId=${hospitalId}`, { headers }).then(r => r.json()).catch(() => []),
+          fetch(`${BASE}/inventory?hospitalId=${hospitalId}`, { headers }).then(r => r.json()).catch(() => []),
+        ]);
+
+        if (Array.isArray(wardsRes)) {
+          const totals = wardsRes.reduce((acc: any, w: any) => ({
+            occupied: acc.occupied + Number(w.occupied_beds || 0),
+            total: acc.total + Number(w.total_beds_actual ?? w.total_beds ?? 0),
+            maintenance: acc.maintenance + Number(w.maintenance_beds || 0),
+          }), { occupied: 0, total: 0, maintenance: 0 });
+          setBedStats(totals);
+        }
+
+        if (Array.isArray(labRes)) {
+          setPendingLabOrders(labRes.filter((o: any) => ["ordered","sample_collected","processing"].includes(o.status)).length);
+        }
+
+        if (Array.isArray(inwardRes)) {
+          setActiveInward(inwardRes.filter((p: any) => p.status === "admitted").length);
+        }
+
+        if (Array.isArray(invRes)) {
+          setLowStockCount(invRes.filter((i: any) => Number(i.quantity) <= Number(i.min_quantity)).length);
+        }
+      } catch { }
+    }
+    fetchOpsStats();
   }, [hospitalId]);
 
   const myDoctors = useMemo(
@@ -64,6 +106,7 @@ export default function HADashboard() {
       icon: UserCog,
       color: "text-teal-600",
       bg: "bg-teal-50",
+      to: "/hospital-admin/doctors",
     },
     {
       label: "Today's Bookings",
@@ -81,7 +124,6 @@ export default function HADashboard() {
       color: "text-green-600",
       bg: "bg-green-50",
     },
-
     {
       label: "Pharmacy Staff",
       value: pharmacyCount,
@@ -89,6 +131,43 @@ export default function HADashboard() {
       icon: Pill,
       color: "text-orange-600",
       bg: "bg-orange-50",
+      to: "/hospital-admin/pharmacy",
+    },
+    {
+      label: "Bed Occupancy",
+      value: `${bedStats.occupied}/${bedStats.total}`,
+      sub: bedStats.maintenance > 0 ? `${bedStats.maintenance} cleaning` : "beds occupied",
+      icon: BedDouble,
+      color: "text-red-600",
+      bg: "bg-red-50",
+      to: "/hospital-admin/wards",
+    },
+    {
+      label: "Admitted Patients",
+      value: activeInward,
+      sub: "currently inward",
+      icon: Users2,
+      color: "text-indigo-600",
+      bg: "bg-indigo-50",
+      to: "/hospital-admin/ipd",
+    },
+    {
+      label: "Pending Lab Orders",
+      value: pendingLabOrders,
+      sub: "awaiting results",
+      icon: FlaskConical,
+      color: "text-purple-600",
+      bg: "bg-purple-50",
+      to: "/hospital-admin/lab",
+    },
+    {
+      label: "Low Stock Items",
+      value: lowStockCount,
+      sub: lowStockCount > 0 ? "needs reordering" : "all stocked",
+      icon: Package,
+      color: lowStockCount > 0 ? "text-amber-600" : "text-gray-500",
+      bg: lowStockCount > 0 ? "bg-amber-50" : "bg-gray-50",
+      to: "/hospital-admin/inventory",
     },
   ];
 
@@ -104,8 +183,10 @@ export default function HADashboard() {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {stats.map(({ label, value, sub, icon: Icon, color, bg }) => (
-          <div key={label} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3">
+        {stats.map(({ label, value, sub, icon: Icon, color, bg, to }) => (
+          <div key={label}
+            onClick={to ? () => navigate({ path: to } as Parameters<typeof navigate>[0]) : undefined}
+            className={`bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 transition-all ${to ? "cursor-pointer hover:shadow-md hover:border-teal-200" : ""}`}>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-500">{label}</span>
               <div className={`w-8 h-8 rounded-full ${bg} flex items-center justify-center`}>
