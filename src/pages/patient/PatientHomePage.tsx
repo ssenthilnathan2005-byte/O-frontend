@@ -1,4 +1,4 @@
-import { Calendar, ChevronRight, Clock, FileText, FlaskConical, Building2, MapPin, Search, Navigation, Loader2, XCircle } from "lucide-react";
+import { Calendar, ChevronRight, Clock, FileText, FlaskConical, Building2, MapPin, Search, Navigation, Loader2, XCircle, Bell } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { useStore } from "../../context/StoreContext";
@@ -6,6 +6,7 @@ import { useRouter } from "../../router/RouterContext";
 import { useNearMe } from "../../hooks/useNearMe";
 import { loadGoogleMaps } from "../../lib/googleMaps";
 import { getToken } from "@/api";
+import { enablePushNotifications } from "../../lib/push";
 
 function resolvePhotoUrl(url: string | null | undefined): string | null {
   if (!url) return null;
@@ -138,6 +139,11 @@ export default function PatientHomePage() {
   const myTokenNum = activeBooking?.tokenNumber ?? null;
   const currentToken = tokenState?.currentToken ?? null;
   const aheadCount = myTokenNum != null && currentToken != null ? Math.max(0, myTokenNum - currentToken - 1) : null;
+  const [notifState, setNotifState] = useState<"default"|"granted"|"denied"|"unsupported">("granted");
+  useEffect(() => {
+    if (typeof Notification === "undefined") { setNotifState("unsupported"); return; }
+    setNotifState(Notification.permission as "default"|"granted"|"denied");
+  }, []);
   const [realPrescriptionCount, setRealPrescriptionCount] = useState<number | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -211,6 +217,26 @@ export default function PatientHomePage() {
       {/* Scrollable content below map */}
       <div className="flex-1 overflow-y-auto bg-white">
         <div className="px-4 pb-28 space-y-4">
+          {/* Notification permission banner */}
+          {notifState === "default" && (
+            <div className="mt-4 flex items-center gap-3 bg-teal-50 border border-teal-200 rounded-2xl px-4 py-3">
+              <div className="w-9 h-9 rounded-xl bg-teal-100 flex items-center justify-center shrink-0">
+                <Bell className="w-4 h-4 text-teal-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-teal-900">Stay updated</p>
+                <p className="text-xs text-teal-600 leading-snug">Get notified when your token is called or report is ready</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => enablePushNotifications().then(() => setNotifState(Notification.permission as "default"|"granted"|"denied"))}
+                className="shrink-0 bg-teal-500 text-white text-xs font-bold px-3 py-1.5 rounded-full hover:bg-teal-600 transition-colors"
+              >
+                Enable
+              </button>
+            </div>
+          )}
+
           {/* Greeting */}
           <div className="pt-5 pb-1">
             <h1 className="text-4xl font-extrabold text-gray-900 leading-tight">{getGreeting()} 👋</h1>

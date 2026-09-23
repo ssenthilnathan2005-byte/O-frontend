@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { useLabStatusNotifications } from "../../hooks/useLabStatusNotifications";
+import { enablePushNotifications } from "../../lib/push";
 import { ArrowLeft, CheckCircle2, Circle, Loader2, FlaskConical, FileText, Home } from "lucide-react";
 import * as api from "../../api";
 import { useRouter } from "../../router/RouterContext";
@@ -20,6 +22,12 @@ export default function LabTrackingPage({ bookingId }: Props) {
   const { goBack, navigate } = useRouter();
   const [booking, setBooking] = useState<api.LabBooking | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Request push permission once, so background notifications work
+  useEffect(() => { enablePushNotifications(); }, []);
+
+  // Fire system notifications whenever lab status changes
+  useLabStatusNotifications(booking);
 
   useEffect(() => {
     let mounted = true;
