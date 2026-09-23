@@ -29,6 +29,7 @@ type InwardPatient = {
 const EMPTY_FORM = {
   patientName: "", phone: "", age: "", gender: "", ward: "",
   bedNumber: "", admittingDoctorName: "", diagnosis: "", notes: "",
+  admittedAt: todayStr(),
 };
 
 function daysSince(dateStr: string) {
@@ -86,6 +87,7 @@ export default function HAInward() {
       gender: p.gender || "", ward: p.ward || "", bedNumber: p.bed_number || "",
       admittingDoctorName: p.admitting_doctor_name || "",
       diagnosis: p.diagnosis || "", notes: p.notes || "",
+      admittedAt: p.admitted_at ? p.admitted_at.slice(0, 10) : todayStr(),
     });
     setEditId(p.id); setShowForm(true);
   }
@@ -100,6 +102,7 @@ export default function HAInward() {
         gender: form.gender, ward: form.ward, bedNumber: form.bedNumber,
         admittingDoctorName: form.admittingDoctorName,
         diagnosis: form.diagnosis, notes: form.notes,
+        admittedAt: form.admittedAt ? new Date(form.admittedAt).toISOString() : null,
       };
       if (editId) await api.inward.update(editId, payload);
       else await api.inward.admit(payload);
@@ -298,6 +301,12 @@ export default function HAInward() {
                     onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} />
                 </div>
               ))}
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-1 block">Admitted On</label>
+                <input type="date" value={form.admittedAt}
+                  onChange={e => setForm(f => ({ ...f, admittedAt: e.target.value }))}
+                  className="w-full border rounded-md px-3 py-2 text-sm bg-background" />
+              </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">Gender</label>
                 <select value={form.gender} onChange={e => setForm(f => ({ ...f, gender: e.target.value }))}
