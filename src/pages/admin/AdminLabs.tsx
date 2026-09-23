@@ -8,7 +8,7 @@ import { Label }  from "@/components/ui/label";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Edit2, FlaskConical, KeyRound, Loader2, Plus, RefreshCw, MapPin } from "lucide-react";
+import { Edit2, FlaskConical, KeyRound, Loader2, Plus, RefreshCw, MapPin, Trash2 } from "lucide-react";
 import { locOrThrow } from "../../lib/labLocation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -33,6 +33,8 @@ export default function AdminLabs() {
   const [loginInfoLoading, setLoginInfoLoading] = useState(false);
   const [newLoginIdInput, setNewLoginIdInput] = useState("");
   const [resetting, setResetting] = useState(false);
+  const [deleteLab, setDeleteLab] = useState<Lab | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   function loadLabs() {
     setLoading(true);
@@ -113,6 +115,25 @@ export default function AdminLabs() {
       toast.error(err.message || "Failed to reset login");
     } finally {
       setResetting(false);
+    }
+  }
+
+  async function handleDeleteLab() {
+    if (!deleteLab) return;
+    setDeleting(true);
+    try {
+      await api.labs.remove(deleteLab.id);
+      toast.success(`Lab "${deleteLab.name}" deleted`);
+      setDeleteLab(null);
+      loadLabs();
+    } catch (err: any) {
+      if (err.hasBookings || /booking/i.test(err.message || "")) {
+        toast.error(err.message || "This lab has bookings and can't be deleted. Deactivate it instead.");
+      } else {
+        toast.error(err.message || "Failed to delete lab");
+      }
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -213,6 +234,9 @@ export default function AdminLabs() {
                     <Button variant="ghost" size="sm" onClick={() => openLoginDialog(lab)}>
                       <KeyRound className="w-4 h-4 mr-1" /> Login
                     </Button>
+                    <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => setDeleteLab(lab)}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
                 </TableCell>
               </TableRow>
@@ -244,6 +268,24 @@ export default function AdminLabs() {
             <Button onClick={handleEditLab} disabled={saving}>
               {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
               Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirm Dialog */}
+      <Dialog open={!!deleteLab} onOpenChange={open => !open && setDeleteLab(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Delete Lab</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground py-2">
+            Are you sure you want to delete <span className="font-medium text-foreground">{deleteLab?.name}</span>?
+            This cannot be undone. Labs with existing bookings can't be deleted — deactivate them instead.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteLab(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteLab} disabled={deleting}>
+              {deleting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Delete
             </Button>
           </DialogFooter>
         </DialogContent>

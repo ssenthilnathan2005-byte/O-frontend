@@ -624,6 +624,7 @@ export const labs = {
   create: (data: { name: string; area: string; address?: string; phone?: string; rating?: number; mapLocation?: string }) =>
     post<Lab>("/labs", data),
   update: (id: string, data: Partial<Lab> & { mapLocation?: string }) => patch<Lab>(`/labs/${id}`, data),
+  remove: (id: string) => del<{ success: boolean }>(`/labs/${id}`),
   getAdminInfo: (id: string) =>
     get<{ loginId: string | null; hasAdminAccount: boolean; firstLogin: boolean }>(`/labs/${id}/admin-info`),
   resetLogin: (id: string, newLoginId?: string) =>
