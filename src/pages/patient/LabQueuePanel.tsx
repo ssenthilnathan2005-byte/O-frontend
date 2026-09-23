@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Clock } from "lucide-react";
 import * as api from "../../api";
 import { resolveSessionTiming } from "../../data/seed";
+import { useLabQueueNotifications } from "../../hooks/useLabQueueNotifications";
 
 const TOKEN_STYLE: Record<string, string> = {
   red: "bg-red-50 text-red-600 border-red-200",
@@ -47,6 +48,14 @@ export default function LabQueuePanel({ booking }: { booking: api.LabBooking }) 
     });
     return () => { mounted = false; clearInterval(interval); closeSocket(); };
   }, [labId, testId, slotDate, slotTime]);
+
+  useLabQueueNotifications(
+    session,
+    booking.token_number ?? null,
+    booking.id,
+    booking.lab_name,
+    booking.test_name,
+  );
 
   const myToken = booking.token_number ?? null;
   if (myToken == null) return null;
