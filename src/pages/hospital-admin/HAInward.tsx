@@ -3,7 +3,20 @@ import * as api from "../../api";
 import { useStore } from "../../context/StoreContext";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { BedDouble, Plus, X, Pencil, LogOut, ChevronDown, ChevronUp, Thermometer, HeartPulse } from "lucide-react";
+import { BedDouble, Plus, X, Pencil, LogOut, ChevronDown, ChevronUp, Thermometer, HeartPulse, Download } from "lucide-react";
+import { getToken } from "../../api";
+import { downloadFile } from "../../lib/downloadFile";
+
+const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+function monthAgoStr() {
+  const d = new Date();
+  d.setDate(d.getDate() - 30);
+  return d.toISOString().slice(0, 10);
+}
 
 type InwardPatient = {
   id: string; patient_name: string; phone: string | null; age: number | null;
@@ -34,6 +47,9 @@ export default function HAInward() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [history, setHistory] = useState<Record<string, { vitals: any[]; notes: any[] }>>({});
   const [historyLoading, setHistoryLoading] = useState<string | null>(null);
+  const [exportFrom, setExportFrom] = useState(monthAgoStr());
+  const [exportTo, setExportTo] = useState(todayStr());
+  const [exporting, setExporting] = useState(false);
 
   const hospitalId = user?.role === "hospital_admin" ? (user as any).hospitalId : "";
   const myDoctors = doctors.filter((d: any) => d.hospitalId === hospitalId);
@@ -96,6 +112,26 @@ export default function HAInward() {
     try { await api.inward.discharge(id); await load(); } catch (_) {}
   }
 
+  async function handleExport() {
+    if (!exportFrom || !exportTo) return;
+    setExporting(true);
+    try {
+      const qs = new URLSearchParams({ from: exportFrom, to: exportTo });
+      if (hospitalId) qs.set("hospitalId", hospitalId);
+      const res = await fetch(`${BASE}/inward/export?${qs.toString()}`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      if (res.status === 404) { alert("No inward patient records found for this period."); return; }
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      await downloadFile(blob, `inward_${exportFrom}_to_${exportTo}.xlsx`);
+    } catch {
+      alert("Export failed. Please try again.");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div className="p-4 md:p-6 space-y-4">
       <div className="flex items-center justify-between">
@@ -103,10 +139,21 @@ export default function HAInward() {
           <BedDouble className="w-5 h-5 text-teal-600" />
           <h1 className="text-xl font-bold">Inward Patients</h1>
         </div>
-        <button onClick={openAdmit}
-          className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-          <Plus className="w-4 h-4" /> Admit Patient
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <input type="date" value={exportFrom} onChange={e => setExportFrom(e.target.value)}
+            className="border rounded-lg px-2.5 py-2 text-sm bg-background" />
+          <span className="text-sm text-muted-foreground">to</span>
+          <input type="date" value={exportTo} onChange={e => setExportTo(e.target.value)}
+            className="border rounded-lg px-2.5 py-2 text-sm bg-background" />
+          <button onClick={handleExport} disabled={exporting}
+            className="flex items-center gap-2 border px-4 py-2 rounded-lg text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50">
+            <Download className="w-4 h-4" /> {exporting ? "Exporting..." : "Download"}
+          </button>
+          <button onClick={openAdmit}
+            className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            <Plus className="w-4 h-4" /> Admit Patient
+          </button>
+        </div>
       </div>
 
       <div className="flex gap-2">
