@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Loader2, MapPin, Phone } from "lucide-react";
+import { Clock, Loader2, MapPin, Phone } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -231,9 +231,17 @@ export default function LabTokenPanel() {
                         type="button"
                         onClick={() => setDlg(n)}
                         title={b ? b.patient_name : ""}
-                        className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl border-2 text-sm font-semibold transition-all hover:scale-105 ${TOKEN_CLASS[st] || TOKEN_CLASS.red} ${st === "orange" ? "scale-110 shadow-lg" : ""} ${b?.status === "cancelled" ? "opacity-50 line-through" : ""}`}
+                        className={`relative w-12 h-12 sm:w-14 sm:h-14 rounded-xl border-2 text-sm font-semibold transition-all hover:scale-105 ${TOKEN_CLASS[st] || TOKEN_CLASS.red} ${st === "orange" ? "scale-110 shadow-lg" : ""} ${b?.status === "cancelled" ? "opacity-50 line-through" : ""}`}
                       >
                         {n}
+                        {b?.late_flag && (st === "red" || st === "yellow") && (
+                          <span
+                            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center shadow ring-2 ring-white"
+                            title="Patient is running late"
+                          >
+                            <Clock className="w-3 h-3" />
+                          </span>
+                        )}
                       </button>
                     );
                   })}
@@ -268,6 +276,18 @@ export default function LabTokenPanel() {
                 <p className="flex items-start gap-1.5 text-xs text-gray-600"><MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0" /> {dlgBooking.address}</p>
               )}
               {dlgBooking.status === "cancelled" && <p className="text-xs font-semibold text-red-600">This booking was cancelled.</p>}
+              {dlgBooking.late_flag && (dlgStatus === "red" || dlgStatus === "yellow") && (
+                <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+                  <Clock className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">Patient is running late</p>
+                    <p className="text-sm text-amber-900 font-medium mt-0.5">
+                      {dlgBooking.late_eta_minutes ? `Will arrive in about ${dlgBooking.late_eta_minutes} min` : "Delay time not specified"}
+                    </p>
+                    <p className="text-xs text-amber-700 mt-0.5">You may want to call the next token first.</p>
+                  </div>
+                </div>
+              )}
               <div className="pt-1">
                 <label className="text-xs font-medium text-gray-600 mb-1 block">Sample status</label>
                 <LabStatusControl booking={dlgBooking} onChanged={(u) => { setBookings((prev) => prev.map((x) => (x.id === u.id ? { ...x, ...u } : x))); if (u.status === "cancelled") loadBookings(); }} />

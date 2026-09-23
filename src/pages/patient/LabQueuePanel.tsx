@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { Clock } from "lucide-react";
 import * as api from "../../api";
+import { resolveSessionTiming } from "../../data/seed";
 
 const TOKEN_STYLE: Record<string, string> = {
   red: "bg-red-50 text-red-600 border-red-200",
@@ -19,6 +21,10 @@ const LEGEND: [string, string][] = [
 
 export default function LabQueuePanel({ booking }: { booking: api.LabBooking }) {
   const [session, setSession] = useState<api.LabSessionState | null>(null);
+  const [lateFlag, setLateFlag] = useState(!!booking.late_flag);
+  const [lateEtaMinutes, setLateEtaMinutes] = useState<number | null>(booking.late_eta_minutes ?? null);
+  const [showLateOptions, setShowLateOptions] = useState(false);
+  const [markingLate, setMarkingLate] = useState(false);
   const labId = booking.lab_id;
   const testId = booking.test_id;
   const slotDate = booking.slot_date;
@@ -60,6 +66,38 @@ export default function LabQueuePanel({ booking }: { booking: api.LabBooking }) 
   else if (myState === "purple") { banner = "Your token was skipped — please contact the lab"; cls = "bg-purple-50 text-purple-700 border-purple-200"; }
   else if (myState === "red") { banner = ahead === 0 ? "You're first in line" : `${ahead} ${ahead === 1 ? "person" : "people"} ahead of you`; }
 
+  // "Running late?" opens 10 min before the session starts and stays open
+  // until the session's end time, mirroring the doctor token tracker.
+  const lateWindow = (() => {
+    const times = resolveSessionTiming(slotDate, slotTime as any);
+    if (!times) return { open: false, opensAt: null as Date | null };
+    const [y, mo, d] = slotDate.split("-").map(Number);
+    const [sh, sm] = times.start.split(":").map(Number);
+    const [eh, em] = times.end.split(":").map(Number);
+    const opensAt = new Date(y, mo - 1, d, sh, sm - 10, 0, 0);
+    const endsAt = new Date(y, mo - 1, d, eh, em, 0, 0);
+    const nowMs = Date.now();
+    return { open: nowMs >= opensAt.getTime() && nowMs < endsAt.getTime(), opensAt };
+  })();
+
+  async function handleMarkLate(etaMinutes: number) {
+    if (!lateWindow.open) return;
+    setMarkingLate(true);
+    try {
+      await api.labs.markLate(booking.id, etaMinutes);
+      setLateFlag(true);
+      setLateEtaMinutes(etaMinutes);
+      setShowLateOptions(false);
+    } catch (err) {
+      console.error(err);
+      alert("Couldn't send your update. Please try again.");
+    } finally {
+      setMarkingLate(false);
+    }
+  }
+
+  const canShowLate = myState === "red" || myState === "yellow";
+
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-5">
       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Live Queue · {api.labSessionLabel(slotTime)}</p>
@@ -76,6 +114,61 @@ export default function LabQueuePanel({ booking }: { booking: api.LabBooking }) 
           <p className="text-2xl font-extrabold text-yellow-600">{session?.nextToken != null ? `#${session.nextToken}` : "—"}</p>
         </div>
       </div>
+
+      {/* ── Running Late (locked until 10 min before the session) ── */}
+      {canShowLate && !lateFlag && !lateWindow.open && lateWindow.opensAt && (
+        <div className="bg-gray-50 rounded-xl border border-gray-100 px-4 py-3 mb-4 flex items-start gap-2 text-xs text-gray-500">
+          <Clock className="w-4 h-4 mt-0.5 shrink-0" />
+          <span>
+            The "running late" option opens 10 minutes before your session starts (
+            {lateWindow.opensAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })},{" "}
+            {lateWindow.opensAt.toLocaleDateString([], { day: "numeric", month: "short" })}).
+          </span>
+        </div>
+      )}
+      {canShowLate && (lateWindow.open || lateFlag) && (
+        <div className="mb-4">
+          {lateFlag ? (
+            <div className="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+              <Clock className="w-4 h-4 mt-0.5 shrink-0" />
+              <span>You've let the lab know you're running about {lateEtaMinutes} min late.</span>
+            </div>
+          ) : showLateOptions ? (
+            <div>
+              <p className="text-sm font-semibold text-gray-900 mb-2">How late will you be?</p>
+              <div className="flex flex-wrap gap-2">
+                {[10, 15, 20, 30, 45].map((mins) => (
+                  <button
+                    key={mins}
+                    type="button"
+                    disabled={markingLate}
+                    onClick={() => handleMarkLate(mins)}
+                    className="px-3 py-1.5 rounded-full border border-amber-300 text-amber-700 text-sm font-medium hover:bg-amber-50 disabled:opacity-50"
+                  >
+                    ~{mins} min
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setShowLateOptions(false)}
+                  className="px-3 py-1.5 rounded-full border border-gray-200 text-gray-500 text-sm font-medium hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowLateOptions(true)}
+              className="flex items-center gap-2 text-sm font-semibold text-amber-700 border border-amber-300 rounded-xl px-4 py-2.5 hover:bg-amber-50"
+            >
+              <Clock className="w-4 h-4" /> Running late?
+            </button>
+          )}
+        </div>
+      )}
+
       {nums.length > 0 && (
         <>
           <div className="grid grid-cols-5 sm:grid-cols-8 gap-2">

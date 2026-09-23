@@ -576,6 +576,8 @@ export interface LabBooking {
   status: "booked" | "technician_assigned" | "sample_collected" | "processing" | "report_ready" | "cancelled";
   report_url?: string | null;
   notes?: string | null;
+  late_flag?: boolean;
+  late_eta_minutes?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -615,6 +617,8 @@ export const labs = {
   allBookings: () => get<LabBooking[]>("/labs/bookings"),
   updateStatus: (id: string, data: { status: LabBooking["status"]; reportUrl?: string; notes?: string }) =>
     patch<LabBooking>(`/labs/bookings/${id}/status`, data),
+  markLate: (id: string, etaMinutes: number) =>
+    post<{ success: boolean; etaMinutes: number }>(`/labs/bookings/${id}/mark-late`, { etaMinutes }),
 
   // Admin-only management
   create: (data: { name: string; area: string; address?: string; phone?: string; rating?: number; mapLocation?: string }) =>
