@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useStore } from "../../context/StoreContext";
-import { ClipboardList, Plus, X, Pencil, Trash2 } from "lucide-react";
+import { ClipboardList, Plus, X, Pencil, Trash2, Download } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { getToken } from "../../api";
+import { downloadFile } from "../../lib/downloadFile";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
@@ -60,6 +61,7 @@ export default function HAHR() {
   const [form, setForm] = useState({ ...EMPTY });
   const [loading, setLoading] = useState(false);
   const [paidSet, setPaidSet] = useState<Set<string>>(new Set());
+  const [exporting, setExporting] = useState(false);
 
   async function apiFetch(path: string, method="GET", body?: any) {
     const res = await fetch(`${BASE}${path}`, {
@@ -118,6 +120,25 @@ export default function HAHR() {
     try { await apiFetch(`/hr/${s.id}`, "PATCH", { ...s, isActive: s.is_active === 1 ? false : true }); await load(); } catch {}
   }
 
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const qs = new URLSearchParams();
+      if (hospitalId) qs.set("hospitalId", hospitalId);
+      const res = await fetch(`${BASE}/hr/export?${qs.toString()}`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      if (res.status === 404) { alert("No staff records found."); return; }
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      await downloadFile(blob, `staff_${new Date().toISOString().slice(0,10)}.xlsx`);
+    } catch {
+      alert("Export failed. Please try again.");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   const filtered = staff.filter(s =>
     (filter === "all" || s.role === filter) &&
     (s.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -138,10 +159,16 @@ export default function HAHR() {
           <ClipboardList className="w-5 h-5 text-teal-600" />
           <h1 className="text-xl font-bold">HR / Staff</h1>
         </div>
-        <button onClick={openAdd}
-          className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-          <Plus className="w-4 h-4" /> Add Staff
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={handleExport} disabled={exporting}
+            className="flex items-center gap-2 border px-4 py-2 rounded-lg text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50">
+            <Download className="w-4 h-4" /> {exporting ? "Exporting..." : "Download"}
+          </button>
+          <button onClick={openAdd}
+            className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            <Plus className="w-4 h-4" /> Add Staff
+          </button>
+        </div>
       </div>
 
       {/* Summary chips */}
