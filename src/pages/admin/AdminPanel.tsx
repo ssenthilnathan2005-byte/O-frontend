@@ -3,6 +3,7 @@ import {
   BookOpen,
   Building2,
   CalendarCheck,
+  ClipboardList,
   FlaskConical,
   LayoutDashboard,
   LogOut,
@@ -21,6 +22,7 @@ import AdminDashboard from "./AdminDashboard";
 import AdminDoctors from "./AdminDoctors";
 import AdminHospitals from "./AdminHospitals";
 import AdminLabs from "./AdminLabs";
+import AdminLabBookings from "./AdminLabBookings";
 import AdminPatients from "./AdminPatients";
 import AdminPharmacies from "./AdminPharmacies";
 
@@ -30,6 +32,7 @@ const NAV_ITEMS = [
   { path: "/admin/doctors", label: "Doctors", icon: UserCog },
   { path: "/admin/patients", label: "Patients", icon: Users },
   { path: "/admin/bookings", label: "Bookings", icon: BookOpen },
+  { path: "/admin/lab-bookings", label: "Lab Bookings", icon: ClipboardList },
   { path: "/admin/pharmacies", label: "Pharmacies", icon: Pill },
   { path: "/admin/ambulance", label: "Ambulance", icon: Ambulance },
   { path: "/admin/labs", label: "Labs", icon: FlaskConical },
@@ -50,6 +53,8 @@ export default function AdminPanel() {
         return <AdminPatients />;
       case "/admin/bookings":
         return <AdminBookings />;
+      case "/admin/lab-bookings":
+        return <AdminLabBookings />;
       case "/admin/pharmacies":
         return <AdminPharmacies />;
       case "/admin/ambulance":
