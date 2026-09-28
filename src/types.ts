@@ -12,6 +12,8 @@ export interface Hospital {
   photoUrl?: string | null;
   isFree?: boolean;
   hasPharmacy?: boolean;
+  plan?: "basic" | "premium";
+  ratePerToken?: number;
 }
 
 export type SessionType = "morning" | "afternoon" | "evening";

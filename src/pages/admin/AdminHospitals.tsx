@@ -39,7 +39,7 @@ export default function AdminHospitals() {
   const [isDragOver, setIsDragOver]       = useState(false);
   const [uploading, setUploading]         = useState(false);
   const [uploaded, setUploaded]           = useState(false);        // confirms save succeeded
-  const [form, setForm] = useState({ name: "", area: "", address: "", phone: "", loginId: "" });
+  const [form, setForm] = useState({ name: "", area: "", address: "", phone: "", loginId: "", plan: "premium" as "basic" | "premium" });
   const [editHospital, setEditHospital]   = useState<Hospital | null>(null);
   const [editForm, setEditForm]           = useState<EditHospitalForm>({ name: "", area: "", address: "", phone: "" });
   const [loginDialogHospital, setLoginDialogHospital] = useState<Hospital | null>(null);
@@ -60,6 +60,7 @@ export default function AdminHospitals() {
         id: `h_${Date.now()}`, name: form.name, area: form.area,
         address: form.address, phone: form.phone,
         loginId: form.loginId.trim() || undefined,
+        plan: form.plan,
         doctorCount: 0, rating: 4.0, gradient: "from-slate-400 to-slate-600",
       } as any);
     } catch (err: any) {
@@ -71,7 +72,7 @@ export default function AdminHospitals() {
         ? `Hospital "${form.name}" added — share login ID "${form.loginId.trim()}" with their staff`
         : `Hospital "${form.name}" added`
     );
-    setForm({ name: "", area: "", address: "", phone: "", loginId: "" });
+    setForm({ name: "", area: "", address: "", phone: "", loginId: "", plan: "premium" });
     setAddOpen(false);
   }
 
@@ -243,6 +244,22 @@ export default function AdminHospitals() {
                 </div>
               ))}
               <div className="space-y-1.5">
+                <Label>Plan</Label>
+                <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden">
+                  <button type="button" onClick={() => setForm(f => ({ ...f, plan: "basic" }))}
+                    className={`px-3 py-1.5 text-xs font-medium ${form.plan === "basic" ? "bg-gray-900 text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}>
+                    Basic · ₹8/token
+                  </button>
+                  <button type="button" onClick={() => setForm(f => ({ ...f, plan: "premium" }))}
+                    className={`px-3 py-1.5 text-xs font-medium ${form.plan === "premium" ? "bg-teal-600 text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}>
+                    Premium · ₹15/token
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Basic: doctor login and digital queue only. Premium: hospital admin, pharmacy, lab, wards and everything else.
+                </p>
+              </div>
+              <div className="space-y-1.5">
                 <Label>Hospital Staff Login ID (optional)</Label>
                 <Input placeholder="e.g. apollo-chennai" value={form.loginId}
                   onChange={e => setForm(f => ({ ...f, loginId: e.target.value }))}
@@ -275,6 +292,7 @@ export default function AdminHospitals() {
               <TableHead>Address</TableHead>
               <TableHead>Phone</TableHead>
               <TableHead className="text-center">Doctors</TableHead>
+              <TableHead className="text-center">Plan</TableHead>
               <TableHead className="text-center">Mode</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -310,6 +328,20 @@ export default function AdminHospitals() {
                 <TableCell className="text-muted-foreground text-sm">{hospital.phone ?? "—"}</TableCell>
                 <TableCell className="text-center">
                   <Badge variant="secondary">{getDoctorCount(hospital.id)}</Badge>
+                </TableCell>
+                <TableCell className="text-center">
+                  <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden">
+                    <button type="button"
+                      onClick={() => { if (hospital.plan === "basic") return; if (true && !window.confirm("Switch this hospital to Basic? Its hospital admin, pharmacy and lab logins will stop working.")) return; updateHospital(hospital.id, { plan: "basic" }).then(() => toast.success("Plan changed to Basic ₹8")).catch((e: any) => toast.error(e.message || "Failed to change plan")); }}
+                      className={`px-3 py-1 text-xs font-medium transition-colors ${(hospital.plan ?? "premium") === "basic" ? "bg-gray-900 text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}>
+                      Basic ₹8
+                    </button>
+                    <button type="button"
+                      onClick={() => { if (hospital.plan === "premium") return; if (false && !window.confirm("Switch this hospital to Basic? Its hospital admin, pharmacy and lab logins will stop working.")) return; updateHospital(hospital.id, { plan: "premium" }).then(() => toast.success("Plan changed to Premium ₹15")).catch((e: any) => toast.error(e.message || "Failed to change plan")); }}
+                      className={`px-3 py-1 text-xs font-medium transition-colors ${(hospital.plan ?? "premium") === "premium" ? "bg-teal-600 text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}>
+                      Premium ₹15
+                    </button>
+                  </div>
                 </TableCell>
                 <TableCell className="text-center">
                   <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden" data-ocid="admin.hospital_mode_toggle">
