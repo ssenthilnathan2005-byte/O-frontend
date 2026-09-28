@@ -23,6 +23,7 @@ type Bed = {
   occupant_diagnosis: string | null;
   occupant_notes: string | null;
   occupant_admitted_at: string | null;
+  inward_id?: string | null;
 };
 
 const EMPTY_OCCUPY = { patientName:"", phone:"", age:"", gender:"", admittingDoctorName:"", diagnosis:"", notes:"" };
