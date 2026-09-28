@@ -147,7 +147,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     } else {
       try {
         const [h, d] = await Promise.all([
-          api.hospitals.list(),
+          api.hospitals.list(u?.role === "admin"),
           api.doctors.list(),
         ]);
         setHospitals(h);
@@ -349,13 +349,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const addHospital = useCallback(async (data: Partial<Hospital>) => {
     const h = await api.hospitals.create(data);
     setHospitals(p => [...p, h]);
-    api.hospitals.list().then(setHospitals).catch(() => {});
+    api.hospitals.list(true).then(setHospitals).catch(() => {});
   }, []);
 
   const updateHospital = useCallback(async (id: string, data: Partial<Hospital>) => {
     const h = await api.hospitals.update(id, data);
     setHospitals(p => p.map(x => x.id === id ? h : x));
-    api.hospitals.list().then(setHospitals).catch(() => {});
+    api.hospitals.list(true).then(setHospitals).catch(() => {});
   }, []);
 
   const updateHospitalPhoto = useCallback(async (id: string, photoUrlOrBase64: string) => {
@@ -367,14 +367,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       photoUrl = photoUrlOrBase64;
     }
     setHospitals(p => p.map(x => x.id === id ? { ...x, photoUrl } : x));
-    api.hospitals.list().then(setHospitals).catch(() => {});
+    api.hospitals.list(true).then(setHospitals).catch(() => {});
   }, []);
 
   const deleteHospital = useCallback(async (id: string, _docs: Doctor[]) => {
     try {
       await api.hospitals.delete(id);
       setHospitals(p => p.filter(h => h.id !== id));
-      api.hospitals.list().then(setHospitals).catch(() => {});
+      api.hospitals.list(true).then(setHospitals).catch(() => {});
       return true;
     } catch (e: any) {
       const msg = e.message || "";
@@ -385,7 +385,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ) return false;
       // For any other error, still remove from local state if it was a network fluke
       // and re-fetch to reconcile
-      api.hospitals.list().then(setHospitals).catch(() => {});
+      api.hospitals.list(true).then(setHospitals).catch(() => {});
       return false;
     }
   }, []);
@@ -409,7 +409,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setBookings(p => p.map(b =>
       b.doctorId === id ? { ...b, status: "cancelled" as const } : b
     ));
-    api.hospitals.list().then(setHospitals).catch(() => {});
+    api.hospitals.list(true).then(setHospitals).catch(() => {});
   }, []);
 
   // ── Bookings ──────────────────────────────────────────────────────────────

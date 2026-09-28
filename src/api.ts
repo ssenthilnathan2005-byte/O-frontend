@@ -270,7 +270,7 @@ export const auth = {
 
 // ── Hospitals ─────────────────────────────────────────────────────────────────
 export const hospitals = {
-  list:   ()                                    => get<Hospital[]>("/hospitals"),
+  list:   (bust = false) => get<Hospital[]>(bust ? `/hospitals?_=${Date.now()}` : "/hospitals"),
   get:    (id: string)                          => get<Hospital>(`/hospitals/${id}`),
   create: (data: Partial<Hospital>)             => post<Hospital>("/hospitals", data),
   update: (id: string, data: Partial<Hospital>) => patch<Hospital>(`/hospitals/${id}`, data),
