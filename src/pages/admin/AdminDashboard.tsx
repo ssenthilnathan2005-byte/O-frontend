@@ -4,12 +4,15 @@ import {
   Activity,
   Building2,
   CalendarCheck,
+  ClipboardList,
+  FlaskConical,
   RefreshCw,
   UserCog,
   Users,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useStore } from "../../context/StoreContext";
+import * as api from "../../api";
 
 const STAT_CARD_DEFS = [
   {
@@ -40,7 +43,23 @@ const STAT_CARD_DEFS = [
     color: "text-amber-500",
     bg: "bg-amber-50",
   },
+];
 
+const LAB_CARD_DEFS = [
+  {
+    label: "Total Labs",
+    key: "totalLabs" as const,
+    icon: FlaskConical,
+    color: "text-cyan-500",
+    bg: "bg-cyan-50",
+  },
+  {
+    label: "Total Lab Bookings",
+    key: "totalLabBookings" as const,
+    icon: ClipboardList,
+    color: "text-rose-500",
+    bg: "bg-rose-50",
+  },
 ];
 
 export default function AdminDashboard() {
@@ -50,7 +69,23 @@ export default function AdminDashboard() {
   // Re-derive stats whenever store data changes
   useEffect(() => { setStats(getStats()); }, [getStats]);
 
-  function refresh() { setStats(getStats()); }
+  const [labStats, setLabStats] = useState({ totalLabs: 0, totalLabBookings: 0 });
+
+  function loadLabStats() {
+    Promise.all([
+      api.labs.list().catch(() => []),
+      api.labs.allBookings().catch(() => []),
+    ]).then(([labList, labBookings]) =>
+      setLabStats({
+        totalLabs: labList.length,
+        totalLabBookings: labBookings.length,
+      }),
+    );
+  }
+
+  useEffect(() => { loadLabStats(); }, []);
+
+  function refresh() { setStats(getStats()); loadLabStats(); }
 
   return (
     <div className="p-8">
@@ -76,10 +111,10 @@ export default function AdminDashboard() {
       </div>
 
       <div
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
         data-ocid="admin.panel"
       >
-        {STAT_CARD_DEFS.map((card) => (
+        {[...STAT_CARD_DEFS, ...LAB_CARD_DEFS].map((card) => (
           <Card
             key={card.label}
             className="border border-border shadow-sm"
@@ -93,7 +128,9 @@ export default function AdminDashboard() {
             <CardContent>
               <div className="flex items-center justify-between">
                 <span className="text-3xl font-bold text-foreground">
-                  {stats[card.key]}
+                  {card.key === "totalLabs" || card.key === "totalLabBookings"
+                    ? labStats[card.key]
+                    : stats[card.key as keyof typeof stats]}
                 </span>
                 <div
                   className={`w-10 h-10 rounded-xl ${card.bg} flex items-center justify-center`}
