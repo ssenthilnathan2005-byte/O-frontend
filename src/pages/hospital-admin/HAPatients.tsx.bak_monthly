@@ -13,7 +13,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useStore } from "../../context/StoreContext";
 import { normalizeBookingStatus } from "../../lib/bookingStatus";
 import { getToken } from "../../api";
-import MonthlyArchiveBanner from "../../components/MonthlyArchiveBanner";
 
 const STATUS_STYLES: Record<string, string> = {
   confirmed: "bg-blue-50 text-blue-700 border-blue-200",
@@ -178,9 +177,6 @@ export default function HAPatients() {
 
   return (
     <div className="p-8">
-      {hospitalId && (
-        <MonthlyArchiveBanner base="/api/hospital" hospitalId={hospitalId} who="hospital" onCleared={() => window.location.reload()} />
-      )}
       <div className="flex flex-col gap-4 mb-8">
         <div className="flex items-center justify-between">
           <div>
