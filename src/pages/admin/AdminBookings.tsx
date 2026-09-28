@@ -9,7 +9,7 @@ import {
 import { BookOpen, Building2 } from "lucide-react";
 import { useStore } from "../../context/StoreContext";
 import { useMemo, useState } from "react";
-import type { Booking } from "../../types";
+import type { Booking } from "../../api";
 
 const STATUS_COLORS: Record<string, string> = {
   confirmed: "bg-blue-100 text-blue-700",
