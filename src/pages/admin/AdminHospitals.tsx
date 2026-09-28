@@ -256,7 +256,7 @@ export default function AdminHospitals() {
                   </button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Basic: doctor login and digital queue only. Premium: hospital admin, pharmacy, lab, wards and everything else.
+                  Label only: shows which plan the hospital is on and sets the per-token rate used on the Billing page. It does not restrict any logins.
                 </p>
               </div>
               <div className="space-y-1.5">
@@ -332,12 +332,12 @@ export default function AdminHospitals() {
                 <TableCell className="text-center">
                   <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden">
                     <button type="button"
-                      onClick={() => { if (hospital.plan === "basic") return; if (true && !window.confirm("Switch this hospital to Basic? Its hospital admin, pharmacy and lab logins will stop working.")) return; updateHospital(hospital.id, { plan: "basic" }).then(() => toast.success("Plan changed to Basic ₹8")).catch((e: any) => toast.error(e.message || "Failed to change plan")); }}
+                      onClick={() => { if (hospital.plan === "basic") return; updateHospital(hospital.id, { plan: "basic" }).then(() => toast.success("Plan changed to Basic ₹8")).catch((e: any) => toast.error(e.message || "Failed to change plan")); }}
                       className={`px-3 py-1 text-xs font-medium transition-colors ${(hospital.plan ?? "premium") === "basic" ? "bg-gray-900 text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}>
                       Basic ₹8
                     </button>
                     <button type="button"
-                      onClick={() => { if (hospital.plan === "premium") return; if (false && !window.confirm("Switch this hospital to Basic? Its hospital admin, pharmacy and lab logins will stop working.")) return; updateHospital(hospital.id, { plan: "premium" }).then(() => toast.success("Plan changed to Premium ₹15")).catch((e: any) => toast.error(e.message || "Failed to change plan")); }}
+                      onClick={() => { if (hospital.plan === "premium") return; updateHospital(hospital.id, { plan: "premium" }).then(() => toast.success("Plan changed to Premium ₹15")).catch((e: any) => toast.error(e.message || "Failed to change plan")); }}
                       className={`px-3 py-1 text-xs font-medium transition-colors ${(hospital.plan ?? "premium") === "premium" ? "bg-teal-600 text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}>
                       Premium ₹15
                     </button>
