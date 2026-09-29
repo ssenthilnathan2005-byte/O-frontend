@@ -10,11 +10,11 @@ const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/
 type Item = {
   id: string; name: string; category: string; unit: string;
   quantity: number; min_quantity: number; purchase_price: number | null;
-  supplier: string | null; location: string | null; notes: string | null;
+  supplier: string | null; location: string | null; notes: string | null; pack_size?: number;
 };
 
 const CATEGORIES = ["supplies","equipment","consumables","medicines","linen","cleaning","other"];
-const EMPTY = { name:"", category:"supplies", unit:"units", quantity:"0", minQuantity:"5", purchasePrice:"", supplier:"", location:"", notes:"" };
+const EMPTY = { name:"", category:"supplies", unit:"units", packSize:"1", quantity:"0", minQuantity:"5", purchasePrice:"", supplier:"", location:"", notes:"" };
 
 const CAT_COLORS: Record<string,string> = {
   supplies:"bg-blue-50 text-blue-700", equipment:"bg-purple-50 text-purple-700",
@@ -97,7 +97,7 @@ export default function HAInventory() {
   function openAdd() { setForm({ ...EMPTY }); setEditId(null); setShowForm(true); }
   function openEdit(item: Item) {
     setForm({ name:item.name, category:item.category, unit:item.unit,
-      quantity:String(item.quantity), minQuantity:String(item.min_quantity),
+      packSize:String(item.pack_size||1), quantity:String(item.quantity), minQuantity:String(item.min_quantity),
       purchasePrice:item.purchase_price ? String(item.purchase_price) : "",
       supplier:item.supplier||"", location:item.location||"", notes:item.notes||"" });
     setEditId(item.id); setShowForm(true);
@@ -107,7 +107,7 @@ export default function HAInventory() {
     if (!form.name.trim()) return;
     setLoading(true);
     try {
-      const payload = { ...form, quantity:Number(form.quantity), minQuantity:Number(form.minQuantity),
+      const payload = { ...form, packSize:Number(form.packSize)||1, quantity:Number(form.quantity), minQuantity:Number(form.minQuantity),
         purchasePrice: form.purchasePrice ? Number(form.purchasePrice) : null };
       if (editId) await apiFetch(`/inventory/${editId}`, "PATCH", payload);
       else await apiFetch("/inventory", "POST", payload);
@@ -256,6 +256,7 @@ export default function HAInventory() {
               {[
                 { label:"Item Name *", key:"name", placeholder:"e.g. Surgical Gloves" },
                 { label:"Unit", key:"unit", placeholder:"e.g. boxes, units, kg" },
+                { label:"Tablets per unit (e.g. 10 tablets per set; use 1 for non-tablet items)", key:"packSize", placeholder:"e.g. 10" },
                 { label:"Quantity", key:"quantity", placeholder:"Current stock" },
                 { label:"Min Quantity (alert threshold)", key:"minQuantity", placeholder:"5" },
                 { label:"Purchase Price (₹)", key:"purchasePrice", placeholder:"Per unit cost" },
