@@ -62,6 +62,7 @@ export default function PharmacyDashboard() {
   const [plans, setPlans] = useState<Record<string, Record<number, Plan>>>({});
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
+  const [handover, setHandover] = useState<Record<string, Record<number, { qty: string; reason: string }>>>({});
   const [filter, setFilter] = useState<PrescStatus | "all">("pending");
   const headers = { Authorization: `Bearer ${getToken()}` };
 
@@ -100,6 +101,14 @@ export default function PharmacyDashboard() {
     setPlans(prev => ({ ...prev, [p.id]: { ...(prev[p.id] ?? {}), [idx]: { ...base, ...patch } } }));
   }
 
+  function getHo(pid: string, i: number, max: number) {
+    return handover[pid]?.[i] ?? { qty: String(max), reason: "" };
+  }
+  function setHo(pid: string, i: number, max: number, patch: Partial<{ qty: string; reason: string }>) {
+    const base = getHo(pid, i, max);
+    setHandover(prev => ({ ...prev, [pid]: { ...(prev[pid] ?? {}), [i]: { ...base, ...patch } } }));
+  }
+
   async function updateStatus(p: Prescription, status: PrescStatus) {
     if (busy) return;
     let dispense: any[] | undefined;
@@ -115,12 +124,24 @@ export default function PharmacyDashboard() {
         dispense.push({ index: i, inventoryItemId: pl.itemId, quantity: qty, reason: pl.reason });
       }
     }
+    let handoverPayload: any[] | undefined;
+    if (status === "handed_over") {
+      let lines: any[] = [];
+      try { lines = p.dispensed_items ? JSON.parse(p.dispensed_items) : []; } catch {}
+      handoverPayload = [];
+      for (let i = 0; i < lines.length; i++) {
+        const h = getHo(p.id, i, lines[i].tablets);
+        const q = Number(h.qty);
+        if (!(q >= 0) || q > lines[i].tablets) return toast.error(`Enter 0 to ${lines[i].tablets} for ${lines[i].inventoryName}`);
+        handoverPayload.push({ line: i, quantity: q, reason: h.reason });
+      }
+    }
     setBusy(p.id);
     try {
       const res = await fetch(`${BASE}/pharmacy/prescriptions/${p.id}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", ...headers },
-        body: JSON.stringify({ status, dispense }),
+        body: JSON.stringify({ status, dispense, handover: handoverPayload }),
       });
       if (!res.ok) { const e = await res.json(); return toast.error(e.error ?? "Failed"); }
       toast.success(`Marked as ${STATUS_LABELS[status]}`);
@@ -233,7 +254,28 @@ export default function PharmacyDashboard() {
                 {!editable && dispensed.length > 0 && (
                   <div className="text-xs text-gray-500 space-y-0.5">
                     {dispensed.map((d, i) => (
-                      <p key={i}>Dispensed <b>{d.tablets}</b> × {d.inventoryName}{d.reduced ? ` (reduced from ${d.suggested})` : ""}</p>
+                      <div key={i} className="space-y-1">
+                        <p>Dispensed <b>{d.tablets}</b> × {d.inventoryName}{d.reduced ? ` (reduced from ${d.suggested})` : ""}{d.returned ? ` - patient took ${d.tablets}, ${d.returned} returned to stock` : ""}</p>
+                        {p.status === "ready" && (
+                          <div className="bg-amber-50 border border-amber-200 rounded-md p-2 space-y-1.5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-600">Patient takes</span>
+                              <input type="number" min={0} max={d.tablets} value={getHo(p.id, i, d.tablets).qty}
+                                onChange={e => setHo(p.id, i, d.tablets, { qty: e.target.value })}
+                                className="w-20 border rounded-md text-sm px-2 py-1 bg-white" />
+                              <span className="text-xs text-gray-600">of {d.tablets} tablets</span>
+                            </div>
+                            {Number(getHo(p.id, i, d.tablets).qty) < d.tablets && (
+                              <input placeholder="Reason (e.g. patient needs fewer)" value={getHo(p.id, i, d.tablets).reason}
+                                onChange={e => setHo(p.id, i, d.tablets, { reason: e.target.value })}
+                                className="w-full border rounded-md text-xs px-2 py-1.5 bg-white" />
+                            )}
+                            {Number(getHo(p.id, i, d.tablets).qty) < d.tablets && (
+                              <p className="text-xs text-amber-700">{d.tablets - Number(getHo(p.id, i, d.tablets).qty || 0)} tablets will be returned to stock.</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     ))}
                   </div>
                 )}
