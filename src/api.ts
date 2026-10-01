@@ -147,11 +147,13 @@ async function req<T>(
         // Clear the stale token and send the user back to log in.
         if (res.status === 401) {
           emitStatus("ok"); // server is reachable — this is an auth issue, not connectivity
+          const hadSession = !!(localStorage.getItem("db_jwt") || localStorage.getItem("db_user"));
           clearToken();
+          try { localStorage.removeItem("db_user"); } catch {}
           const authErr = new Error((data as any).error || "Your session has expired. Please log in again.");
           (authErr as any).isClientError = true;
           (authErr as any).isAuthError = true;
-          if (typeof window !== "undefined") {
+          if (typeof window !== "undefined" && hadSession && window.location.pathname !== "/") {
             setTimeout(() => { window.location.href = "/"; }, 400);
           }
           throw authErr;
