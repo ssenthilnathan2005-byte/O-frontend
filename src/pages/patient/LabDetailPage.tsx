@@ -141,6 +141,19 @@ function LabBookingDialog({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [booked, setBooked] = useState<api.LabBooking | null>(null);
+  const [step, setStep] = useState<"for-whom" | "form">("for-whom");
+  const [bookingFor, setBookingFor] = useState<"self" | "other" | "">("");
+  const [profile, setProfile] = useState<{ name: string; phone: string; age: string; isComplete: boolean } | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+
+  // Load the patient's saved profile when the dialog opens
+  useEffect(() => {
+    setProfileLoading(true);
+    api.patients.getProfile()
+      .then((p: any) => setProfile(p))
+      .catch(() => setProfile(null))
+      .finally(() => setProfileLoading(false));
+  }, []);
   const homeFee = Number(lab.home_collection_fee || 0);
 
   if (!open) return null;
@@ -222,6 +235,63 @@ function LabBookingDialog({
     }
   }
 
+  if (step === "for-whom") {
+    return (
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md p-5 sm:p-6">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-base font-bold text-gray-900">Book {test.name}</h3>
+            <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+          </div>
+          <div className="text-center pb-3">
+            <h3 className="font-semibold text-gray-900 text-base">Who is this booking for?</h3>
+            <p className="text-sm text-gray-400 mt-1">This helps us fill in the right details.</p>
+          </div>
+          <div className="space-y-3">
+            <button
+              type="button"
+              disabled={profileLoading}
+              onClick={() => {
+                if (!profile || !profile.isComplete) {
+                  onClose();
+                  navigate({ path: "/patient/profile" });
+                  return;
+                }
+                setPatientName(profile.name);
+                setPhone((profile.phone || "").replace(/\D/g, "").slice(-10));
+                setBookingFor("self");
+                setStep("form");
+              }}
+              className="w-full p-4 rounded-xl border-2 border-gray-200 hover:border-teal-500 hover:bg-teal-50 transition-all text-left disabled:opacity-50"
+            >
+              <p className="font-medium text-gray-900 text-sm">Booking for Myself</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {profileLoading
+                  ? "Checking your profile..."
+                  : profile?.isComplete
+                  ? "We'll use your saved details"
+                  : "You'll need to complete your profile first"}
+              </p>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setPatientName("");
+                setPhone("");
+                setBookingFor("other");
+                setStep("form");
+              }}
+              className="w-full p-4 rounded-xl border-2 border-gray-200 hover:border-teal-500 hover:bg-teal-50 transition-all text-left"
+            >
+              <p className="font-medium text-gray-900 text-sm">Booking for Someone Else</p>
+              <p className="text-xs text-gray-400 mt-0.5">Fill in their details fully</p>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-5 sm:p-6">
@@ -282,19 +352,37 @@ function LabBookingDialog({
             </div>
           )}
 
-          <div>
-            <label className="text-xs font-medium text-gray-600 mb-1 block">Patient Name</label>
-            <input type="text" value={patientName} onChange={(e) => setPatientName(e.target.value)}
-              placeholder="Enter patient name"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" />
-          </div>
+          {bookingFor === "self" ? (
+            <div className="bg-teal-50 border border-teal-200 rounded-xl p-3 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-900">{patientName}</p>
+                <p className="text-xs text-gray-500">{phone}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setStep("for-whom")}
+                className="text-xs font-medium text-teal-600 hover:text-teal-700"
+              >
+                Change
+              </button>
+            </div>
+          ) : (
+            <>
+              <div>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Patient Name</label>
+                <input type="text" value={patientName} onChange={(e) => setPatientName(e.target.value)}
+                  placeholder="Enter patient name"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" />
+              </div>
 
-          <div>
-            <label className="text-xs font-medium text-gray-600 mb-1 block">Phone Number</label>
-            <input type="tel" inputMode="numeric" value={phone} onChange={(e) => setPhone(e.target.value)}
-              placeholder="10-digit phone number"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" />
-          </div>
+              <div>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Phone Number</label>
+                <input type="tel" inputMode="numeric" value={phone} onChange={(e) => setPhone(e.target.value)}
+                  placeholder="10-digit phone number"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" />
+              </div>
+            </>
+          )}
 
           <div className="border-t border-gray-100 pt-3 flex justify-between text-sm">
             <span className="text-gray-500">Total</span>
