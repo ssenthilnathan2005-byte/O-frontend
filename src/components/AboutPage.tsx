@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 import { Clock, MapPin, FileText, ChevronRight } from "lucide-react";
-
+import logo from "../assets/doctorbooked-logo.png";
 
 interface Props {
   onContinue: () => void;
@@ -21,8 +21,8 @@ export default function AboutPage({ onContinue }: Props) {
 
   return (
     <div
-      className="db-about fixed inset-0 overflow-y-auto"
-      style={{ zIndex: 9998 }}
+      className="fixed inset-0 overflow-y-auto"
+      style={{ zIndex: 9998, colorScheme: "light", background: "linear-gradient(180deg,#ecfdf9 0%,#ffffff 55%)" }}
     >
       <button
         type="button"
@@ -34,32 +34,7 @@ export default function AboutPage({ onContinue }: Props) {
       </button>
 
       <div className="max-w-3xl mx-auto px-6 py-12 lg:py-20 flex flex-col items-center text-center min-h-full">
-        <style>{`
-        .db-about{background:linear-gradient(180deg,#ecfdf9 0%,#ffffff 55%)}
-        .db-word{color:#355f86}
-        .db-ring{border:0.15em solid #355f86}
-        @media (prefers-color-scheme: dark){
-          .db-about{background:linear-gradient(180deg,#0b1716 0%,#121212 60%)}
-          .db-word{color:#8cc4e8}
-          .db-ring{border-color:#8cc4e8}
-          .db-about h1,.db-about h3{color:#f3f4f6}
-          .db-about p{color:#9ca3af}
-          .db-about .bg-white{background:#1b1f1f;border-color:#2a3030}
-          .db-about .bg-teal-50{background:#0f2a27;border-color:#1d4d47}
-          .db-about .text-teal-600,.db-about .text-teal-700{color:#5eead4}
-        }
-      `}</style>
-        <motion.div {...up(0)} className="db-word" aria-label="Doctor Booked" style={{ fontFamily: "Jost, Segoe UI, system-ui, sans-serif", fontWeight: 700, fontSize: 40, letterSpacing: "0.04em", lineHeight: 1.1, textAlign: "center" }}>
-          <div>DOCTOR</div>
-          <div style={{ display: "inline-flex", alignItems: "baseline" }}>
-            <span>B</span>
-            <span style={{ position: "relative", width: "1.2em", height: "0.7em", margin: "0 0.04em", display: "inline-block" }}>
-              <span className="db-ring" style={{ position: "absolute", top: 0, left: 0, width: "0.7em", height: "0.7em", borderRadius: "50%", boxSizing: "border-box" }} />
-              <span className="db-ring" style={{ position: "absolute", top: 0, right: 0, width: "0.7em", height: "0.7em", borderRadius: "50%", boxSizing: "border-box" }} />
-            </span>
-            <span>KED</span>
-          </div>
-        </motion.div>
+        <motion.img {...up(0)} src={logo} alt="Doctor Booked" style={{ width: 190, mixBlendMode: "multiply" }} />
 
         <motion.span
           {...up(0.15)}
