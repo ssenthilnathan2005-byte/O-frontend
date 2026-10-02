@@ -13,21 +13,45 @@ export default function PharmacyLogin() {
   const { navigate } = useRouter();
 
   const [code, setCode] = useState("");
-  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [setupMode, setSetupMode] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function handleLogin() {
-    if (!code.trim() || !phone.trim()) {
-      toast.error("Enter your pharmacy code and registered phone number");
+    if (!code.trim() || !password.trim()) {
+      toast.error("Enter your pharmacy code and password");
       return;
     }
     setLoading(true);
     try {
-      const res = await api.auth.pharmacyLogin(code.trim(), phone.trim());
+      const res = await api.auth.pharmacyLogin(code.trim(), password);
+      if (res.firstLogin) {
+        setSetupMode(true);
+        toast.info("Please set a new password to continue");
+        return;
+      }
       login(res.user, res.token);
       toast.success("Welcome back");
     } catch (err: any) {
       toast.error(err.message || "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleSetPassword() {
+    if (newPassword.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await api.auth.pharmacySetPassword(code.trim(), password, newPassword);
+      login(res.user, res.token);
+      toast.success("Password updated");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to set password");
     } finally {
       setLoading(false);
     }
@@ -42,35 +66,57 @@ export default function PharmacyLogin() {
           </div>
           <h1 className="text-xl font-bold text-gray-900">Pharmacy Staff Login</h1>
           <p className="text-sm text-gray-500 mt-1 text-center">
-            Sign in to manage the prescription queue
+            {setupMode ? "Set a new password for your account" : "Sign in to manage the prescription queue"}
           </p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
-          <div className="space-y-1.5">
-            <Label>Pharmacy Code</Label>
-            <Input
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder="e.g. PH.APLO.CHN.01"
-              className="font-mono tracking-widest"
-              autoFocus
-            />
-          </div>
+          {setupMode ? (
+            <>
+              <div className="space-y-1.5">
+                <Label>New Password</Label>
+                <Input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Min 6 characters"
+                  onKeyDown={(e) => e.key === "Enter" && handleSetPassword()}
+                  autoFocus
+                />
+              </div>
+              <Button className="w-full" onClick={handleSetPassword} disabled={loading}>
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Password & Sign In"}
+              </Button>
+            </>
+          ) : (
+            <>
+              <div className="space-y-1.5">
+                <Label>Pharmacy Code</Label>
+                <Input
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  placeholder="e.g. PH.APLO.CHN.01"
+                  className="font-mono tracking-widest"
+                  autoFocus
+                />
+              </div>
 
-          <div className="space-y-1.5">
-            <Label>Registered Phone Number</Label>
-            <Input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="Your registered phone"
-              onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-            />
-          </div>
+              <div className="space-y-1.5">
+                <Label>Password</Label>
+                <Input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Your password"
+                  onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                />
+              </div>
 
-          <Button className="w-full" onClick={handleLogin} disabled={loading}>
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Sign In"}
-          </Button>
+              <Button className="w-full" onClick={handleLogin} disabled={loading}>
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Sign In"}
+              </Button>
+            </>
+          )}
 
           <button
             type="button"

@@ -360,13 +360,27 @@ export default function LoginPage({
 
 
   // ── Doctor login ──────────────────────────────────────────────────────────────
+  const [doctorSetup, setDoctorSetup] = useState(false);
+  const [doctorNewPass, setDoctorNewPass] = useState("");
+
   async function handleDoctorLogin(e: React.FormEvent) {
     e.preventDefault();
     if (!doctorCode || !doctorPass) { toast.error("Please fill all fields"); return; }
     setLoading(true);
     try {
-      const { token, user } = await auth.doctorLogin(doctorCode.trim(), doctorPass.trim());
-      login(user, token); navigate({ path: "/doctor" });
+      if (doctorSetup) {
+        if (doctorNewPass.length < 6) { toast.error("Password must be at least 6 characters"); return; }
+        const r = await auth.doctorSetPassword(doctorCode.trim(), doctorPass, doctorNewPass);
+        login(r.user, r.token); navigate({ path: "/doctor" });
+        return;
+      }
+      const res = await auth.doctorLogin(doctorCode.trim(), doctorPass);
+      if (res.firstLogin) {
+        setDoctorSetup(true);
+        toast.info("Please set a new password to continue");
+        return;
+      }
+      login(res.user, res.token); navigate({ path: "/doctor" });
     } catch (err: any) { toast.error(err.message || "Login failed"); }
     finally { setLoading(false); }
   }
@@ -606,6 +620,13 @@ export default function LoginPage({
                   <div className="relative"><Lock className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
                     <Input type="password" className="pl-9" placeholder="Enter your password" value={doctorPass} onChange={e => setDoctorPass(e.target.value)} /></div>
                 </div>
+                {doctorSetup && (
+                  <div className="space-y-1.5">
+                    <Label>New Password</Label>
+                    <div className="relative"><Lock className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                      <Input type="password" className="pl-9" placeholder="Min 6 characters" value={doctorNewPass} onChange={e => setDoctorNewPass(e.target.value)} autoFocus /></div>
+                  </div>
+                )}
                 <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 rounded-full h-11" disabled={loading}>
                   {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Verifying…</> : "Access Dashboard"}
                 </Button>

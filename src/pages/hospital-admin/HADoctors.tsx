@@ -35,10 +35,13 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useStore } from "../../context/StoreContext";
 import type { Doctor } from "../../api";
+import { getToken } from "@/api";
 
 const STANDARD_FEE = 10;
+const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
 type AddForm = {
+  password: string;
   name: string;
   phone: string;
   specialty: string;
@@ -58,7 +61,7 @@ type EditForm = {
 };
 
 const EMPTY_ADD: AddForm = {
-  name: "", phone: "", specialty: "", tokensPerSession: "20", sessions: "morning,afternoon",
+  name: "", password: "", phone: "", specialty: "", tokensPerSession: "20", sessions: "morning,afternoon",
 };
 
 const SPECIALTIES = [
@@ -98,8 +101,8 @@ export default function HADoctors() {
   });
 
   async function handleAdd() {
-    if (!addForm.name || !addForm.specialty) {
-      toast.error("Name and specialty are required");
+    if (!addForm.name || !addForm.specialty || addForm.password.length < 6) {
+      toast.error("Name, specialty and a password (min 6 characters) are required");
       return;
     }
     const tokens = Number.parseInt(addForm.tokensPerSession, 10) || 20;
@@ -108,6 +111,7 @@ export default function HADoctors() {
       const newDoc = await addDoctor({
         name: addForm.name,
         phone: addForm.phone,
+        password: addForm.password,
         specialty: addForm.specialty,
         hospitalId,
         consultationFee: STANDARD_FEE,
@@ -173,6 +177,22 @@ export default function HADoctors() {
     setEditDoctor(null);
   }
 
+  async function handleResetPassword() {
+    if (!editDoctor) return;
+    const pw = prompt("New password (min 6 characters):");
+    if (!pw) return;
+    if (pw.length < 6) { toast.error("Password must be at least 6 characters"); return; }
+    try {
+      const res = await fetch(`${BASE}/doctors/${editDoctor.id}/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({ password: pw }),
+      });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error ?? "Failed to reset password"); return; }
+      toast.success("Password reset");
+    } catch { toast.error("Network error"); }
+  }
+
   function handleToggleAvailability(doc: Doctor) {
     updateDoctor(doc.id, { isAvailable: !(doc.isAvailable ?? true) });
   }
@@ -221,6 +241,14 @@ export default function HADoctors() {
                   placeholder="+91 98765 00000"
                   value={addForm.phone}
                   onChange={(e) => setAddForm((f) => ({ ...f, phone: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Password *</Label>
+                <Input
+                  placeholder="Min 6 characters"
+                  value={addForm.password}
+                  onChange={(e) => setAddForm((f) => ({ ...f, password: e.target.value }))}
                 />
               </div>
               <div className="space-y-1.5">
@@ -368,7 +396,7 @@ export default function HADoctors() {
               <Input value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} />
             </div>
             <div className="space-y-1.5">
-              <Label>Password</Label>
+              <Label>Phone</Label>
               <Input value={editForm.phone} onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))} />
             </div>
             <div className="space-y-1.5">
@@ -462,6 +490,7 @@ export default function HADoctors() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditDoctor(null)}>Cancel</Button>
             <div className="flex items-center gap-2">
+              <Button onClick={handleResetPassword} variant="outline">Reset Password</Button>
               <Button onClick={handleSaveCode} variant="secondary">Save Code</Button>
               <Button onClick={handleEdit}>Save Changes</Button>
             </div>

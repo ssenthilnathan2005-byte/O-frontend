@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useStore } from "../../context/StoreContext";
 import { getToken } from "@/api";
 import { toast } from "sonner";
-import { Plus, Trash2, Copy, Pill, Settings } from "lucide-react";
+import { Plus, Trash2, Copy, Pill, Settings, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,6 +28,7 @@ export default function HAPharmacy() {
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
 
   async function fetchHospitalSettings() {
@@ -69,17 +70,18 @@ export default function HAPharmacy() {
 
   async function handleAdd() {
     if (!name.trim() || !phone.trim()) return toast.error("Name and phone required");
+    if (password.length < 6) return toast.error("Password must be at least 6 characters");
     setSaving(true);
     try {
       const res = await fetch(`${BASE}/pharmacy/staff`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ name, phone, hospitalId }),
+        body: JSON.stringify({ name, phone, hospitalId, password }),
       });
       const data = await res.json();
       if (!res.ok) return toast.error(data.error ?? "Failed to add staff");
       toast.success(`Staff added — Login code: ${data.code}`);
-      setName(""); setPhone("");
+      setName(""); setPhone(""); setPassword("");
       fetchStaff();
     } catch { toast.error("Network error"); }
     finally { setSaving(false); }
@@ -94,6 +96,21 @@ export default function HAPharmacy() {
       });
       toast.success("Staff deactivated");
       fetchStaff();
+    } catch { toast.error("Network error"); }
+  }
+
+  async function handleResetPassword(id: string) {
+    const pw = prompt("New password (min 6 characters):");
+    if (!pw) return;
+    if (pw.length < 6) return toast.error("Password must be at least 6 characters");
+    try {
+      const res = await fetch(`${BASE}/pharmacy/staff/${id}/password`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({ password: pw }),
+      });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); return toast.error(d.error ?? "Failed to reset password"); }
+      toast.success("Password reset");
     } catch { toast.error("Network error"); }
   }
 
@@ -141,12 +158,16 @@ export default function HAPharmacy() {
               <Input placeholder="Phone number" value={phone} onChange={e => setPhone(e.target.value)} />
             </div>
           </div>
+          <div>
+            <Label className="text-xs text-gray-500">Password</Label>
+            <Input placeholder="Min 6 characters" value={password} onChange={e => setPassword(e.target.value)} />
+          </div>
           <Button onClick={handleAdd} disabled={saving} className="w-full bg-teal-600 hover:bg-teal-700 text-white">
             <Plus className="w-4 h-4 mr-2" />
             {saving ? "Adding..." : "Add Staff Member"}
           </Button>
           <p className="text-xs text-gray-400 text-center">
-            A unique login code will be generated. Share it with the staff member along with their phone number to log in.
+            A unique login code will be generated. Share it with the staff member along with the password you set.
           </p>
         </CardContent>
       </Card>
@@ -171,6 +192,11 @@ export default function HAPharmacy() {
                 >
                   {s.code} <Copy className="w-3 h-3 ml-1" />
                 </Badge>
+                {s.is_active && (
+                  <button onClick={() => handleResetPassword(s.id)} className="text-gray-400 hover:text-teal-600" title="Reset password">
+                    <KeyRound className="w-4 h-4" />
+                  </button>
+                )}
                 {s.is_active ? (
                   <button onClick={() => handleRemove(s.id)} className="text-red-400 hover:text-red-600">
                     <Trash2 className="w-4 h-4" />

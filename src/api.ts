@@ -249,8 +249,10 @@ export const auth = {
     ),
   adminLogin: (code: string, password: string) =>
     post<{ token: string; user: AppUser }>("/auth/admin/login", { code, password }),
-  doctorLogin: (code: string, phone: string) =>
-    post<{ token: string; user: AppUser }>("/auth/doctor/login", { code, phone }),
+  doctorLogin: (code: string, password: string) =>
+    post<{ token: string; user: AppUser; firstLogin?: boolean }>("/auth/doctor/login", { code, password }),
+  doctorSetPassword: (code: string, currentPassword: string, newPassword: string) =>
+    post<{ token: string; user: AppUser }>("/auth/doctor/set-password", { code, currentPassword, newPassword }),
   me: () => get<{ user: AppUser }>("/auth/me"),
   hospitalLogin: (loginId: string, password: string) =>
     post<{ firstLogin?: boolean; loginId?: string; hospitalId?: string; hospitalName?: string; token?: string; user?: AppUser }>(
@@ -258,8 +260,10 @@ export const auth = {
     ),
   hospitalSetPassword: (loginId: string, newPassword: string) =>
     post<{ token: string; user: AppUser }>("/auth/hospital/set-password", { loginId, newPassword }),
-  pharmacyLogin: (code: string, phone: string) =>
-    post<{ token: string; user: AppUser }>("/auth/pharmacy/login", { code, phone }),
+  pharmacyLogin: (code: string, password: string) =>
+    post<{ token: string; user: AppUser; firstLogin?: boolean }>("/auth/pharmacy/login", { code, password }),
+  pharmacySetPassword: (code: string, currentPassword: string, newPassword: string) =>
+    post<{ token: string; user: AppUser }>("/auth/pharmacy/set-password", { code, currentPassword, newPassword }),
   labLogin: (loginId: string, password: string) =>
     post<{ firstLogin?: boolean; loginId?: string; labId?: string; labName?: string; token?: string; user?: AppUser }>(
       "/auth/lab/login", { loginId, password }
