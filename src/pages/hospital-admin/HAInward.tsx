@@ -41,6 +41,8 @@ export default function HAInward() {
   const [patients, setPatients] = useState<InwardPatient[]>([]);
   const [tab, setTab] = useState<"admitted" | "discharged">("admitted");
   const [showForm, setShowForm] = useState(false);
+  const [dutyMode, setDutyMode] = useState(false);
+  useEffect(() => { setDutyMode(false); }, [showForm]);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [search, setSearch] = useState("");
@@ -319,13 +321,25 @@ export default function HAInward() {
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">Admitting Doctor</label>
-                <select value={form.admittingDoctorName} onChange={e => setForm(f => ({ ...f, admittingDoctorName: e.target.value }))}
+                <select
+                  value={dutyMode ? "__duty__" : form.admittingDoctorName}
+                  onChange={e => {
+                    const v = e.target.value;
+                    if (v === "__duty__") { setDutyMode(true); setForm(f => ({ ...f, admittingDoctorName: "" })); }
+                    else { setDutyMode(false); setForm(f => ({ ...f, admittingDoctorName: v })); }
+                  }}
                   className="w-full border rounded-md px-3 py-2 text-sm bg-background">
                   <option value="">Select doctor</option>
-                  {myDoctors.map((d: any) => (
+                  {myDoctors.filter((d: any) => d.isAvailable ?? true).map((d: any) => (
                     <option key={d.id} value={d.name}>{d.name} — {d.specialty}</option>
                   ))}
+                  <option value="__duty__">Duty Doctor</option>
                 </select>
+                {dutyMode && (
+                  <input className="w-full border rounded-md px-3 py-2 text-sm bg-background mt-2"
+                    placeholder="Enter duty doctor's name" value={form.admittingDoctorName}
+                    onChange={e => setForm(f => ({ ...f, admittingDoctorName: e.target.value }))} />
+                )}
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">Notes</label>
@@ -337,7 +351,7 @@ export default function HAInward() {
             <div className="px-6 py-4 border-t flex gap-3 justify-end">
               <button onClick={() => setShowForm(false)}
                 className="px-4 py-2 rounded-lg text-sm border hover:bg-muted transition-colors">Cancel</button>
-              <button onClick={handleSubmit} disabled={loading}
+              <button onClick={handleSubmit} disabled={loading || (dutyMode && !form.admittingDoctorName.trim())}
                 className="px-4 py-2 rounded-lg text-sm bg-teal-600 hover:bg-teal-700 text-white font-medium transition-colors disabled:opacity-50">
                 {loading ? "Saving..." : editId ? "Update" : "Admit"}
               </button>

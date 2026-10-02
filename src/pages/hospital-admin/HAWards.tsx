@@ -50,8 +50,9 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function HAWards() {
-  const { user } = useStore();
+  const { user, doctors } = useStore();
   const hospitalId = user?.role === "hospital_admin" ? (user as any).hospitalId : "";
+  const availableDoctors = ((doctors as any[]) || []).filter((d: any) => d.hospitalId === hospitalId && (d.isAvailable ?? true));
 
   const [wards, setWards] = useState<Ward[]>([]);
   const [beds, setBeds] = useState<Record<string, Bed[]>>({});
@@ -62,6 +63,8 @@ export default function HAWards() {
   const [bedLoading, setBedLoading] = useState<string | null>(null);
   const [occupyTarget, setOccupyTarget] = useState<{ wardId: string; bed: Bed } | null>(null);
   const [occupyForm, setOccupyForm] = useState({ ...EMPTY_OCCUPY });
+  const [dutyMode, setDutyMode] = useState(false);
+  useEffect(() => { setDutyMode(false); }, [occupyTarget]);
   const [detailsTarget, setDetailsTarget] = useState<{ wardId: string; bed: Bed } | null>(null);
   const [vitals, setVitals] = useState<Vitals[]>([]);
   const [notes, setNotes] = useState<NoteEntry[]>([]);
@@ -386,8 +389,24 @@ export default function HAWards() {
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600 mb-1 block">Admitting Doctor</label>
-                <Input placeholder="Doctor name" value={occupyForm.admittingDoctorName}
-                  onChange={e => setOccupyForm(f => ({ ...f, admittingDoctorName: e.target.value }))} />
+                <select
+                  value={dutyMode ? "__duty__" : occupyForm.admittingDoctorName}
+                  onChange={e => {
+                    const v = e.target.value;
+                    if (v === "__duty__") { setDutyMode(true); setOccupyForm(f => ({ ...f, admittingDoctorName: "" })); }
+                    else { setDutyMode(false); setOccupyForm(f => ({ ...f, admittingDoctorName: v })); }
+                  }}
+                  className="w-full border rounded-md px-3 py-2 text-sm bg-white">
+                  <option value="">Select doctor</option>
+                  {availableDoctors.map((d: any) => (
+                    <option key={d.id} value={d.name}>{d.name} — {d.specialty}</option>
+                  ))}
+                  <option value="__duty__">Duty Doctor</option>
+                </select>
+                {dutyMode && (
+                  <Input className="mt-2" placeholder="Enter duty doctor's name" value={occupyForm.admittingDoctorName}
+                    onChange={e => setOccupyForm(f => ({ ...f, admittingDoctorName: e.target.value }))} />
+                )}
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600 mb-1 block">Reason for Admission / Diagnosis *</label>
@@ -405,7 +424,7 @@ export default function HAWards() {
             <div className="px-6 py-4 border-t flex gap-3 justify-end">
               <button onClick={() => setOccupyTarget(null)}
                 className="px-4 py-2 rounded-lg text-sm border hover:bg-gray-50 transition-colors">Cancel</button>
-              <button onClick={handleOccupy} disabled={bedLoading === occupyTarget.bed.id || !occupyForm.patientName.trim()}
+              <button onClick={handleOccupy} disabled={bedLoading === occupyTarget.bed.id || !occupyForm.patientName.trim() || (dutyMode && !occupyForm.admittingDoctorName.trim())}
                 className="px-4 py-2 rounded-lg text-sm bg-red-600 hover:bg-red-700 text-white font-medium transition-colors disabled:opacity-50">
                 {bedLoading === occupyTarget.bed.id ? "Admitting..." : "Admit & Occupy Bed"}
               </button>
