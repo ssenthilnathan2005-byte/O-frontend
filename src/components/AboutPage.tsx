@@ -1,4 +1,5 @@
 import { motion } from "motion/react";
+import { useEffect, useState } from "react";
 import { Clock, MapPin, FileText, ChevronRight } from "lucide-react";
 import logo from "../assets/doctorbooked-logo.png";
 
@@ -11,6 +12,44 @@ const features = [
   { icon: MapPin, title: "Find nearby hospitals", text: "Browse clinics and doctors around you and book a token in minutes." },
   { icon: FileText, title: "Digital prescriptions", text: "Keep all your prescriptions and records in one place." },
 ];
+
+function TransparentLogo({ src, width }: { src: string; width: number }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const c = document.createElement("canvas");
+        c.width = img.naturalWidth;
+        c.height = img.naturalHeight;
+        const ctx = c.getContext("2d");
+        if (!ctx) { setUrl(src); return; }
+        ctx.drawImage(img, 0, 0);
+        const d = ctx.getImageData(0, 0, c.width, c.height);
+        const p = d.data;
+        for (let i = 0; i < p.length; i += 4) {
+          const lum = (p[i] + p[i + 1] + p[i + 2]) / 3;
+          const a = Math.max(0, Math.min(1, (255 - lum) / 161));
+          p[i] = 53; p[i + 1] = 95; p[i + 2] = 134;
+          p[i + 3] = Math.round(a * 255);
+        }
+        ctx.putImageData(d, 0, 0);
+        setUrl(c.toDataURL("image/png"));
+      } catch {
+        setUrl(src);
+      }
+    };
+    img.onerror = () => setUrl(src);
+    img.src = src;
+  }, [src]);
+  return (
+    <img
+      src={url ?? src}
+      alt="Doctor Booked"
+      style={{ width, display: "block", opacity: url ? 1 : 0, mixBlendMode: url === src ? "multiply" : "normal" }}
+    />
+  );
+}
 
 export default function AboutPage({ onContinue }: Props) {
   const up = (delay: number) => ({
@@ -34,7 +73,7 @@ export default function AboutPage({ onContinue }: Props) {
       </button>
 
       <div className="max-w-3xl mx-auto px-6 py-12 lg:py-20 flex flex-col items-center text-center min-h-full">
-        <motion.img {...up(0)} src={logo} alt="Doctor Booked" style={{ width: 190, mixBlendMode: "multiply" }} />
+        <motion.div {...up(0)}><TransparentLogo src={logo} width={190} /></motion.div>
 
         <motion.span
           {...up(0.15)}
