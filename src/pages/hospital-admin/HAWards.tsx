@@ -261,7 +261,8 @@ export default function HAWards() {
         <div className="space-y-3">
           {wards.map(ward => (
             <div key={ward.id} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 flex items-center justify-between">
+              <div onClick={() => handleExpand(ward.id)}
+                className="px-5 py-4 flex items-center justify-between cursor-pointer select-none hover:bg-gray-50 transition-colors">
                 <div className="flex items-center gap-3">
                   <div>
                     <p className="font-semibold text-gray-800">{ward.name}</p>
@@ -276,10 +277,10 @@ export default function HAWards() {
                       <span className="px-2 py-0.5 rounded-full bg-yellow-50 text-yellow-700">{ward.maintenance_beds} maintenance</span>
                     )}
                   </div>
-                  <button onClick={() => handleDeleteWard(ward.id)} className="p-1.5 rounded hover:bg-red-50 transition-colors">
+                  <button onClick={e => { e.stopPropagation(); handleDeleteWard(ward.id); }} className="p-1.5 rounded hover:bg-red-50 transition-colors">
                     <Trash2 className="w-3.5 h-3.5 text-red-400" />
                   </button>
-                  <button onClick={() => handleExpand(ward.id)} className="p-1.5 rounded hover:bg-gray-100 transition-colors">
+                  <button onClick={e => { e.stopPropagation(); handleExpand(ward.id); }} className="p-1.5 rounded hover:bg-gray-100 transition-colors">
                     {expanded === ward.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                   </button>
                 </div>

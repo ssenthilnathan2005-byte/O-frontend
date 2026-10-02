@@ -1,10 +1,11 @@
-import { Activity, BedDouble, Building2, ClipboardList, FlaskConical, LayoutDashboard, LogOut, Menu, Package, Pill, Stethoscope, UserCog, Users2, X } from "lucide-react";
+import { Activity, BedDouble, Building2, ClipboardList, FlaskConical, LayoutDashboard, LogOut, Menu, Package, Pill, Stethoscope, UserCog, Users2, Users, X } from "lucide-react";
 import { useState } from "react";
 import { useStore } from "../../context/StoreContext";
 import { useRouter } from "../../router/RouterContext";
 import HADashboard from "./HADashboard";
 import HADoctors from "./HADoctors";
 import HAPatients from "./HAPatients";
+import HAAllPatients from "./HAAllPatients";
 import HAPharmacy from "./HAPharmacy";
 import HAInward from "./HAInward";
 import HAWards from "./HAWards";
@@ -15,6 +16,7 @@ import HALab from "./HALab";
 const NAV_ITEMS = [
   { path: "/hospital-admin", label: "Dashboard", icon: LayoutDashboard },
   { path: "/hospital-admin/patients", label: "Live Patients", icon: Users2 },
+  { path: "/hospital-admin/all-patients", label: "All Patients", icon: Users },
   { path: "/hospital-admin/ipd", label: "IPD / Inward", icon: BedDouble },
   { path: "/hospital-admin/doctors", label: "Doctors", icon: UserCog },
   { path: "/hospital-admin/lab", label: "Laboratory", icon: FlaskConical },
@@ -34,6 +36,7 @@ export default function HospitalAdminPanel() {
   function renderContent() {
     if (route.path === "/hospital-admin/ipd") return <HAInward />;
     if (route.path === "/hospital-admin/patients") return <HAPatients />;
+    if (route.path === "/hospital-admin/all-patients") return <HAAllPatients />;
     if (route.path === "/hospital-admin/pharmacy") return <HAPharmacy />;
     if (route.path === "/hospital-admin/doctors") return <HADoctors />;
     if (route.path === "/hospital-admin/lab") return <HALab />;
