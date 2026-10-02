@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import "@fontsource/jost/700.css";
 
 interface Props {
@@ -45,7 +45,7 @@ export default function SplashScreen({ onDone }: Props) {
         <div style={{ animation: "dbUp 0.6s ease both" }}>DOCTOR</div>
         <div style={{ display: "inline-flex", alignItems: "center" }}>
           <span style={{ animation: "dbUp 0.6s ease 0.1s both" }}>B</span>
-          <span style={{ position: "relative", width: "1.05em", height: "0.72em", margin: "0 0.04em", display: "inline-block" }}>
+          <span style={{ position: "relative", width: "1.31em", height: "0.72em", margin: "0 0.05em", display: "inline-block" }}>
             <span style={{ ...ring, left: 0, animation: "dbRollL 1.2s cubic-bezier(.22,1.15,.36,1) 0.5s both" }} />
             <span style={{ ...ring, right: 0, animation: "dbRollR 1.2s cubic-bezier(.22,1.15,.36,1) 0.5s both" }} />
           </span>
