@@ -17,8 +17,8 @@ export default function SplashScreen({ onDone }: Props) {
   }, [onDone]);
 
   const ring: React.CSSProperties = {
-    position: "absolute", top: 0, width: "0.74em", height: "0.74em",
-    borderRadius: "50%", border: "0.16em solid " + BLUE, boxSizing: "border-box",
+    position: "absolute", top: 0, width: "0.7em", height: "0.7em",
+    borderRadius: "50%", border: "0.15em solid " + BLUE, boxSizing: "border-box",
   };
 
   return (
@@ -43,9 +43,9 @@ export default function SplashScreen({ onDone }: Props) {
         letterSpacing: "0.04em", lineHeight: 1.1, textAlign: "center",
       }}>
         <div style={{ animation: "dbUp 0.6s ease both" }}>DOCTOR</div>
-        <div style={{ display: "inline-flex", alignItems: "center" }}>
+        <div style={{ display: "inline-flex", alignItems: "baseline" }}>
           <span style={{ animation: "dbUp 0.6s ease 0.1s both" }}>B</span>
-          <span style={{ position: "relative", width: "1.22em", height: "0.74em", margin: "0 0.04em", display: "inline-block" }}>
+          <span style={{ position: "relative", width: "1.2em", height: "0.7em", margin: "0 0.04em", display: "inline-block" }}>
             <span style={{ ...ring, left: 0, animation: "dbRollL 1.2s cubic-bezier(.22,1.15,.36,1) 0.5s both" }} />
             <span style={{ ...ring, right: 0, animation: "dbRollR 1.2s cubic-bezier(.22,1.15,.36,1) 0.5s both" }} />
           </span>
