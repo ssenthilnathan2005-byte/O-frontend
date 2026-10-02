@@ -545,11 +545,11 @@ function AppRoutes() {
 
 export default function App() {
   const [splashDone, setSplashDone] = useState(false);
-  const [aboutDone, setAboutDone] = useState(() => { try { return !!(localStorage.getItem("db_about_seen") || localStorage.getItem("db_user")); } catch { return true; } });
+  const [aboutDone, setAboutDone] = useState(() => { try { return !!localStorage.getItem("db_user"); } catch { return false; } });
   return (
     <ErrorBoundary fallbackLabel="Doctor Booked">
       {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
-      {splashDone && !aboutDone && <AboutPage onContinue={() => { try { localStorage.setItem("db_about_seen", "1"); } catch {} setAboutDone(true); }} />}
+      {splashDone && !aboutDone && <AboutPage onContinue={() => setAboutDone(true)} />}
       <QueryClientProvider client={queryClient}>
         <RouterProvider>
           <StoreProvider>
