@@ -1,4 +1,4 @@
-﻿import { motion } from "motion/react";
+import { motion } from "motion/react";
 import { Clock, MapPin, FileText, ChevronRight } from "lucide-react";
 import logo from "../assets/doctorbooked-logo.png";
 
@@ -34,7 +34,7 @@ export default function AboutPage({ onContinue }: Props) {
       </button>
 
       <div className="max-w-3xl mx-auto px-6 py-12 lg:py-20 flex flex-col items-center text-center min-h-full">
-        <motion.img {...up(0)} src={logo} alt="Doctor Booked" style={{ width: 170 }} />
+        <motion.img {...up(0)} src={logo} alt="Doctor Booked" style={{ width: 170, mixBlendMode: "multiply" }} />
 
         <motion.span
           {...up(0.15)}
@@ -48,7 +48,7 @@ export default function AboutPage({ onContinue }: Props) {
         </motion.h1>
 
         <motion.p {...up(0.35)} className="mt-4 text-base lg:text-lg text-gray-500 max-w-xl">
-          Doctor Booked lets you book a token at your hospital, track your turn live, and skip the long wait. Built for independent clinics and small hospitals.
+          Doctor Booked lets you book a token at your hospital, track your turn live, and skip the long wait. Built for all hospitals and clinics.
         </motion.p>
 
         <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
