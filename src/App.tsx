@@ -1,5 +1,6 @@
 import { Toaster } from "@/components/ui/sonner";
 import SplashScreen from "./components/SplashScreen";
+import AboutPage from "./components/AboutPage";
 import PullToRefresh from "./components/PullToRefresh";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Calendar, ChevronRight, Clock, MapPin, User, Search, Navigation, Loader2, XCircle, Users, Hospital, Pill, Ambulance, FileText, FlaskConical } from "lucide-react";
@@ -544,9 +545,11 @@ function AppRoutes() {
 
 export default function App() {
   const [splashDone, setSplashDone] = useState(false);
+  const [aboutDone, setAboutDone] = useState(() => { try { return !!(localStorage.getItem("db_about_seen") || localStorage.getItem("db_user")); } catch { return true; } });
   return (
     <ErrorBoundary fallbackLabel="Doctor Booked">
       {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
+      {splashDone && !aboutDone && <AboutPage onContinue={() => { try { localStorage.setItem("db_about_seen", "1"); } catch {} setAboutDone(true); }} />}
       <QueryClientProvider client={queryClient}>
         <RouterProvider>
           <StoreProvider>
