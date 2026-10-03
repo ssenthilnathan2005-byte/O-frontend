@@ -10,12 +10,12 @@ const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/
 type Staff = {
   id: string; name: string; role: string; department: string | null;
   phone: string | null; email: string | null; shift: string; shifts: string[] | null;
-  join_date: string | null; is_active: number; notes: string | null; salary?: number | null;
+  join_date: string | null; is_active: number; notes: string | null; salary?: number | null; employee_id?: string | null;
 };
 
 const ROLES = ["nurse","lab_technician","pharmacist","receptionist","housekeeping","maintenance","security","accountant","other"];
 const SHIFTS = ["morning","afternoon","evening","night"];
-const EMPTY = { name:"", role:"nurse", department:"", phone:"", email:"", shifts:["morning"] as string[], joinDate:"", salary:"", notes:"" };
+const EMPTY = { name:"", role:"nurse", department:"", phone:"", email:"", shifts:["morning"] as string[], joinDate:"", salary:"", notes:"", employeeId:"" };
 
 const ROLE_COLORS: Record<string,string> = {
   nurse:"bg-pink-50 text-pink-700",
@@ -96,7 +96,7 @@ export default function HAHR() {
   function openEdit(s: Staff) {
     setForm({ name:s.name, role:s.role, department:s.department||"", phone:s.phone||"",
       email:s.email||"", shifts:(Array.isArray(s.shifts) && s.shifts.length ? s.shifts : [s.shift]),
-      joinDate:s.join_date||"", salary:s.salary != null ? String(s.salary) : "", notes:s.notes||"" });
+      joinDate:s.join_date||"", salary:s.salary != null ? String(s.salary) : "", notes:s.notes||"", employeeId:s.employee_id||"" });
     setEditId(s.id); setShowForm(true);
   }
 
@@ -117,7 +117,15 @@ export default function HAHR() {
   }
 
   async function toggleActive(s: Staff) {
-    try { await apiFetch(`/hr/${s.id}`, "PATCH", { ...s, isActive: s.is_active === 1 ? false : true }); await load(); } catch {}
+    try {
+      await apiFetch(`/hr/${s.id}`, "PATCH", {
+        name: s.name, role: s.role, department: s.department, phone: s.phone, email: s.email,
+        shifts: Array.isArray(s.shifts) && s.shifts.length ? s.shifts : [s.shift],
+        joinDate: s.join_date, salary: s.salary, notes: s.notes, employeeId: s.employee_id,
+        isActive: s.is_active !== 1,
+      });
+      await load();
+    } catch {}
   }
 
   async function handleExport() {
@@ -212,6 +220,7 @@ export default function HAHR() {
                     <td className="px-4 py-3">
                       <p className="font-medium">{s.name}</p>
                       {s.email && <p className="text-xs text-muted-foreground">{s.email}</p>}
+                      {s.employee_id && <p className="text-xs text-muted-foreground">ID: {s.employee_id}</p>}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${ROLE_COLORS[s.role]||"bg-gray-100 text-gray-500"}`}>
@@ -273,6 +282,7 @@ export default function HAHR() {
                 { label:"Department", key:"department", placeholder:"e.g. Cardiology, Emergency" },
                 { label:"Phone", key:"phone", placeholder:"Mobile number" },
                 { label:"Email", key:"email", placeholder:"Email address" },
+                { label:"Employee ID (as enrolled on the attendance device)", key:"employeeId", placeholder:"e.g. 101" },
                 { label:"Join Date", key:"joinDate", placeholder:"YYYY-MM-DD" },
                 { label:"Salary (₹)", key:"salary", placeholder:"Monthly salary" },
               ].map(({ label, key, placeholder }) => (
