@@ -97,20 +97,7 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="text-base font-bold text-gray-900 mb-3">5. Payments & Fees</h2>
-              <p>
-                The ₹10 token booking fee is collected via Razorpay, our secure payment partner. Doctor Booked
-                retains 60% (₹6) and the remaining 40% (₹4) is credited to the respective doctor.
-              </p>
-              <p className="mt-2">
-                Refunds are not provided for booked tokens unless the doctor cancels the session. In case of
-                session cancellation by the hospital or doctor, a full refund will be processed within 5–7
-                business days.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-base font-bold text-gray-900 mb-3">6. Privacy & Data</h2>
+              <h2 className="text-base font-bold text-gray-900 mb-3">5. Privacy & Data</h2>
               <p>
                 Doctor Booked collects only the information necessary to operate the platform — your name,
                 email, and appointment history. We do not sell your data to third parties.
@@ -122,7 +109,7 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="text-base font-bold text-gray-900 mb-3">7. Platform Availability</h2>
+              <h2 className="text-base font-bold text-gray-900 mb-3">6. Platform Availability</h2>
               <p>
                 Doctor Booked strives to maintain 24/7 availability. However, we do not guarantee uninterrupted
                 service. Scheduled maintenance will be communicated in advance where possible.
@@ -134,7 +121,7 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="text-base font-bold text-gray-900 mb-3">8. Prohibited Use</h2>
+              <h2 className="text-base font-bold text-gray-900 mb-3">7. Prohibited Use</h2>
               <ul className="list-disc pl-5 space-y-1.5">
                 <li>Creating fake accounts or impersonating doctors/patients.</li>
                 <li>Attempting to hack, scrape, or exploit the platform.</li>
@@ -147,7 +134,7 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="text-base font-bold text-gray-900 mb-3">9. Changes to These Terms</h2>
+              <h2 className="text-base font-bold text-gray-900 mb-3">8. Changes to These Terms</h2>
               <p>
                 Doctor Booked reserves the right to update these Terms & Conditions at any time. Continued use
                 of the platform after changes are posted constitutes acceptance of the updated terms.
@@ -156,7 +143,7 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="text-base font-bold text-gray-900 mb-3">10. Contact Us</h2>
+              <h2 className="text-base font-bold text-gray-900 mb-3">9. Contact Us</h2>
               <p>
                 For any questions, concerns, or support regarding these terms or your account, please reach
                 out to us at:
