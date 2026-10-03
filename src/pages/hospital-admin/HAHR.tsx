@@ -62,6 +62,7 @@ export default function HAHR() {
   const [loading, setLoading] = useState(false);
   const [paidSet, setPaidSet] = useState<Set<string>>(new Set());
   const [exporting, setExporting] = useState(false);
+  const [today, setToday] = useState<Record<string, { first: string; count: number }>>({});
 
   async function apiFetch(path: string, method="GET", body?: any) {
     const res = await fetch(`${BASE}${path}`, {
@@ -73,6 +74,13 @@ export default function HAHR() {
 
   async function load() {
     try { setStaff(await apiFetch("/hr")); } catch {}
+    try {
+      const tr = await fetch(`${BASE}/hospital-integrations/today`, { headers: { Authorization: `Bearer ${getToken()}` } });
+      const rows = tr.ok ? await tr.json() : [];
+      const m: Record<string, { first: string; count: number }> = {};
+      for (const r of rows) m[String(r.device_user_id)] = { first: r.first_punch, count: r.punches };
+      setToday(m);
+    } catch {}
   }
 
   useEffect(() => {
@@ -81,6 +89,13 @@ export default function HAHR() {
       setPaidSet(loadPaidSet(hospitalId));
     }
   }, [hospitalId]);
+
+  function todayCell(s: Staff) {
+    if (!s.employee_id) return <span className="text-gray-300">No ID</span>;
+    const e = today[s.employee_id];
+    if (!e) return <span className="text-gray-400">No scan today</span>;
+    return <span className="text-green-700">In {new Date(e.first).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</span>;
+  }
 
   function togglePaid(staffId: string) {
     setPaidSet(prev => {
@@ -207,7 +222,7 @@ export default function HAHR() {
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr>
-                {["Name","Role","Department","Phone","Shift","Status","Salary",""].map(h => (
+                {["Name","Role","Department","Phone","Shift","Today","Status","Salary",""].map(h => (
                   <th key={h} className="text-left px-4 py-3 font-medium text-muted-foreground">{h}</th>
                 ))}
               </tr>
@@ -231,6 +246,8 @@ export default function HAHR() {
                     <td className="px-4 py-3 text-muted-foreground">{s.phone||"—"}</td>
                     <td className="px-4 py-3 capitalize text-muted-foreground">
                       {Array.isArray(s.shifts) && s.shifts.length ? s.shifts.join(", ") : s.shift}
+                    </td>
+                    <td className="px-4 py-3 text-xs">{todayCell(s)}
                     </td>
                     <td className="px-4 py-3">
                       <button onClick={() => toggleActive(s)}
