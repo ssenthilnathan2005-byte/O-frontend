@@ -13,8 +13,9 @@ import { Label }   from "@/components/ui/label";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Building2, CheckCircle2, Edit2, ImageIcon, KeyRound, Loader2, Plus, RefreshCw, Trash2, UploadCloud } from "lucide-react";
+import { Fingerprint, Building2, CheckCircle2, Edit2, ImageIcon, KeyRound, Loader2, Plus, RefreshCw, Trash2, UploadCloud } from "lucide-react";
 import { useState } from "react";
+import HospitalIntegrationsDialog from "./HospitalIntegrationsDialog";
 import { toast }  from "sonner";
 import { useStore } from "../../context/StoreContext";
 import * as api from "../../api";
@@ -47,6 +48,7 @@ export default function AdminHospitals() {
   const [loginInfoLoading, setLoginInfoLoading] = useState(false);
   const [newLoginIdInput, setNewLoginIdInput] = useState("");
   const [resetting, setResetting] = useState(false);
+  const [integHospital, setIntegHospital] = useState<Hospital | null>(null);
 
   function getDoctorCount(id: string) {
     return doctors.filter(d => d.hospitalId === id).length;
@@ -374,6 +376,9 @@ export default function AdminHospitals() {
                     <Button variant="ghost" size="sm" onClick={() => openEditHospital(hospital)} data-ocid="admin.edit_button">
                       <Edit2 className="w-4 h-4" />
                     </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setIntegHospital(hospital)} data-ocid="admin.button">
+                      <Fingerprint className="w-4 h-4 mr-1" />Integrations
+                    </Button>
                     <Button variant="ghost" size="sm" onClick={() => openLoginDialog(hospital)} data-ocid="admin.button">
                       <KeyRound className="w-4 h-4 mr-1" />
                       Login
@@ -518,6 +523,7 @@ export default function AdminHospitals() {
         </DialogContent>
       </Dialog>
 
+      <HospitalIntegrationsDialog hospital={integHospital} onClose={() => setIntegHospital(null)} />
       {/* Hospital Staff Login Dialog */}
       <Dialog open={!!loginDialogHospital} onOpenChange={open => { if (!open) { setLoginDialogHospital(null); setLoginInfo(null); setNewLoginIdInput(""); } }}>
         <DialogContent data-ocid="admin.dialog">

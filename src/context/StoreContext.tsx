@@ -30,7 +30,7 @@ interface Store {
   updateHospitalPhoto: (id: string, photoUrlOrBase64: string) => Promise<void>;
   deleteHospital: (id: string, _doctors: Doctor[]) => Promise<boolean>;
   doctors: Doctor[];
-  addDoctor: (data: Omit<Doctor, "id" | "code">) => Promise<Doctor>;
+  addDoctor: (data: Omit<Doctor, "id" | "code"> & { password?: string }) => Promise<Doctor>;
   updateDoctor: (id: string, data: Partial<Doctor>) => Promise<void>;
   deleteDoctor: (id: string) => Promise<void>;
   bookings: Booking[];
@@ -391,7 +391,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // ── Doctors ───────────────────────────────────────────────────────────────
-  const addDoctor = useCallback(async (data: Omit<Doctor, "id" | "code">) => {
+  const addDoctor = useCallback(async (data: Omit<Doctor, "id" | "code"> & { password?: string }) => {
     const d = await api.doctors.create(data as Partial<Doctor>);
     setDoctors(p => [...p, d]);
     api.doctors.list().then(setDoctors).catch(() => {});
