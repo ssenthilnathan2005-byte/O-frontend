@@ -97,7 +97,7 @@ function MobileLanding() {
       if (!mapRef.current || mapObj.current) return;
       const google = (window as any).google;
       const map = new google.maps.Map(mapRef.current, {
-        center: { lat: 9.9252, lng: 78.1198 }, zoom: 11,
+        center: { lat: 11.1271, lng: 78.6569 }, zoom: 7,
         mapTypeControl: false, streetViewControl: false, fullscreenControl: false, gestureHandling: "greedy",
         styles: [
           { elementType: "geometry", stylers: [{ color: "#f5f7f6" }] },
@@ -156,12 +156,33 @@ function MobileLanding() {
   }, [mapReady, filtered]);
 
   useEffect(() => {
-    if (nearState.status === "done" && (nearState as any).userLat && mapObj.current) {
+    if (nearState.status === "done" && (nearState as any).lat && mapObj.current) {
       const google = (window as any).google;
-      mapObj.current.panTo(new google.maps.LatLng((nearState as any).userLat, (nearState as any).userLng));
+      mapObj.current.panTo(new google.maps.LatLng((nearState as any).lat, (nearState as any).lng));
       mapObj.current.setZoom(13);
     }
-  }, [nearState.status]);
+  }, [nearState.status, mapReady]);
+
+  // Ask for the patient's location once when the home page opens
+  useEffect(() => {
+    locate();
+  }, []);
+
+  // If location is unavailable, zoom out to show all hospitals
+  useEffect(() => {
+    if (!mapReady || !mapObj.current) return;
+    const s = nearState.status;
+    if (s !== "denied" && s !== "gps-off" && s !== "unsupported") return;
+    const google = (window as any).google;
+    const bounds = new google.maps.LatLngBounds();
+    let n = 0;
+    hospitals.forEach(h => {
+      const c = parseCoords((h as any).address) || parseCoords(h.area);
+      if (c) { bounds.extend(c); n++; }
+    });
+    if (n === 1) { mapObj.current.setCenter(bounds.getCenter()); mapObj.current.setZoom(12); }
+    else if (n > 1) mapObj.current.fitBounds(bounds, 40);
+  }, [nearState.status, mapReady, hospitals]);
 
   useEffect(() => {
     const id = setInterval(() => setTimeGreeting(getTimeGreeting()), 60_000);
