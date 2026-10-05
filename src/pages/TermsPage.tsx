@@ -62,21 +62,7 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="text-base font-bold text-gray-900 mb-3">2. Token-Based Appointment System</h2>
-              <p>
-                Doctor Booked uses a unique token system. When a patient books an appointment, they receive a
-                numbered token. Each token costs <strong>₹10</strong> as a nominal booking fee. This fee is
-                non-refundable once the token is confirmed.
-              </p>
-              <p className="mt-2">
-                Doctors registered on Doctor Booked receive a <strong>40% commission (₹4 per token)</strong> for
-                every appointment booked with them. This commission is credited automatically and doctors are
-                never charged a subscription or joining fee.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-base font-bold text-gray-900 mb-3">3. Patient Responsibilities</h2>
+              <h2 className="text-base font-bold text-gray-900 mb-3">2. Patient Responsibilities</h2>
               <ul className="list-disc pl-5 space-y-1.5">
                 <li>Patients must provide accurate personal information during registration.</li>
                 <li>Patients are responsible for arriving at the hospital when their token is near.</li>
@@ -87,7 +73,7 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="text-base font-bold text-gray-900 mb-3">4. Doctor & Hospital Responsibilities</h2>
+              <h2 className="text-base font-bold text-gray-900 mb-3">3. Doctor & Hospital Responsibilities</h2>
               <ul className="list-disc pl-5 space-y-1.5">
                 <li>Doctors must maintain accurate availability and session timings on the platform.</li>
                 <li>Hospitals are responsible for ensuring their listed information is current.</li>
@@ -97,7 +83,7 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="text-base font-bold text-gray-900 mb-3">5. Privacy & Data</h2>
+              <h2 className="text-base font-bold text-gray-900 mb-3">4. Privacy & Data</h2>
               <p>
                 Doctor Booked collects only the information necessary to operate the platform — your name,
                 email, and appointment history. We do not sell your data to third parties.
@@ -109,7 +95,7 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="text-base font-bold text-gray-900 mb-3">6. Platform Availability</h2>
+              <h2 className="text-base font-bold text-gray-900 mb-3">5. Platform Availability</h2>
               <p>
                 Doctor Booked strives to maintain 24/7 availability. However, we do not guarantee uninterrupted
                 service. Scheduled maintenance will be communicated in advance where possible.
@@ -121,7 +107,7 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="text-base font-bold text-gray-900 mb-3">7. Prohibited Use</h2>
+              <h2 className="text-base font-bold text-gray-900 mb-3">6. Prohibited Use</h2>
               <ul className="list-disc pl-5 space-y-1.5">
                 <li>Creating fake accounts or impersonating doctors/patients.</li>
                 <li>Attempting to hack, scrape, or exploit the platform.</li>
@@ -134,7 +120,7 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="text-base font-bold text-gray-900 mb-3">8. Changes to These Terms</h2>
+              <h2 className="text-base font-bold text-gray-900 mb-3">7. Changes to These Terms</h2>
               <p>
                 Doctor Booked reserves the right to update these Terms & Conditions at any time. Continued use
                 of the platform after changes are posted constitutes acceptance of the updated terms.
@@ -143,7 +129,7 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="text-base font-bold text-gray-900 mb-3">9. Contact Us</h2>
+              <h2 className="text-base font-bold text-gray-900 mb-3">8. Contact Us</h2>
               <p>
                 For any questions, concerns, or support regarding these terms or your account, please reach
                 out to us at:
