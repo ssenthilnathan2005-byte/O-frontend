@@ -365,6 +365,7 @@ export default function DoctorDashboard() {
   // Live Tokens tab state
   const [liveTokensView, setLiveTokensView] = useState<"tovisit" | "visited" | "archived">("tovisit");
   const [historyFor, setHistoryFor] = useState<{ patientId: string; patientName: string; bookingId: string } | null>(null);
+  const [historyReturnToken, setHistoryReturnToken] = useState<number | null>(null);
   const allDoctorBookings = doctor
     ? bookings.filter((b: any) => b.doctorId === doctor.id)
     : [];
@@ -1304,14 +1305,6 @@ export default function DoctorDashboard() {
         {/* ── Live Tokens Tab ── */}
 
       <TabsContent value="livetokens">
-          {historyFor && (
-            <PatientHistoryModal
-              patientId={historyFor.patientId}
-              patientName={historyFor.patientName}
-              bookingId={historyFor.bookingId}
-              onClose={() => setHistoryFor(null)}
-            />
-          )}
           <Card className="border border-gray-100 shadow-sm">
             <CardContent className="p-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
@@ -1771,6 +1764,21 @@ export default function DoctorDashboard() {
         </TabsContent>
       </Tabs>
 
+      {historyFor && (
+        <PatientHistoryModal
+          patientId={historyFor.patientId}
+          patientName={historyFor.patientName}
+          bookingId={historyFor.bookingId}
+          onClose={() => {
+            setHistoryFor(null);
+            if (historyReturnToken !== null) {
+              setTokenDialog({ open: true, tokenNum: historyReturnToken });
+              setHistoryReturnToken(null);
+            }
+          }}
+        />
+      )}
+
       {/* Token Action Dialog */}
       <Dialog
         open={tokenDialog.open}
@@ -1820,6 +1828,21 @@ export default function DoctorDashboard() {
                 </p>
               )}
             </div>
+
+            {dialogTokenBooking?.patientId && (
+              <button
+                type="button"
+                onClick={() => {
+                  const bk = dialogTokenBooking;
+                  setHistoryReturnToken(tokenDialog.tokenNum);
+                  setTokenDialog({ open: false, tokenNum: null });
+                  setHistoryFor({ patientId: bk.patientId, patientName: getBookingPatientName(bk.patientName, "Walk-in Patient"), bookingId: bk.id });
+                }}
+                className="text-xs font-medium text-teal-600 hover:text-teal-700"
+              >
+                View Full History &rarr;
+              </button>
+            )}
 
             {/* ── Running-late notice from the patient ── */}
             {dialogTokenBooking?.lateFlag &&
