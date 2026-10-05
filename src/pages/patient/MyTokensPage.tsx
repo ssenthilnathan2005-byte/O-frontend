@@ -105,6 +105,15 @@ function PastFolder({
   );
 }
 
+const LAB_EXPIRE_DAYS = 2;
+function markExpired(b: LabBooking): LabBooking {
+  if (LAB_DONE.has(b.status)) return b;
+  const dt = parseDay(b.slot_date);
+  if (!dt) return b;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const days = Math.round((today.getTime() - dt.getTime()) / 86400000);
+  return days > LAB_EXPIRE_DAYS ? ({ ...b, status: "cancelled" } as LabBooking) : b;
+}
 function DayHeading({ label }: { label: string }) {
   return <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-400 pt-2">{label}</h3>;
 }
@@ -165,7 +174,7 @@ export default function MyTokensPage() {
   const pastGroups = groupByDay(pastBookings.slice(0, pastVisible), (b) => b.date);
 
   // Labs: unfinished ones stay on top; finished/cancelled go in the folder (6-day limit).
-  const sortedLab = [...labBookings].sort(
+  const sortedLab = [...labBookings].map(markExpired).sort(
     (a, b) => (parseDay(b.slot_date)?.getTime() ?? 0) - (parseDay(a.slot_date)?.getTime() ?? 0),
   );
   const activeLab = sortedLab.filter((b) => !LAB_DONE.has(b.status));
