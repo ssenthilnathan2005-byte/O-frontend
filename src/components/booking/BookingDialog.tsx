@@ -3,7 +3,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Activity, AlertCircle, Calendar, CheckCircle2, Clock,
+import { Activity, AlertCircle, ArrowLeft, Calendar, CheckCircle2, Clock,
          CreditCard, FileText, Hash, IndianRupee, Loader2, MapPin, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -88,6 +88,47 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
   // dialogOpen is false while Razorpay is active — releases Radix body overflow lock
   const [dialogOpen, setDialogOpen] = useState(false);
 
+  // Back-button support: each forward step gets its own browser-history entry,
+  // so the phone's back button and the on-screen Back button both step back
+  // inside the dialog without reloading the page. All form data lives in this
+  // component, so it is kept when going back and forward.
+  const STEP_ORDER: Step[] = ["date", "session", "token", "for-whom", "complaint", "payment"];
+  const stepRef = useRef<Step>("date");
+  const payingRef = useRef(false);
+  const pushedRef = useRef(0);
+  stepRef.current = step;
+  payingRef.current = paying;
+
+  function goToStep(next: Step) {
+    window.history.pushState({ ...(window.history.state ?? {}), bookingStep: next }, "");
+    pushedRef.current = Math.max(0, STEP_ORDER.indexOf(next));
+    setStep(next);
+  }
+
+  function goBackStep() {
+    if (pushedRef.current > 0) window.history.back();
+  }
+
+  function dismiss() {
+    const n = pushedRef.current;
+    const finished = stepRef.current === "tracking-info" || stepRef.current === "success";
+    handleClose();
+    if (n > 0 && !finished) window.history.go(-n);
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    const onPop = (e: PopStateEvent) => {
+      if (payingRef.current) return;
+      if (stepRef.current === "tracking-info" || stepRef.current === "success") return;
+      const target = ((e.state as { bookingStep?: Step } | null)?.bookingStep ?? "date") as Step;
+      pushedRef.current = Math.max(0, STEP_ORDER.indexOf(target));
+      setStep(target);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [open]);
+
   // Keep dialogOpen in sync with the external open prop, but hide dialog while paying
   useEffect(() => { setDialogOpen(open && !paying); }, [open, paying]);
 
@@ -122,7 +163,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
   }
 
   function handleClose() {
-    setStep("date"); setSelectedDate(""); setSelectedSession("");
+    pushedRef.current = 0; setStep("date"); setSelectedDate(""); setSelectedSession("");
     setTokenNumber(0); setComplaint(""); setSelectedSymptoms([]); setPatientName(""); setPatientPhone(""); setPatientAge(""); setBookingFor(""); setPayError("");
     setTrackerSessionId("");
     setPrefetchedOrder(null); setPrefetchingOrder(false);
@@ -418,13 +459,23 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
   }, [step, selectedDate, selectedSession, complaint, doctor.id, patientName, patientPhone, patientAge]);
 
   return (
-    <Dialog open={dialogOpen} onOpenChange={handleClose}>
+    <Dialog open={dialogOpen} onOpenChange={dismiss}>
       <DialogContent
         showOverlay={!(step === "payment" && !hospital.isFree) && !paying}
         overlayClassName="bg-black/50"
         className={`w-[calc(100vw-1rem)] max-w-md max-h-[calc(100svh-2rem)] overflow-y-auto overscroll-contain p-4 sm:p-6${paying ? " opacity-0 pointer-events-none select-none" : ""}`}
         data-ocid="booking.dialog"
       >
+                {step !== "date" && step !== "tracking-info" && step !== "success" && (
+          <button
+            type="button"
+            onClick={goBackStep}
+            className="-mb-2 inline-flex items-center gap-1 self-start text-sm font-medium text-teal-600 hover:text-teal-700"
+            data-ocid="booking.back_button"
+          >
+            <ArrowLeft className="w-4 h-4" /> Back
+          </button>
+        )}
         <DialogHeader>
           <DialogTitle className="text-center text-lg sm:text-xl">
             {step === "tracking-info" || step === "success" ? "Booking Confirmed!" : "Book Appointment"}
@@ -446,7 +497,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
                       setSelectedSession("");
                       setPrefetchedOrder(null);
                       setPrefetchingOrder(false);
-                      setStep("session");
+                      goToStep("session");
                     }}
                     className="w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 border-gray-200 hover:border-teal-300 hover:bg-teal-50 transition-all"
                     data-ocid="booking.button">
@@ -500,7 +551,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
                         setPrefetchedOrder(null);
                         setPrefetchingOrder(false);
                         setTokenNumber(getBookedCount(selectedDate, session) + 1);
-                        setStep("token");
+                        goToStep("token");
                       }}
                       data-ocid="booking.button">
                       <div className="flex items-center justify-between">
@@ -536,7 +587,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
                   <p className="text-sm text-gray-600 mt-1">{doctor.name}</p>
                   <p className="text-xs text-gray-400">{formatDate(selectedDate)} · {getSessionLabelForDate(selectedDate, selectedSession as SessionType, (doctor as any).scheduleConfig, doctor.sessionTimings)}</p>
                 </div>
-                <button type="button" onClick={() => setStep("for-whom")}
+                <button type="button" onClick={() => goToStep("for-whom")}
                   className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-full text-sm font-semibold transition-colors"
                   data-ocid="booking.confirm_button">
                   Generate Token →
@@ -572,7 +623,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
                   setPatientPhone(profile.phone);
                   setPatientAge(profile.age);
                   setBookingFor("self");
-                  setStep("complaint");
+                  goToStep("complaint");
                 }}
                 className="w-full p-4 rounded-xl border-2 border-gray-200 hover:border-teal-500 hover:bg-teal-50 transition-all text-left disabled:opacity-50"
               >
@@ -590,7 +641,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
                 onClick={() => {
                   setPatientName(""); setPatientPhone(""); setPatientAge("");
                   setBookingFor("other");
-                  setStep("complaint");
+                  goToStep("complaint");
                 }}
                 className="w-full p-4 rounded-xl border-2 border-gray-200 hover:border-teal-500 hover:bg-teal-50 transition-all text-left"
               >
@@ -622,7 +673,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
                   </div>
                   <button
                     type="button"
-                    onClick={() => setStep("for-whom")}
+                    onClick={() => goBackStep()}
                     className="text-xs font-medium text-teal-600 hover:text-teal-700"
                   >
                     Change
@@ -748,7 +799,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
                     ...(complaint.trim() ? [complaint.trim()] : []),
                   ].join(", ");
                   setComplaint(combined);
-                  setStep("payment");
+                  goToStep("payment");
                 }} data-ocid="booking.primary_button">
                 {hospital.isFree ? "Continue to Booking" : "Continue to Payment"}
               </Button>
