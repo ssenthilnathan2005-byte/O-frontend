@@ -14,7 +14,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Fingerprint, Building2, CheckCircle2, Edit2, ImageIcon, KeyRound, Loader2, Plus, RefreshCw, Trash2, UploadCloud } from "lucide-react";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import HospitalIntegrationsDialog from "./HospitalIntegrationsDialog";
 import { toast }  from "sonner";
 import { useStore } from "../../context/StoreContext";
@@ -51,6 +51,16 @@ export default function AdminHospitals() {
   const [integHospital, setIntegHospital] = useState<Hospital | null>(null);
 
   const existingLocations = Array.from(new Set(hospitals.map((x) => (x.area || "").trim()).filter(Boolean))).sort((x, y) => x.localeCompare(y));
+
+  const groupedHospitals: [string, Hospital[]][] = (() => {
+    const m = new Map<string, Hospital[]>();
+    for (const h of hospitals) {
+      const k = (h.area || "").trim() || "No location";
+      if (!m.has(k)) m.set(k, []);
+      m.get(k)!.push(h);
+    }
+    return Array.from(m.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  })();
 
   function getDoctorCount(id: string) {
     return doctors.filter(d => d.hospitalId === id).length;
@@ -302,7 +312,15 @@ export default function AdminHospitals() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {hospitals.map((hospital, idx) => (
+            {groupedHospitals.map(([area, list]) => (
+              <Fragment key={area}>
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                  <TableCell colSpan={8} className="py-2 font-semibold">
+                    <span className="mr-2">{area}</span>
+                    <Badge variant="secondary">{list.length} {list.length === 1 ? "hospital" : "hospitals"}</Badge>
+                  </TableCell>
+                </TableRow>
+                {list.map((hospital, idx) => (
               <TableRow key={hospital.id} data-ocid={`admin.item.${idx + 1}`}>
                 <TableCell>
                   <div className="flex items-center gap-3">
@@ -414,6 +432,8 @@ export default function AdminHospitals() {
                   </div>
                 </TableCell>
               </TableRow>
+            ))}
+            </Fragment>
             ))}
           </TableBody>
         </Table>
