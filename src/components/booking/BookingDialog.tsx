@@ -419,6 +419,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
     // dependency arrae caused this effect to re-run every time those states
     // changed, repeatedly calling createOrder and leaving the "Pay" button
     // stuck on "Preparing your payment order..." indefinitely.
+    if (hospital.isFree) return; // free hospitals never need a payment order
     if (orderPrefetchInFlight.current) return;
 
     let cancelled = false;
@@ -456,7 +457,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
     return () => {
       cancelled = true;
     };
-  }, [step, selectedDate, selectedSession, complaint, doctor.id, patientName, patientPhone, patientAge]);
+  }, [step, selectedDate, selectedSession, complaint, doctor.id, patientName, patientPhone, patientAge, hospital.isFree]);
 
   return (
     <Dialog open={dialogOpen} onOpenChange={dismiss}>
