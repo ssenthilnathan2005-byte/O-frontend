@@ -49,6 +49,7 @@ import {
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Download } from "lucide-react";
 import PrescriptionDialog from "@/components/PrescriptionDialog";
+import PatientHistoryModal from "@/components/PatientHistoryModal";
 import { toast } from "sonner";
 import { useStore } from "../../context/StoreContext";
 import MonthlyArchiveBanner from "../../components/MonthlyArchiveBanner";
@@ -363,6 +364,7 @@ export default function DoctorDashboard() {
 
   // Live Tokens tab state
   const [liveTokensView, setLiveTokensView] = useState<"tovisit" | "visited" | "archived">("tovisit");
+  const [historyFor, setHistoryFor] = useState<{ patientId: string; patientName: string; bookingId: string } | null>(null);
   const allDoctorBookings = doctor
     ? bookings.filter((b: any) => b.doctorId === doctor.id)
     : [];
@@ -1302,6 +1304,14 @@ export default function DoctorDashboard() {
         {/* ── Live Tokens Tab ── */}
 
       <TabsContent value="livetokens">
+          {historyFor && (
+            <PatientHistoryModal
+              patientId={historyFor.patientId}
+              patientName={historyFor.patientName}
+              bookingId={historyFor.bookingId}
+              onClose={() => setHistoryFor(null)}
+            />
+          )}
           <Card className="border border-gray-100 shadow-sm">
             <CardContent className="p-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
@@ -1417,6 +1427,15 @@ export default function DoctorDashboard() {
                         </p>
                         <p className="text-xs text-gray-400 mt-0.5">{b.session} · {b.date}</p>
                         {b.complaint && <p className="text-xs text-gray-500 mt-0.5 italic line-clamp-2">📋 {b.complaint}</p>}
+                        {b.patientId && (
+                          <button
+                            type="button"
+                            onClick={() => setHistoryFor({ patientId: b.patientId, patientName: getBookingPatientName(b.patientName), bookingId: b.id })}
+                            className="mt-1.5 text-xs font-medium text-teal-600 hover:text-teal-700"
+                          >
+                            View Full History &rarr;
+                          </button>
+                        )}
                       </div>
                       <div className="flex items-baseline gap-0.5 shrink-0 ml-3">
                         <span className="text-base font-bold text-teal-500">#</span>
