@@ -1,7 +1,7 @@
 import { Input } from "@/components/ui/input";
 import { ChevronLeft, MapPin, Search, Users, Navigation, Loader2, XCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useStore } from "../../context/StoreContext";
 import { useRouter } from "../../router/RouterContext";
 import HospitalMapModal from "../../components/hospital/HospitalMapModal";
@@ -20,8 +20,11 @@ function formatDistance(km: number): string {
   return `${km.toFixed(1)} km`;
 }
 
+function norm(s: string | null | undefined): string { return (s || "").trim().toLowerCase(); }
+
 export default function HospitalsPage({ city }: { city?: string }) {
   const [search, setSearch] = useState("");
+  const [locFilter, setLocFilter] = useState("");
   const { navigate, goBack } = useRouter();
   const { hospitals, doctors } = useStore();
   const [mapHospital, setMapHospital] = useState<(typeof hospitals)[0] | null>(null);
@@ -29,15 +32,34 @@ export default function HospitalsPage({ city }: { city?: string }) {
   const { state: nearState, locate, clear, sorted: sortedByDistance } = useNearMe(hospitals);
 
   const baseList = sortedByDistance ?? hospitals;
-  const cityScoped = city ? baseList.filter((h) => h.area === city) : baseList;
+  const cityScoped = city ? baseList.filter((h) => norm(h.area) === norm(city)) : baseList;
 
-  const filtered = cityScoped.filter(
+  const locScoped = !city && locFilter ? cityScoped.filter((h) => norm(h.area) === locFilter) : cityScoped;
+  const locOptions = (() => {
+    const m = new Map<string, string>();
+    for (const h of hospitals) { const k = norm(h.area); if (k && !m.has(k)) m.set(k, h.area.trim()); }
+    return Array.from(m.entries()).sort((x, y) => x[1].localeCompare(y[1]));
+  })();
+
+  const filtered = locScoped.filter(
     (h) =>
       h.name.toLowerCase().includes(search.toLowerCase()) ||
       h.area.toLowerCase().includes(search.toLowerCase()),
   );
 
   const isNearMeActive = nearState.status === "done";
+
+  const keyOf = (h: { area: string }) => norm(h.area) || "other";
+  const groupLabel = new Map<string, string>();
+  const groupCount = new Map<string, number>();
+  for (const h of filtered) {
+    const k = keyOf(h);
+    if (!groupLabel.has(k)) groupLabel.set(k, (h.area || "").trim() || "Other");
+    groupCount.set(k, (groupCount.get(k) ?? 0) + 1);
+  }
+  const ordered = isNearMeActive
+    ? filtered
+    : [...filtered].sort((x, y) => (groupLabel.get(keyOf(x)) as string).localeCompare(groupLabel.get(keyOf(y)) as string));
 
   return (
     <div className="max-w-7xl mx-auto px-4 pt-4 pb-8">
@@ -72,6 +94,7 @@ export default function HospitalsPage({ city }: { city?: string }) {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            {!city && (<select value={locFilter} onChange={(e) => setLocFilter(e.target.value)} className="w-full sm:w-48 h-10 px-3 rounded-md border border-gray-200 bg-white text-sm text-gray-700" data-ocid="hospitals.location_select"><option value="">All locations</option>{locOptions.map(([k, label]) => (<option key={k} value={k}>{label}</option>))}</select>)}
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
               <Input className="pl-10 bg-white border-gray-200" placeholder="Search hospital or area..." value={search} onChange={(e) => setSearch(e.target.value)} data-ocid="hospitals.search_input" />
@@ -141,13 +164,14 @@ export default function HospitalsPage({ city }: { city?: string }) {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {filtered.map((hospital, idx) => {
+          {ordered.map((hospital, idx) => {
             const docCount = doctors.filter((d) => d.hospitalId === hospital.id).length;
             const photoUrl = resolvePhotoUrl(hospital.photoUrl);
             const distKm = (hospital as any).distanceKm as number | null | undefined;
+            const showHead = !isNearMeActive && (idx === 0 || keyOf(ordered[idx - 1]) !== keyOf(hospital));
 
             return (
-              <motion.div key={hospital.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }} data-ocid={`hospitals.item.${idx + 1}`}>
+              <Fragment key={hospital.id}>{showHead && (<div className="col-span-full flex items-center gap-2 pt-2"><MapPin className="w-4 h-4 text-teal-500" /><h2 className="text-base font-semibold text-gray-800">{groupLabel.get(keyOf(hospital))}</h2><span className="text-xs text-gray-400">({groupCount.get(keyOf(hospital))})</span></div>)}<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }} data-ocid={`hospitals.item.${idx + 1}`}>
                 <div className="w-full bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all text-left">
 
                   {photoUrl ? (
@@ -198,7 +222,7 @@ export default function HospitalsPage({ city }: { city?: string }) {
                     </span>
                   </button>
                 </div>
-              </motion.div>
+              </motion.div></Fragment>
             );
           })}
         </div>

@@ -50,6 +50,8 @@ export default function AdminHospitals() {
   const [resetting, setResetting] = useState(false);
   const [integHospital, setIntegHospital] = useState<Hospital | null>(null);
 
+  const existingLocations = Array.from(new Set(hospitals.map((x) => (x.area || "").trim()).filter(Boolean))).sort((x, y) => x.localeCompare(y));
+
   function getDoctorCount(id: string) {
     return doctors.filter(d => d.hospitalId === id).length;
   }
@@ -59,7 +61,7 @@ export default function AdminHospitals() {
     if (!form.name || !form.area) { toast.error("Name and location are required"); return; }
     try {
       await addHospital({
-        id: `h_${Date.now()}`, name: form.name, area: form.area,
+        id: `h_${Date.now()}`, name: form.name.trim(), area: form.area.trim(),
         address: form.address, phone: form.phone,
         loginId: form.loginId.trim() || undefined,
         plan: form.plan,
@@ -239,8 +241,8 @@ export default function AdminHospitals() {
                 { label: "Phone", key: "phone", placeholder: "e.g. +91 22 4567 8900" },
               ].map(({ label, key, placeholder }) => (
                 <div key={key} className="space-y-1.5">
-                  <Label>{label}</Label>
-                  <Input placeholder={placeholder} value={(form as any)[key]}
+                  <Label>{label}</Label>{key === "area" && (<datalist id="hospital-locations">{existingLocations.map((l) => (<option key={l} value={l} />))}</datalist>)}
+                  <Input placeholder={placeholder} list={key === "area" ? "hospital-locations" : undefined} value={(form as any)[key]}
                     onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
                     data-ocid="admin.input" />
                 </div>
@@ -429,8 +431,8 @@ export default function AdminHospitals() {
               { label: "Phone", key: "phone", placeholder: "e.g. +91 22 4567 8900" },
             ].map(({ label, key, placeholder }) => (
               <div key={key} className="space-y-1.5">
-                <Label>{label}</Label>
-                <Input placeholder={placeholder} value={(editForm as any)[key]}
+                <Label>{label}</Label>{key === "area" && (<datalist id="hospital-locations">{existingLocations.map((l) => (<option key={l} value={l} />))}</datalist>)}
+                <Input placeholder={placeholder} list={key === "area" ? "hospital-locations" : undefined} value={(editForm as any)[key]}
                   onChange={e => setEditForm(f => ({ ...f, [key]: e.target.value }))}
                   data-ocid="admin.input" />
               </div>
