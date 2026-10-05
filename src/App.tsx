@@ -545,11 +545,26 @@ function AppRoutes() {
 
 export default function App() {
   const [splashDone, setSplashDone] = useState(false);
-  const [aboutDone, setAboutDone] = useState(() => { try { return !!localStorage.getItem("db_user"); } catch { return false; } });
+  const [aboutDone, setAboutDone] = useState(() => {
+    try {
+      const publicPaths = ["/terms", "/privacy", "/delete-account"];
+      if (publicPaths.includes(window.location.pathname)) return true;
+      return !!localStorage.getItem("db_user") || !!localStorage.getItem("db_about_seen");
+    } catch { return false; }
+  });
+  useEffect(() => {
+    if (splashDone && !aboutDone) {
+      try { localStorage.setItem("db_about_seen", "1"); } catch {}
+    }
+  }, [splashDone, aboutDone]);
+  const finishAbout = () => {
+    try { localStorage.setItem("db_about_seen", "1"); } catch {}
+    setAboutDone(true);
+  };
   return (
     <ErrorBoundary fallbackLabel="Doctor Booked">
       {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
-      {splashDone && !aboutDone && <AboutPage onContinue={() => setAboutDone(true)} />}
+      {splashDone && !aboutDone && <AboutPage onContinue={finishAbout} />}
       <QueryClientProvider client={queryClient}>
         <RouterProvider>
           <StoreProvider>
