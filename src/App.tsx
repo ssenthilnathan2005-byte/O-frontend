@@ -552,6 +552,11 @@ export default function App() {
       return !!localStorage.getItem("db_user") || !!localStorage.getItem("db_about_seen");
     } catch { return false; }
   });
+  useEffect(() => {
+    if (splashDone && !aboutDone) {
+      try { localStorage.setItem("db_about_seen", "1"); } catch {}
+    }
+  }, [splashDone, aboutDone]);
   const finishAbout = () => {
     try { localStorage.setItem("db_about_seen", "1"); } catch {}
     setAboutDone(true);
