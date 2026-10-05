@@ -33,6 +33,7 @@ type EditHospitalForm = { name: string; area: string; address: string; phone: st
 
 export default function AdminHospitals() {
   const { hospitals, doctors, addHospital, deleteHospital, updateHospitalPhoto, updateHospital } = useStore();
+  const [selectedArea, setSelectedArea] = useState<string | null>(null);
   const [addOpen, setAddOpen]             = useState(false);
   const [photoDialogId, setPhotoDialogId] = useState<string | null>(null);
   const [photoPreview, setPhotoPreview]   = useState<string>("");   // what we show in preview
@@ -297,6 +298,23 @@ export default function AdminHospitals() {
       </div>
 
       {/* Table */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <button type="button" onClick={() => setSelectedArea(null)}
+          className={`text-left rounded-xl border p-4 bg-card transition ${!selectedArea ? "border-teal-500 ring-1 ring-teal-500" : "border-border hover:border-teal-300"}`}>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground"><Building2 className="w-4 h-4" /> All locations</div>
+          <p className="text-2xl font-bold mt-2">{hospitals.length}</p>
+          <p className="text-xs text-muted-foreground">hospitals</p>
+        </button>
+        {groupedHospitals.map(([area, list]) => (
+          <button key={area} type="button" onClick={() => setSelectedArea(area)}
+            className={`text-left rounded-xl border p-4 bg-card transition ${selectedArea === area ? "border-teal-500 ring-1 ring-teal-500" : "border-border hover:border-teal-300"}`}>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground truncate"><Building2 className="w-4 h-4 shrink-0" /> {area}</div>
+            <p className="text-2xl font-bold mt-2">{list.length}</p>
+            <p className="text-xs text-muted-foreground">{list.length === 1 ? "hospital" : "hospitals"}</p>
+          </button>
+        ))}
+      </div>
+
       <div className="rounded-xl border border-border overflow-hidden bg-card" data-ocid="admin.table">
         <Table>
           <TableHeader>
@@ -312,14 +330,8 @@ export default function AdminHospitals() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {groupedHospitals.map(([area, list]) => (
+            {groupedHospitals.filter(([area]) => !selectedArea || area === selectedArea).map(([area, list]) => (
               <Fragment key={area}>
-                <TableRow className="bg-muted/30 hover:bg-muted/30">
-                  <TableCell colSpan={8} className="py-2 font-semibold">
-                    <span className="mr-2">{area}</span>
-                    <Badge variant="secondary">{list.length} {list.length === 1 ? "hospital" : "hospitals"}</Badge>
-                  </TableCell>
-                </TableRow>
                 {list.map((hospital, idx) => (
               <TableRow key={hospital.id} data-ocid={`admin.item.${idx + 1}`}>
                 <TableCell>
