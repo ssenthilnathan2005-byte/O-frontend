@@ -35,6 +35,18 @@ async function searchDb(q: string): Promise<string[]> {
   return Array.isArray(data) ? data.map((m: any) => m?.name).filter(Boolean) : [];
 }
 
+import { COMMON_MEDICINES } from "../lib/commonMedicines";
+
+// the whole medicine list, loaded once, so mispronounced names can be matched by sound
+let catalogPromise: Promise<string[]> | null = null;
+function getCatalog(): Promise<string[]> {
+  if (!catalogPromise) catalogPromise = searchDb("").catch(() => [] as string[]).then(db => {
+    const seen = new Set(db.map(n => n.toLowerCase()));
+    return [...db, ...COMMON_MEDICINES.filter(n => !seen.has(n.toLowerCase()))];
+  });
+  return catalogPromise;
+}
+
 const STRENGTH_UNITS = ["mg", "mcg", "g", "unit"];
 const DOSE_FORMS = ["tablet", "capsule", "ml", "drop", "puff"];
 const DURATION_CHIPS = [3, 5, 7, 10, 14];
@@ -84,7 +96,8 @@ export default function VoicePrescription({ saving, notes, onNotesChange, onSkip
       setError(`I couldn't find a medicine in: “${t}”. Say the medicine name first, then dose, how often and for how long.`);
       return;
     }
-    const resolved = await Promise.all(parsed.map(m => resolveMed(m, searchDb)));
+    const catalog = await getCatalog();
+    const resolved = await Promise.all(parsed.map(m => resolveMed(m, searchDb, catalog)));
     setLowConf(confRef.current < 0.6);
     setHeard(prev => (appendRef.current && prev ? `${prev}\n${t}` : t));
     setMeds(prev => (appendRef.current ? [...prev, ...resolved] : resolved));
@@ -360,7 +373,7 @@ function MedCard({ med: m, index, onPatch, onRemove }: {
       {needsName && (
         <div className="space-y-2">
           {m.nameState === "ambiguous" ? (
-            <p className="text-sm text-red-700 font-medium">Which medicine did you mean?</p>
+            <p className="text-sm text-red-700 font-medium">Closest matches in your medicine list. Tap the right one:</p>
           ) : (
             <p className="text-sm text-red-700 font-medium">Not found in the medicine list. Search again or use as typed.</p>
           )}

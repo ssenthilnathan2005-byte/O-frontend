@@ -318,9 +318,51 @@ function editDistance(a: string, b: string): number {
   return dp[a.length][b.length];
 }
 
+// ── sound-alike matching: Tamil/Indian pronunciation and speech-to-text spelling errors ──
+// Tamil has no separate voiced/unvoiced letters (b/p, d/t, g/k) and e/i, o/u are often swapped,
+// so both sides are folded to the same rough "sound" before comparing.
+function soundKey(word: string): { skeleton: string; full: string } {
+  let w = word.toLowerCase().replace(/[^a-z]/g, "");
+  w = w.replace(/ph/g, "f").replace(/x/g, "ks").replace(/q/g, "k")
+       .replace(/c(?=[eiy])/g, "s").replace(/c/g, "k").replace(/z/g, "s").replace(/j/g, "s")
+       .replace(/w/g, "v").replace(/y/g, "i").replace(/h/g, "")
+       .replace(/[bfv]/g, "p").replace(/d/g, "t").replace(/g/g, "k")
+       .replace(/(.)\1+/g, "$1");
+  const full = w.replace(/[ei]/g, "i").replace(/[ou]/g, "u").replace(/(.)\1+/g, "$1");
+  const skeleton = w.charAt(0) + w.slice(1).replace(/[aeiou]/g, "").replace(/(.)\1+/g, "$1");
+  return { skeleton, full };
+}
+
+const sim = (a: string, b: string) => (a || b ? 1 - editDistance(a, b) / Math.max(a.length, b.length) : 0);
+
+/** Catalog medicines that sound closest to what was heard (best first). */
+export function soundAlikeMatches(spoken: string, catalog: string[], limit = 5, minScore = 0.68): string[] {
+  const a = soundKey(spoken);
+  if (a.skeleton.length < 2) return [];
+  const bestByBase = new Map<string, number>();
+  const scored = catalog.map(name => {
+    const base = name.split(/\d/)[0].replace(/\b(tablets?|capsules?|syrup|sachet|ip|bp)\b/gi, " ").trim();
+    const b = soundKey(base.split(/\s+/)[0] || base);
+    const whole = soundKey(base);
+    const score = Math.max(
+      0.55 * sim(a.skeleton, b.skeleton) + 0.45 * sim(a.full, b.full),
+      0.55 * sim(a.skeleton, whole.skeleton) + 0.45 * sim(a.full, whole.full),
+    );
+    const bk = baseKey(name);
+    bestByBase.set(bk, Math.max(bestByBase.get(bk) ?? 0, score));
+    return { name, score, bk };
+  });
+  const ranked = scored.filter(x => x.score >= minScore).sort((x, y) => y.score - x.score);
+  const bases: string[] = [];
+  for (const r of ranked) if (!bases.includes(r.bk)) bases.push(r.bk);
+  const keep = new Set(bases.slice(0, limit));
+  // list every strength variant of the closest medicines (e.g. Paracetamol 500mg and 650mg)
+  return ranked.filter(r => keep.has(r.bk)).map(r => r.name).slice(0, limit + 3);
+}
+
 export type MedicineSearch = (q: string) => Promise<string[]>;
 
-export async function resolveMed(m: VoiceMed, search: MedicineSearch): Promise<VoiceMed> {
+export async function resolveMed(m: VoiceMed, search: MedicineSearch, catalog: string[] = []): Promise<VoiceMed> {
   const term = m.searchTerm;
   const key = letters(term);
   const strength = m.strengthAmount ? parseFloat(m.strengthAmount) : null;
@@ -329,11 +371,12 @@ export async function resolveMed(m: VoiceMed, search: MedicineSearch): Promise<V
     results = await search(term);
     if (!results.length && term !== m.spoken.toLowerCase()) results = await search(m.spoken);
     let fuzzy = false;
-    if (!results.length && key.length >= 4) {
-      const pool = await search(key.slice(0, 3));
-      results = pool
-        .filter(n => editDistance(baseKey(n), key) <= Math.max(2, Math.floor(key.length / 4)))
-        .slice(0, 6);
+    if (!results.length) {
+      // nothing contains the spoken letters: look for medicines that SOUND like it
+      const pool = catalog.length ? catalog : [];
+      const near = soundAlikeMatches(m.spoken, pool);
+      const nearTerm = term !== m.spoken.toLowerCase() ? soundAlikeMatches(term, pool) : [];
+      results = Array.from(new Set([...near, ...nearTerm]));
       fuzzy = results.length > 0;
     }
     if (!results.length) return { ...m, name: "", nameState: "unknown", candidates: [] };
