@@ -127,15 +127,21 @@ export default function VoicePrescription({ saving, notes, onNotesChange, onSkip
     rec.maxAlternatives = 1;
     recRef.current = rec;
     rec.onresult = (e: any) => {
-      let interim = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
+      // Chrome on Android re-sends the whole sentence in every result, so rebuild the text from
+      // all results each time and let a result that extends the previous one replace it.
+      const pieces: string[] = [];
+      let minConf = 1;
+      for (let i = 0; i < e.results.length; i++) {
         const r = e.results[i];
-        if (r.isFinal) {
-          finalRef.current += " " + r[0].transcript;
-          confRef.current = Math.min(confRef.current, r[0].confidence || 1);
-        } else interim += r[0].transcript;
+        const t = (r[0]?.transcript || "").trim();
+        if (!t) continue;
+        if (r.isFinal) minConf = Math.min(minConf, r[0].confidence || 1);
+        const last = pieces[pieces.length - 1];
+        if (last && t.toLowerCase().startsWith(last.toLowerCase())) pieces[pieces.length - 1] = t;
+        else pieces.push(t);
       }
-      liveRef.current = `${finalRef.current} ${interim}`.trim();
+      confRef.current = minConf;
+      liveRef.current = pieces.join(" ");
       setLive(liveRef.current);
     };
     rec.onerror = (e: any) => { errRef.current = e?.error || "error"; };
@@ -148,7 +154,7 @@ export default function VoicePrescription({ saving, notes, onNotesChange, onSkip
       }
       if (err === "audio-capture") { setPhase(back); setError("No microphone found. Connect one, or use Manual."); return; }
       if (err === "network") { setPhase(back); setError("Voice needs an internet connection. Check your connection, or use Manual."); return; }
-      void finish(finalRef.current || liveRef.current);
+      void finish(liveRef.current);
     };
     try {
       setPhase("listening");
