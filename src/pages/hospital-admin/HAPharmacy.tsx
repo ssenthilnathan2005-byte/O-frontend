@@ -30,6 +30,7 @@ export default function HAPharmacy() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
+  const [rx, setRx] = useState<{ waiting: number; today: number; total: number } | null>(null);
 
   async function fetchHospitalSettings() {
     try {
@@ -66,7 +67,24 @@ export default function HAPharmacy() {
     finally { setLoading(false); }
   }
 
-  useEffect(() => { if (hospitalId) { fetchStaff(); fetchHospitalSettings(); } }, [hospitalId]);
+  async function fetchRxStats() {
+    try {
+      const res = await fetch(`${BASE}/pharmacy/prescriptions?hospitalId=${encodeURIComponent(hospitalId)}`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      const data = await res.json();
+      if (!Array.isArray(data)) return;
+      const todayStr = new Date().toDateString();
+      const given = data.filter((p: any) => p.status === "handed_over");
+      setRx({
+        waiting: data.length - given.length,
+        today: given.filter((p: any) => p.handed_over_at && new Date(p.handed_over_at).toDateString() === todayStr).length,
+        total: given.length,
+      });
+    } catch { /* summary is optional */ }
+  }
+
+  useEffect(() => { if (hospitalId) { fetchStaff(); fetchHospitalSettings(); fetchRxStats(); } }, [hospitalId]);
 
   async function handleAdd() {
     if (!name.trim() || !phone.trim()) return toast.error("Name and phone required");
@@ -142,6 +160,25 @@ export default function HAPharmacy() {
           >
             <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${hasPharmacy ? "translate-x-5" : ""}`} />
           </button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Pharmacy Activity</CardTitle></CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-3 text-center">
+            {[
+              { label: "Waiting", n: rx?.waiting, color: "text-yellow-600" },
+              { label: "Given today", n: rx?.today, color: "text-teal-600" },
+              { label: "Given in total", n: rx?.total, color: "text-gray-700" },
+            ].map(t => (
+              <div key={t.label} className="rounded-lg bg-gray-50 py-3">
+                <p className={`text-2xl font-bold ${t.color}`}>{rx ? t.n : "-"}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{t.label}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-gray-400 text-center mt-3">Counts are prescriptions handed over by the pharmacy.</p>
         </CardContent>
       </Card>
 
