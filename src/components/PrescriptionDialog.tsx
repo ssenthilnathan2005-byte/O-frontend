@@ -283,18 +283,18 @@ export default function PrescriptionDialog({
           )}
         </DialogHeader>
 
-        <div className="flex justify-end">
+        <div className="absolute top-4 right-12 z-10">
           {mode === "voice" ? (
             <button
               onClick={() => setMode("manual")}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-300 text-sm text-gray-600 hover:bg-gray-50"
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-gray-300 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50"
             >
               <Pencil className="w-3.5 h-3.5" /> Manual
             </button>
           ) : (
             <button
               onClick={() => setMode("voice")}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-blue-300 text-sm text-blue-700 hover:bg-blue-50"
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-blue-300 bg-white text-xs font-medium text-blue-700 hover:bg-blue-50"
             >
               <Mic className="w-3.5 h-3.5" /> Speak
             </button>
