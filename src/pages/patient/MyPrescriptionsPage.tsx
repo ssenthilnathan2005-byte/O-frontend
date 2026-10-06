@@ -2,16 +2,14 @@ import { useState, useEffect, useCallback } from "react";
 import { useStore } from "../../context/StoreContext";
 import { getToken } from "@/api";
 import { toast } from "sonner";
-import { Pill, Clock, Package, CheckCircle, HandMetal, ArrowLeft } from "lucide-react";
+import { Pill, Clock, HandMetal, ArrowLeft } from "lucide-react";
 import { useRouter } from "../../router/RouterContext";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
 const TIMELINE = [
   { status: "pending", label: "Prescribed", icon: Pill, color: "text-blue-500 bg-blue-50 border-blue-200" },
-  { status: "packed", label: "Medicines Packed", icon: Package, color: "text-yellow-500 bg-yellow-50 border-yellow-200" },
-  { status: "ready", label: "Ready for Pickup", icon: CheckCircle, color: "text-green-500 bg-green-50 border-green-200" },
-  { status: "handed_over", label: "Handed Over", icon: HandMetal, color: "text-gray-500 bg-gray-50 border-gray-200" },
+  { status: "handed_over", label: "Given", icon: HandMetal, color: "text-green-500 bg-green-50 border-green-200" },
 ];
 
 interface Prescription {
@@ -157,7 +155,7 @@ export default function MyPrescriptionsPage() {
                           <p className="text-[10px] text-gray-400">{new Date(ts).toLocaleTimeString()}</p>
                         )}
                       </div>
-                      {p.status === status && (
+                      {(p.status === "handed_over" ? "handed_over" : "pending") === status && (
                         <span className="text-[10px] bg-teal-100 text-teal-600 px-2 py-0.5 rounded-full font-medium">Current</span>
                       )}
                     </div>
