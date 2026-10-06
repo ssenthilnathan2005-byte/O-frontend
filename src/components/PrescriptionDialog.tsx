@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Pill, Send, Pencil, Check } from "lucide-react";
+import { Plus, Trash2, Pill, Send, Pencil, Check, Mic } from "lucide-react";
 import { getToken } from "@/api";
 import { toast } from "sonner";
+import VoicePrescription, { type VoiceItem } from "@/components/VoicePrescription";
 
 interface Medicine {
   name: string;
@@ -93,6 +94,10 @@ export default function PrescriptionDialog({
   const [activeMedIdx, setActiveMedIdx] = useState<number | null>(null);
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
   const [otherOpen, setOtherOpen] = useState<Set<number>>(new Set());
+  const [mode, setMode] = useState<"manual" | "voice">("manual");
+
+  // always start in Manual mode (the familiar workflow) when the dialog is opened again
+  useEffect(() => { if (!open) setMode("manual"); }, [open]);
 
   function updateMed(idx: number, field: keyof Medicine, value: string) {
     setMedicines(prev => prev.map((m, i) => i === idx ? { ...m, [field]: value } : m));
@@ -208,8 +213,15 @@ export default function PrescriptionDialog({
         duration: formatDuration(durationAmount, durationUnit),
         instructions,
       }));
+    await submitPrescription(validMeds);
+  }
+
+  // Shared by the manual form and voice mode. keepOpenOnError is used by voice so a failed
+  // save never throws away the reviewed prescription.
+  async function submitPrescription(validMeds: VoiceItem[], keepOpenOnError = false) {
     if (!booking?.id) { onConfirm(); return; }
     setSaving(true);
+    let ok = false;
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000/api"}/prescriptions`, {
         method: "POST",
@@ -227,6 +239,7 @@ export default function PrescriptionDialog({
         }),
       });
       if (res.ok) {
+        ok = true;
         toast.success("Prescription saved ✓");
       } else {
         const err = await res.json();
@@ -234,14 +247,15 @@ export default function PrescriptionDialog({
       }
     } catch {
       toast.error("Network error saving prescription");
-    } finally {
-      setSaving(false);
-      setMedicines([{ ...EMPTY_MED }]);
-      setNotes("");
-      setCollapsed(new Set());
-      setOtherOpen(new Set());
-      onConfirm();
     }
+    setSaving(false);
+    if (keepOpenOnError && !ok) return;
+    setMedicines([{ ...EMPTY_MED }]);
+    setNotes("");
+    setCollapsed(new Set());
+    setOtherOpen(new Set());
+    setMode("manual");
+    onConfirm();
   }
 
   function handleSkip() {
@@ -249,12 +263,13 @@ export default function PrescriptionDialog({
     setNotes("");
     setCollapsed(new Set());
     setOtherOpen(new Set());
+    setMode("manual");
     onConfirm();
   }
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto max-sm:left-0 max-sm:top-0 max-sm:translate-x-0 max-sm:translate-y-0 max-sm:w-screen max-sm:max-w-none max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:rounded-none">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Pill className="w-5 h-5 text-blue-600" />
@@ -268,6 +283,32 @@ export default function PrescriptionDialog({
           )}
         </DialogHeader>
 
+        <div className="grid grid-cols-2 gap-1 p-1 bg-gray-100 rounded-xl">
+          <button
+            onClick={() => setMode("manual")}
+            className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors ${mode === "manual" ? "bg-white shadow text-blue-700" : "text-gray-500"}`}
+          >
+            <Pencil className="w-4 h-4" /> Manual
+          </button>
+          <button
+            onClick={() => setMode("voice")}
+            className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors ${mode === "voice" ? "bg-white shadow text-blue-700" : "text-gray-500"}`}
+          >
+            <Mic className="w-4 h-4" /> Speak
+          </button>
+        </div>
+
+        {mode === "voice" && (
+          <VoicePrescription
+            saving={saving}
+            notes={notes}
+            onNotesChange={setNotes}
+            onSkip={handleSkip}
+            onConfirm={items => submitPrescription(items, true)}
+          />
+        )}
+
+        {mode === "manual" && (<>
         <div className="space-y-4">
           {medicines.map((med, idx) => {
             const isCollapsed = collapsed.has(idx) && isMedFilled(med);
@@ -447,7 +488,7 @@ export default function PrescriptionDialog({
           </div>
         </div>
 
-        <DialogFooter className="flex gap-2 mt-2">
+        <DialogFooter className="flex gap-2 mt-2 max-sm:sticky max-sm:bottom-0 max-sm:bg-white max-sm:pt-2 max-sm:pb-[max(0.5rem,env(safe-area-inset-bottom))]">
           <Button variant="ghost" size="sm" onClick={handleSkip} disabled={saving}>
             Skip — No Prescription
           </Button>
@@ -460,6 +501,7 @@ export default function PrescriptionDialog({
             {saving ? "Saving..." : "Save & Complete"}
           </Button>
         </DialogFooter>
+        </>)}
       </DialogContent>
     </Dialog>
   );

@@ -39,7 +39,7 @@ interface Plan { itemId: string; qty: string; reason: string }
 function calcTablets(item: RxItem): number {
   const dm = /([\d.]+)\s*(tablet|capsule)/i.exec(item.dosage || "");
   const perDose = dm ? parseFloat(dm[1]) : 1;
-  const times = ["Morning", "Afternoon", "Evening"].filter(t => (item.instructions || "").includes(t)).length || 1;
+  const times = ["Morning", "Afternoon", "Evening", "Night"].filter(t => (item.instructions || "").includes(t)).length || 1;
   const du = /([\d.]+)\s*(day|week)/i.exec(item.duration || "");
   const days = du ? Math.ceil(parseFloat(du[1]) * (du[2].toLowerCase() === "week" ? 7 : 1)) : 1;
   return Math.max(1, Math.ceil(perDose * times * days));
