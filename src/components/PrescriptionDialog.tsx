@@ -94,10 +94,10 @@ export default function PrescriptionDialog({
   const [activeMedIdx, setActiveMedIdx] = useState<number | null>(null);
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
   const [otherOpen, setOtherOpen] = useState<Set<number>>(new Set());
-  const [mode, setMode] = useState<"manual" | "voice">("manual");
+  const [mode, setMode] = useState<"manual" | "voice">("voice");
 
-  // always start in Manual mode (the familiar workflow) when the dialog is opened again
-  useEffect(() => { if (!open) setMode("manual"); }, [open]);
+  // always start in Speak mode when the dialog is opened again
+  useEffect(() => { if (!open) setMode("voice"); }, [open]);
 
   function updateMed(idx: number, field: keyof Medicine, value: string) {
     setMedicines(prev => prev.map((m, i) => i === idx ? { ...m, [field]: value } : m));
@@ -254,7 +254,7 @@ export default function PrescriptionDialog({
     setNotes("");
     setCollapsed(new Set());
     setOtherOpen(new Set());
-    setMode("manual");
+    setMode("voice");
     onConfirm();
   }
 
@@ -263,7 +263,7 @@ export default function PrescriptionDialog({
     setNotes("");
     setCollapsed(new Set());
     setOtherOpen(new Set());
-    setMode("manual");
+    setMode("voice");
     onConfirm();
   }
 
@@ -283,18 +283,18 @@ export default function PrescriptionDialog({
           )}
         </DialogHeader>
 
-        <div className="grid grid-cols-2 gap-1 p-1 bg-gray-100 rounded-xl">
-          <button
-            onClick={() => setMode("manual")}
-            className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors ${mode === "manual" ? "bg-white shadow text-blue-700" : "text-gray-500"}`}
-          >
-            <Pencil className="w-4 h-4" /> Manual
-          </button>
+        <div className="grid grid-cols-5 gap-1 p-1 bg-gray-100 rounded-xl">
           <button
             onClick={() => setMode("voice")}
-            className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors ${mode === "voice" ? "bg-white shadow text-blue-700" : "text-gray-500"}`}
+            className={`col-span-3 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-semibold transition-colors ${mode === "voice" ? "bg-blue-600 text-white shadow" : "text-blue-700"}`}
           >
             <Mic className="w-4 h-4" /> Speak
+          </button>
+          <button
+            onClick={() => setMode("manual")}
+            className={`col-span-2 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-medium transition-colors ${mode === "manual" ? "bg-white shadow text-blue-700" : "text-gray-500"}`}
+          >
+            <Pencil className="w-4 h-4" /> Manual
           </button>
         </div>
 
