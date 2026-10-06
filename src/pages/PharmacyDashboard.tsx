@@ -63,20 +63,19 @@ export default function PharmacyDashboard() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [handover, setHandover] = useState<Record<string, Record<number, { qty: string; reason: string }>>>({});
-  const [filter, setFilter] = useState<PrescStatus | "all">("pending");
+  const [filter, setFilter] = useState<"received" | "given">("received");
+  const [openStock, setOpenStock] = useState<Record<string, boolean>>({});
   const headers = { Authorization: `Bearer ${getToken()}` };
 
   const fetchPrescriptions = useCallback(async () => {
     try {
-      const url = filter === "all"
-        ? `${BASE}/pharmacy/prescriptions?hospitalId=${hospitalId}`
-        : `${BASE}/pharmacy/prescriptions?hospitalId=${hospitalId}&status=${filter}`;
+      const url = `${BASE}/pharmacy/prescriptions?hospitalId=${hospitalId}`;
       const res = await fetch(url, { headers });
       const data = await res.json();
       setPrescriptions(Array.isArray(data) ? data : []);
     } catch { toast.error("Failed to load prescriptions"); }
     finally { setLoading(false); }
-  }, [hospitalId, filter]);
+  }, [hospitalId]);
 
   const fetchStock = useCallback(async () => {
     try {
@@ -151,7 +150,64 @@ export default function PharmacyDashboard() {
     finally { setBusy(null); }
   }
 
-  const filtered = filter === "all" ? prescriptions : prescriptions.filter(p => p.status === filter);
+  // One tap: runs packed -> ready -> handed_over in order, skipping steps already done.
+  async function markGiven(p: Prescription) {
+    if (busy) return;
+    const dispense: any[] = [];
+    let handoverPayload: any[] = [];
+    if (p.status === "pending") {
+      for (let i = 0; i < p.items.length; i++) {
+        const pl = getPlan(p, i);
+        if (!pl.itemId) continue;
+        const st = stock.find(s => s.id === pl.itemId);
+        const qty = Number(pl.qty);
+        if (!(qty > 0)) return toast.error(`Enter a quantity for ${p.items[i].name}`);
+        if (st && qty > tabletsAvailable(st)) return toast.error(`Only ${tabletsAvailable(st)} available for ${st.name}`);
+        dispense.push({ index: i, inventoryItemId: pl.itemId, quantity: qty, reason: pl.reason });
+      }
+      handoverPayload = dispense.map((d, line) => ({ line, quantity: d.quantity, reason: "" }));
+    } else {
+      let lines: any[] = [];
+      try { lines = p.dispensed_items ? JSON.parse(p.dispensed_items) : []; } catch {}
+      for (let i = 0; i < lines.length; i++) {
+        const h = getHo(p.id, i, lines[i].tablets);
+        const q = Number(h.qty);
+        if (!(q >= 0) || q > lines[i].tablets) return toast.error(`Enter 0 to ${lines[i].tablets} for ${lines[i].inventoryName}`);
+        handoverPayload.push({ line: i, quantity: q, reason: h.reason });
+      }
+    }
+    const send = async (status: PrescStatus, extra: Record<string, any>) => {
+      const res = await fetch(`${BASE}/pharmacy/prescriptions/${p.id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...headers },
+        body: JSON.stringify({ status, ...extra }),
+      });
+      if (!res.ok) {
+        let e: any = {};
+        try { e = await res.json(); } catch {}
+        throw new Error(e.error ?? "Failed");
+      }
+    };
+    setBusy(p.id);
+    try {
+      if (p.status === "pending") await send("packed", { dispense });
+      if (p.status === "pending" || p.status === "packed") await send("ready", {});
+      await send("handed_over", { handover: handoverPayload });
+      toast.success("Marked as Given");
+    } catch (err: any) {
+      toast.error(err?.message || "Network error");
+    } finally {
+      setBusy(null);
+      fetchPrescriptions();
+      fetchStock();
+    }
+  }
+
+  // old step-by-step flow, no longer used by the buttons
+  void updateStatus; void NEXT_ACTION;
+
+  const filtered = prescriptions.filter(p =>
+    filter === "given" ? p.status === "handed_over" : p.status !== "handed_over");
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -174,11 +230,11 @@ export default function PharmacyDashboard() {
       </div>
 
       <div className="flex gap-2 px-4 py-3 overflow-x-auto">
-        {(["pending", "packed", "ready", "all"] as const).map(f => (
+        {(["received", "given"] as const).map(f => (
           <button key={f} onClick={() => setFilter(f)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border transition-colors ${
               filter === f ? "bg-teal-600 text-white border-teal-600" : "bg-white text-gray-600 border-gray-200"}`}>
-            {f === "all" ? "All" : STATUS_LABELS[f]}
+            {f === "received" ? "Received" : "Given"}
           </button>
         ))}
       </div>
@@ -200,7 +256,7 @@ export default function PharmacyDashboard() {
                     <p className="font-semibold text-sm">{p.patient_name}</p>
                     <p className="text-xs text-gray-400">Dr. {p.doctor_name} · {new Date(p.created_at).toLocaleTimeString()}</p>
                   </div>
-                  <Badge className={`text-xs border ${STATUS_COLORS[p.status]}`}>{STATUS_LABELS[p.status]}</Badge>
+                  <Badge className={`text-xs border ${STATUS_COLORS[p.status]}`}>{p.status === "handed_over" ? "Given" : "Received"}</Badge>
                 </div>
 
                 <div className="space-y-2">
@@ -221,7 +277,17 @@ export default function PharmacyDashboard() {
                         </div>
 
                         {editable && (
-                          <div className="border-t pt-2 space-y-2">
+                          <div className="border-t pt-2 space-y-1">
+                            <button type="button"
+                              onClick={() => setOpenStock(prev => ({ ...prev, [p.id + "-" + i]: !prev[p.id + "-" + i] }))}
+                              className="text-xs text-teal-700 underline">
+                              {openStock[p.id + "-" + i] ? "Hide stock options" : "Deduct from stock (optional)"}
+                            </button>
+                            {!openStock[p.id + "-" + i] && st && qty > 0 && (
+                              <p className="text-xs text-gray-500">{qty} tablets will be deducted from {st.name}</p>
+                            )}
+                            {openStock[p.id + "-" + i] && (
+                          <div className="space-y-2">
                             <p className="text-xs text-teal-700">Calculated: <b>{suggested}</b> tablets</p>
                             <select value={pl.itemId} onChange={e => setPlan(p, i, { itemId: e.target.value })}
                               className="w-full border rounded-md text-xs px-2 py-1.5 bg-white">
@@ -243,7 +309,8 @@ export default function PharmacyDashboard() {
                                 className="w-full border rounded-md text-xs px-2 py-1.5 bg-white" />
                             )}
                             {short && <p className="text-xs text-red-600">Not enough stock: only {tabletsAvailable(st!)} available.</p>}
-                            {!pl.itemId && <p className="text-xs text-amber-600">No stock item selected, so nothing will be deducted.</p>}
+                          </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -282,11 +349,11 @@ export default function PharmacyDashboard() {
 
                 {p.notes && <p className="text-xs text-gray-500 italic">Note: {p.notes}</p>}
 
-                {NEXT_ACTION[p.status] && (
+                {p.status !== "handed_over" && (
                   <Button className="w-full h-9 text-sm" disabled={busy === p.id}
-                    onClick={() => updateStatus(p, NEXT_ACTION[p.status].next)}>
-                    {(() => { const Icon = NEXT_ACTION[p.status].icon; return <Icon className="w-4 h-4 mr-2" />; })()}
-                    {busy === p.id ? "Please wait..." : NEXT_ACTION[p.status].label}
+                    onClick={() => markGiven(p)}>
+                    <HandMetal className="w-4 h-4 mr-2" />
+                    {busy === p.id ? "Please wait..." : "Mark Given"}
                   </Button>
                 )}
               </CardContent>
