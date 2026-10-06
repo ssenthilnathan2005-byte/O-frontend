@@ -36,6 +36,7 @@ async function searchDb(q: string): Promise<string[]> {
 }
 
 import { COMMON_MEDICINES } from "../lib/commonMedicines";
+import { pickBestAlternative, fixMisheard } from "../lib/voiceHeard";
 
 // the whole medicine list, loaded once, so mispronounced names can be matched by sound
 let catalogPromise: Promise<string[]> | null = null;
@@ -142,8 +143,9 @@ export default function VoicePrescription({ saving, notes, onNotesChange, onSkip
   const pendingRef = useRef<Promise<void> | null>(null); // medicine-name matching running in the background
   const permOkRef = useRef(false);
   const warmRef = useRef(false);
+  const catalogArrRef = useRef<string[]>([]);
   useEffect(() => {
-    void getCatalog();                                   // load the medicine list before it is needed
+    void getCatalog().then(c => { catalogArrRef.current = c; }); // load the medicine list before it is needed
     try { (window as any).speechSynthesis?.getVoices(); } catch { /* ignore */ }
   }, []);
 
@@ -178,7 +180,7 @@ export default function VoicePrescription({ saving, notes, onNotesChange, onSkip
   }, [phase]);
 
   async function finish(text: string) {
-    const t = text.trim();
+    const t = fixMisheard(text.trim());
     if (skipRef.current) { skipRef.current = false; setPhase(medsRef.current.length ? "review" : "ready"); return; }
     if (askRef.current) { await handleAnswer(t); return; }
     const hasMeds = medsRef.current.length > 0;
@@ -381,8 +383,8 @@ export default function VoicePrescription({ saving, notes, onNotesChange, onSkip
         while (!deadRef.current) {
           let chunk = "";
           try {
-            const result = await SpeechRecognition.start({ language: "en-IN", maxResults: 1, partialResults: false, popup: false });
-            chunk = (result?.matches?.[0] ?? "").trim();
+            const result = await SpeechRecognition.start({ language: "en-IN", maxResults: 5, partialResults: false, popup: false });
+            chunk = pickBestAlternative(result?.matches ?? [], catalogArrRef.current).trim();
           } catch {
             fails++;
             if (!userStopRef.current) await new Promise(r => setTimeout(r, 300));
@@ -412,7 +414,7 @@ export default function VoicePrescription({ saving, notes, onNotesChange, onSkip
     rec.lang = "en-IN";
     rec.continuous = true;
     rec.interimResults = true;
-    rec.maxAlternatives = 1;
+    rec.maxAlternatives = 5;
     recRef.current = rec;
     rec.onresult = (e: any) => {
       // Chrome on Android re-sends the whole sentence in every result, so rebuild the text from
@@ -421,7 +423,9 @@ export default function VoicePrescription({ saving, notes, onNotesChange, onSkip
       let minConf = 1;
       for (let i = 0; i < e.results.length; i++) {
         const r = e.results[i];
-        const t = (r[0]?.transcript || "").trim();
+        const alts: string[] = [];
+        for (let k = 0; k < r.length; k++) alts.push(r[k]?.transcript || "");
+        const t = (r.isFinal ? pickBestAlternative(alts, catalogArrRef.current) : alts[0] || "").trim();
         if (!t) continue;
         if (r.isFinal) minConf = Math.min(minConf, r[0].confidence || 1);
         const last = pieces[pieces.length - 1];
