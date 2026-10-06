@@ -139,6 +139,13 @@ export default function VoicePrescription({ saving, notes, onNotesChange, onSkip
   const skipRef = useRef(false);
   convoRef.current = convo;
   voiceOutRef.current = voiceOut;
+  const pendingRef = useRef<Promise<void> | null>(null); // medicine-name matching running in the background
+  const permOkRef = useRef(false);
+  const warmRef = useRef(false);
+  useEffect(() => {
+    void getCatalog();                                   // load the medicine list before it is needed
+    try { (window as any).speechSynthesis?.getVoices(); } catch { /* ignore */ }
+  }, []);
 
   // never leave the microphone running when the dialog closes or the mode changes
   useEffect(() => {
@@ -160,7 +167,7 @@ export default function VoicePrescription({ saving, notes, onNotesChange, onSkip
       if (convoRef.current) {
         // conversation mode: a short pause after speaking ends the turn; the assistant asks for what is missing
         const said = (liveRef.current || bankRef.current).length > 0;
-        const pause = Capacitor.isNativePlatform() ? 1200 : 1800;
+        const pause = askRef.current ? 800 : 1400;
         if (said ? idle >= pause : idle >= 10000) stop();
         return;
       }
@@ -189,16 +196,34 @@ export default function VoicePrescription({ saving, notes, onNotesChange, onSkip
       setError(`I couldn't find a medicine in: “${t}”. Say the medicine name first, then dose, how often and for how long.`);
       return;
     }
-    const catalog = await getCatalog();
-    const resolved = await Promise.all(parsed.map(m => resolveMed(m, searchDb, catalog)));
     setLowConf(confRef.current < 0.6);
     setHeard(prev => (appendRef.current && prev ? `${prev}\n${t}` : t));
-    const nextMeds = appendRef.current ? [...medsRef.current, ...resolved] : resolved;
+    // show the parsed medicines at once; match their names in the background
+    const nextMeds = appendRef.current ? [...medsRef.current, ...parsed] : parsed;
+    medsRef.current = nextMeds;
     setMeds(nextMeds);
+    const pending: Promise<void> = getCatalog()
+      .then(catalog => Promise.all(parsed.map(m => resolveMed(m, searchDb, catalog))))
+      .then(resolved => {
+        if (deadRef.current) return;
+        const merged = medsRef.current.map(x => {
+          const r = resolved.find(y => y.id === x.id);
+          return r ? { ...x, name: r.name, nameState: r.nameState, candidates: r.candidates } : x;
+        });
+        medsRef.current = merged;
+        setMeds(merged);
+      })
+      .catch(() => { /* names stay unmatched; the doctor can pick them */ })
+      .then(() => { pendingRef.current = null; });
+    pendingRef.current = pending;
     if (convoRef.current) {
       if (!appendRef.current) countRef.current = new Map();
-      askNext(nextMeds);
-    } else setPhase("review");
+      await Promise.race([pending, new Promise(r => setTimeout(r, 400))]);
+      askNext(medsRef.current);
+    } else {
+      await pending;
+      setPhase("review");
+    }
   }
 
   // ---------- nurse conversation ----------
@@ -206,49 +231,59 @@ export default function VoicePrescription({ saving, notes, onNotesChange, onSkip
     let done = false;
     const go = () => { if (done) return; done = true; if (!deadRef.current) then(); };
     const synth: any = (window as any).speechSynthesis;
-    if (!synth || !voiceOutRef.current) { setTimeout(go, 400); return; }
+    if (!synth || !voiceOutRef.current) { setTimeout(go, 50); return; }
     try {
       synth.cancel();
       const u = new SpeechSynthesisUtterance(text);
       u.lang = "en-IN";
-      u.onend = () => setTimeout(go, 300);
+      u.rate = 1.15;
+      u.onend = () => setTimeout(go, 120);
       u.onerror = go;
       synth.speak(u);
     } catch { setTimeout(go, 400); return; }
     setTimeout(go, Math.min(12000, 2500 + text.length * 90)); // in case the phone never reports the end
   }
 
-  function questionFor(list: VoiceMed[]): Ask | null {
+  function questionFor(list: VoiceMed[], includeName: boolean): Ask | null {
     const open = (m: VoiceMed, f: Ask["field"]) => (countRef.current.get(`${m.id}:${f}`) ?? 0) < 2;
+    const who = (m: VoiceMed) => (list.length > 1 ? ` for ${m.name || m.spoken}` : "");
     for (const m of list) {
-      if (!m.name) {
+      if (!m.name && includeName) {
         if (open(m, "name")) {
           const text = m.nameState === "ambiguous"
-            ? `I'm not sure which medicine you mean by ${m.spoken}. Please say the full name again.`
-            : `I couldn't find ${m.spoken} in the medicine list. Please say the medicine name again.`;
+            ? `Which medicine is ${m.spoken}? Say the full name.`
+            : `${m.spoken} isn't in the list. Say the name again.`;
           return { medId: m.id, field: "name", text };
         }
         continue;
       }
       const noFreq = !m.prn && !m.everyHours && !m.freq && !m.times.length && !m.unusualFreq;
       if (noFreq && open(m, "freq"))
-        return { medId: m.id, field: "freq", text: `How often should the patient take ${m.name}? For example, morning and night, or three times a day.` };
+        return { medId: m.id, field: "freq", text: `How often${who(m)}? Morning, afternoon, night?` };
       if (!m.prn && !m.durationAmount && open(m, "duration"))
-        return { medId: m.id, field: "duration", text: `For how many days should the patient take ${m.name}?` };
+        return { medId: m.id, field: "duration", text: `How many days${who(m)}?` };
       if (!m.food && !/with food/i.test(m.extra) && open(m, "food"))
-        return { medId: m.id, field: "food", text: `Should ${m.name} be taken before food or after food?` };
+        return { medId: m.id, field: "food", text: `Before food or after food${who(m)}?` };
     }
     return null;
   }
 
+
   function askNext(list: VoiceMed[]) {
-    const q = questionFor(list);
+    const waiting = !!pendingRef.current;
+    const q = questionFor(list, !waiting);
     if (!q) {
+      if (waiting) {
+        // medicine names are still being matched: wait for them, then check again
+        setPhase("processing");
+        void pendingRef.current!.then(() => { if (!deadRef.current) askNext(medsRef.current); });
+        return;
+      }
       askRef.current = null; setAsk(null); setPhase("review");
       if (voiceOutRef.current) {
         try {
           const synth: any = (window as any).speechSynthesis;
-          if (synth) { synth.cancel(); synth.speak(new SpeechSynthesisUtterance("Okay. Please check and confirm the prescription.")); }
+          if (synth) { synth.cancel(); synth.speak(new SpeechSynthesisUtterance("Done. Please confirm.")); }
         } catch { /* ignore */ }
       }
       return;
@@ -256,11 +291,12 @@ export default function VoicePrescription({ saving, notes, onNotesChange, onSkip
     const key = `${q.medId}:${q.field}`;
     const tries = countRef.current.get(key) ?? 0;
     countRef.current.set(key, tries + 1);
-    const full: Ask = { ...q, text: (tries > 0 ? "Sorry, I didn't catch that. " : "") + q.text };
+    const full: Ask = { ...q, text: (tries > 0 ? "Sorry, say again. " : "") + q.text };
     askRef.current = full;
     setAsk(full); setLive(""); setError(""); setPhase("asking");
     speakThen(full.text, () => { if (askRef.current === full) void start(true, true); });
   }
+
 
   async function handleAnswer(spoken: string) {
     const q = askRef.current;
@@ -317,16 +353,28 @@ export default function VoicePrescription({ saving, notes, onNotesChange, onSkip
     finalRef.current = ""; liveRef.current = ""; confRef.current = 1; errRef.current = "";
     bankRef.current = ""; userStopRef.current = false; setAskDone(false);
     if (!answering) { askRef.current = null; setAsk(null); }
+    if (!answering && convoRef.current && voiceOutRef.current && !warmRef.current) {
+      warmRef.current = true; // wake up the phone's voice engine now, so the first question is not slow
+      try {
+        const sy: any = (window as any).speechSynthesis;
+        const w = new SpeechSynthesisUtterance(".");
+        w.volume = 0;
+        sy?.speak(w);
+      } catch { /* ignore */ }
+    }
     if (!answering) appendRef.current = append;
 
     if (Capacitor.isNativePlatform()) {
       try {
-        const avail = await SpeechRecognition.available();
-        if (!avail.available) { setError("Voice input isn't available on this phone. Please use Manual."); return; }
-        const perm = await SpeechRecognition.requestPermissions();
-        if (perm.speechRecognition !== "granted") {
-          setError("Microphone access is off. Allow Microphone for Doctor Booked in your phone's app settings, or use Manual.");
-          return;
+        if (!permOkRef.current) {
+          const avail = await SpeechRecognition.available();
+          if (!avail.available) { setError("Voice input isn't available on this phone. Please use Manual."); return; }
+          const perm = await SpeechRecognition.requestPermissions();
+          if (perm.speechRecognition !== "granted") {
+            setError("Microphone access is off. Allow Microphone for Doctor Booked in your phone's app settings, or use Manual.");
+            return;
+          }
+          permOkRef.current = true;
         }
         setPhase("listening");
         let fails = 0;
@@ -346,6 +394,7 @@ export default function VoicePrescription({ saving, notes, onNotesChange, onSkip
             setLive(bankRef.current);
           }
           if (userStopRef.current) break;
+          if (chunk && convoRef.current) break;
           if (fails >= 8 && !bankRef.current) break;
         }
         if (!deadRef.current && phaseRef.current === "listening") await finish(bankRef.current);
@@ -383,6 +432,9 @@ export default function VoicePrescription({ saving, notes, onNotesChange, onSkip
       liveRef.current = (bankRef.current + " " + pieces.join(" ")).trim();
       lastActRef.current = Date.now();
       setLive(liveRef.current);
+      if (convoRef.current && e.results[e.results.length - 1]?.isFinal) {
+        setTimeout(() => { if (Date.now() - lastActRef.current >= 400) stop(); }, 450);
+      }
     };
     rec.onerror = (e: any) => { errRef.current = e?.error || "error"; };
     rec.onend = () => {
