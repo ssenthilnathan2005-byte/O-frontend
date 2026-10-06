@@ -1805,56 +1805,8 @@ export default function DoctorDashboard() {
                             const mins = sessMins(entry.end) - sessMins(entry.start);
                             const avg = Number(profileForm.avgMinutesPerPatient) || 5;
                             const fit = mins > 0 ? Math.floor(mins / avg) : 0;
-                            const sessShift = (d: number) => {
-                              updateScheduleEntry(scheduleTab, s, "start", sessFmt(sessMins(entry.start) + d));
-                              updateScheduleEntry(scheduleTab, s, "end", sessFmt(sessMins(entry.end) + d));
-                            };
                             return (
                               <div className="mt-3 space-y-2">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <span className="text-xs text-gray-400">Length:</span>
-                                  {[2, 3, 4, 5].map((h) => {
-                                    const on = sessMins(entry.end) - sessMins(entry.start) === h * 60;
-                                    return (
-                                      <button
-                                        key={h}
-                                        type="button"
-                                        onClick={() =>
-                                          updateScheduleEntry(
-                                            scheduleTab, s, "end",
-                                            sessFmt(Math.min(sessMins(entry.start) + h * 60, 23 * 60 + 45)),
-                                          )
-                                        }
-                                        className={`text-xs border rounded-full px-2.5 py-0.5 ${
-                                          on
-                                            ? "bg-teal-600 text-white border-teal-600"
-                                            : "border-teal-200 bg-white text-teal-700 hover:bg-teal-50"
-                                        }`}
-                                      >
-                                        {h} hours
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <span className="text-xs text-gray-400">Move:</span>
-                                  <button
-                                    type="button"
-                                    disabled={sessMins(entry.start) - 30 < 5 * 60}
-                                    onClick={() => sessShift(-30)}
-                                    className="text-xs border border-teal-200 bg-white text-teal-700 rounded-full px-2.5 py-0.5 hover:bg-teal-50 disabled:opacity-40"
-                                  >
-                                    30 min earlier
-                                  </button>
-                                  <button
-                                    type="button"
-                                    disabled={sessMins(entry.end) + 30 > 23 * 60 + 45}
-                                    onClick={() => sessShift(30)}
-                                    className="text-xs border border-teal-200 bg-white text-teal-700 rounded-full px-2.5 py-0.5 hover:bg-teal-50 disabled:opacity-40"
-                                  >
-                                    30 min later
-                                  </button>
-                                </div>
                                 <div className="flex flex-wrap items-center gap-2">
                                   <span className="text-xs text-gray-400">Quick set:</span>
                                   {(SESSION_PRESETS[s] ?? []).map((pr) => (
