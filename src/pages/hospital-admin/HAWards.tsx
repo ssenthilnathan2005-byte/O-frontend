@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useStore } from "../../context/StoreContext";
-import { BedDouble, Plus, X, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { BedDouble, Plus, X, Trash2, ChevronDown, ChevronUp, Clock, Settings } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { getToken } from "../../api";
@@ -10,6 +10,7 @@ const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/
 type Ward = {
   id: string; name: string; type: string; total_beds: number;
   available_beds: number; occupied_beds: number; maintenance_beds: number;
+  cleaning_minutes?: number | null;
 };
 
 type Bed = {
@@ -24,6 +25,13 @@ type Bed = {
   occupant_notes: string | null;
   occupant_admitted_at: string | null;
   inward_id?: string | null;
+  cleaning_started_at?: string | null;
+  cleaning_ends_at?: string | null;
+  cleaning_duration_minutes?: number | null;
+  cleaning_override_minutes?: number | null;
+  effective_cleaning_minutes?: number | null;
+  cleaning_source?: "bed" | "ward" | "hospital";
+  server_now?: string;
 };
 
 const EMPTY_OCCUPY = { patientName:"", phone:"", age:"", gender:"", admittingDoctorName:"", diagnosis:"", notes:"" };
@@ -48,6 +56,115 @@ const STATUS_COLORS: Record<string, string> = {
   occupied:    "bg-red-50 text-red-700 border-red-200",
   maintenance: "bg-yellow-50 text-yellow-700 border-yellow-200",
 };
+
+// ---------------------------------------------------------------------------
+// Bed cleaning time helpers
+// ---------------------------------------------------------------------------
+const CLEANING_PRESETS: { label: string; minutes: number }[] = [
+  { label: "15 minutes", minutes: 15 },
+  { label: "30 minutes", minutes: 30 },
+  { label: "45 minutes", minutes: 45 },
+  { label: "1 hour", minutes: 60 },
+  { label: "2 hours", minutes: 120 },
+  { label: "4 hours", minutes: 240 },
+  { label: "8 hours", minutes: 480 },
+  { label: "12 hours", minutes: 720 },
+  { label: "1 day", minutes: 1440 },
+  { label: "2 days", minutes: 2880 },
+  { label: "3 days", minutes: 4320 },
+];
+const EXTEND_PRESETS: { label: string; minutes: number }[] = [
+  { label: "30 minutes", minutes: 30 },
+  { label: "1 hour", minutes: 60 },
+  { label: "2 hours", minutes: 120 },
+];
+
+type PickerValue = { choice: string; days: string; hours: string; mins: string };
+
+function minutesToPicker(m: number | null | undefined, presets = CLEANING_PRESETS): PickerValue {
+  if (m === null || m === undefined) return { choice: "inherit", days: "", hours: "", mins: "" };
+  if (presets.some(p => p.minutes === m)) return { choice: String(m), days: "", hours: "", mins: "" };
+  return {
+    choice: "custom",
+    days: String(Math.floor(m / 1440)),
+    hours: String(Math.floor((m % 1440) / 60)),
+    mins: String(m % 60),
+  };
+}
+
+// null = use the default, number = minutes, undefined = invalid custom value
+function pickerToMinutes(v: PickerValue): number | null | undefined {
+  if (v.choice === "inherit") return null;
+  if (v.choice !== "custom") return Number(v.choice);
+  const d = Number(v.days || 0), h = Number(v.hours || 0), m = Number(v.mins || 0);
+  if (![d, h, m].every(n => Number.isInteger(n) && n >= 0)) return undefined;
+  const total = d * 1440 + h * 60 + m;
+  return total >= 1 && total <= 43200 ? total : undefined;
+}
+
+function formatDuration(mins: number): string {
+  const d = Math.floor(mins / 1440), h = Math.floor((mins % 1440) / 60), m = mins % 60;
+  const parts: string[] = [];
+  if (d) parts.push(`${d} ${d === 1 ? "day" : "days"}`);
+  if (h) parts.push(`${h} ${h === 1 ? "hour" : "hours"}`);
+  if (m) parts.push(`${m} ${m === 1 ? "minute" : "minutes"}`);
+  return parts.join(" ") || "0 minutes";
+}
+
+function formatDurationShort(mins: number): string {
+  const d = Math.floor(mins / 1440), h = Math.floor((mins % 1440) / 60), m = mins % 60;
+  const parts: string[] = [];
+  if (d) parts.push(`${d}d`);
+  if (h) parts.push(`${h}h`);
+  if (m) parts.push(`${m}m`);
+  return parts.join(" ") || "0m";
+}
+
+function formatRemaining(ms: number): string {
+  if (ms <= 0) return "Finishing...";
+  return formatDuration(Math.ceil(ms / 60000)) + " remaining";
+}
+
+function formatRemainingShort(ms: number): string {
+  if (ms <= 0) return "Finishing...";
+  return formatDurationShort(Math.ceil(ms / 60000)) + " left";
+}
+
+function formatDateTime(iso: string | null | undefined): string {
+  if (!iso) return "-";
+  return new Date(iso).toLocaleString("en-US", {
+    month: "short", day: "numeric", hour: "numeric", minute: "2-digit", hour12: true,
+  });
+}
+
+function CleaningTimePicker({ value, onChange, presets = CLEANING_PRESETS, inheritLabel }: {
+  value: PickerValue;
+  onChange: (v: PickerValue) => void;
+  presets?: { label: string; minutes: number }[];
+  inheritLabel?: string;
+}) {
+  return (
+    <div className="space-y-2">
+      <select value={value.choice} onChange={e => onChange({ ...value, choice: e.target.value })}
+        className="w-full border rounded-md px-3 py-2 text-sm bg-white">
+        {inheritLabel && <option value="inherit">{inheritLabel}</option>}
+        {presets.map(p => <option key={p.minutes} value={String(p.minutes)}>{p.label}</option>)}
+        <option value="custom">Custom</option>
+      </select>
+      {value.choice === "custom" && (
+        <div className="grid grid-cols-3 gap-2">
+          {([["days", "Days"], ["hours", "Hours"], ["mins", "Minutes"]] as const).map(([k, label]) => (
+            <div key={k}>
+              <label className="text-xs text-gray-500 mb-1 block">{label}</label>
+              <Input type="number" min="0" placeholder="0" value={value[k]}
+                onChange={e => onChange({ ...value, [k]: e.target.value })} />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function HAWards() {
   const { user, doctors } = useStore();
@@ -76,6 +193,140 @@ export default function HAWards() {
   const [vitalsSaving, setVitalsSaving] = useState(false);
   const [noteSaving, setNoteSaving] = useState(false);
 
+  // ---- Bed cleaning time ----
+  const [showCleaningSettings, setShowCleaningSettings] = useState(false);
+  const [hospitalCleaning, setHospitalCleaning] = useState<PickerValue>(minutesToPicker(30));
+  const [wardCleaning, setWardCleaning] = useState<Record<string, PickerValue>>({});
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsError, setSettingsError] = useState("");
+  const [editCleaning, setEditCleaning] = useState<{ wardId: string; bed: Bed } | null>(null);
+  const [editCleaningValue, setEditCleaningValue] = useState<PickerValue>(minutesToPicker(null));
+  const [editCleaningSaving, setEditCleaningSaving] = useState(false);
+  const [editCleaningError, setEditCleaningError] = useState("");
+  const [cleaningTarget, setCleaningTarget] = useState<{ wardId: string; bedId: string } | null>(null);
+  const [cleaningView, setCleaningView] = useState<"main" | "confirm" | "extend">("main");
+  const [extendValue, setExtendValue] = useState<PickerValue>(minutesToPicker(30, EXTEND_PRESETS));
+  const [extendSaving, setExtendSaving] = useState(false);
+  const [extendError, setExtendError] = useState("");
+  const [nowMs, setNowMs] = useState(Date.now());
+  const clockOffset = useRef(0); // server time minus this device's time, so countdowns use the server clock
+  const nowAdj = nowMs + clockOffset.current;
+  const cleaningBed: Bed | null = cleaningTarget
+    ? (beds[cleaningTarget.wardId] || []).find(b => b.id === cleaningTarget.bedId) || null
+    : null;
+  const cleaningRemainingMs = cleaningBed && cleaningBed.cleaning_ends_at
+    ? Date.parse(cleaningBed.cleaning_ends_at) - nowAdj
+    : 0;
+
+  // Live countdown tick
+  useEffect(() => {
+    const t = setInterval(() => setNowMs(Date.now()), 15000);
+    return () => clearInterval(t);
+  }, []);
+
+  // When a bed's cleaning time has ended, reload its ward (the server makes it Available)
+  useEffect(() => {
+    const now = nowMs + clockOffset.current;
+    let changed = false;
+    Object.keys(beds).forEach(wardId => {
+      const list = beds[wardId] || [];
+      if (list.some(b => b.status === "maintenance" && b.cleaning_ends_at && Date.parse(b.cleaning_ends_at) <= now)) {
+        changed = true;
+        loadBeds(wardId);
+      }
+    });
+    if (changed) loadWards();
+  }, [nowMs]);
+
+  // Close the cleaning dialog if that bed is no longer in Cleaning
+  useEffect(() => {
+    if (cleaningTarget && (!cleaningBed || cleaningBed.status !== "maintenance")) setCleaningTarget(null);
+  }, [cleaningTarget, cleaningBed]);
+
+  async function openCleaningSettings() {
+    setSettingsError("");
+    setWardCleaning(wards.reduce((acc, w) => {
+      acc[w.id] = minutesToPicker(w.cleaning_minutes === undefined ? null : w.cleaning_minutes);
+      return acc;
+    }, {} as Record<string, PickerValue>));
+    setShowCleaningSettings(true);
+    try {
+      const r = await api("/wards/cleaning-settings");
+      if (r && typeof r.defaultMinutes === "number") setHospitalCleaning(minutesToPicker(r.defaultMinutes));
+    } catch {}
+  }
+
+  async function saveCleaningSettings() {
+    setSettingsError("");
+    const hm = pickerToMinutes(hospitalCleaning);
+    if (typeof hm !== "number") { setSettingsError("Enter a valid hospital default (1 minute to 30 days)."); return; }
+    const changes: { wardId: string; minutes: number | null }[] = [];
+    for (const w of wards) {
+      const v = wardCleaning[w.id];
+      if (!v) continue;
+      const m = pickerToMinutes(v);
+      if (m === undefined) { setSettingsError(`Enter a valid cleaning time for ${w.name}.`); return; }
+      const current = w.cleaning_minutes === undefined ? null : w.cleaning_minutes;
+      if (m !== current) changes.push({ wardId: w.id, minutes: m });
+    }
+    setSettingsSaving(true);
+    try {
+      const r = await api("/wards/cleaning-settings", "PUT", { minutes: hm });
+      if (r && r.error) throw new Error(r.error);
+      for (const c of changes) {
+        const rr = await api(`/wards/${c.wardId}/cleaning-time`, "PATCH", { minutes: c.minutes });
+        if (rr && rr.error) throw new Error(rr.error);
+      }
+      await loadWards();
+      setShowCleaningSettings(false);
+    } catch (e: any) {
+      setSettingsError(e?.message || "Could not save cleaning settings.");
+    } finally { setSettingsSaving(false); }
+  }
+
+  function openEditCleaning(wardId: string, bed: Bed) {
+    setEditCleaningError("");
+    setEditCleaningValue(minutesToPicker(bed.cleaning_override_minutes === undefined ? null : bed.cleaning_override_minutes));
+    setEditCleaning({ wardId, bed });
+  }
+
+  async function saveEditCleaning() {
+    if (!editCleaning) return;
+    const m = pickerToMinutes(editCleaningValue);
+    if (m === undefined) { setEditCleaningError("Enter a valid time (1 minute to 30 days)."); return; }
+    setEditCleaningSaving(true); setEditCleaningError("");
+    try {
+      const r = await api(`/wards/${editCleaning.wardId}/beds/${editCleaning.bed.id}/cleaning-time`, "PATCH", { minutes: m });
+      if (r && r.error) throw new Error(r.error);
+      await loadBeds(editCleaning.wardId);
+      setEditCleaning(null);
+    } catch (e: any) {
+      setEditCleaningError(e?.message || "Could not save cleaning time.");
+    } finally { setEditCleaningSaving(false); }
+  }
+
+  function openExtend() {
+    setExtendError("");
+    setExtendValue(minutesToPicker(30, EXTEND_PRESETS));
+    setCleaningView("extend");
+  }
+
+  async function saveExtend() {
+    if (!cleaningTarget) return;
+    const m = pickerToMinutes(extendValue);
+    if (typeof m !== "number") { setExtendError("Enter a valid extra time (1 minute to 30 days)."); return; }
+    setExtendSaving(true); setExtendError("");
+    try {
+      const r = await api(`/wards/${cleaningTarget.wardId}/beds/${cleaningTarget.bedId}/extend`, "PATCH", { minutes: m });
+      if (r && r.error) throw new Error(r.error);
+      await loadBeds(cleaningTarget.wardId);
+      setCleaningView("main");
+    } catch (e: any) {
+      setExtendError(e?.message || "Could not extend cleaning.");
+    } finally { setExtendSaving(false); }
+  }
+
+
   async function api(path: string, method = "GET", body?: any) {
     const res = await fetch(`${BASE}${path}`, {
       method, headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
@@ -91,6 +342,8 @@ export default function HAWards() {
   async function loadBeds(wardId: string) {
     try {
       const data = await api(`/wards/${wardId}/beds`);
+      if (!Array.isArray(data)) return;
+      if (data[0] && data[0].server_now) clockOffset.current = Date.parse(data[0].server_now) - Date.now();
       setBeds(prev => ({ ...prev, [wardId]: data }));
     } catch {}
   }
@@ -139,7 +392,8 @@ export default function HAWards() {
     if (!confirm("Discharge this patient and send the bed for cleaning?")) return;
     setBedLoading(bedId);
     try {
-      await api(`/wards/${wardId}/beds/${bedId}/vacate`, "PATCH", {});
+      const vacateRes = await api(`/wards/${wardId}/beds/${bedId}/vacate`, "PATCH", {});
+      if (vacateRes && vacateRes.error) alert(vacateRes.error);
       setDetailsTarget(null);
       await loadBeds(wardId);
       await loadWards();
@@ -149,7 +403,9 @@ export default function HAWards() {
   async function handleReady(wardId: string, bedId: string) {
     setBedLoading(bedId);
     try {
-      await api(`/wards/${wardId}/beds/${bedId}/ready`, "PATCH", {});
+      const readyRes = await api(`/wards/${wardId}/beds/${bedId}/ready`, "PATCH", {});
+      if (readyRes && readyRes.error) alert(readyRes.error);
+      setCleaningTarget(null);
       await loadBeds(wardId);
       await loadWards();
     } catch {} finally { setBedLoading(null); }
@@ -214,7 +470,8 @@ export default function HAWards() {
       setVitalsForm({ ...EMPTY_VITALS }); setNoteForm({ ...EMPTY_NOTE });
       loadHistory(bed);
     } else {
-      handleReady(wardId, bed.id);
+      setCleaningView("main");
+      setCleaningTarget({ wardId, bedId: bed.id });
     }
   }
 
@@ -234,10 +491,19 @@ export default function HAWards() {
           <BedDouble className="w-5 h-5 text-teal-600" />
           <h1 className="text-xl font-bold">Beds & Wards</h1>
         </div>
-        <button onClick={() => setShowForm(true)}
+        <div className="flex items-center gap-2">
+          <button onClick={openCleaningSettings}
+            className="flex items-center gap-2 border border-teal-600 text-teal-700 hover:bg-teal-50 px-3 py-2 rounded-lg text-sm font-medium transition-colors">
+            <Settings className="w-4 h-4" />
+            <span className="hidden sm:inline">Cleaning Settings</span>
+            <span className="sm:hidden">Cleaning</span>
+          </button>
+
+<button onClick={() => setShowForm(true)}
           className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
           <Plus className="w-4 h-4" /> Add Ward
         </button>
+</div>
       </div>
 
       {/* Summary */}
@@ -274,7 +540,7 @@ export default function HAWards() {
                     <span className="px-2 py-0.5 rounded-full bg-green-50 text-green-700">{ward.available_beds} free</span>
                     <span className="px-2 py-0.5 rounded-full bg-red-50 text-red-700">{ward.occupied_beds} occupied</span>
                     {Number(ward.maintenance_beds) > 0 && (
-                      <span className="px-2 py-0.5 rounded-full bg-yellow-50 text-yellow-700">{ward.maintenance_beds} maintenance</span>
+                      <span className="px-2 py-0.5 rounded-full bg-yellow-50 text-yellow-700">{ward.maintenance_beds} cleaning</span>
                     )}
                   </div>
                   <button onClick={e => { e.stopPropagation(); handleDeleteWard(ward.id); }} className="p-1.5 rounded hover:bg-red-50 transition-colors">
@@ -294,13 +560,32 @@ export default function HAWards() {
                   ) : (
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                       {beds[ward.id].map(bed => (
-                        <div key={bed.id} className={`rounded-lg border p-2 text-center text-xs cursor-pointer transition-all ${STATUS_COLORS[bed.status]}`}
+                        <div key={bed.id} className={`relative rounded-lg border p-2 text-center text-xs cursor-pointer transition-all ${STATUS_COLORS[bed.status]}`}
                           onClick={() => handleBedClick(ward.id, bed)}>
+                          <button type="button" title="Edit Cleaning Time"
+                            onClick={e => { e.stopPropagation(); openEditCleaning(ward.id, bed); }}
+                            className="absolute top-1 right-1 p-0.5 rounded opacity-50 hover:opacity-100 hover:bg-black/10">
+                            <Clock className="w-3 h-3" />
+                          </button>
                           <p className="font-bold">{bed.bed_number}</p>
                           <p className="capitalize mt-0.5 opacity-80">
                             {bed.status === "maintenance" ? "Cleaning" : bed.status}
                           </p>
                           {bed.patient_name && <p className="truncate mt-0.5 font-medium">{bed.patient_name}</p>}
+                          {bed.status === "maintenance" && bed.cleaning_ends_at && (
+                            <div className="mt-0.5">
+                              <p className="font-medium leading-tight">
+                                {formatRemainingShort(Date.parse(bed.cleaning_ends_at) - nowAdj)}
+                              </p>
+                              <p className="text-[10px] opacity-80 leading-tight">Free: {formatDateTime(bed.cleaning_ends_at)}</p>
+                            </div>
+                          )}
+                          {bed.cleaning_source === "bed" && bed.cleaning_override_minutes ? (
+                            <p className="text-[10px] opacity-70 leading-tight mt-0.5" title="Individual cleaning time">
+                              Custom: {formatDurationShort(bed.cleaning_override_minutes)}
+                            </p>
+                          ) : null}
+
                           {bedLoading === bed.id && <p className="text-[10px] opacity-60">saving...</p>}
                         </div>
                       ))}
@@ -578,6 +863,149 @@ export default function HAWards() {
           </div>
         </div>
       )}
+      {showCleaningSettings && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b">
+              <h2 className="font-semibold text-lg">Cleaning Settings</h2>
+              <button onClick={() => setShowCleaningSettings(false)}><X className="w-4 h-4" /></button>
+            </div>
+            <div className="px-6 py-4 space-y-4 overflow-y-auto">
+              <p className="text-xs text-gray-500">
+                A bed's own cleaning time is used first, then its ward's, then the hospital default.
+                Use the clock icon on a bed to set that bed's own time.
+              </p>
+              <div>
+                <label className="text-sm font-medium text-gray-600 mb-1 block">Hospital default</label>
+                <CleaningTimePicker value={hospitalCleaning} onChange={setHospitalCleaning} />
+              </div>
+              {wards.length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-sm font-medium text-gray-600">Ward defaults</p>
+                  {wards.map(w => (
+                    <div key={w.id}>
+                      <label className="text-xs text-gray-500 mb-1 block">{w.name}</label>
+                      <CleaningTimePicker
+                        value={wardCleaning[w.id] || minutesToPicker(null)}
+                        onChange={v => setWardCleaning(prev => ({ ...prev, [w.id]: v }))}
+                        inheritLabel="Use hospital default" />
+                    </div>
+                  ))}
+                </div>
+              )}
+              {settingsError && <p className="text-xs text-red-600">{settingsError}</p>}
+            </div>
+            <div className="px-6 py-4 border-t flex gap-3 justify-end">
+              <button onClick={() => setShowCleaningSettings(false)}
+                className="px-4 py-2 rounded-lg text-sm border hover:bg-gray-50 transition-colors">Cancel</button>
+              <button onClick={saveCleaningSettings} disabled={settingsSaving}
+                className="px-4 py-2 rounded-lg text-sm bg-teal-600 hover:bg-teal-700 text-white font-medium transition-colors disabled:opacity-50">
+                {settingsSaving ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editCleaning && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+            <div className="flex items-center justify-between px-6 py-4 border-b">
+              <h2 className="font-semibold text-lg">Edit Cleaning Time - Bed {editCleaning.bed.bed_number}</h2>
+              <button onClick={() => setEditCleaning(null)}><X className="w-4 h-4" /></button>
+            </div>
+            <div className="px-6 py-4 space-y-3">
+              <CleaningTimePicker value={editCleaningValue} onChange={setEditCleaningValue}
+                inheritLabel="Use ward / hospital default" />
+              <p className="text-xs text-gray-500">Applies the next time this bed is cleaned after a discharge.</p>
+              {editCleaningError && <p className="text-xs text-red-600">{editCleaningError}</p>}
+            </div>
+            <div className="px-6 py-4 border-t flex gap-3 justify-end">
+              <button onClick={() => setEditCleaning(null)}
+                className="px-4 py-2 rounded-lg text-sm border hover:bg-gray-50 transition-colors">Cancel</button>
+              <button onClick={saveEditCleaning} disabled={editCleaningSaving}
+                className="px-4 py-2 rounded-lg text-sm bg-teal-600 hover:bg-teal-700 text-white font-medium transition-colors disabled:opacity-50">
+                {editCleaningSaving ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cleaningTarget && cleaningBed && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+            <div className="flex items-center justify-between px-6 py-4 border-b">
+              <h2 className="font-semibold text-lg">Bed {cleaningBed.bed_number}</h2>
+              <button onClick={() => setCleaningTarget(null)}><X className="w-4 h-4" /></button>
+            </div>
+
+            {cleaningView === "main" && (
+              <>
+                <div className="px-6 py-4 space-y-2 text-sm">
+                  <span className="inline-block px-2 py-0.5 rounded-full text-xs bg-yellow-50 text-yellow-700 border border-yellow-200">Cleaning</span>
+                  <p className="text-lg font-semibold text-gray-800">{formatRemaining(cleaningRemainingMs)}</p>
+                  <p><span className="text-gray-500">Available after:</span> {formatDateTime(cleaningBed.cleaning_ends_at)}</p>
+                  <p><span className="text-gray-500">Cleaning started:</span> {formatDateTime(cleaningBed.cleaning_started_at)}</p>
+                  {cleaningBed.cleaning_duration_minutes ? (
+                    <p><span className="text-gray-500">Cleaning time:</span> {formatDuration(cleaningBed.cleaning_duration_minutes)}</p>
+                  ) : null}
+                </div>
+                <div className="px-6 py-4 border-t flex flex-wrap gap-3 justify-end">
+                  <button onClick={() => setCleaningTarget(null)}
+                    className="px-4 py-2 rounded-lg text-sm border hover:bg-gray-50 transition-colors">Close</button>
+                  <button onClick={openExtend}
+                    className="px-4 py-2 rounded-lg text-sm border border-teal-600 text-teal-700 hover:bg-teal-50 transition-colors">Extend Cleaning</button>
+                  <button onClick={() => setCleaningView("confirm")}
+                    className="px-4 py-2 rounded-lg text-sm bg-teal-600 hover:bg-teal-700 text-white font-medium transition-colors">Mark Cleaning Completed</button>
+                </div>
+              </>
+            )}
+
+            {cleaningView === "confirm" && (
+              <>
+                <div className="px-6 py-5 text-sm text-gray-700">
+                  Cleaning for {cleaningBed.bed_number} is completed. Do you want to make this bed available now?
+                </div>
+                <div className="px-6 py-4 border-t flex gap-3 justify-end">
+                  <button onClick={() => setCleaningView("main")}
+                    className="px-4 py-2 rounded-lg text-sm border hover:bg-gray-50 transition-colors">Cancel</button>
+                  <button onClick={() => handleReady(cleaningTarget.wardId, cleaningTarget.bedId)}
+                    disabled={bedLoading === cleaningBed.id}
+                    className="px-4 py-2 rounded-lg text-sm bg-green-600 hover:bg-green-700 text-white font-medium transition-colors disabled:opacity-50">
+                    {bedLoading === cleaningBed.id ? "Saving..." : "Mark Available"}
+                  </button>
+                </div>
+              </>
+            )}
+
+            {cleaningView === "extend" && (
+              <>
+                <div className="px-6 py-4 space-y-3 text-sm">
+                  <p className="font-medium text-gray-700">Extend cleaning by</p>
+                  <CleaningTimePicker value={extendValue} onChange={setExtendValue} presets={EXTEND_PRESETS} />
+                  {cleaningBed.cleaning_ends_at && typeof pickerToMinutes(extendValue) === "number" && (
+                    <p className="text-xs text-gray-500">
+                      Current end: {formatDateTime(cleaningBed.cleaning_ends_at)} - New end:{" "}
+                      {formatDateTime(new Date(Date.parse(cleaningBed.cleaning_ends_at) + (pickerToMinutes(extendValue) as number) * 60000).toISOString())}
+                    </p>
+                  )}
+                  {extendError && <p className="text-xs text-red-600">{extendError}</p>}
+                </div>
+                <div className="px-6 py-4 border-t flex gap-3 justify-end">
+                  <button onClick={() => setCleaningView("main")}
+                    className="px-4 py-2 rounded-lg text-sm border hover:bg-gray-50 transition-colors">Back</button>
+                  <button onClick={saveExtend} disabled={extendSaving}
+                    className="px-4 py-2 rounded-lg text-sm bg-teal-600 hover:bg-teal-700 text-white font-medium transition-colors disabled:opacity-50">
+                    {extendSaving ? "Saving..." : "Extend"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
