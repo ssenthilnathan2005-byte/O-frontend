@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useStore } from "../../context/StoreContext";
-import { BedDouble, Plus, X, Trash2, ChevronDown, ChevronUp, Clock, Settings } from "lucide-react";
+import { BedDouble, Plus, X, Trash2, ChevronDown, ChevronUp, Clock, Settings, Pencil } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { getToken } from "../../api";
@@ -192,6 +192,78 @@ export default function HAWards() {
   const [noteForm, setNoteForm] = useState({ ...EMPTY_NOTE });
   const [vitalsSaving, setVitalsSaving] = useState(false);
   const [noteSaving, setNoteSaving] = useState(false);
+
+  // ---- Manage wards & beds: edit ward, add / edit / remove bed ----
+  const [editWard, setEditWard] = useState<Ward | null>(null);
+  const [editWardForm, setEditWardForm] = useState({ name: "", type: "general" });
+  const [bedDialog, setBedDialog] = useState<{ mode: "add" | "edit"; wardId: string; bed?: Bed } | null>(null);
+  const [bedNumberInput, setBedNumberInput] = useState("");
+  const [manageSaving, setManageSaving] = useState(false);
+  const [manageError, setManageError] = useState("");
+
+  function openEditWard(ward: Ward) {
+    setManageError("");
+    setEditWardForm({ name: ward.name, type: ward.type });
+    setEditWard(ward);
+  }
+
+  async function saveEditWard() {
+    if (!editWard) return;
+    if (!editWardForm.name.trim()) { setManageError("Ward name is required."); return; }
+    setManageSaving(true); setManageError("");
+    try {
+      const r = await api(`/wards/${editWard.id}`, "PATCH", { name: editWardForm.name.trim(), type: editWardForm.type });
+      if (r && r.error) throw new Error(r.error);
+      setEditWard(null);
+      await loadWards();
+    } catch (e: any) {
+      setManageError(e?.message || "Could not update ward.");
+    } finally { setManageSaving(false); }
+  }
+
+  function openAddBed(wardId: string) {
+    setManageError(""); setBedNumberInput("");
+    setBedDialog({ mode: "add", wardId });
+  }
+
+  function openEditBed(wardId: string, bed: Bed) {
+    setManageError(""); setBedNumberInput(bed.bed_number);
+    setBedDialog({ mode: "edit", wardId, bed });
+  }
+
+  async function saveBedDialog() {
+    if (!bedDialog) return;
+    const num = bedNumberInput.trim();
+    if (bedDialog.mode === "edit" && !num) { setManageError("Bed number is required."); return; }
+    const wardId = bedDialog.wardId;
+    setManageSaving(true); setManageError("");
+    try {
+      const r = bedDialog.mode === "add"
+        ? await api(`/wards/${wardId}/beds`, "POST", num ? { bedNumber: num } : {})
+        : await api(`/wards/${wardId}/beds/${bedDialog.bed!.id}`, "PATCH", { bedNumber: num });
+      if (r && r.error) throw new Error(r.error);
+      setBedDialog(null);
+      await loadBeds(wardId);
+      await loadWards();
+    } catch (e: any) {
+      setManageError(e?.message || "Could not save bed.");
+    } finally { setManageSaving(false); }
+  }
+
+  async function handleRemoveBed(wardId: string, bed: Bed) {
+    if (bed.status === "occupied") {
+      alert("This bed has a patient. Discharge the patient before removing the bed.");
+      return;
+    }
+    if (!confirm(`Remove bed ${bed.bed_number}?`)) return;
+    setBedLoading(bed.id);
+    try {
+      const r = await api(`/wards/${wardId}/beds/${bed.id}`, "DELETE");
+      if (r && r.error) alert(r.error);
+      await loadBeds(wardId);
+      await loadWards();
+    } catch {} finally { setBedLoading(null); }
+  }
 
   // ---- Bed cleaning time ----
   const [showCleaningSettings, setShowCleaningSettings] = useState(false);
@@ -543,6 +615,9 @@ export default function HAWards() {
                       <span className="px-2 py-0.5 rounded-full bg-yellow-50 text-yellow-700">{ward.maintenance_beds} cleaning</span>
                     )}
                   </div>
+                  <button onClick={e => { e.stopPropagation(); openEditWard(ward); }} title="Edit Ward" aria-label="Edit Ward" className="p-1.5 rounded hover:bg-gray-100 transition-colors">
+                    <Pencil className="w-3.5 h-3.5 text-gray-500" />
+                  </button>
                   <button onClick={e => { e.stopPropagation(); handleDeleteWard(ward.id); }} className="p-1.5 rounded hover:bg-red-50 transition-colors">
                     <Trash2 className="w-3.5 h-3.5 text-red-400" />
                   </button>
@@ -555,6 +630,12 @@ export default function HAWards() {
               {/* Bed Grid */}
               {expanded === ward.id && (
                 <div className="border-t px-5 py-4">
+                  <div className="flex justify-end mb-3">
+                    <button onClick={() => openAddBed(ward.id)}
+                      className="flex items-center gap-1 border border-teal-600 text-teal-700 hover:bg-teal-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">
+                      <Plus className="w-3.5 h-3.5" /> Add Bed
+                    </button>
+                  </div>
                   {!beds[ward.id] ? (
                     <p className="text-sm text-gray-400">Loading beds...</p>
                   ) : (
@@ -562,6 +643,18 @@ export default function HAWards() {
                       {beds[ward.id].map(bed => (
                         <div key={bed.id} className={`relative rounded-lg border p-2 text-center text-xs cursor-pointer transition-all ${STATUS_COLORS[bed.status]}`}
                           onClick={() => handleBedClick(ward.id, bed)}>
+                          <div className="absolute top-1 left-1 flex gap-0.5">
+                            <button type="button" title="Edit Bed" aria-label="Edit Bed"
+                              onClick={e => { e.stopPropagation(); openEditBed(ward.id, bed); }}
+                              className="p-0.5 rounded opacity-50 hover:opacity-100 hover:bg-black/10">
+                              <Pencil className="w-3 h-3" />
+                            </button>
+                            <button type="button" title="Remove Bed" aria-label="Remove Bed"
+                              onClick={e => { e.stopPropagation(); handleRemoveBed(ward.id, bed); }}
+                              className="p-0.5 rounded opacity-50 hover:opacity-100 hover:bg-black/10">
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
                           <button type="button" title="Edit Cleaning Time"
                             onClick={e => { e.stopPropagation(); openEditCleaning(ward.id, bed); }}
                             className="absolute top-1 right-1 p-0.5 rounded opacity-50 hover:opacity-100 hover:bg-black/10">
@@ -595,6 +688,78 @@ export default function HAWards() {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Edit Ward Modal */}
+      {editWard && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+            <div className="flex items-center justify-between px-6 py-4 border-b">
+              <h2 className="font-semibold text-lg">Edit Ward</h2>
+              <button onClick={() => setEditWard(null)}><X className="w-4 h-4" /></button>
+            </div>
+            <div className="px-6 py-4 space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-600 mb-1 block">Ward Name *</label>
+                <Input value={editWardForm.name}
+                  onChange={e => setEditWardForm(f => ({ ...f, name: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-600 mb-1 block">Ward Type</label>
+                <select value={editWardForm.type} onChange={e => setEditWardForm(f => ({ ...f, type: e.target.value }))}
+                  className="w-full border rounded-md px-3 py-2 text-sm bg-white">
+                  {(WARD_TYPES.includes(editWardForm.type) ? WARD_TYPES : [editWardForm.type, ...WARD_TYPES]).map(t => (
+                    <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+                  ))}
+                </select>
+              </div>
+              {manageError && <p className="text-xs text-red-600">{manageError}</p>}
+            </div>
+            <div className="px-6 py-4 border-t flex gap-3 justify-end">
+              <button onClick={() => setEditWard(null)}
+                className="px-4 py-2 rounded-lg text-sm border hover:bg-gray-50 transition-colors">Cancel</button>
+              <button onClick={saveEditWard} disabled={manageSaving}
+                className="px-4 py-2 rounded-lg text-sm bg-teal-600 hover:bg-teal-700 text-white font-medium transition-colors disabled:opacity-50">
+                {manageSaving ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add / Edit Bed Modal */}
+      {bedDialog && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+            <div className="flex items-center justify-between px-6 py-4 border-b">
+              <h2 className="font-semibold text-lg">
+                {bedDialog.mode === "add"
+                  ? `Add Bed - ${wards.find(w => w.id === bedDialog.wardId)?.name || "Ward"}`
+                  : `Edit Bed - ${bedDialog.bed?.bed_number}`}
+              </h2>
+              <button onClick={() => setBedDialog(null)}><X className="w-4 h-4" /></button>
+            </div>
+            <div className="px-6 py-4 space-y-3">
+              <div>
+                <label className="text-sm font-medium text-gray-600 mb-1 block">
+                  Bed Number{bedDialog.mode === "edit" ? " *" : ""}
+                </label>
+                <Input placeholder={bedDialog.mode === "add" ? "Leave blank to auto-number" : "e.g. MA-22"}
+                  value={bedNumberInput} maxLength={30}
+                  onChange={e => setBedNumberInput(e.target.value)} />
+              </div>
+              {manageError && <p className="text-xs text-red-600">{manageError}</p>}
+            </div>
+            <div className="px-6 py-4 border-t flex gap-3 justify-end">
+              <button onClick={() => setBedDialog(null)}
+                className="px-4 py-2 rounded-lg text-sm border hover:bg-gray-50 transition-colors">Cancel</button>
+              <button onClick={saveBedDialog} disabled={manageSaving}
+                className="px-4 py-2 rounded-lg text-sm bg-teal-600 hover:bg-teal-700 text-white font-medium transition-colors disabled:opacity-50">
+                {manageSaving ? "Saving..." : bedDialog.mode === "add" ? "Add Bed" : "Save"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
