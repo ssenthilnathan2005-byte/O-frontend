@@ -1,12 +1,106 @@
-import { useMemo } from "react";
-import { UserCog, Users2, CalendarCheck, Pill, Activity, BedDouble, FlaskConical, Package, Wrench } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect, type ReactNode } from "react";
+import {
+  UserCog, Users2, CalendarCheck, Pill, Activity, BedDouble, FlaskConical, Package,
+  IndianRupee, Wallet, ShieldCheck, Timer, LogOut, AlertTriangle, TrendingUp, TrendingDown,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useStore } from "../../context/StoreContext";
 import { isLiveBookingStatus, normalizeBookingStatus } from "../../lib/bookingStatus";
 import { useRouter } from "../../router/RouterContext";
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
+}
+
+const DASH = "\u2014";
+const WAIT_TARGET_MINS = 20;
+
+// Shape returned by GET {BASE}/dashboard/kpis?hospitalId=...
+// Any field the backend doesn't send stays null and the card shows a dash.
+type Kpis = {
+  revenueToday: number | null;
+  revenueYesterday: number | null;
+  paymentSplit: { cash: number; upi: number; tpa: number } | null;
+  receivables: number | null;
+  unbilledAccounts: number | null;
+  tpaApproved: number | null;
+  tpaPendingPreAuth: number | null;
+  avgWaitMins: number | null;
+  dischargesScheduled: number | null;
+  dischargesDone: number | null;
+  labTatMins: number | null;
+  criticalAlerts: number | null;
+};
+
+const EMPTY_KPIS: Kpis = {
+  revenueToday: null,
+  revenueYesterday: null,
+  paymentSplit: null,
+  receivables: null,
+  unbilledAccounts: null,
+  tpaApproved: null,
+  tpaPendingPreAuth: null,
+  avgWaitMins: null,
+  dischargesScheduled: null,
+  dischargesDone: null,
+  labTatMins: null,
+  criticalAlerts: null,
+};
+
+type Tab = "all" | "opd" | "ipd" | "fin";
+type Group = Exclude<Tab, "all">;
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "opd", label: "OPD & Operations" },
+  { id: "ipd", label: "IPD & Beds" },
+  { id: "fin", label: "Financials" },
+];
+
+const money = (v: number | null) =>
+  v === null
+    ? DASH
+    : new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(v);
+
+const num = (v: number | null) => (v === null ? DASH : String(v));
+
+function Badge({ children, tone }: { children: ReactNode; tone: "green" | "amber" | "red" | "gray" | "blue" }) {
+  const tones = {
+    green: "bg-green-50 text-green-700",
+    amber: "bg-amber-50 text-amber-700",
+    red: "bg-red-50 text-red-700",
+    gray: "bg-gray-100 text-gray-500",
+    blue: "bg-blue-50 text-blue-700",
+  };
+  return <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${tones[tone]}`}>{children}</span>;
+}
+
+function MetricCard({
+  label, icon: Icon, color, bg, children,
+}: { label: string; icon: LucideIcon; color: string; bg: string; children: ReactNode }) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-gray-500">{label}</span>
+        <div className={`w-8 h-8 rounded-full ${bg} flex items-center justify-center`}>
+          <Icon className={`w-4 h-4 ${color}`} />
+        </div>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Section({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
+  return (
+    <section className="space-y-3">
+      <div>
+        <h2 className="text-base font-semibold text-gray-800">{title}</h2>
+        {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
+      </div>
+      {children}
+    </section>
+  );
 }
 
 export default function HADashboard() {
@@ -16,12 +110,16 @@ export default function HADashboard() {
   const hospitalId = user?.role === "hospital_admin" ? user.hospitalId : "";
   const hospitalName = user?.role === "hospital_admin" ? user.hospitalName : "Hospital";
 
+  const [tab, setTab] = useState<Tab>("all");
+  const show = (g: Group) => tab === "all" || tab === g;
+
   const [pharmacyCount, setPharmacyCount] = useState(0);
   const [hasPharmacy, setHasPharmacy] = useState(false);
   const [bedStats, setBedStats] = useState({ occupied: 0, total: 0, maintenance: 0 });
   const [pendingLabOrders, setPendingLabOrders] = useState(0);
   const [activeInward, setActiveInward] = useState(0);
   const [lowStockCount, setLowStockCount] = useState(0);
+  const [kpis, setKpis] = useState<Kpis>(EMPTY_KPIS);
 
   const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
@@ -62,7 +160,7 @@ export default function HADashboard() {
         }
 
         if (Array.isArray(labRes)) {
-          setPendingLabOrders(labRes.filter((o: any) => ["ordered","sample_collected","processing"].includes(o.status)).length);
+          setPendingLabOrders(labRes.filter((o: any) => ["ordered", "sample_collected", "processing"].includes(o.status)).length);
         }
 
         if (Array.isArray(inwardRes)) {
@@ -75,6 +173,22 @@ export default function HADashboard() {
       } catch { }
     }
     fetchOpsStats();
+
+    // Financial + operational KPIs. If the endpoint doesn't exist yet, cards show a dash.
+    let cancelled = false;
+    async function fetchKpis() {
+      try {
+        const { getToken } = await import("../../api");
+        const res = await fetch(`${BASE}/dashboard/kpis?hospitalId=${hospitalId}`, {
+          headers: { Authorization: `Bearer ${getToken()}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && data && typeof data === "object") setKpis({ ...EMPTY_KPIS, ...data });
+      } catch { }
+    }
+    fetchKpis();
+    return () => { cancelled = true; };
   }, [hospitalId]);
 
   const myDoctors = useMemo(
@@ -98,71 +212,19 @@ export default function HADashboard() {
 
   const availableDoctors = myDoctors.filter((d) => d.isAvailable).length;
 
-  const stats = [
+  const stats: {
+    group: Group; label: string; value: string | number; sub: string;
+    icon: LucideIcon; color: string; bg: string; to?: string;
+  }[] = [
+    { group: "opd", label: "Total Doctors", value: myDoctors.length, sub: `${availableDoctors} available today`, icon: UserCog, color: "text-teal-600", bg: "bg-teal-50", to: "/hospital-admin/doctors" },
+    { group: "opd", label: "Today's Bookings", value: todayBookings.length, sub: `${todayConfirmed} confirmed`, icon: CalendarCheck, color: "text-blue-600", bg: "bg-blue-50" },
+    { group: "opd", label: "Completed Today", value: todayCompleted, sub: `${todayUnvisited} unvisited`, icon: Activity, color: "text-green-600", bg: "bg-green-50" },
+    { group: "opd", label: "Pharmacy Staff", value: pharmacyCount, sub: hasPharmacy ? "pharmacy active" : "no pharmacy", icon: Pill, color: "text-orange-600", bg: "bg-orange-50", to: "/hospital-admin/pharmacy" },
+    { group: "ipd", label: "Bed Occupancy", value: `${bedStats.occupied}/${bedStats.total}`, sub: bedStats.maintenance > 0 ? `${bedStats.maintenance} cleaning` : "beds occupied", icon: BedDouble, color: "text-red-600", bg: "bg-red-50", to: "/hospital-admin/wards" },
+    { group: "ipd", label: "Admitted Patients", value: activeInward, sub: "currently inward", icon: Users2, color: "text-indigo-600", bg: "bg-indigo-50", to: "/hospital-admin/ipd" },
+    { group: "opd", label: "Pending Lab Orders", value: pendingLabOrders, sub: "awaiting results", icon: FlaskConical, color: "text-purple-600", bg: "bg-purple-50", to: "/hospital-admin/lab" },
     {
-      label: "Total Doctors",
-      value: myDoctors.length,
-      sub: `${availableDoctors} available today`,
-      icon: UserCog,
-      color: "text-teal-600",
-      bg: "bg-teal-50",
-      to: "/hospital-admin/doctors",
-    },
-    {
-      label: "Today's Bookings",
-      value: todayBookings.length,
-      sub: `${todayConfirmed} confirmed`,
-      icon: CalendarCheck,
-      color: "text-blue-600",
-      bg: "bg-blue-50",
-    },
-    {
-      label: "Completed Today",
-      value: todayCompleted,
-      sub: `${todayUnvisited} unvisited`,
-      icon: Activity,
-      color: "text-green-600",
-      bg: "bg-green-50",
-    },
-    {
-      label: "Pharmacy Staff",
-      value: pharmacyCount,
-      sub: hasPharmacy ? "pharmacy active" : "no pharmacy",
-      icon: Pill,
-      color: "text-orange-600",
-      bg: "bg-orange-50",
-      to: "/hospital-admin/pharmacy",
-    },
-    {
-      label: "Bed Occupancy",
-      value: `${bedStats.occupied}/${bedStats.total}`,
-      sub: bedStats.maintenance > 0 ? `${bedStats.maintenance} cleaning` : "beds occupied",
-      icon: BedDouble,
-      color: "text-red-600",
-      bg: "bg-red-50",
-      to: "/hospital-admin/wards",
-    },
-    {
-      label: "Admitted Patients",
-      value: activeInward,
-      sub: "currently inward",
-      icon: Users2,
-      color: "text-indigo-600",
-      bg: "bg-indigo-50",
-      to: "/hospital-admin/ipd",
-    },
-    {
-      label: "Pending Lab Orders",
-      value: pendingLabOrders,
-      sub: "awaiting results",
-      icon: FlaskConical,
-      color: "text-purple-600",
-      bg: "bg-purple-50",
-      to: "/hospital-admin/lab",
-    },
-    {
-      label: "Low Stock Items",
-      value: lowStockCount,
+      group: "opd", label: "Low Stock Items", value: lowStockCount,
       sub: lowStockCount > 0 ? "needs reordering" : "all stocked",
       icon: Package,
       color: lowStockCount > 0 ? "text-amber-600" : "text-gray-500",
@@ -170,6 +232,25 @@ export default function HADashboard() {
       to: "/hospital-admin/inventory",
     },
   ];
+  const visibleStats = stats.filter((s) => show(s.group));
+
+  // ---- Financial derived values ----
+  const revChange =
+    kpis.revenueToday !== null && kpis.revenueYesterday !== null && kpis.revenueYesterday > 0
+      ? ((kpis.revenueToday - kpis.revenueYesterday) / kpis.revenueYesterday) * 100
+      : null;
+
+  const split = kpis.paymentSplit;
+  const splitTotal = split ? split.cash + split.upi + split.tpa : 0;
+  const splitPct = (v: number) => (splitTotal > 0 ? Math.round((v / splitTotal) * 100) : 0);
+
+  // ---- Operational derived values ----
+  const dischargeTotal = kpis.dischargesScheduled;
+  const dischargeDone = kpis.dischargesDone ?? 0;
+  const dischargePct =
+    dischargeTotal !== null && dischargeTotal > 0 ? Math.min(100, Math.round((dischargeDone / dischargeTotal) * 100)) : 0;
+
+  const waitOk = kpis.avgWaitMins !== null && kpis.avgWaitMins <= WAIT_TARGET_MINS;
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
@@ -181,63 +262,206 @@ export default function HADashboard() {
         </p>
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {stats.map(({ label, value, sub, icon: Icon, color, bg, to }) => (
-          <div key={label}
-            onClick={to ? () => navigate({ path: to } as Parameters<typeof navigate>[0]) : undefined}
-            className={`bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 transition-all ${to ? "cursor-pointer hover:shadow-md hover:border-teal-200" : ""}`}>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-500">{label}</span>
-              <div className={`w-8 h-8 rounded-full ${bg} flex items-center justify-center`}>
-                <Icon className={`w-4 h-4 ${color}`} />
-              </div>
-            </div>
-            <div>
-              <span className="text-3xl font-bold text-gray-900">{value}</span>
-              <p className="text-xs text-gray-400 mt-0.5">{sub}</p>
-            </div>
-          </div>
+      {/* Filter tabs */}
+      <div className="flex gap-1 overflow-x-auto bg-gray-100 rounded-lg p-1 w-full md:w-fit" role="tablist">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            role="tab"
+            aria-selected={tab === t.id}
+            onClick={() => setTab(t.id)}
+            className={`px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-all ${
+              tab === t.id ? "bg-white text-teal-700 shadow-sm" : "text-gray-500 hover:text-gray-800"
+            }`}
+          >
+            {t.label}
+          </button>
         ))}
       </div>
 
-      {/* Doctor Status Table */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
-        <div className="px-5 py-4 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-800 flex items-center gap-2">
-            <UserCog className="w-4 h-4 text-teal-500" />
-            Doctor Status — Today
-          </h2>
-        </div>
-        <div className="divide-y divide-gray-50">
-          {myDoctors.length === 0 ? (
-            <p className="text-sm text-gray-400 px-5 py-6 text-center">No doctors added yet.</p>
-          ) : (
-            myDoctors.map((doc) => {
-              const docBookings = todayBookings.filter((b) => b.doctorId === doc.id);
-              const completed = docBookings.filter((b) => normalizeBookingStatus(b.status) === "completed").length;
-              const confirmed = docBookings.filter((b) => isLiveBookingStatus(b.status)).length;
-              return (
-                <div key={doc.id} className="px-5 py-3 flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">{doc.name}</p>
-                    <p className="text-xs text-gray-400">{doc.specialty}</p>
+      {/* 1. Financial Overview (top) */}
+      {show("fin") && (
+        <Section title="Financial Overview" subtitle="Revenue, receivables and insurance claims">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <MetricCard label="Today's Revenue" icon={IndianRupee} color="text-emerald-600" bg="bg-emerald-50">
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-3xl font-bold text-gray-900">{money(kpis.revenueToday)}</span>
+                  {revChange !== null && (
+                    <Badge tone={revChange >= 0 ? "green" : "red"}>
+                      {revChange >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                      {Math.abs(revChange).toFixed(0)}% vs yesterday
+                    </Badge>
+                  )}
+                </div>
+                {split && splitTotal > 0 ? (
+                  <div className="mt-3 space-y-2">
+                    <div className="flex h-2 rounded-full overflow-hidden bg-gray-100">
+                      <div className="bg-emerald-500" style={{ width: `${splitPct(split.cash)}%` }} />
+                      <div className="bg-indigo-500" style={{ width: `${splitPct(split.upi)}%` }} />
+                      <div className="bg-amber-500" style={{ width: `${splitPct(split.tpa)}%` }} />
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span><span className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1" />Cash {splitPct(split.cash)}%</span>
+                      <span><span className="inline-block w-2 h-2 rounded-full bg-indigo-500 mr-1" />UPI {splitPct(split.upi)}%</span>
+                      <span><span className="inline-block w-2 h-2 rounded-full bg-amber-500 mr-1" />TPA {splitPct(split.tpa)}%</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3 text-xs">
-                    <span className="text-green-600 font-medium">{completed} done</span>
-                    <span className="text-blue-500">{confirmed} waiting</span>
-                    <span className={`px-2 py-0.5 rounded-full font-semibold ${doc.isAvailable ? "bg-teal-50 text-teal-600" : "bg-gray-100 text-gray-400"}`}>
-                      {doc.isAvailable ? "Available" : "Unavailable"}
-                    </span>
+                ) : (
+                  <p className="text-xs text-gray-400 mt-2">Cash / UPI / TPA split: {DASH}</p>
+                )}
+              </div>
+            </MetricCard>
+
+            <MetricCard label="Pending Receivables" icon={Wallet} color="text-orange-600" bg="bg-orange-50">
+              <div>
+                <span className="text-3xl font-bold text-gray-900">{money(kpis.receivables)}</span>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {kpis.unbilledAccounts === null ? "Unbilled patient accounts" : `${kpis.unbilledAccounts} unbilled patient accounts`}
+                </p>
+              </div>
+            </MetricCard>
+
+            <MetricCard label="TPA / Insurance Claims" icon={ShieldCheck} color="text-blue-600" bg="bg-blue-50">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <span className="text-3xl font-bold text-gray-900">{num(kpis.tpaApproved)}</span>
+                  <p className="text-xs text-green-600 font-medium mt-0.5">Approved</p>
+                </div>
+                <div>
+                  <span className="text-3xl font-bold text-gray-900">{num(kpis.tpaPendingPreAuth)}</span>
+                  <p className="text-xs text-amber-600 font-medium mt-0.5">Pending pre-auth</p>
+                </div>
+              </div>
+            </MetricCard>
+          </div>
+        </Section>
+      )}
+
+      {/* 2. Operational Velocity (top) */}
+      {(show("opd") || show("ipd")) && (
+        <Section title="Operational Velocity" subtitle="Patient flow, discharges and lab turnaround">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {show("opd") && (
+              <MetricCard label="Avg OPD Wait Time" icon={Timer} color="text-teal-600" bg="bg-teal-50">
+                <div>
+                  <span className="text-3xl font-bold text-gray-900">
+                    {kpis.avgWaitMins === null ? DASH : `${kpis.avgWaitMins} min`}
+                  </span>
+                  <div className="mt-1">
+                    {kpis.avgWaitMins === null ? (
+                      <Badge tone="gray">No data</Badge>
+                    ) : waitOk ? (
+                      <Badge tone="green">Within {WAIT_TARGET_MINS} min target</Badge>
+                    ) : (
+                      <Badge tone="amber">Above {WAIT_TARGET_MINS} min target</Badge>
+                    )}
                   </div>
                 </div>
-              );
-            })
-          )}
+              </MetricCard>
+            )}
+
+            {show("ipd") && (
+              <MetricCard label="Discharges Today" icon={LogOut} color="text-indigo-600" bg="bg-indigo-50">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-3xl font-bold text-gray-900">
+                      {dischargeTotal === null ? DASH : `${dischargeDone}/${dischargeTotal}`}
+                    </span>
+                    {dischargeTotal !== null && dischargeTotal > 0 && <Badge tone="blue">{dischargePct}% done</Badge>}
+                  </div>
+                  <div className="mt-2 h-2 rounded-full bg-gray-100 overflow-hidden">
+                    <div className="h-full bg-indigo-500 transition-all" style={{ width: `${dischargePct}%` }} />
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">scheduled discharges completed</p>
+                </div>
+              </MetricCard>
+            )}
+
+            {show("opd") && (
+              <MetricCard label="Lab TAT / Critical Alerts" icon={FlaskConical} color="text-purple-600" bg="bg-purple-50">
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-3xl font-bold text-gray-900">
+                      {kpis.labTatMins === null ? DASH : `${kpis.labTatMins} min`}
+                    </span>
+                    {kpis.criticalAlerts === null ? (
+                      <Badge tone="gray">No data</Badge>
+                    ) : kpis.criticalAlerts > 0 ? (
+                      <Badge tone="red"><AlertTriangle className="w-3 h-3" />{kpis.criticalAlerts} critical</Badge>
+                    ) : (
+                      <Badge tone="green">No critical alerts</Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">average turnaround time</p>
+                </div>
+              </MetricCard>
+            )}
+          </div>
+        </Section>
+      )}
+
+      {/* 3. Hospital detail cards (middle) */}
+      {visibleStats.length > 0 && (
+        <Section title="Hospital Details">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {visibleStats.map(({ label, value, sub, icon: Icon, color, bg, to }) => (
+              <div key={label}
+                onClick={to ? () => navigate({ path: to } as Parameters<typeof navigate>[0]) : undefined}
+                className={`bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 transition-all ${to ? "cursor-pointer hover:shadow-md hover:border-teal-200" : ""}`}>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">{label}</span>
+                  <div className={`w-8 h-8 rounded-full ${bg} flex items-center justify-center`}>
+                    <Icon className={`w-4 h-4 ${color}`} />
+                  </div>
+                </div>
+                <div>
+                  <span className="text-3xl font-bold text-gray-900">{value}</span>
+                  <p className="text-xs text-gray-400 mt-0.5">{sub}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* 4. Doctor Status Table (last, unchanged) */}
+      {show("opd") && (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
+          <div className="px-5 py-4 border-b border-gray-100">
+            <h2 className="font-semibold text-gray-800 flex items-center gap-2">
+              <UserCog className="w-4 h-4 text-teal-500" />
+              Doctor Status &mdash; Today
+            </h2>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {myDoctors.length === 0 ? (
+              <p className="text-sm text-gray-400 px-5 py-6 text-center">No doctors added yet.</p>
+            ) : (
+              myDoctors.map((doc) => {
+                const docBookings = todayBookings.filter((b) => b.doctorId === doc.id);
+                const completed = docBookings.filter((b) => normalizeBookingStatus(b.status) === "completed").length;
+                const confirmed = docBookings.filter((b) => isLiveBookingStatus(b.status)).length;
+                return (
+                  <div key={doc.id} className="px-5 py-3 flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">{doc.name}</p>
+                      <p className="text-xs text-gray-400">{doc.specialty}</p>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs">
+                      <span className="text-green-600 font-medium">{completed} done</span>
+                      <span className="text-blue-500">{confirmed} waiting</span>
+                      <span className={`px-2 py-0.5 rounded-full font-semibold ${doc.isAvailable ? "bg-teal-50 text-teal-600" : "bg-gray-100 text-gray-400"}`}>
+                        {doc.isAvailable ? "Available" : "Unavailable"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
-      </div>
-
-
+      )}
     </div>
   );
 }
