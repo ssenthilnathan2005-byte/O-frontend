@@ -3,6 +3,7 @@ import { useStore } from "../../context/StoreContext";
 import { FlaskConical, Plus, X, Trash2, CheckCircle, XCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { getToken } from "../../api";
+import HALabStaff from "./HALabStaff";
 import { toast } from "sonner";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
@@ -194,6 +195,8 @@ export default function HALab() {
           <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${hasLab ? "translate-x-5" : ""}`} />
         </button>
       </div>
+
+      <HALabStaff hospitalId={hospitalId} />
 
       {/* Tabs */}
       <div className="flex gap-2">
