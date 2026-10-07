@@ -865,7 +865,7 @@ export default function LoginPage({
                       </button>
                       <button
                         type="button"
-                        onClick={() => { window.location.href = "/hospital-lab/login"; }}
+                        onClick={() => { setShowStaffOptions(false); navigate({ path: "/hospital-lab/login" }); }}
                         className="rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-200"
                       >
                         Hospital lab login
