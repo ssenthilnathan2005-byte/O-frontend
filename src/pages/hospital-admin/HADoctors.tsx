@@ -42,6 +42,7 @@ const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/
 
 type AddForm = {
   password: string;
+  doctorFee: string;
   name: string;
   phone: string;
   specialty: string;
@@ -56,12 +57,13 @@ type EditForm = {
   tokensPerSession: string;
   sessions: string;
   isAvailable: boolean;
+  doctorFee: string;
   code: string;
   photo: string | null;
 };
 
 const EMPTY_ADD: AddForm = {
-  name: "", password: "", phone: "", specialty: "", tokensPerSession: "20", sessions: "morning,afternoon",
+  name: "", password: "", doctorFee: "", phone: "", specialty: "", tokensPerSession: "20", sessions: "morning,afternoon",
 };
 
 const SPECIALTIES = [
@@ -97,7 +99,7 @@ export default function HADoctors() {
   const [addForm, setAddForm] = useState<AddForm>(EMPTY_ADD);
   const [editForm, setEditForm] = useState<EditForm>({
     name: "", phone: "", specialty: "", tokensPerSession: "20",
-    sessions: "morning,afternoon", isAvailable: true, code: "", photo: null,
+    sessions: "morning,afternoon", isAvailable: true, doctorFee: "", code: "", photo: null,
   });
 
   async function handleAdd() {
@@ -106,6 +108,11 @@ export default function HADoctors() {
       return;
     }
     const tokens = Number.parseInt(addForm.tokensPerSession, 10) || 20;
+    let feeNum: number | undefined;
+    if (addForm.doctorFee.trim() !== "") {
+      feeNum = Number(addForm.doctorFee);
+      if (!Number.isFinite(feeNum) || feeNum < 0 || feeNum > 100000) { toast.error("Enter a valid consultation fee"); return; }
+    }
     const sessions = addForm.sessions.split(",").map((s) => s.trim()) as Doctor["sessions"];
     try {
       const newDoc = await addDoctor({
@@ -113,6 +120,7 @@ export default function HADoctors() {
         phone: addForm.phone,
         password: addForm.password,
         specialty: addForm.specialty,
+        doctorFee: feeNum,
         hospitalId,
         consultationFee: STANDARD_FEE,
         price: STANDARD_FEE,
@@ -138,6 +146,7 @@ export default function HADoctors() {
       tokensPerSession: String(doc.tokensPerSession ?? 20),
       sessions: Array.isArray(doc.sessions) ? (doc.sessions as string[]).join(",") : (doc.sessions as any ?? "morning,afternoon"),
       isAvailable: doc.isAvailable ?? true,
+      doctorFee: doc.doctorFee != null ? String(doc.doctorFee) : "",
       code: doc.code ?? "",
       photo: doc.photo ?? null,
     });
@@ -146,12 +155,18 @@ export default function HADoctors() {
   async function handleEdit() {
     if (!editDoctor) return;
     const tokens = Number.parseInt(editForm.tokensPerSession || "20", 10) || 20;
+    let feeNum: number | undefined;
+    if (editForm.doctorFee.trim() !== "") {
+      feeNum = Number(editForm.doctorFee);
+      if (!Number.isFinite(feeNum) || feeNum < 0 || feeNum > 100000) { toast.error("Enter a valid consultation fee"); return; }
+    }
     const sessions = editForm.sessions.split(",").map((s) => s.trim());
     try {
       await updateDoctor(editDoctor.id, {
         name: editForm.name,
         phone: editForm.phone,
         specialty: editForm.specialty,
+        ...(feeNum !== undefined ? { doctorFee: feeNum } : {}),
         tokensPerSession: tokens,
         sessions,
         consultationFee: STANDARD_FEE,
@@ -292,6 +307,10 @@ export default function HADoctors() {
                   onChange={(e) => setAddForm((f) => ({ ...f, sessions: e.target.value }))}
                 />
               </div>
+              <div className="space-y-1.5">
+                <Label>Consultation Fee (&#8377;)</Label>
+                <Input type="number" min="0" placeholder="e.g. 300" value={addForm.doctorFee} onChange={(e) => setAddForm((f) => ({ ...f, doctorFee: e.target.value }))} />
+              </div>
               <div className="rounded-xl border border-teal-200 bg-teal-50 p-3">
                 <p className="text-xs font-semibold text-teal-600 mb-1">Login Code</p>
                 <p className="text-xs text-teal-700">A login code will be generated automatically once the doctor is added.</p>
@@ -313,6 +332,7 @@ export default function HADoctors() {
               <TableHead>Specialty</TableHead>
               <TableHead>Phone</TableHead>
               <TableHead>Code</TableHead>
+              <TableHead>Consultation Fee</TableHead>
               <TableHead className="text-center">Available</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -320,7 +340,7 @@ export default function HADoctors() {
           <TableBody>
             {myDoctors.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground py-10">
+                <TableCell colSpan={7} className="text-center text-muted-foreground py-10">
                   No doctors yet — add your first one above.
                 </TableCell>
               </TableRow>
@@ -344,6 +364,7 @@ export default function HADoctors() {
                 <TableCell>
                   <span className="font-mono text-xs bg-muted px-2 py-0.5 rounded">{doctor.code ?? "—"}</span>
                 </TableCell>
+                <TableCell className="text-sm">{doctor.doctorFee != null ? `\u20B9${doctor.doctorFee}` : "\u2014"}</TableCell>
                 <TableCell className="text-center">
                   <Switch checked={doctor.isAvailable ?? true} onCheckedChange={() => handleToggleAvailability(doctor)} />
                 </TableCell>
@@ -434,6 +455,10 @@ export default function HADoctors() {
             <div className="space-y-1.5">
               <Label>Sessions (comma separated)</Label>
               <Input value={editForm.sessions} onChange={(e) => setEditForm((f) => ({ ...f, sessions: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Consultation Fee (&#8377;)</Label>
+              <Input type="number" min="0" value={editForm.doctorFee} onChange={(e) => setEditForm((f) => ({ ...f, doctorFee: e.target.value }))} />
             </div>
             <div className="flex items-center gap-3">
               <Switch checked={editForm.isAvailable} onCheckedChange={(v) => setEditForm((f) => ({ ...f, isAvailable: v }))} />
