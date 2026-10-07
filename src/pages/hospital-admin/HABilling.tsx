@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+﻿import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Download, FlaskConical, IndianRupee, Stethoscope, TrendingUp, Users } from "lucide-react";
 import {
@@ -25,6 +25,7 @@ import { bookings as bookingsApi, getToken } from "@/api";
 import type { Booking } from "../../api";
 import { useStore } from "../../context/StoreContext";
 import { useRouter } from "@/router/RouterContext";
+import { openPharmacyDrawer, periodRange, usePharmacyRx } from "./PharmacyAnalytics";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
@@ -152,6 +153,8 @@ export default function HABilling() {
   const [labOrders, setLabOrders] = useState<LabOrder[]>([]);
   const [labTests, setLabTests] = useState<LabTest[]>([]);
   const [loading, setLoading] = useState(true);
+  const pharmRange = periodRange(period, from, to);
+  const pharmRows = usePharmacyRx(hospitalId, pharmRange[0], pharmRange[1]);
 
   useEffect(() => {
     if (!hospitalId) return;
@@ -308,6 +311,7 @@ export default function HABilling() {
   const sourceSplit = [
     { name: "Consultations", value: consultRevenue, go: () => drillTo({ status: "completed" }) },
     { name: "Laboratory", value: labTotals.revenue, go: () => navigate({ path: "/hospital-admin/lab" }) },
+    { name: "Pharmacy", value: pharmRows.rows.reduce((s, r) => s + r.amount, 0), go: () => openPharmacyDrawer(hospitalId, pharmRange[0], pharmRange[1]) },
   ].filter((x) => x.value > 0);
   const paidSplit = [
     { name: "Paid", value: sum("paidAmt"), go: () => drillTo({ status: "completed", payment: "paid" }) },
@@ -494,7 +498,7 @@ export default function HABilling() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             <PieCard title="Revenue by doctor" data={doctorShare} money />
             {showLab ? (
-              <PieCard title="Consultations vs laboratory" data={sourceSplit} money />
+              <PieCard title="Consultations vs laboratory vs pharmacy" data={sourceSplit} money />
             ) : (
               <PieCard title="Paid vs unpaid" data={paidSplit} money />
             )}
@@ -626,3 +630,4 @@ export default function HABilling() {
     </div>
   );
 }
+
