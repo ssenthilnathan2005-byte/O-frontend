@@ -86,6 +86,7 @@ export default function LoginPage({
   const [doctorCode, setDoctorCode] = useState("");
   const [doctorPass, setDoctorPass] = useState("");
   const [showStaffOptions, setShowStaffOptions] = useState(false);
+  const [staffGroup, setStaffGroup] = useState(false);
   const [loading, setLoading]       = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   function isValidEmail(value: string): boolean {
@@ -795,7 +796,7 @@ export default function LoginPage({
           {!showStaffOptions ? (
             <button
               type="button"
-              onClick={() => setShowStaffOptions(true)}
+              onClick={() => { setStaffGroup(false); setShowStaffOptions(true); }}
               className="block mx-auto mt-6 text-xs text-gray-400 hover:text-gray-600 transition-colors"
             >
               Hospital login
@@ -815,41 +816,62 @@ export default function LoginPage({
                 </div>
 
                 <div className="grid gap-3">
-                  <button
-                    type="button"
-                    onClick={() => handleStaffLogin("hospital")}
-                    className="rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-200"
-                  >
-                    Hospital admin login
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleStaffLogin("doctor")}
-                    className="rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-200"
-                  >
-                    Doctor login
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleStaffLogin("pharmacy")}
-                    className="rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-200"
-                  >
-                    Pharmacy login
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleStaffLogin("lab")}
-                    className="rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-200"
-                  >
-                    Lab admin login
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { window.location.href = "/hospital-lab/login"; }}
-                    className="rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-200"
-                  >
-                    Hospital lab login
-                  </button>
+                  {!staffGroup ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setStaffGroup(true)}
+                        className="rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-200"
+                      >
+                        Hospital
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleStaffLogin("lab")}
+                        className="rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-200"
+                      >
+                        Lab admin login
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setStaffGroup(false)}
+                        className="self-start text-xs text-gray-500 hover:text-gray-700"
+                      >
+                        Back
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleStaffLogin("hospital")}
+                        className="rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-200"
+                      >
+                        Hospital admin login
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleStaffLogin("doctor")}
+                        className="rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-200"
+                      >
+                        Doctor login
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleStaffLogin("pharmacy")}
+                        className="rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-200"
+                      >
+                        Pharmacy login
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { window.location.href = "/hospital-lab/login"; }}
+                        className="rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-200"
+                      >
+                        Hospital lab login
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
