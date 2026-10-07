@@ -1,4 +1,4 @@
-import { Activity, Fingerprint, BedDouble, Building2, ClipboardList, FlaskConical, LayoutDashboard, LogOut, Menu, Package, Pill, Stethoscope, UserCog, Users2, Users, X } from "lucide-react";
+import { Activity, Fingerprint, BedDouble, Building2, ClipboardList, FlaskConical, LayoutDashboard, LogOut, Menu, Package, Pill, Receipt, Stethoscope, UserCog, Users2, Users, X } from "lucide-react";
 import { useState } from "react";
 import { useStore } from "../../context/StoreContext";
 import { useRouter } from "../../router/RouterContext";
@@ -13,6 +13,7 @@ import HAHR from "./HAHR";
 import HAInventory from "./HAInventory";
 import HALab from "./HALab";
 import HAAttendance from "./HAAttendance";
+import HABilling from "./HABilling";
 
 const NAV_ITEMS = [
   { path: "/hospital-admin", label: "Dashboard", icon: LayoutDashboard },
@@ -22,6 +23,7 @@ const NAV_ITEMS = [
   { path: "/hospital-admin/doctors", label: "Doctors", icon: UserCog },
   { path: "/hospital-admin/lab", label: "Laboratory", icon: FlaskConical },
   { path: "/hospital-admin/pharmacy", label: "Pharmacy", icon: Pill },
+  { path: "/hospital-admin/billing", label: "Billing", icon: Receipt },
   { path: "/hospital-admin/wards", label: "Beds & Wards", icon: Stethoscope },
   { path: "/hospital-admin/inventory", label: "Inventory", icon: Package },
   { path: "/hospital-admin/hr", label: "HR / Staff", icon: ClipboardList },
@@ -46,6 +48,7 @@ export default function HospitalAdminPanel() {
     if (route.path === "/hospital-admin/inventory") return <HAInventory />;
     if (route.path === "/hospital-admin/hr") return <HAHR />;
     if (route.path === "/hospital-admin/attendance") return <HAAttendance />;
+    if (route.path === "/hospital-admin/billing") return <HABilling />;
     return <HADashboard />;
   }
 
