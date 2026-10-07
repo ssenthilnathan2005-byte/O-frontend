@@ -1,12 +1,13 @@
 import { useMemo, useState, useEffect, type ReactNode } from "react";
 import {
   UserCog, Users2, CalendarCheck, Pill, Activity, BedDouble, FlaskConical, Package,
-  IndianRupee, Wallet, ShieldCheck, Timer, LogOut, AlertTriangle, TrendingUp, TrendingDown,
+  IndianRupee, TrendingUp, TrendingDown,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useStore } from "../../context/StoreContext";
 import { isLiveBookingStatus, normalizeBookingStatus } from "../../lib/bookingStatus";
 import { useRouter } from "../../router/RouterContext";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 // Local (not UTC) date as YYYY-MM-DD, so "today" matches the user's calendar day.
 function ymd(d: Date) {
@@ -20,7 +21,6 @@ function todayStr() {
 }
 
 const DASH = "\u2014";
-const WAIT_TARGET_MINS = 20;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 type Period = "today" | "week" | "month" | "year" | "custom";
@@ -97,7 +97,6 @@ const money = (v: number | null) =>
     ? DASH
     : new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(v);
 
-const num = (v: number | null) => (v === null ? DASH : String(v));
 
 function Badge({ children, tone }: { children: ReactNode; tone: "green" | "amber" | "red" | "gray" | "blue" }) {
   const tones = {
@@ -303,13 +302,31 @@ export default function HADashboard() {
   const splitTotal = split ? split.cash + split.upi + split.tpa : 0;
   const splitPct = (v: number) => (splitTotal > 0 ? Math.round((v / splitTotal) * 100) : 0);
 
-  // ---- Operational derived values ----
-  const dischargeTotal = kpis.dischargesScheduled;
-  const dischargeDone = kpis.dischargesDone ?? 0;
-  const dischargePct =
-    dischargeTotal !== null && dischargeTotal > 0 ? Math.min(100, Math.round((dischargeDone / dischargeTotal) * 100)) : 0;
-
-  const waitOk = kpis.avgWaitMins !== null && kpis.avgWaitMins <= WAIT_TARGET_MINS;
+  // ---- Revenue chart: completed visits x doctor fee, per day (per month for long ranges) ----
+  const revenueSeries = useMemo<{ label: string; amount: number }[]>(() => {
+    if (!rangeValid) return [];
+    const fee = new Map(myDoctors.map((doc) => [doc.id, Number(doc.doctorFee ?? 0)]));
+    const perDay = new Map<string, number>();
+    for (const b of rangeBookings) {
+      if (normalizeBookingStatus(b.status) !== "completed") continue;
+      perDay.set(b.date, (perDay.get(b.date) ?? 0) + (fee.get(b.doctorId) ?? 0));
+    }
+    const [y, m, dd] = range.from.split("-").map(Number);
+    const cur = new Date(y, m - 1, dd);
+    const days: string[] = [];
+    while (ymd(cur) <= range.to && days.length < 1100) {
+      days.push(ymd(cur));
+      cur.setDate(cur.getDate() + 1);
+    }
+    const byMonth = days.length > 62;
+    const out = new Map<string, number>();
+    for (const day of days) {
+      const key = byMonth ? day.slice(0, 7) : day;
+      out.set(key, (out.get(key) ?? 0) + (perDay.get(day) ?? 0));
+    }
+    return Array.from(out, ([key, amount]) => ({ label: byMonth ? key : key.slice(5), amount }));
+  }, [rangeBookings, myDoctors, rangeKey, rangeValid]);
+  const revenueChartTotal = revenueSeries.reduce((s, r) => s + r.amount, 0);
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
@@ -383,7 +400,7 @@ export default function HADashboard() {
 
       {/* 1. Financial Overview (top) */}
       {show("fin") && (
-        <Section title="Financial Overview" subtitle="Revenue, receivables and insurance claims">
+        <Section title="Financial Overview" subtitle="Revenue for the selected period">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <MetricCard label={isToday ? "Today's Revenue" : "Revenue"} icon={IndianRupee} color="text-emerald-600" bg="bg-emerald-50">
               <div>
@@ -415,90 +432,27 @@ export default function HADashboard() {
               </div>
             </MetricCard>
 
-            <MetricCard label="Pending Receivables" icon={Wallet} color="text-orange-600" bg="bg-orange-50">
-              <div>
-                <span className="text-3xl font-bold text-gray-900">{money(kpis.receivables)}</span>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  {kpis.unbilledAccounts === null ? "Unbilled patient accounts" : `${kpis.unbilledAccounts} unbilled patient accounts`}
-                </p>
+            <div className="md:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">Revenue trend</span>
+                <span className="text-xs text-gray-400">{money(revenueChartTotal)} from completed visits</span>
               </div>
-            </MetricCard>
-
-            <MetricCard label="TPA / Insurance Claims" icon={ShieldCheck} color="text-blue-600" bg="bg-blue-50">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <span className="text-3xl font-bold text-gray-900">{num(kpis.tpaApproved)}</span>
-                  <p className="text-xs text-green-600 font-medium mt-0.5">Approved</p>
+              {revenueSeries.some((r) => r.amount > 0) ? (
+                <div style={{ width: "100%", height: 190 }}>
+                  <ResponsiveContainer>
+                    <BarChart data={revenueSeries} margin={{ top: 4, right: 4, left: -8, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                      <XAxis dataKey="label" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                      <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={44} />
+                      <Tooltip cursor={{ fill: "rgba(0,0,0,0.04)" }} formatter={(v) => [money(Number(v)), "Revenue"]} />
+                      <Bar dataKey="amount" name="Revenue" fill="#10b981" maxBarSize={32} radius={[3, 3, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
-                <div>
-                  <span className="text-3xl font-bold text-gray-900">{num(kpis.tpaPendingPreAuth)}</span>
-                  <p className="text-xs text-amber-600 font-medium mt-0.5">Pending pre-auth</p>
-                </div>
-              </div>
-            </MetricCard>
-          </div>
-        </Section>
-      )}
-
-      {/* 2. Operational Velocity (top) */}
-      {(show("opd") || show("ipd")) && (
-        <Section title="Operational Velocity" subtitle="Patient flow, discharges and lab turnaround">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {show("opd") && (
-              <MetricCard label="Avg OPD Wait Time" icon={Timer} color="text-teal-600" bg="bg-teal-50">
-                <div>
-                  <span className="text-3xl font-bold text-gray-900">
-                    {kpis.avgWaitMins === null ? DASH : `${kpis.avgWaitMins} min`}
-                  </span>
-                  <div className="mt-1">
-                    {kpis.avgWaitMins === null ? (
-                      <Badge tone="gray">No data</Badge>
-                    ) : waitOk ? (
-                      <Badge tone="green">Within {WAIT_TARGET_MINS} min target</Badge>
-                    ) : (
-                      <Badge tone="amber">Above {WAIT_TARGET_MINS} min target</Badge>
-                    )}
-                  </div>
-                </div>
-              </MetricCard>
-            )}
-
-            {show("ipd") && (
-              <MetricCard label={isToday ? "Discharges Today" : "Discharges"} icon={LogOut} color="text-indigo-600" bg="bg-indigo-50">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-3xl font-bold text-gray-900">
-                      {dischargeTotal === null ? DASH : `${dischargeDone}/${dischargeTotal}`}
-                    </span>
-                    {dischargeTotal !== null && dischargeTotal > 0 && <Badge tone="blue">{dischargePct}% done</Badge>}
-                  </div>
-                  <div className="mt-2 h-2 rounded-full bg-gray-100 overflow-hidden">
-                    <div className="h-full bg-indigo-500 transition-all" style={{ width: `${dischargePct}%` }} />
-                  </div>
-                  <p className="text-xs text-gray-400 mt-1">scheduled discharges completed</p>
-                </div>
-              </MetricCard>
-            )}
-
-            {show("opd") && (
-              <MetricCard label="Lab TAT / Critical Alerts" icon={FlaskConical} color="text-purple-600" bg="bg-purple-50">
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-3xl font-bold text-gray-900">
-                      {kpis.labTatMins === null ? DASH : `${kpis.labTatMins} min`}
-                    </span>
-                    {kpis.criticalAlerts === null ? (
-                      <Badge tone="gray">No data</Badge>
-                    ) : kpis.criticalAlerts > 0 ? (
-                      <Badge tone="red"><AlertTriangle className="w-3 h-3" />{kpis.criticalAlerts} critical</Badge>
-                    ) : (
-                      <Badge tone="green">No critical alerts</Badge>
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-400 mt-1">average turnaround time</p>
-                </div>
-              </MetricCard>
-            )}
+              ) : (
+                <p className="text-sm text-gray-400 py-10 text-center">No revenue in this period</p>
+              )}
+            </div>
           </div>
         </Section>
       )}
