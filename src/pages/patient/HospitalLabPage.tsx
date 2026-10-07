@@ -18,6 +18,27 @@ export default function HospitalLabPage({ id, onBack }: { id: string; onBack: ()
   const [enabled, setEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Test | null>(null);
+  const [mine, setMine] = useState<any[]>([]);
+  async function loadMine() {
+    if (!user) return;
+    try {
+      const r = await fetch(`${BASE}/hospital-lab/my-orders`, { headers: { Authorization: `Bearer ${api.getToken()}` } });
+      const d = await r.json();
+      if (Array.isArray(d)) setMine(d);
+    } catch {}
+  }
+  useEffect(() => {
+    loadMine();
+    const t = setInterval(loadMine, 30000);
+    return () => clearInterval(t);
+  }, [id, user]);
+  const STATUS: Record<string, { label: string; cls: string }> = {
+    ordered: { label: "Booked", cls: "bg-blue-50 text-blue-700" },
+    sample_collected: { label: "Sample collected", cls: "bg-amber-50 text-amber-700" },
+    processing: { label: "Processing", cls: "bg-amber-50 text-amber-700" },
+    report_ready: { label: "Report ready", cls: "bg-green-50 text-green-700" },
+    cancelled: { label: "Cancelled", cls: "bg-gray-100 text-gray-500" },
+  };
 
   useEffect(() => {
     fetch(`${BASE}/hospital-lab/public/${id}`)
@@ -52,6 +73,40 @@ export default function HospitalLabPage({ id, onBack }: { id: string; onBack: ()
         </div>
       </div>
 
+      {mine.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-lg font-bold text-gray-900 mb-3">My lab bookings</h2>
+          <div className="space-y-2">
+            {mine.map((o) => {
+              const st = STATUS[o.status] || { label: o.status, cls: "bg-gray-100 text-gray-500" };
+              return (
+                <div key={o.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-gray-900 text-sm">{o.test_name}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{o.hospital_name}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {o.slot_date} · {o.slot_time} session{o.token_number != null ? ` · Token #${o.token_number}` : ""}
+                      </p>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium shrink-0 ${st.cls}`}>{st.label}</span>
+                  </div>
+                  {o.status === "report_ready" && o.result_value && (
+                    <p className="text-xs text-green-700 mt-2 font-medium">Result: {o.result_value}</p>
+                  )}
+                  {o.status === "report_ready" && o.report_url && (
+                    <a href={o.report_url} target="_blank" rel="noreferrer" className="text-xs text-teal-600 underline mt-1 inline-block">View report</a>
+                  )}
+                  {o.status !== "report_ready" && o.status !== "cancelled" && (
+                    <p className="text-xs text-gray-400 mt-2">Pay ₹{o.price} at the hospital lab. This updates automatically.</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <h2 className="text-lg font-bold text-gray-900 mb-3">Available Tests</h2>
       {!enabled || tests.length === 0 ? (
         <p className="text-sm text-gray-400 py-8 text-center">No tests available for booking right now.</p>
@@ -81,7 +136,7 @@ export default function HospitalLabPage({ id, onBack }: { id: string; onBack: ()
         </div>
       )}
 
-      {selected && <BookDialog hospitalId={id} hospitalName={hospital?.name || ""} test={selected} onClose={() => setSelected(null)} />}
+      {selected && <BookDialog hospitalId={id} hospitalName={hospital?.name || ""} test={selected} onClose={() => { setSelected(null); loadMine(); }} />}
     </div>
   );
 }
