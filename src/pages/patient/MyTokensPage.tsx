@@ -105,6 +105,22 @@ function PastFolder({
   );
 }
 
+const HBASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
+async function loadHospitalLab(): Promise<LabBooking[]> {
+  try {
+    const r = await fetch(`${HBASE}/hospital-lab/my-orders`, { headers: { Authorization: `Bearer ${api.getToken()}` } });
+    const d = await r.json();
+    if (!Array.isArray(d)) return [];
+    return d.map((o: any) => ({
+      id: o.id, patient_id: null, patient_name: "", phone: "", lab_id: o.hospital_id, test_id: "",
+      lab_name: o.hospital_name, lab_area: "Hospital lab", test_name: o.test_name,
+      slot_date: o.slot_date || String(o.ordered_at).slice(0, 10), slot_time: o.slot_time || "morning",
+      token_number: o.token_number, collection_type: "walk_in", price: o.price ?? 0, payment_done: false,
+      status: o.status === "ordered" ? "booked" : o.status,
+      created_at: o.ordered_at, updated_at: o.ordered_at, _hospital: true,
+    }) as unknown as LabBooking);
+  } catch { return []; }
+}
 const LAB_EXPIRE_DAYS = 2;
 function markExpired(b: LabBooking): LabBooking {
   if (LAB_DONE.has(b.status)) return b;
@@ -130,7 +146,7 @@ export default function MyTokensPage() {
   const [labBookings, setLabBookings] = useState<LabBooking[]>([]);
   const [labBookingsLoading, setLabBookingsLoading] = useState(true);
   useEffect(() => {
-    api.labs.myBookings()
+    Promise.all([api.labs.myBookings().catch(() => [] as LabBooking[]), loadHospitalLab()]).then(([a, h]) => [...a, ...h])
       .then(setLabBookings)
       .catch(() => {})
       .finally(() => setLabBookingsLoading(false));
@@ -186,11 +202,11 @@ export default function MyTokensPage() {
       key={b.id}
       role="button"
       tabIndex={0}
-      onClick={() => navigate({ path: "/labs/track", bookingId: b.id })}
+      onClick={() => { if (!(b as any)._hospital) navigate({ path: "/labs/track", bookingId: b.id }); }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          navigate({ path: "/labs/track", bookingId: b.id });
+          if (!(b as any)._hospital) navigate({ path: "/labs/track", bookingId: b.id });
         }
       }}
       className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 cursor-pointer transition hover:border-sky-200 hover:shadow"
