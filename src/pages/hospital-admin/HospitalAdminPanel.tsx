@@ -17,17 +17,17 @@ import HABilling from "./HABilling";
 
 const NAV_ITEMS = [
   { path: "/hospital-admin", label: "Dashboard", icon: LayoutDashboard },
-  { path: "/hospital-admin/patients", label: "Live Patients", icon: Users2 },
   { path: "/hospital-admin/all-patients", label: "All Patients", icon: Users },
-  { path: "/hospital-admin/ipd", label: "IPD / Inward", icon: BedDouble },
-  { path: "/hospital-admin/doctors", label: "Doctors", icon: UserCog },
-  { path: "/hospital-admin/lab", label: "Laboratory", icon: FlaskConical },
-  { path: "/hospital-admin/pharmacy", label: "Pharmacy", icon: Pill },
-  { path: "/hospital-admin/billing", label: "Billing", icon: Receipt },
-  { path: "/hospital-admin/wards", label: "Beds & Wards", icon: Stethoscope },
-  { path: "/hospital-admin/inventory", label: "Inventory", icon: Package },
-  { path: "/hospital-admin/hr", label: "HR / Staff", icon: ClipboardList },
   { path: "/hospital-admin/attendance", label: "Attendance", icon: Fingerprint },
+  { path: "/hospital-admin/wards", label: "Beds & Wards", icon: Stethoscope },
+  { path: "/hospital-admin/billing", label: "Billing", icon: Receipt },
+  { path: "/hospital-admin/doctors", label: "Doctors", icon: UserCog },
+  { path: "/hospital-admin/hr", label: "HR / Staff", icon: ClipboardList },
+  { path: "/hospital-admin/inventory", label: "Inventory", icon: Package },
+  { path: "/hospital-admin/ipd", label: "IPD / Inward", icon: BedDouble },
+  { path: "/hospital-admin/lab", label: "Laboratory", icon: FlaskConical },
+  { path: "/hospital-admin/patients", label: "Live Patients", icon: Users2 },
+  { path: "/hospital-admin/pharmacy", label: "Pharmacy", icon: Pill },
 ] as const;
 
 export default function HospitalAdminPanel() {
