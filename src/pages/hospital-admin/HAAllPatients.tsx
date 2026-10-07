@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, X } from "lucide-react";
+import { Search, X, Download } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -233,6 +233,25 @@ export default function HAAllPatients() {
     Inward: people.filter(p => p.visits.some(v => v.type === "Inward")).length,
   };
 
+  function downloadAll() {
+    const esc = (v: unknown) => "\"" + String(v ?? "").replace(/"/g, "\"\"") + "\"";
+    const head = ["Patient", "Age", "Gender", "Phone", "Type", "Date", "Doctor", "Details", "Ward / Bed", "Status", "Payment"];
+    const rows = [...raw].sort((a, b) => a.name.localeCompare(b.name) || b.date.localeCompare(a.date));
+    const body = rows.map(r => [
+      r.name, r.age, r.gender, r.phone,
+      r.type === "OPD" ? "Outpatient" : "Inward",
+      r.date.slice(0, 10), r.doctor, r.detail, r.place, r.status,
+      r.type === "OPD" && r.status === "completed" ? (r.paid ? "Paid" : "Unpaid") : "",
+    ].map(esc).join(","));
+    const csv = "\uFEFF" + [head.map(esc).join(","), ...body].join("\r\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "all-patients-" + new Date().toISOString().slice(0, 10) + ".csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const selected = selectedId ? people.find(p => p.id === selectedId) ?? null : null;
 
   const drillParts: string[] = [];
@@ -248,12 +267,18 @@ export default function HAAllPatients() {
 
   return (
     <div className="p-4 md:p-8 space-y-5">
-      <div>
-        <h1 className="text-2xl font-bold">All Patients</h1>
+      <div className="flex items-start justify-between gap-3">
+  <div>
+    <h1 className="text-2xl font-bold">All Patients</h1>
         <p className="text-sm text-muted-foreground">
           {filtered.length} of {people.length} patient{people.length === 1 ? "" : "s"} ({visibleRaw.length} total visits)
         </p>
       </div>
+  <button type="button" onClick={downloadAll} disabled={loading || raw.length === 0}
+    className="inline-flex items-center gap-2 rounded-lg border bg-white px-3 py-1.5 text-sm font-medium hover:bg-gray-50 disabled:opacity-50">
+    <Download className="w-4 h-4" /> Download
+  </button>
+</div>
 
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
         <div className="relative flex-1 max-w-md">
