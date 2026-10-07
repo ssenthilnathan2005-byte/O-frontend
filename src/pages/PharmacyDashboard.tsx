@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+﻿import { useState, useEffect, useCallback } from "react";
 import { useStore } from "../context/StoreContext";
 import { getToken } from "@/api";
 import { toast } from "sonner";
@@ -167,7 +167,7 @@ export default function PharmacyDashboard() {
       if (p.status === "pending") await send("packed", { dispense });
       if (p.status === "pending" || p.status === "packed") await send("ready", {});
       await send("handed_over", { handover: handoverPayload });
-      toast.success("Marked as Given");
+      toast.success("Marked as packed. Patient notified");
     } catch (err: any) {
       toast.error(err?.message || "Network error");
     } finally {
@@ -364,14 +364,14 @@ export default function PharmacyDashboard() {
               <Button className="flex-[2] h-10 text-sm bg-teal-600 hover:bg-teal-700" disabled={busy === p.id}
                 onClick={async () => { await markGiven(p); setConfirmId(null); }}>
                 <CheckCircle2 className="w-4 h-4 mr-2" />
-                {busy === p.id ? "Please wait..." : multi ? "Yes, give this prescription" : "Yes, give to patient"}
+                {busy === p.id ? "Please wait..." : "Yes, mark as packed"}
               </Button>
             </div>
           ) : (
             <Button className="w-full h-10 text-sm bg-teal-600 hover:bg-teal-700" disabled={busy === p.id}
               onClick={() => setConfirmId(p.id)}>
               <HandMetal className="w-4 h-4 mr-2" />
-              Mark Given
+              Mark as Packed
             </Button>
           )
         )}
