@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Download, FlaskConical, IndianRupee, Stethoscope, TrendingUp, Users } from "lucide-react";
 import {
@@ -6,7 +6,6 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  Legend,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -46,28 +45,59 @@ const ymd = (d: Date) =>
 const nameKey = (s: string) => (s || "").trim().toLowerCase();
 const COLORS = ["#0d9488", "#6366f1", "#f59e0b", "#ef4444", "#0ea5e9", "#84cc16", "#a855f7", "#ec4899"];
 
-function PieCard({ title, data, money }: { title: string; data: { name: string; value: number }[]; money?: boolean }) {
+const TOOLTIP_STYLE = { fontSize: 12, borderRadius: 8, border: "1px solid #e5e7eb", padding: "4px 8px" };
+
+function ChartCard({ title, sub, children }: { title: string; sub?: string; children: ReactNode }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
-      <p className="text-sm font-semibold mb-2">{title}</p>
-      {data.length === 0 ? (
-        <p className="text-xs text-muted-foreground py-16 text-center">No data for this period</p>
+    <div className="rounded-xl border border-border bg-card px-4 py-3">
+      <div className="flex items-baseline justify-between gap-2 mb-2">
+        <p className="text-xs font-semibold">{title}</p>
+        {sub && <p className="text-[11px] text-muted-foreground">{sub}</p>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function EmptyChart() {
+  return <p className="text-[11px] text-muted-foreground h-[120px] flex items-center justify-center">No data for this period</p>;
+}
+
+function PieCard({ title, data, money }: { title: string; data: { name: string; value: number }[]; money?: boolean }) {
+  const total = data.reduce((s, d) => s + d.value, 0);
+  const fmt = (n: number) => (money ? rupee(n) : String(n));
+  return (
+    <ChartCard title={title} sub={total > 0 ? fmt(total) : undefined}>
+      {total === 0 ? (
+        <EmptyChart />
       ) : (
-        <div style={{ width: "100%", height: 230 }}>
-          <ResponsiveContainer>
-            <PieChart>
-              <Pie data={data} dataKey="value" nameKey="name" innerRadius={45} outerRadius={80} paddingAngle={2}>
-                {data.map((d, i) => (
-                  <Cell key={d.name} fill={COLORS[i % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(v) => (money ? rupee(Number(v)) : String(v))} />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
+        <div className="flex items-center gap-3">
+          <div style={{ width: 120, height: 120 }} className="shrink-0">
+            <ResponsiveContainer>
+              <PieChart>
+                <Pie data={data} dataKey="value" nameKey="name" innerRadius={34} outerRadius={56}
+                  paddingAngle={data.length > 1 ? 2 : 0} stroke="none">
+                  {data.map((d, i) => (
+                    <Cell key={d.name} fill={COLORS[i % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => fmt(Number(v))} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <ul className="flex-1 min-w-0 space-y-1.5">
+            {data.map((d, i) => (
+              <li key={d.name} className="flex items-center gap-2 text-xs">
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ background: COLORS[i % COLORS.length] }} />
+                <span className="truncate text-muted-foreground flex-1">{d.name}</span>
+                <span className="font-medium">{fmt(d.value)}</span>
+                <span className="text-[11px] text-muted-foreground w-9 text-right">{Math.round((d.value / total) * 100)}%</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
-    </div>
+    </ChartCard>
   );
 }
 
@@ -214,6 +244,7 @@ export default function HABilling() {
   const lostRevenue = sum("lostAmt") + labTotals.lost;
   const lostCount = sum("lost") + labTotals.cancelled;
   const hasLab = labTests.length > 0 || labOrders.length > 0;
+  const showLab = hasLab && labTotals.revenue > 0;
   const missingFee = rows.filter((r) => !r.hasFee).length;
   const topDoctor = rows[0] && rows[0].total > 0 ? rows[0] : null;
   const avgPerDay = daily.length ? Math.round(grandRevenue / daily.length) : 0;
@@ -222,7 +253,11 @@ export default function HABilling() {
     null,
   );
 
-  const doctorShare = rows.filter((r) => r.total > 0).map((r) => ({ name: r.name, value: r.total }));
+  const shareAll = rows.filter((r) => r.total > 0).map((r) => ({ name: r.name, value: r.total }));
+  const doctorShare =
+    shareAll.length > 5
+      ? [...shareAll.slice(0, 4), { name: "Others", value: shareAll.slice(4).reduce((s, d) => s + d.value, 0) }]
+      : shareAll;
   const sourceSplit = [
     { name: "Consultations", value: consultRevenue },
     { name: "Laboratory", value: labTotals.revenue },
@@ -355,69 +390,73 @@ export default function HABilling() {
         </p>
       )}
 
-      {daily.length > 0 && (
-        <div className={`${card} mb-6`}>
-          <p className="text-sm font-semibold mb-3">Revenue per day</p>
-          <div style={{ width: "100%", height: 220 }}>
-            <ResponsiveContainer>
-              <BarChart data={daily}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} width={48} />
-                <Tooltip formatter={(v) => rupee(Number(v))} />
-                {hasLab && <Legend />}
-                <Bar dataKey="consultation" name="Consultations" stackId="rev" fill="#0d9488" />
-                {hasLab && <Bar dataKey="lab" name="Laboratory" stackId="rev" fill="#6366f1" radius={[4, 4, 0, 0]} />}
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
-
       {!loading && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-          <PieCard title="Revenue by doctor" data={doctorShare} money />
-          {hasLab ? (
-            <PieCard title="Consultations vs laboratory" data={sourceSplit} money />
-          ) : (
-            <PieCard title="Paid vs unpaid (consultations)" data={paidSplit} money />
-          )}
-          <PieCard title="Booking outcomes" data={outcomes} />
-          <PieCard title="Visits by session" data={sessions} />
-          <div className={card}>
-            <p className="text-sm font-semibold mb-2">Visits by weekday</p>
-            <div style={{ width: "100%", height: 230 }}>
-              <ResponsiveContainer>
-                <BarChart data={weekday}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="day" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} width={32} allowDecimals={false} />
-                  <Tooltip />
-                  <Bar dataKey="visits" name="Visits" fill="#0d9488" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-          {hasLab && (
-            <div className={card}>
-              <p className="text-sm font-semibold mb-2">Top lab tests by revenue</p>
-              {topTests.length === 0 ? (
-                <p className="text-xs text-muted-foreground py-16 text-center">No data for this period</p>
-              ) : (
-                <div style={{ width: "100%", height: 230 }}>
-                  <ResponsiveContainer>
-                    <BarChart data={topTests} layout="vertical" margin={{ left: 16 }}>
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                      <XAxis type="number" tick={{ fontSize: 11 }} />
-                      <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={90} />
-                      <Tooltip formatter={(v) => rupee(Number(v))} />
-                      <Bar dataKey="total" name="Revenue" fill="#6366f1" radius={[0, 4, 4, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+        <div className="space-y-3 mb-6">
+          {daily.length > 0 && (
+            <ChartCard title="Revenue per day" sub={`${rupee(grandRevenue)} total`}>
+              {showLab && (
+                <div className="flex gap-3 text-[11px] text-muted-foreground mb-1">
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm" style={{ background: "#0d9488" }} />Consultations</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm" style={{ background: "#6366f1" }} />Laboratory</span>
                 </div>
               )}
-            </div>
+              <div style={{ width: "100%", height: 170 }}>
+                <ResponsiveContainer>
+                  <BarChart data={daily} margin={{ top: 4, right: 4, left: -8, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                    <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                    <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={44} />
+                    <Tooltip cursor={{ fill: "rgba(0,0,0,0.04)" }} contentStyle={TOOLTIP_STYLE} formatter={(v) => rupee(Number(v))} />
+                    <Bar dataKey="consultation" name="Consultations" stackId="rev" fill="#0d9488" maxBarSize={32}
+                      radius={showLab ? undefined : [3, 3, 0, 0]} />
+                    {showLab && <Bar dataKey="lab" name="Laboratory" stackId="rev" fill="#6366f1" maxBarSize={32} radius={[3, 3, 0, 0]} />}
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </ChartCard>
           )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            <PieCard title="Revenue by doctor" data={doctorShare} money />
+            {showLab ? (
+              <PieCard title="Consultations vs laboratory" data={sourceSplit} money />
+            ) : (
+              <PieCard title="Paid vs unpaid" data={paidSplit} money />
+            )}
+            <PieCard title="Booking outcomes" data={outcomes} />
+            <PieCard title="Visits by session" data={sessions} />
+            <ChartCard title="Visits by weekday" sub={`${totalVisits} total`}>
+              <div style={{ width: "100%", height: 120 }}>
+                <ResponsiveContainer>
+                  <BarChart data={weekday} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                    <XAxis dataKey="day" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                    <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} allowDecimals={false} />
+                    <Tooltip cursor={{ fill: "rgba(0,0,0,0.04)" }} contentStyle={TOOLTIP_STYLE} />
+                    <Bar dataKey="visits" name="Visits" fill="#0d9488" maxBarSize={20} radius={[3, 3, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </ChartCard>
+            {showLab && (
+              <ChartCard title="Top lab tests" sub="by revenue">
+                {topTests.length === 0 ? (
+                  <EmptyChart />
+                ) : (
+                  <div style={{ width: "100%", height: 120 }}>
+                    <ResponsiveContainer>
+                      <BarChart data={topTests} layout="vertical" margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
+                        <XAxis type="number" hide />
+                        <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={84} />
+                        <Tooltip cursor={{ fill: "rgba(0,0,0,0.04)" }} contentStyle={TOOLTIP_STYLE} formatter={(v) => rupee(Number(v))} />
+                        <Bar dataKey="total" name="Revenue" fill="#6366f1" maxBarSize={14} radius={[0, 3, 3, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </ChartCard>
+            )}
+          </div>
         </div>
       )}
 
