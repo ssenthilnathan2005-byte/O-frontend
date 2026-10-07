@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useStore } from "../context/StoreContext";
 import { getToken } from "@/api";
 import { toast } from "sonner";
@@ -103,6 +103,15 @@ export default function PharmacyDashboard() {
 
   useEffect(() => { fetchPrescriptions(); }, [fetchPrescriptions]);
   useEffect(() => { fetchStock(); }, [fetchStock]);
+  const [amounts, setAmounts] = useState<Record<string, string>>({});
+  const [pStats, setPStats] = useState<{ patientsServed: number; tabletsSold: number; revenue: number } | null>(null);
+  const fetchStats = useCallback(async () => {
+    try {
+      const res = await fetch(`${BASE}/pharmacy-stats`, { headers });
+      if (res.ok) setPStats(await res.json());
+    } catch { /* stats are optional */ }
+  }, [hospitalId]);
+  useEffect(() => { fetchStats(); }, [fetchStats]);
 
   function getPlan(p: Prescription, idx: number): Plan {
     return plans[p.id]?.[idx] ?? {
@@ -127,6 +136,9 @@ export default function PharmacyDashboard() {
   // One tap: runs packed -> ready -> handed_over in order, skipping steps already done.
   async function markGiven(p: Prescription) {
     if (busy) return;
+    const amt = amounts[p.id];
+    if (amt === undefined || String(amt).trim() === "" || !(Number(amt) >= 0))
+      return toast.error("Enter the bill amount first (enter 0 if free)");
     const dispense: any[] = [];
     let handoverPayload: any[] = [];
     if (p.status === "pending") {
@@ -166,13 +178,14 @@ export default function PharmacyDashboard() {
     try {
       if (p.status === "pending") await send("packed", { dispense });
       if (p.status === "pending" || p.status === "packed") await send("ready", {});
-      await send("handed_over", { handover: handoverPayload });
+      await send("handed_over", { handover: handoverPayload, billAmount: Number(amounts[p.id]) });
       toast.success("Marked as packed. Patient notified");
     } catch (err: any) {
       toast.error(err?.message || "Network error");
     } finally {
       setBusy(null);
       fetchPrescriptions();
+      fetchStats();
       fetchStock();
     }
   }
@@ -355,6 +368,15 @@ export default function PharmacyDashboard() {
         )}
 
         {!isGiven && (
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-gray-600 shrink-0">Bill amount ({"\u20b9"})</label>
+            <input type="number" min={0} step="0.01" inputMode="decimal" placeholder="Enter 0 if free"
+              value={amounts[p.id] ?? ""}
+              onChange={e => setAmounts(prev => ({ ...prev, [p.id]: e.target.value }))}
+              className="flex-1 border border-gray-200 rounded-md text-sm px-2 py-1.5 bg-white" />
+          </div>
+        )}
+        {!isGiven && (
           confirming ? (
             <div className="flex gap-2">
               <Button variant="outline" className="flex-1 h-10 text-sm" disabled={busy === p.id}
@@ -421,6 +443,22 @@ export default function PharmacyDashboard() {
       </div>
 
       <div className="px-4 pt-3 space-y-3">
+        {pStats && (
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-white border border-gray-200 rounded-xl px-3 py-2">
+              <p className="text-xl font-bold leading-tight text-teal-700">{pStats.patientsServed}</p>
+              <p className="text-[11px] text-gray-500">Patients served today</p>
+            </div>
+            <div className="bg-white border border-gray-200 rounded-xl px-3 py-2">
+              <p className="text-xl font-bold leading-tight text-blue-700">{pStats.tabletsSold}</p>
+              <p className="text-[11px] text-gray-500">Tablets sold today</p>
+            </div>
+            <div className="bg-white border border-gray-200 rounded-xl px-3 py-2">
+              <p className="text-xl font-bold leading-tight text-emerald-700">{"\u20b9"}{Number(pStats.revenue).toLocaleString("en-IN")}</p>
+              <p className="text-[11px] text-gray-500">Revenue today</p>
+            </div>
+          </div>
+        )}
         <div className="flex gap-2">
           <Stat label="Waiting" value={receivedList.length} tone="text-yellow-600" />
           <Stat label="Given today" value={givenToday} tone="text-teal-600" />

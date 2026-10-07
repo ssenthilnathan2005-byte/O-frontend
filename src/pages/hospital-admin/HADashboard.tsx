@@ -241,6 +241,46 @@ export default function HADashboard() {
     return () => { cancelled = true; };
   }, [hospitalId, rangeKey, rangeValid]);
 
+  // Pharmacy stats for the selected period (auto-refresh every 30s).
+  const [pharm, setPharm] = useState<{ key: string; patientsServed: number; tabletsSold: number; revenue: number; daily: { date: string; revenue: number }[] } | null>(null);
+  useEffect(() => {
+    if (!hospitalId || !rangeValid) return;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const { getToken } = await import("../../api");
+        const qs = new URLSearchParams({ hospitalId, from: range.from, to: range.to });
+        const res = await fetch(`${BASE}/pharmacy-stats?${qs.toString()}`, {
+          headers: { Authorization: `Bearer ${getToken()}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && data) {
+          setPharm({
+            key: rangeKey,
+            patientsServed: Number(data.patientsServed) || 0,
+            tabletsSold: Number(data.tabletsSold) || 0,
+            revenue: Number(data.revenue) || 0,
+            daily: Array.isArray(data.daily) ? data.daily : [],
+          });
+        }
+      } catch { }
+    };
+    load();
+    const timer = setInterval(load, 30000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, [hospitalId, rangeKey, rangeValid]);
+  const pharmNow = pharm && pharm.key === rangeKey ? pharm : null;
+  const pharmSeries = useMemo<{ label: string; amount: number }[]>(() => {
+    if (!pharmNow) return [];
+    const byMonth = pharmNow.daily.length > 62;
+    const out = new Map<string, number>();
+    for (const d of pharmNow.daily) {
+      const key = byMonth ? d.date.slice(0, 7) : d.date;
+      out.set(key, (out.get(key) ?? 0) + Number(d.revenue || 0));
+    }
+    return Array.from(out, ([key, amount]) => ({ label: byMonth ? key : key.slice(5), amount }));
+  }, [pharmNow]);
   const myDoctors = useMemo(
     () => doctors.filter((d) => d.hospitalId === hospitalId),
     [doctors, hospitalId]
@@ -457,6 +497,54 @@ export default function HADashboard() {
         </Section>
       )}
 
+      {/* Pharmacy statistics + revenue chart */}
+      {show("fin") && (
+        <Section title="Pharmacy" subtitle="Pharmacy sales for the selected period, updates automatically">
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">{isToday ? "Patients served today" : "Patients served"}</span>
+                  <div className="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center"><UserCog className="w-4 h-4 text-teal-600" /></div>
+                </div>
+                <span className="text-3xl font-bold text-gray-900">{pharmNow ? pharmNow.patientsServed : DASH}</span>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">{isToday ? "Tablets sold today" : "Tablets sold"}</span>
+                  <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center"><Pill className="w-4 h-4 text-orange-600" /></div>
+                </div>
+                <span className="text-3xl font-bold text-gray-900">{pharmNow ? pharmNow.tabletsSold : DASH}</span>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">{isToday ? "Pharmacy revenue today" : "Pharmacy revenue"}</span>
+                  <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center"><IndianRupee className="w-4 h-4 text-emerald-600" /></div>
+                </div>
+                <span className="text-3xl font-bold text-gray-900">{pharmNow ? money(pharmNow.revenue) : DASH}</span>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3">
+              <span className="text-sm text-gray-500">Pharmacy revenue</span>
+              {pharmSeries.some((r) => r.amount > 0) ? (
+                <div style={{ width: "100%", height: 200 }}>
+                  <ResponsiveContainer>
+                    <BarChart data={pharmSeries} margin={{ top: 4, right: 4, left: -8, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                      <XAxis dataKey="label" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                      <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={44} />
+                      <Tooltip cursor={{ fill: "rgba(0,0,0,0.04)" }} formatter={(v) => [money(Number(v)), "Pharmacy revenue"]} />
+                      <Bar dataKey="amount" name="Pharmacy revenue" fill="#f97316" maxBarSize={32} radius={[3, 3, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400 py-10 text-center">No pharmacy revenue in this period</p>
+              )}
+            </div>
+          </div>
+        </Section>
+      )}
       {/* 3. Hospital detail cards (middle) */}
       {visibleStats.length > 0 && (
         <Section title="Hospital Details">
