@@ -1,9 +1,10 @@
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Calendar, ChevronRight, LogIn, Phone, User } from "lucide-react";
+import { ArrowLeft, Calendar, ChevronRight, FlaskConical, LogIn, Phone, User } from "lucide-react";
 import { motion } from "motion/react";
-import { type KeyboardEvent, type MouseEvent, useState } from "react";
+import { type KeyboardEvent, type MouseEvent, useEffect, useState } from "react";
 import BookingDialog from "../../components/booking/BookingDialog";
 import { useStore } from "../../context/StoreContext";
+import HospitalLabPage from "./HospitalLabPage";
 
 function resolvePhotoUrl(url: string | null | undefined): string | null {
   if (!url) return null;
@@ -38,12 +39,22 @@ export default function HospitalDoctorsPage({ id }: Props) {
   const { hospitals, doctors, user, tokenStates, isSessionCancelled } = useStore();
   const [bookingDoctor, setBookingDoctor] = useState<Doctor | null>(null);
   const [loginGateDoctor, setLoginGateDoctor] = useState<Doctor | null>(null);
+  const [showLab, setShowLab] = useState(false);
+  const [lab, setLab] = useState<{ enabled: boolean; tests: unknown[] } | null>(null);
+  useEffect(() => {
+    const base = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
+    fetch(`${base}/hospital-lab/public/${id}`)
+      .then((r) => r.json())
+      .then((d) => setLab({ enabled: !!d.enabled, tests: d.tests || [] }))
+      .catch(() => setLab(null));
+  }, [id]);
 
   const hospital = hospitals.find((h) => h.id === id);
   const hospitalDoctors = doctors.filter((d) => d.hospitalId === id && d.isAvailable !== false);
 
   if (!hospital)
     return <div className="p-8 text-center">Hospital not found</div>;
+  if (showLab) return <HospitalLabPage id={id} onBack={() => setShowLab(false)} />;
 
   function handleDoctorClick(doctor: Doctor) {
     if (!user) {
@@ -142,6 +153,27 @@ export default function HospitalDoctorsPage({ id }: Props) {
             </p>
           </div>
         </div>
+      )}
+
+      {lab?.enabled && lab.tests.length > 0 && (
+        <button
+          type="button"
+          onClick={() => { setShowLab(true); window.scrollTo(0, 0); }}
+          className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 mb-4 flex items-center justify-between shadow-sm hover:border-teal-400 transition-colors text-left"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-lg bg-teal-50 flex items-center justify-center shrink-0">
+              <FlaskConical className="w-4 h-4 text-teal-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-800">Lab facility</p>
+              <p className="text-xs text-gray-400 mt-0.5">{lab.tests.length} tests available to book</p>
+            </div>
+          </div>
+          <span className="text-xs font-semibold text-teal-600 shrink-0 flex items-center gap-0.5">
+            View lab <ChevronRight className="w-4 h-4" />
+          </span>
+        </button>
       )}
 
       {/* Doctors header */}
