@@ -8,18 +8,51 @@ import { useStore } from "../../context/StoreContext";
 import { isLiveBookingStatus, normalizeBookingStatus } from "../../lib/bookingStatus";
 import { useRouter } from "../../router/RouterContext";
 
+// Local (not UTC) date as YYYY-MM-DD, so "today" matches the user's calendar day.
+function ymd(d: Date) {
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
 function todayStr() {
-  return new Date().toISOString().slice(0, 10);
+  return ymd(new Date());
 }
 
 const DASH = "\u2014";
 const WAIT_TARGET_MINS = 20;
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-// Shape returned by GET {BASE}/dashboard/kpis?hospitalId=...
+type Period = "today" | "week" | "month" | "year" | "custom";
+
+const PERIODS: { id: Period; label: string }[] = [
+  { id: "today", label: "Today" },
+  { id: "week", label: "This week" },
+  { id: "month", label: "This month" },
+  { id: "year", label: "This year" },
+  { id: "custom", label: "Custom" },
+];
+
+function rangeFor(p: Period, customFrom: string, customTo: string) {
+  const now = new Date();
+  const today = ymd(now);
+  if (p === "today") return { from: today, to: today };
+  if (p === "week") {
+    const d = new Date(now);
+    const sinceMonday = (d.getDay() + 6) % 7;
+    d.setDate(d.getDate() - sinceMonday);
+    return { from: ymd(d), to: today };
+  }
+  if (p === "month") return { from: ymd(new Date(now.getFullYear(), now.getMonth(), 1)), to: today };
+  if (p === "year") return { from: `${now.getFullYear()}-01-01`, to: today };
+  return { from: customFrom, to: customTo };
+}
+
+// Shape returned by GET {BASE}/dashboard/kpis?hospitalId=...&from=...&to=...
 // Any field the backend doesn't send stays null and the card shows a dash.
 type Kpis = {
-  revenueToday: number | null;
-  revenueYesterday: number | null;
+  revenue: number | null;
+  revenuePrevious: number | null;
   paymentSplit: { cash: number; upi: number; tpa: number } | null;
   receivables: number | null;
   unbilledAccounts: number | null;
@@ -30,11 +63,12 @@ type Kpis = {
   dischargesDone: number | null;
   labTatMins: number | null;
   criticalAlerts: number | null;
+  bookings: { total: number; completed: number; unvisited: number; confirmed: number } | null;
 };
 
 const EMPTY_KPIS: Kpis = {
-  revenueToday: null,
-  revenueYesterday: null,
+  revenue: null,
+  revenuePrevious: null,
   paymentSplit: null,
   receivables: null,
   unbilledAccounts: null,
@@ -45,6 +79,7 @@ const EMPTY_KPIS: Kpis = {
   dischargesDone: null,
   labTatMins: null,
   criticalAlerts: null,
+  bookings: null,
 };
 
 type Tab = "all" | "opd" | "ipd" | "fin";
@@ -113,13 +148,23 @@ export default function HADashboard() {
   const [tab, setTab] = useState<Tab>("all");
   const show = (g: Group) => tab === "all" || tab === g;
 
+  const [period, setPeriod] = useState<Period>("today");
+  const [customFrom, setCustomFrom] = useState(todayStr());
+  const [customTo, setCustomTo] = useState(todayStr());
+  const range = rangeFor(period, customFrom, customTo);
+  const rangeValid = DATE_RE.test(range.from) && DATE_RE.test(range.to) && range.from <= range.to;
+  const rangeKey = `${range.from}|${range.to}`;
+  const isToday = period === "today";
+
   const [pharmacyCount, setPharmacyCount] = useState(0);
   const [hasPharmacy, setHasPharmacy] = useState(false);
   const [bedStats, setBedStats] = useState({ occupied: 0, total: 0, maintenance: 0 });
   const [pendingLabOrders, setPendingLabOrders] = useState(0);
   const [activeInward, setActiveInward] = useState(0);
   const [lowStockCount, setLowStockCount] = useState(0);
-  const [kpis, setKpis] = useState<Kpis>(EMPTY_KPIS);
+  const [kpisState, setKpisState] = useState<{ key: string; data: Kpis }>({ key: "", data: EMPTY_KPIS });
+  // Only show KPI data that belongs to the period currently selected.
+  const kpis = kpisState.key === rangeKey ? kpisState.data : EMPTY_KPIS;
 
   const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
@@ -173,23 +218,29 @@ export default function HADashboard() {
       } catch { }
     }
     fetchOpsStats();
+  }, [hospitalId]);
 
-    // Financial + operational KPIs. If the endpoint doesn't exist yet, cards show a dash.
+  // Financial + operational KPIs for the selected period.
+  // If the endpoint is unavailable, cards show a dash.
+  useEffect(() => {
+    if (!hospitalId || !rangeValid) return;
     let cancelled = false;
-    async function fetchKpis() {
+    (async () => {
       try {
         const { getToken } = await import("../../api");
-        const res = await fetch(`${BASE}/dashboard/kpis?hospitalId=${hospitalId}`, {
+        const qs = new URLSearchParams({ hospitalId, from: range.from, to: range.to });
+        const res = await fetch(`${BASE}/dashboard/kpis?${qs.toString()}`, {
           headers: { Authorization: `Bearer ${getToken()}` },
         });
         if (!res.ok) return;
         const data = await res.json();
-        if (!cancelled && data && typeof data === "object") setKpis({ ...EMPTY_KPIS, ...data });
+        if (!cancelled && data && typeof data === "object") {
+          setKpisState({ key: rangeKey, data: { ...EMPTY_KPIS, ...data } });
+        }
       } catch { }
-    }
-    fetchKpis();
+    })();
     return () => { cancelled = true; };
-  }, [hospitalId]);
+  }, [hospitalId, rangeKey, rangeValid]);
 
   const myDoctors = useMemo(
     () => doctors.filter((d) => d.hospitalId === hospitalId),
@@ -201,14 +252,21 @@ export default function HADashboard() {
     [bookings, myDoctors]
   );
 
+  // Doctor Status always stays "today".
   const todayBookings = useMemo(
     () => myBookings.filter((b) => b.date === todayStr()),
     [myBookings]
   );
 
-  const todayCompleted = todayBookings.filter((b) => normalizeBookingStatus(b.status) === "completed").length;
-  const todayConfirmed = todayBookings.filter((b) => isLiveBookingStatus(b.status)).length;
-  const todayUnvisited = todayBookings.filter((b) => normalizeBookingStatus(b.status) === "unvisited").length;
+  // Booking counts for the selected period: server value if available, else from loaded bookings.
+  const rangeBookings = useMemo(
+    () => (rangeValid ? myBookings.filter((b) => b.date >= range.from && b.date <= range.to) : []),
+    [myBookings, rangeKey, rangeValid]
+  );
+  const bTotal = kpis.bookings?.total ?? rangeBookings.length;
+  const bConfirmed = kpis.bookings?.confirmed ?? rangeBookings.filter((b) => isLiveBookingStatus(b.status)).length;
+  const bCompleted = kpis.bookings?.completed ?? rangeBookings.filter((b) => normalizeBookingStatus(b.status) === "completed").length;
+  const bUnvisited = kpis.bookings?.unvisited ?? rangeBookings.filter((b) => normalizeBookingStatus(b.status) === "unvisited").length;
 
   const availableDoctors = myDoctors.filter((d) => d.isAvailable).length;
 
@@ -217,8 +275,8 @@ export default function HADashboard() {
     icon: LucideIcon; color: string; bg: string; to?: string;
   }[] = [
     { group: "opd", label: "Total Doctors", value: myDoctors.length, sub: `${availableDoctors} available today`, icon: UserCog, color: "text-teal-600", bg: "bg-teal-50", to: "/hospital-admin/doctors" },
-    { group: "opd", label: "Today's Bookings", value: todayBookings.length, sub: `${todayConfirmed} confirmed`, icon: CalendarCheck, color: "text-blue-600", bg: "bg-blue-50" },
-    { group: "opd", label: "Completed Today", value: todayCompleted, sub: `${todayUnvisited} unvisited`, icon: Activity, color: "text-green-600", bg: "bg-green-50" },
+    { group: "opd", label: isToday ? "Today's Bookings" : "Bookings", value: bTotal, sub: `${bConfirmed} confirmed`, icon: CalendarCheck, color: "text-blue-600", bg: "bg-blue-50" },
+    { group: "opd", label: isToday ? "Completed Today" : "Completed", value: bCompleted, sub: `${bUnvisited} unvisited`, icon: Activity, color: "text-green-600", bg: "bg-green-50" },
     { group: "opd", label: "Pharmacy Staff", value: pharmacyCount, sub: hasPharmacy ? "pharmacy active" : "no pharmacy", icon: Pill, color: "text-orange-600", bg: "bg-orange-50", to: "/hospital-admin/pharmacy" },
     { group: "ipd", label: "Bed Occupancy", value: `${bedStats.occupied}/${bedStats.total}`, sub: bedStats.maintenance > 0 ? `${bedStats.maintenance} cleaning` : "beds occupied", icon: BedDouble, color: "text-red-600", bg: "bg-red-50", to: "/hospital-admin/wards" },
     { group: "ipd", label: "Admitted Patients", value: activeInward, sub: "currently inward", icon: Users2, color: "text-indigo-600", bg: "bg-indigo-50", to: "/hospital-admin/ipd" },
@@ -236,9 +294,10 @@ export default function HADashboard() {
 
   // ---- Financial derived values ----
   const revChange =
-    kpis.revenueToday !== null && kpis.revenueYesterday !== null && kpis.revenueYesterday > 0
-      ? ((kpis.revenueToday - kpis.revenueYesterday) / kpis.revenueYesterday) * 100
+    kpis.revenue !== null && kpis.revenuePrevious !== null && kpis.revenuePrevious > 0
+      ? ((kpis.revenue - kpis.revenuePrevious) / kpis.revenuePrevious) * 100
       : null;
+  const compareText = isToday ? "vs yesterday" : "vs previous period";
 
   const split = kpis.paymentSplit;
   const splitTotal = split ? split.cash + split.upi + split.tpa : 0;
@@ -279,18 +338,61 @@ export default function HADashboard() {
         ))}
       </div>
 
+      {/* Period filter */}
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {PERIODS.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => setPeriod(p.id)}
+              className={`px-4 py-1.5 rounded-full text-sm border transition-all ${
+                period === p.id
+                  ? "bg-teal-600 border-teal-600 text-white font-medium"
+                  : "bg-white border-gray-200 text-gray-600 hover:border-teal-300"
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+          {period === "custom" && (
+            <>
+              <input
+                type="date"
+                value={customFrom}
+                max={customTo || undefined}
+                onChange={(e) => setCustomFrom(e.target.value)}
+                className="border border-gray-200 rounded-md px-2 py-1 text-sm text-gray-700"
+              />
+              <span className="text-sm text-gray-400">to</span>
+              <input
+                type="date"
+                value={customTo}
+                min={customFrom || undefined}
+                onChange={(e) => setCustomTo(e.target.value)}
+                className="border border-gray-200 rounded-md px-2 py-1 text-sm text-gray-700"
+              />
+            </>
+          )}
+        </div>
+        <p className="text-xs text-gray-400">
+          {rangeValid
+            ? isToday ? "Showing today" : `Showing ${range.from} to ${range.to}`
+            : "Pick a valid from and to date"}
+        </p>
+      </div>
+
       {/* 1. Financial Overview (top) */}
       {show("fin") && (
         <Section title="Financial Overview" subtitle="Revenue, receivables and insurance claims">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <MetricCard label="Today's Revenue" icon={IndianRupee} color="text-emerald-600" bg="bg-emerald-50">
+            <MetricCard label={isToday ? "Today's Revenue" : "Revenue"} icon={IndianRupee} color="text-emerald-600" bg="bg-emerald-50">
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-3xl font-bold text-gray-900">{money(kpis.revenueToday)}</span>
+                  <span className="text-3xl font-bold text-gray-900">{money(kpis.revenue)}</span>
                   {revChange !== null && (
                     <Badge tone={revChange >= 0 ? "green" : "red"}>
                       {revChange >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                      {Math.abs(revChange).toFixed(0)}% vs yesterday
+                      {Math.abs(revChange).toFixed(0)}% {compareText}
                     </Badge>
                   )}
                 </div>
@@ -362,7 +464,7 @@ export default function HADashboard() {
             )}
 
             {show("ipd") && (
-              <MetricCard label="Discharges Today" icon={LogOut} color="text-indigo-600" bg="bg-indigo-50">
+              <MetricCard label={isToday ? "Discharges Today" : "Discharges"} icon={LogOut} color="text-indigo-600" bg="bg-indigo-50">
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-3xl font-bold text-gray-900">
@@ -425,7 +527,7 @@ export default function HADashboard() {
         </Section>
       )}
 
-      {/* 4. Doctor Status Table (last, unchanged) */}
+      {/* 4. Doctor Status Table (last, always today) */}
       {show("opd") && (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
           <div className="px-5 py-4 border-b border-gray-100">
