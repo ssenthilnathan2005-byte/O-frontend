@@ -268,8 +268,10 @@ export default function HADashboard() {
       } catch { }
     };
     load();
-    const timer = setInterval(load, 30000);
-    return () => { cancelled = true; clearInterval(timer); };
+    const timer = setInterval(load, 10000);
+    const onUp = () => { load(); };
+    window.addEventListener("pharmacy-updated", onUp);
+    return () => { cancelled = true; clearInterval(timer); window.removeEventListener("pharmacy-updated", onUp); };
   }, [hospitalId, rangeKey, rangeValid]);
   const pharmNow = pharm && pharm.key === rangeKey ? pharm : null;
   const pharmSeries = useMemo<{ label: string; amount: number }[]>(() => {

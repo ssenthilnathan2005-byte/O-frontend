@@ -77,8 +77,10 @@ export function usePharmacyRx(hospitalId: string, from: string, to: string) {
       } catch { /* ignore */ } finally { if (!off) setLoading(false); }
     };
     load();
-    const t = setInterval(load, 30000);
-    return () => { off = true; clearInterval(t); };
+    const t = setInterval(load, 10000);
+    const onUp = () => { load(); };
+    window.addEventListener("pharmacy-updated", onUp);
+    return () => { off = true; clearInterval(t); window.removeEventListener("pharmacy-updated", onUp); };
   }, [hospitalId, from, to]);
   return { rows, loading };
 }
