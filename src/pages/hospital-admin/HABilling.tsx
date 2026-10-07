@@ -47,9 +47,9 @@ const COLORS = ["#0d9488", "#6366f1", "#f59e0b", "#ef4444", "#0ea5e9", "#84cc16"
 
 const TOOLTIP_STYLE = { fontSize: 12, borderRadius: 8, border: "1px solid #e5e7eb", padding: "4px 8px" };
 
-function ChartCard({ title, sub, children }: { title: string; sub?: string; children: ReactNode }) {
+function ChartCard({ title, sub, children, className }: { title: string; sub?: string; children: ReactNode; className?: string }) {
   return (
-    <div className="rounded-xl border border-border bg-card px-4 py-3">
+    <div className={`rounded-xl border border-border bg-card px-4 py-3 ${className ?? ""}`}>
       <div className="flex items-baseline justify-between gap-2 mb-2">
         <p className="text-xs font-semibold">{title}</p>
         {sub && <p className="text-[11px] text-muted-foreground">{sub}</p>}
@@ -392,6 +392,7 @@ export default function HABilling() {
 
       {!loading && (
         <div className="space-y-3 mb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {daily.length > 0 && (
             <ChartCard title="Revenue per day" sub={`${rupee(grandRevenue)} total`}>
               {showLab && (
@@ -415,18 +416,8 @@ export default function HABilling() {
               </div>
             </ChartCard>
           )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-            <PieCard title="Revenue by doctor" data={doctorShare} money />
-            {showLab ? (
-              <PieCard title="Consultations vs laboratory" data={sourceSplit} money />
-            ) : (
-              <PieCard title="Paid vs unpaid" data={paidSplit} money />
-            )}
-            <PieCard title="Booking outcomes" data={outcomes} />
-            <PieCard title="Visits by session" data={sessions} />
             <ChartCard title="Visits by weekday" sub={`${totalVisits} total`}>
-              <div style={{ width: "100%", height: 120 }}>
+              <div style={{ width: "100%", height: 170 }}>
                 <ResponsiveContainer>
                   <BarChart data={weekday} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
@@ -438,8 +429,19 @@ export default function HABilling() {
                 </ResponsiveContainer>
               </div>
             </ChartCard>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            <PieCard title="Revenue by doctor" data={doctorShare} money />
+            {showLab ? (
+              <PieCard title="Consultations vs laboratory" data={sourceSplit} money />
+            ) : (
+              <PieCard title="Paid vs unpaid" data={paidSplit} money />
+            )}
+            <PieCard title="Booking outcomes" data={outcomes} />
+            <PieCard title="Visits by session" data={sessions} />
             {showLab && (
-              <ChartCard title="Top lab tests" sub="by revenue">
+              <ChartCard title="Top lab tests" sub="by revenue" className="lg:col-span-2">
                 {topTests.length === 0 ? (
                   <EmptyChart />
                 ) : (
