@@ -1,4 +1,4 @@
-﻿import PharmacyAnalytics from "./PharmacyAnalytics";
+﻿import PharmacyAnalytics, { useLabRevenue } from "./PharmacyAnalytics";
 import { useMemo, useState, useEffect, type ReactNode } from "react";
 import {
   UserCog, Users2, CalendarCheck, Pill, Activity, BedDouble, FlaskConical, Package,
@@ -268,10 +268,46 @@ export default function HADashboard() {
       } catch { }
     };
     load();
-    const timer = setInterval(load, 30000);
-    return () => { cancelled = true; clearInterval(timer); };
+    const timer = setInterval(load, 10000);
+    const onUp = () => { load(); };
+    window.addEventListener("pharmacy-updated", onUp);
+    return () => { cancelled = true; clearInterval(timer); window.removeEventListener("pharmacy-updated", onUp); };
   }, [hospitalId, rangeKey, rangeValid]);
   const pharmNow = pharm && pharm.key === rangeKey ? pharm : null;
+
+  // ---- Live total revenue (consultations + laboratory + pharmacy) and pharmacy comparison ----
+  const prevRange = useMemo(() => {
+    if (!rangeValid) return { from: range.from, to: range.to };
+    const DAY = 86400000;
+    const f = new Date(range.from + "T00:00:00Z").getTime();
+    const t = new Date(range.to + "T00:00:00Z").getTime();
+    const days = Math.round((t - f) / DAY) + 1;
+    const pt = f - DAY;
+    const pf = pt - (days - 1) * DAY;
+    return { from: new Date(pf).toISOString().slice(0, 10), to: new Date(pt).toISOString().slice(0, 10) };
+  }, [range.from, range.to, rangeValid]);
+  const [pharmPrev, setPharmPrev] = useState<{ key: string; revenue: number } | null>(null);
+  useEffect(() => {
+    if (!hospitalId || !rangeValid) return;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const { getToken } = await import("../../api");
+        const qs = new URLSearchParams({ hospitalId, from: prevRange.from, to: prevRange.to });
+        const res = await fetch(BASE + "/pharmacy-stats?" + qs.toString(), { headers: { Authorization: "Bearer " + getToken() } });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && data) setPharmPrev({ key: rangeKey, revenue: Number(data.revenue) || 0 });
+      } catch { }
+    };
+    load();
+    const timer = setInterval(load, 60000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, [hospitalId, rangeKey, rangeValid, prevRange.from, prevRange.to]);
+  const labNow = useLabRevenue(range.from, range.to);
+  const labPrev = useLabRevenue(prevRange.from, prevRange.to);
+  const pharmPrevNow = pharmPrev && pharmPrev.key === rangeKey ? pharmPrev.revenue : null;
+  const totalRev = (kpis.revenue ?? 0) + labNow + (pharmNow ? pharmNow.revenue : 0);
   const pharmSeries = useMemo<{ label: string; amount: number }[]>(() => {
     if (!pharmNow) return [];
     const byMonth = pharmNow.daily.length > 62;
@@ -333,9 +369,11 @@ export default function HADashboard() {
   const visibleStats = stats.filter((s) => show(s.group));
 
   // ---- Financial derived values ----
+  const totalRevPrev =
+    kpis.revenuePrevious !== null && pharmPrevNow !== null ? kpis.revenuePrevious + labPrev + pharmPrevNow : null;
   const revChange =
-    kpis.revenue !== null && kpis.revenuePrevious !== null && kpis.revenuePrevious > 0
-      ? ((kpis.revenue - kpis.revenuePrevious) / kpis.revenuePrevious) * 100
+    kpis.revenue !== null && totalRevPrev !== null && totalRevPrev > 0
+      ? ((totalRev - totalRevPrev) / totalRevPrev) * 100
       : null;
   const compareText = isToday ? "vs yesterday" : "vs previous period";
 
@@ -446,7 +484,7 @@ export default function HADashboard() {
             <MetricCard label={isToday ? "Today's Revenue" : "Revenue"} icon={IndianRupee} color="text-emerald-600" bg="bg-emerald-50">
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-3xl font-bold text-gray-900">{money(kpis.revenue)}</span>
+                  <span className="text-3xl font-bold text-gray-900">{money(kpis.revenue === null ? null : totalRev)}</span>
                   {revChange !== null && (
                     <Badge tone={revChange >= 0 ? "green" : "red"}>
                       {revChange >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
@@ -501,7 +539,7 @@ export default function HADashboard() {
       {/* Pharmacy analytics: cards on the left, revenue split on the right */}
       {show("fin") && (
         <Section title="Pharmacy" subtitle="Pharmacy sales for the selected period, updates automatically">
-          <PharmacyAnalytics hospitalId={hospitalId} from={range.from} to={range.to} isToday={isToday} stats={pharmNow} consultRevenue={kpis.revenue ?? 0} />
+          <PharmacyAnalytics hospitalId={hospitalId} from={range.from} to={range.to} isToday={isToday} stats={pharmNow} consultRevenue={kpis.revenue ?? 0} prevRevenue={pharmPrevNow} />
         </Section>
       )}
       {/* 3. Hospital detail cards (middle) */}

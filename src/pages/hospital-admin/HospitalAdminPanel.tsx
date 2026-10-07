@@ -1,5 +1,5 @@
-import { Activity, Fingerprint, BedDouble, Building2, ClipboardList, FlaskConical, LayoutDashboard, LogOut, Menu, Package, Pill, Receipt, Stethoscope, UserCog, Users2, Users, X } from "lucide-react";
-import { useState } from "react";
+import { Activity, BarChart3, ChevronDown, ShoppingCart, Fingerprint, BedDouble, Building2, ClipboardList, FlaskConical, LayoutDashboard, LogOut, Menu, Package, Pill, Receipt, Stethoscope, UserCog, Users2, Users, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useStore } from "../../context/StoreContext";
 import { useRouter } from "../../router/RouterContext";
 import HADashboard from "./HADashboard";
@@ -14,6 +14,7 @@ import HAInventory from "./HAInventory";
 import HALab from "./HALab";
 import HAAttendance from "./HAAttendance";
 import HABilling from "./HABilling";
+import { PharmRevenue, PharmInventory, PharmPatients, PharmSold, usePharmacySocket } from "./PharmacyModule";
 
 const NAV_ITEMS = [
   { path: "/hospital-admin", label: "Dashboard", icon: LayoutDashboard },
@@ -30,10 +31,51 @@ const NAV_ITEMS = [
   { path: "/hospital-admin/pharmacy", label: "Pharmacy", icon: Pill },
 ] as const;
 
+const PHARMACY_SUB = [
+  { path: "/hospital-admin/pharmacy/revenue", label: "Revenue Pharmacy", icon: BarChart3 },
+  { path: "/hospital-admin/pharmacy/inventory", label: "Inventory", icon: Package },
+  { path: "/hospital-admin/pharmacy/patients", label: "Medicine Buying by Patient", icon: Users },
+  { path: "/hospital-admin/pharmacy/sold", label: "Medicine Sold", icon: ShoppingCart },
+  { path: "/hospital-admin/pharmacy", label: "Staff & Setup", icon: UserCog },
+] as const;
+
+function PharmacyMenu({ onNavigate }: { onNavigate?: () => void }) {
+  const { route, navigate } = useRouter();
+  const inPharmacy = route.path.startsWith("/hospital-admin/pharmacy");
+  const [open, setOpen] = useState(inPharmacy);
+  useEffect(() => { if (inPharmacy) setOpen(true); }, [inPharmacy]);
+  return (
+    <div>
+      <button type="button" onClick={() => setOpen(o => !o)}
+        className={"w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors " + (inPharmacy ? "text-white" : "text-white/60 hover:bg-white/8 hover:text-white/90")}>
+        <Pill className="w-4 h-4 shrink-0" />
+        <span className="flex-1 text-left">Pharmacy</span>
+        <ChevronDown className={"w-4 h-4 shrink-0 transition-transform " + (open ? "rotate-180" : "")} />
+      </button>
+      {open && (
+        <div className="mt-1 ml-4 pl-2 border-l border-white/10 space-y-1">
+          {PHARMACY_SUB.map(({ path, label, icon: Icon }) => {
+            const active = route.path === path;
+            return (
+              <button key={path} type="button"
+                onClick={() => { navigate({ path } as Parameters<typeof navigate>[0]); onNavigate?.(); }}
+                className={"w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors " + (active ? "bg-white/15 text-white border-l-2 border-teal-400" : "text-white/60 hover:bg-white/8 hover:text-white/90")}>
+                <Icon className="w-3.5 h-3.5 shrink-0" />
+                <span className="text-left leading-tight">{label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function HospitalAdminPanel() {
   const { user, logout } = useStore();
   const { route, navigate } = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  usePharmacySocket(user && user.role === "hospital_admin" ? user.hospitalId : "");
 
   const hospitalName = user && user.role === "hospital_admin" ? user.hospitalName : "Hospital Admin";
 
@@ -41,6 +83,10 @@ export default function HospitalAdminPanel() {
     if (route.path === "/hospital-admin/ipd") return <HAInward />;
     if (route.path === "/hospital-admin/patients") return <HAPatients />;
     if (route.path === "/hospital-admin/all-patients") return <HAAllPatients />;
+    if (route.path === "/hospital-admin/pharmacy/revenue") return <PharmRevenue />;
+    if (route.path === "/hospital-admin/pharmacy/inventory") return <PharmInventory />;
+    if (route.path === "/hospital-admin/pharmacy/patients") return <PharmPatients />;
+    if (route.path === "/hospital-admin/pharmacy/sold") return <PharmSold />;
     if (route.path === "/hospital-admin/pharmacy") return <HAPharmacy />;
     if (route.path === "/hospital-admin/doctors") return <HADoctors />;
     if (route.path === "/hospital-admin/lab") return <HALab />;
@@ -71,7 +117,7 @@ export default function HospitalAdminPanel() {
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {NAV_ITEMS.map(({ path, label, icon: Icon }) => {
+          {NAV_ITEMS.filter(n => n.path !== "/hospital-admin/pharmacy").map(({ path, label, icon: Icon }) => {
             const isActive = route.path === path || (route.path === "/hospital-admin" && path === "/hospital-admin");
             return (
               <button
@@ -87,6 +133,7 @@ export default function HospitalAdminPanel() {
               </button>
             );
           })}
+          <PharmacyMenu />
         </nav>
 
         <div className="px-3 py-4 border-t border-white/10">
@@ -132,7 +179,7 @@ export default function HospitalAdminPanel() {
               </button>
             </div>
             <nav className="flex-1 px-3 py-4 space-y-1">
-              {NAV_ITEMS.map(({ path, label, icon: Icon }) => (
+              {NAV_ITEMS.filter(n => n.path !== "/hospital-admin/pharmacy").map(({ path, label, icon: Icon }) => (
                 <button
                   key={path}
                   type="button"
@@ -143,6 +190,7 @@ export default function HospitalAdminPanel() {
                   {label}
                 </button>
               ))}
+              <PharmacyMenu onNavigate={() => setDrawerOpen(false)} />
             </nav>
             <div className="px-3 py-4 border-t border-white/10">
               <button

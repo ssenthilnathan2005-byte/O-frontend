@@ -76,6 +76,7 @@ export default function PharmacyDashboard() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [handover, setHandover] = useState<Record<string, Record<number, { qty: string; reason: string }>>>({});
+  const [payModes, setPayModes] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<"received" | "given">("received");
   const [manualDeduct, setManualDeduct] = useState<Record<string, boolean>>({});
   const [query, setQuery] = useState("");
@@ -178,7 +179,7 @@ export default function PharmacyDashboard() {
     try {
       if (p.status === "pending") await send("packed", { dispense });
       if (p.status === "pending" || p.status === "packed") await send("ready", {});
-      await send("handed_over", { handover: handoverPayload, billAmount: Number(amounts[p.id]) });
+      await send("handed_over", { handover: handoverPayload, billAmount: Number(amounts[p.id]), paymentMode: payModes[p.id] || "cash" });
       toast.success("Marked as packed. Patient notified");
     } catch (err: any) {
       toast.error(err?.message || "Network error");
@@ -374,6 +375,10 @@ export default function PharmacyDashboard() {
               value={amounts[p.id] ?? ""}
               onChange={e => setAmounts(prev => ({ ...prev, [p.id]: e.target.value }))}
               className="flex-1 border border-gray-200 rounded-md text-sm px-2 py-1.5 bg-white" />
+            <select value={payModes[p.id] ?? "cash"} onChange={e => setPayModes(prev => ({ ...prev, [p.id]: e.target.value }))}
+              className="border border-gray-200 rounded-md text-sm px-2 py-1.5 bg-white">
+              <option value="cash">Cash</option><option value="upi">UPI</option><option value="insurance">Insurance / TPA</option>
+            </select>
           </div>
         )}
         {!isGiven && (
