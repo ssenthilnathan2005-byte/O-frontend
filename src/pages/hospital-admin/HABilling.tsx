@@ -276,7 +276,7 @@ export default function HABilling() {
     rows.reduce((s, r) => s + r[k], 0);
   const totalVisits = sum("visits");
   const consultRevenue = sum("total");
-  const grandRevenue = consultRevenue + labTotals.revenue;
+  const grandRevenue = consultRevenue + labTotals.revenue + pharmRows.rows.reduce((s, r) => s + r.amount, 0);
   const lostRevenue = sum("lostAmt") + labTotals.lost;
   const lostCount = sum("lost") + labTotals.cancelled;
   const hasLab = labTests.length > 0 || labOrders.length > 0;

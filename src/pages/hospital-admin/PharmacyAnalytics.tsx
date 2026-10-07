@@ -85,7 +85,7 @@ export function usePharmacyRx(hospitalId: string, from: string, to: string) {
   return { rows, loading };
 }
 
-function useLabRevenue(from: string, to: string) {
+export function useLabRevenue(from: string, to: string) {
   const [v, setV] = useState(0);
   useEffect(() => {
     let off = false;
@@ -275,9 +275,10 @@ type Props = {
   hospitalId: string; from: string; to: string; isToday: boolean;
   stats: { patientsServed: number; tabletsSold: number; revenue: number } | null;
   consultRevenue: number;
+  prevRevenue?: number | null;
 };
 
-export default function PharmacyAnalytics({ hospitalId, from, to, isToday, stats, consultRevenue }: Props) {
+export default function PharmacyAnalytics({ hospitalId, from, to, isToday, stats, consultRevenue, prevRevenue }: Props) {
   const { rows } = usePharmacyRx(hospitalId, from, to);
   const lab = useLabRevenue(from, to);
   const [view, setView] = useState<null | "revenue" | "tablets" | "patients">(null);
@@ -299,7 +300,18 @@ export default function PharmacyAnalytics({ hospitalId, from, to, isToday, stats
               <span className="text-sm text-gray-500">{isToday ? "Pharmacy revenue today" : "Pharmacy revenue"}</span>
               <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center"><IndianRupee className="w-4 h-4 text-emerald-600" /></div>
             </div>
-            <span className="text-3xl font-bold text-gray-900">{stats ? rupee(stats.revenue) : DASH}</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-3xl font-bold text-gray-900">{stats ? rupee(stats.revenue) : DASH}</span>
+              {stats && prevRevenue != null && (prevRevenue > 0 || stats.revenue > 0) && (() => {
+                const up = prevRevenue > 0 ? ((stats.revenue - prevRevenue) / prevRevenue) * 100 : 100;
+                const label = prevRevenue > 0 ? Math.abs(up).toFixed(0) + "%" : "New";
+                return (
+                  <span className={"text-xs font-medium px-2 py-0.5 rounded-full " + (up >= 0 ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700")}>
+                    {up >= 0 ? "+" : "-"}{label} {isToday ? "vs yesterday" : "vs previous period"}
+                  </span>
+                );
+              })()}
+            </div>
           </div>
           <div className={cardCls} onClick={() => setView("tablets")}>
             <div className="flex items-center justify-between">
