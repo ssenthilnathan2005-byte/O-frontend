@@ -24,6 +24,7 @@ import {
 import { bookings as bookingsApi, getToken } from "@/api";
 import type { Booking } from "../../api";
 import { useStore } from "../../context/StoreContext";
+import { useRouter } from "@/router/RouterContext";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
@@ -47,6 +48,30 @@ const COLORS = ["#0d9488", "#6366f1", "#f59e0b", "#ef4444", "#0ea5e9", "#84cc16"
 
 const TOOLTIP_STYLE = { fontSize: 12, borderRadius: 8, border: "1px solid #e5e7eb", padding: "4px 8px" };
 
+type Slice = { name: string; value: number; go?: () => void };
+const CLICK_HINT = "Click to view patient list";
+// pointer cursor + hover highlight for clickable bars and donut slices (Recharts draws them as SVG)
+const CLICKABLE_CHART =
+  "[&_.recharts-bar-rectangle]:cursor-pointer [&_.recharts-pie-sector]:cursor-pointer " +
+  "[&_.recharts-bar-rectangle]:transition-opacity [&_.recharts-pie-sector]:transition-opacity " +
+  "[&_.recharts-bar-rectangle:hover]:opacity-80 [&_.recharts-pie-sector:hover]:opacity-80";
+
+// tooltip body with a click hint line
+function HintTip({ active, payload, label, fmt, hint }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{ ...TOOLTIP_STYLE, background: "#fff" }}>
+      {label != null && label !== "" && <p style={{ fontWeight: 600 }}>{label}</p>}
+      {payload.map((p: any) => (
+        <p key={String(p.dataKey ?? p.name)}>
+          {p.name}: {fmt ? fmt(Number(p.value)) : p.value}
+        </p>
+      ))}
+      {hint && <p style={{ fontSize: 10, color: "#0f766e", marginTop: 2 }}>{hint}</p>}
+    </div>
+  );
+}
+
 function ChartCard({ title, sub, children, className }: { title: string; sub?: string; children: ReactNode; className?: string }) {
   return (
     <div className={`rounded-xl border border-border bg-card px-4 py-3 ${className ?? ""}`}>
@@ -63,8 +88,9 @@ function EmptyChart() {
   return <p className="text-[11px] text-muted-foreground h-[120px] flex items-center justify-center">No data for this period</p>;
 }
 
-function PieCard({ title, data, money }: { title: string; data: { name: string; value: number }[]; money?: boolean }) {
+function PieCard({ title, data, money }: { title: string; data: Slice[]; money?: boolean }) {
   const total = data.reduce((s, d) => s + d.value, 0);
+  const clickable = data.some((d) => d.go);
   const fmt = (n: number) => (money ? rupee(n) : String(n));
   return (
     <ChartCard title={title} sub={total > 0 ? fmt(total) : undefined}>
@@ -74,20 +100,26 @@ function PieCard({ title, data, money }: { title: string; data: { name: string; 
         <div className="flex items-center gap-3">
           <div style={{ width: 120, height: 120 }} className="shrink-0">
             <ResponsiveContainer>
-              <PieChart>
+              <PieChart className={clickable ? CLICKABLE_CHART : undefined}>
                 <Pie data={data} dataKey="value" nameKey="name" innerRadius={34} outerRadius={56}
+                  onClick={(_: unknown, i: number) => data[i]?.go?.()}
                   paddingAngle={data.length > 1 ? 2 : 0} stroke="none">
                   {data.map((d, i) => (
                     <Cell key={d.name} fill={COLORS[i % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => fmt(Number(v))} />
+                <Tooltip content={<HintTip fmt={fmt} hint={clickable ? CLICK_HINT : undefined} />} />
               </PieChart>
             </ResponsiveContainer>
           </div>
           <ul className="flex-1 min-w-0 space-y-1.5">
             {data.map((d, i) => (
-              <li key={d.name} className="flex items-center gap-2 text-xs">
+              <li
+                key={d.name}
+                title={d.go ? CLICK_HINT : undefined}
+                onClick={d.go}
+                className={`flex items-center gap-2 text-xs ${d.go ? "cursor-pointer rounded -mx-1 px-1 transition-colors hover:bg-muted/60" : ""}`}
+              >
                 <span className="w-2 h-2 rounded-full shrink-0" style={{ background: COLORS[i % COLORS.length] }} />
                 <span className="truncate text-muted-foreground flex-1">{d.name}</span>
                 <span className="font-medium">{fmt(d.value)}</span>
@@ -109,6 +141,7 @@ async function getJson(path: string) {
 
 export default function HABilling() {
   const { doctors, user } = useStore();
+  const { navigate } = useRouter();
   const hospitalId = user && user.role === "hospital_admin" ? user.hospitalId : "";
   const myDoctors = useMemo(() => doctors.filter((d) => d.hospitalId === hospitalId), [doctors, hospitalId]);
 
@@ -213,7 +246,7 @@ export default function HABilling() {
     }
     const daily = Array.from(byDay.entries())
       .sort(([a], [b]) => (a < b ? -1 : 1))
-      .map(([date, v]) => ({ date: date.slice(5), ...v, amount: v.consultation + v.lab }));
+      .map(([date, v]) => ({ date: date.slice(5), full: date, ...v, amount: v.consultation + v.lab }));
 
     const count = (s: string) => scoped.filter((b) => b.status === s).length;
     const outcomes = [
@@ -253,20 +286,47 @@ export default function HABilling() {
     null,
   );
 
-  const shareAll = rows.filter((r) => r.total > 0).map((r) => ({ name: r.name, value: r.total }));
+  // Where a chart click goes: All Patients, pre-filtered. The selected period is carried
+  // along so the list matches the number shown on the chart.
+  const drillTo = (q: Record<string, string>) =>
+    navigate({
+      path: "/hospital-admin/all-patients",
+      query: { ...(range ? { from: range[0], to: range[1] } : {}), ...q },
+    });
+
+  const shareAll = rows.filter((r) => r.total > 0).map((r) => ({
+    name: r.name, value: r.total, id: r.id,
+    go: () => drillTo({ status: "completed", doctorId: r.id }),
+  }));
   const doctorShare =
     shareAll.length > 5
-      ? [...shareAll.slice(0, 4), { name: "Others", value: shareAll.slice(4).reduce((s, d) => s + d.value, 0) }]
+      ? [...shareAll.slice(0, 4), {
+          name: "Others", value: shareAll.slice(4).reduce((s, d) => s + d.value, 0), id: "",
+          go: () => drillTo({ status: "completed", doctorId: shareAll.slice(4).map((d) => d.id).join(",") }),
+        }]
       : shareAll;
   const sourceSplit = [
-    { name: "Consultations", value: consultRevenue },
-    { name: "Laboratory", value: labTotals.revenue },
+    { name: "Consultations", value: consultRevenue, go: () => drillTo({ status: "completed" }) },
+    { name: "Laboratory", value: labTotals.revenue, go: () => navigate({ path: "/hospital-admin/lab" }) },
   ].filter((x) => x.value > 0);
   const paidSplit = [
-    { name: "Paid", value: sum("paidAmt") },
-    { name: "Unpaid", value: sum("unpaidAmt") },
+    { name: "Paid", value: sum("paidAmt"), go: () => drillTo({ status: "completed", payment: "paid" }) },
+    { name: "Unpaid", value: sum("unpaidAmt"), go: () => drillTo({ status: "completed", payment: "unpaid" }) },
   ].filter((x) => x.value > 0);
   const topTests = labRows.filter((r) => r.total > 0).slice(0, 6).map((r) => ({ name: r.name, total: r.total }));
+
+  const onDayClick = (_: unknown, i: number) => {
+    const d = daily[i];
+    if (d) drillTo({ status: "completed", date: d.full });
+  };
+  const onWeekdayClick = (_: unknown, i: number) => drillTo({ status: "completed", day: String(i) });
+  const OUTCOME_STATUS: Record<string, string> = {
+    Completed: "completed", "Booked / waiting": "confirmed", Cancelled: "cancelled", "Not visited": "unvisited",
+  };
+  const outcomeSlices = outcomes.map((o) => ({ ...o, go: () => drillTo({ status: OUTCOME_STATUS[o.name] }) }));
+  const sessionSlices = sessions.map((s) => ({
+    ...s, go: () => drillTo({ status: "completed", session: s.name.toLowerCase() }),
+  }));
 
   function exportCsv() {
     const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
@@ -403,14 +463,14 @@ export default function HABilling() {
               )}
               <div style={{ width: "100%", height: 170 }}>
                 <ResponsiveContainer>
-                  <BarChart data={daily} margin={{ top: 4, right: 4, left: -8, bottom: 0 }}>
+                  <BarChart data={daily} className={CLICKABLE_CHART} margin={{ top: 4, right: 4, left: -8, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                     <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
                     <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={44} />
-                    <Tooltip cursor={{ fill: "rgba(0,0,0,0.04)" }} contentStyle={TOOLTIP_STYLE} formatter={(v) => rupee(Number(v))} />
-                    <Bar dataKey="consultation" name="Consultations" stackId="rev" fill="#0d9488" maxBarSize={32}
+                    <Tooltip cursor={{ fill: "rgba(0,0,0,0.04)" }} content={<HintTip fmt={rupee} hint={CLICK_HINT} />} />
+                    <Bar dataKey="consultation" name="Consultations" stackId="rev" fill="#0d9488" maxBarSize={32} onClick={onDayClick}
                       radius={showLab ? undefined : [3, 3, 0, 0]} />
-                    {showLab && <Bar dataKey="lab" name="Laboratory" stackId="rev" fill="#6366f1" maxBarSize={32} radius={[3, 3, 0, 0]} />}
+                    {showLab && <Bar dataKey="lab" name="Laboratory" stackId="rev" fill="#6366f1" maxBarSize={32} radius={[3, 3, 0, 0]} onClick={() => navigate({ path: "/hospital-admin/lab" })} />}
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -419,12 +479,12 @@ export default function HABilling() {
             <ChartCard title="Visits by weekday" sub={`${totalVisits} total`}>
               <div style={{ width: "100%", height: 170 }}>
                 <ResponsiveContainer>
-                  <BarChart data={weekday} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+                  <BarChart data={weekday} className={CLICKABLE_CHART} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                     <XAxis dataKey="day" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
                     <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} allowDecimals={false} />
-                    <Tooltip cursor={{ fill: "rgba(0,0,0,0.04)" }} contentStyle={TOOLTIP_STYLE} />
-                    <Bar dataKey="visits" name="Visits" fill="#0d9488" maxBarSize={20} radius={[3, 3, 0, 0]} />
+                    <Tooltip cursor={{ fill: "rgba(0,0,0,0.04)" }} content={<HintTip hint={CLICK_HINT} />} />
+                    <Bar dataKey="visits" name="Visits" fill="#0d9488" maxBarSize={20} radius={[3, 3, 0, 0]} onClick={onWeekdayClick} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -438,8 +498,8 @@ export default function HABilling() {
             ) : (
               <PieCard title="Paid vs unpaid" data={paidSplit} money />
             )}
-            <PieCard title="Booking outcomes" data={outcomes} />
-            <PieCard title="Visits by session" data={sessions} />
+            <PieCard title="Booking outcomes" data={outcomeSlices} />
+            <PieCard title="Visits by session" data={sessionSlices} />
             {showLab && (
               <ChartCard title="Top lab tests" sub="by revenue" className="lg:col-span-2">
                 {topTests.length === 0 ? (
@@ -489,15 +549,20 @@ export default function HABilling() {
               </TableRow>
             )}
             {!loading && rows.map((r) => (
-              <TableRow key={r.id}>
+              <TableRow key={r.id} title={CLICK_HINT}
+                className="cursor-pointer transition-colors hover:bg-muted/60"
+                onClick={() => drillTo({ status: "completed", doctorId: r.id })}>
                 <TableCell className="font-medium">{r.name}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{r.specialty}</TableCell>
                 <TableCell className="text-right">{r.visits}</TableCell>
                 <TableCell className="text-right">{r.hasFee ? rupee(r.fee) : "\u2014"}</TableCell>
                 <TableCell className="text-right font-semibold">{rupee(r.total)}</TableCell>
-                <TableCell className="text-right text-green-700">{rupee(r.paidAmt)}</TableCell>
-                <TableCell className="text-right text-amber-700">{rupee(r.unpaidAmt)}</TableCell>
-                <TableCell className="text-right text-red-600">{r.lost > 0 ? `${r.lost} (${rupee(r.lostAmt)})` : "0"}</TableCell>
+                <TableCell className="text-right text-green-700 hover:underline" title="Click to view paid visits"
+                  onClick={(e) => { e.stopPropagation(); drillTo({ status: "completed", doctorId: r.id, payment: "paid" }); }}>{rupee(r.paidAmt)}</TableCell>
+                <TableCell className="text-right text-amber-700 hover:underline" title="Click to view unpaid visits"
+                  onClick={(e) => { e.stopPropagation(); drillTo({ status: "completed", doctorId: r.id, payment: "unpaid" }); }}>{rupee(r.unpaidAmt)}</TableCell>
+                <TableCell className="text-right text-red-600 hover:underline" title="Click to view cancelled / not visited"
+                  onClick={(e) => { e.stopPropagation(); drillTo({ status: "cancelled,unvisited", doctorId: r.id }); }}>{r.lost > 0 ? `${r.lost} (${rupee(r.lostAmt)})` : "0"}</TableCell>
               </TableRow>
             ))}
             {!loading && rows.length > 0 && (

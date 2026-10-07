@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useStore } from "../../context/StoreContext";
 import { inward as inwardApi } from "../../api";
 import { normalizeBookingStatus } from "../../lib/bookingStatus";
+import { useRouter, type Route } from "@/router/RouterContext";
 
 type Visit = {
   key: string;
@@ -15,6 +16,9 @@ type Visit = {
   place: string;
   date: string;
   status: string;
+  doctorId?: string;
+  session?: string;
+  paid?: boolean;
 };
 
 type Raw = Visit & { name: string; phone: string; age: string; gender: string };
@@ -58,10 +62,54 @@ function StatusPill({ status }: { status: string }) {
   );
 }
 
+type Drill = {
+  doctorIds: string[]; statuses: string[]; payment: string; session: string;
+  date: string; from: string; to: string; day: string;
+};
+const NO_DRILL: Drill = { doctorIds: [], statuses: [], payment: "", session: "", date: "", from: "", to: "", day: "" };
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const splitCsv = (s?: string) => (s ? s.split(",").filter(Boolean) : []);
+
+// Filters sent by the Billing charts arrive as route.query
+function drillFromRoute(r: Route): Drill {
+  const q = r.path === "/hospital-admin/all-patients" ? r.query : undefined;
+  if (!q) return NO_DRILL;
+  return {
+    doctorIds: splitCsv(q.doctorId), statuses: splitCsv(q.status), payment: q.payment ?? "",
+    session: q.session ?? "", date: q.date ?? "", from: q.from ?? "", to: q.to ?? "", day: q.day ?? "",
+  };
+}
+
+function isDrillActive(d: Drill) {
+  return d.doctorIds.length > 0 || d.statuses.length > 0 ||
+    !!(d.payment || d.session || d.date || d.from || d.to || d.day);
+}
+
+function matchesDrill(v: Visit, d: Drill) {
+  if (v.type !== "OPD") return false; // the Billing charts only count outpatient bookings
+  if (d.doctorIds.length && !d.doctorIds.includes(v.doctorId ?? "")) return false;
+  if (d.statuses.length && !d.statuses.includes(v.status)) return false;
+  if (d.payment && (v.status !== "completed" || !!v.paid !== (d.payment === "paid"))) return false;
+  if (d.session && v.session !== d.session) return false;
+  const day = v.date.slice(0, 10);
+  if (d.date && day !== d.date) return false;
+  if (d.from && day < d.from) return false;
+  if (d.to && day > d.to) return false;
+  if (d.day) {
+    const [y, m, dd] = day.split("-").map(Number);
+    if (new Date(y, m - 1, dd).getDay() !== Number(d.day)) return false;
+  }
+  return true;
+}
+
 export default function HAAllPatients() {
   const { bookings, doctors, patients, user } = useStore();
   const hospitalId = user?.role === "hospital_admin" ? (user as any).hospitalId : "";
 
+  const { route } = useRouter();
+  const [drill, setDrill] = useState<Drill>(() => drillFromRoute(route));
+  // a new chart click (or a sidebar click) arrives as a new route object
+  useEffect(() => { setDrill(drillFromRoute(route)); }, [route]);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | "OPD" | "Inward">("all");
   const [inwardList, setInwardList] = useState<any[]>([]);
@@ -90,7 +138,7 @@ export default function HAAllPatients() {
     for (const b of bookings as any[]) {
       if (!myDoctorIds.has(b.doctorId)) continue;
       const status = normalizeBookingStatus(b.status);
-      if (status === "cancelled") continue;
+      if (status === "cancelled" && !drill.statuses.includes("cancelled")) continue;
       const rec: any = (patients as any[]).find(p => p.id === b.patientId);
       out.push({
         key: `opd-${b.id}`,
@@ -100,6 +148,9 @@ export default function HAAllPatients() {
         age: pick(b, "age", "patientAge") || pick(rec, "age"),
         gender: pick(b, "gender") || pick(rec, "gender"),
         doctor: pick(b, "doctorName"),
+        doctorId: b.doctorId,
+        session: pick(b, "session"),
+        paid: !!b.paymentDone,
         detail: b.tokenNumber != null ? `Token #${b.tokenNumber}` : "",
         place: "",
         date: pick(b, "date"),
@@ -131,11 +182,17 @@ export default function HAAllPatients() {
     }
 
     return out;
-  }, [bookings, inwardList, patients, myDoctorIds]);
+  }, [bookings, inwardList, patients, myDoctorIds, drill.statuses]);
+
+  // Only the visits that match the filter coming from a Billing chart
+  const visibleRaw = useMemo(
+    () => (isDrillActive(drill) ? raw.filter(v => matchesDrill(v, drill)) : raw),
+    [raw, drill]
+  );
 
   // One entry per patient, with all their visits (newest first)
   const people = useMemo<Person[]>(() => {
-    const sorted = [...raw].sort((a, b) => b.date.slice(0, 10).localeCompare(a.date.slice(0, 10)));
+    const sorted = [...visibleRaw].sort((a, b) => b.date.slice(0, 10).localeCompare(a.date.slice(0, 10)));
     const map = new Map<string, Person>();
     for (const r of sorted) {
       const digits = r.phone.replace(/\D/g, "").slice(-10);
@@ -155,7 +212,7 @@ export default function HAAllPatients() {
       });
     }
     return Array.from(map.values());
-  }, [raw]);
+  }, [visibleRaw]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -178,12 +235,23 @@ export default function HAAllPatients() {
 
   const selected = selectedId ? people.find(p => p.id === selectedId) ?? null : null;
 
+  const drillParts: string[] = [];
+  if (drill.doctorIds.length === 1) drillParts.push((doctors as any[]).find(d => d.id === drill.doctorIds[0])?.name ?? "1 doctor");
+  else if (drill.doctorIds.length > 1) drillParts.push(`${drill.doctorIds.length} doctors`);
+  if (drill.statuses.length) drillParts.push(drill.statuses.join(" / "));
+  if (drill.payment) drillParts.push(drill.payment);
+  if (drill.session) drillParts.push(`${drill.session} session`);
+  if (drill.day) drillParts.push(DAY_NAMES[Number(drill.day)] ?? drill.day);
+  if (drill.date) drillParts.push(drill.date);
+  else if (drill.from || drill.to) drillParts.push(`${drill.from || "..."} to ${drill.to || "..."}`);
+  const drillActive = drillParts.length > 0;
+
   return (
     <div className="p-4 md:p-8 space-y-5">
       <div>
         <h1 className="text-2xl font-bold">All Patients</h1>
         <p className="text-sm text-muted-foreground">
-          {filtered.length} of {people.length} patient{people.length === 1 ? "" : "s"} ({raw.length} total visits)
+          {filtered.length} of {people.length} patient{people.length === 1 ? "" : "s"} ({visibleRaw.length} total visits)
         </p>
       </div>
 
@@ -205,6 +273,17 @@ export default function HAAllPatients() {
         </div>
       </div>
 
+      {drillActive && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-sm text-teal-800">
+          <span className="font-medium">Filtered from Billing:</span>
+          <span>{drillParts.join(" | ")}</span>
+          <span className="text-teal-700">({visibleRaw.length} of {raw.length} visits)</span>
+          <button type="button" onClick={() => setDrill(NO_DRILL)}
+            className="ml-auto inline-flex items-center gap-1 text-xs font-medium hover:underline">
+            <X className="w-3.5 h-3.5" /> Clear filter
+          </button>
+        </div>
+      )}
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       <div className="rounded-xl border bg-white overflow-x-auto">
