@@ -30,6 +30,8 @@ import LabsPage from "./pages/patient/LabsPage";
 import LabDetailPage from "./pages/patient/LabDetailPage";
 import LabTrackingPage from "./pages/patient/LabTrackingPage";
 import LabLogin from "./pages/LabLogin";
+import HospitalLabLogin from "./pages/HospitalLabLogin";
+import HospitalLabDashboard from "./pages/HospitalLabDashboard";
 import ComingSoonPage from "./pages/patient/ComingSoonPage";
 import PharmacyDetailPage from "./pages/patient/PharmacyDetailPage";
 import PharmacyOwnerLogin from "./pages/PharmacyOwnerLogin";
@@ -460,6 +462,7 @@ function AppRoutes() {
       if (route.path === "/delete-account") return <DeleteAccountPage />;
       if (route.path === "/hospital-admin/login") return <HospitalAdminLogin />;
       if (route.path === "/lab-admin/login") return <LabLogin />;
+      if (route.path === "/hospital-lab/login") return <HospitalLabLogin />;
       if (route.path === "/pharmacy/login") return <PharmacyLogin />;
       if (route.path === "/patient/hospitals") return <HospitalsPage city={(route as { city?: string }).city} />;
       if (route.path === "/patient/hospital") return <HospitalDoctorsPage id={(route as { id: string }).id} />;
@@ -493,6 +496,7 @@ function AppRoutes() {
     if (user.role === "admin") return <AdminPanel />;
     if (user.role === "hospital_admin") return <HospitalAdminPanel />;
     if (user.role === "pharmacy") return <PharmacyDashboard />;
+    if ((user as any).role === "hospital_lab") return <HospitalLabDashboard />;
     if (user.role === "lab_admin") return <LabDashboard />;
     if (user.role === "doctor") return <DoctorDashboard />;
     if (route.path === "/patient/hospitals") return <HospitalsPage city={(route as { city?: string }).city} />;
@@ -520,7 +524,7 @@ function AppRoutes() {
     return <HospitalsPage />;
   }
 
-  const isAdmin = user?.role === "admin" || user?.role === "hospital_admin" || user?.role === "pharmacy" || user?.role === "pharmacy_owner";
+  const isAdmin = (user as any)?.role === "hospital_lab" || user?.role === "admin" || user?.role === "hospital_admin" || user?.role === "pharmacy" || user?.role === "pharmacy_owner";
   // Only hide TopNav for routes that don't require login (landing/login/terms)
   // AND only when there's no logged-in user — a page refresh resets the
   // in-memory router to "/" even though the user is still authenticated
