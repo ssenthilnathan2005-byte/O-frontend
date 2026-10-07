@@ -56,6 +56,7 @@ type Route =
   | { path: "/labs/detail"; id: string }
   | { path: "/labs/track"; bookingId: string }
   | { path: "/lab-admin/login" }
+  | { path: "/hospital-lab/login" }
   | { path: "/pharmacy/detail"; id: string }
   | { path: "/pharmacy-owner/login" }
   | { path: "/pharmacy-owner/register" }
@@ -144,6 +145,7 @@ function getInitialRoute(): Route {
   if (pathname === "/labs") return { path: "/labs" };
   if (pathname === "/labs/detail") return { path: "/labs/detail", id: hospitalId };
   if (pathname === "/labs/track") return { path: "/labs/track", bookingId: params.get("bookingId") ?? "" };
+  if (pathname === "/hospital-lab/login") return { path: "/hospital-lab/login" };
   if (pathname === "/lab-admin/login") return { path: "/lab-admin/login" };
   if (pathname === "/ambulance") return { path: "/ambulance" };
   return { path: "/" };
