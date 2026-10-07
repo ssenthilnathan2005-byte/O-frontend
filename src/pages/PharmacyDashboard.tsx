@@ -2,12 +2,13 @@ import { useState, useEffect, useCallback } from "react";
 import { useStore } from "../context/StoreContext";
 import { getToken } from "@/api";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
+import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Pill, LogOut, RefreshCw, HandMetal, Search, Inbox } from "lucide-react";
+import {
+  Pill, LogOut, RefreshCw, HandMetal, Search, Inbox, ArrowUpDown, Clock, CheckCircle2, Package,
+} from "lucide-react";
 
-// pharmacy-layout-v2
+// pharmacy-layout-v3
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
 type PrescStatus = "pending" | "packed" | "ready" | "handed_over";
@@ -40,15 +41,30 @@ function matchStock(name: string, stock: StockItem[]): StockItem | undefined {
 const tabletsAvailable = (s: StockItem) => Math.floor(s.quantity * (s.pack_size || 1) + 1e-6);
 
 const isToday = (iso: string) => new Date(iso).toDateString() === new Date().toDateString();
-function whenLabel(iso: string) {
+const agoLabel = (iso: string) => formatDistanceToNow(new Date(iso), { addSuffix: true });
+const exactLabel = (iso: string) => {
   const d = new Date(iso);
   const t = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   return isToday(iso) ? t : `${d.toLocaleDateString([], { day: "numeric", month: "short" })}, ${t}`;
-}
+};
 const splitList = (s: string) => (s || "").split(",").map(x => x.trim()).filter(Boolean);
+const TIMES = ["morning", "afternoon", "evening", "night"];
+const isTime = (t: string) => TIMES.includes(t.toLowerCase());
 
-function Chip({ text }: { text: string }) {
-  return <span className="text-xs bg-white border border-gray-200 text-gray-700 rounded-full px-2 py-0.5">{text}</span>;
+function Pillbox({ text, tone }: { text: string; tone: "time" | "food" }) {
+  const cls = tone === "time"
+    ? "bg-teal-50 text-teal-700 border-teal-100"
+    : "bg-amber-50 text-amber-700 border-amber-100";
+  return <span className={`text-[11px] border rounded-md px-1.5 py-0.5 ${cls}`}>{text}</span>;
+}
+
+function Stat({ label, value, tone }: { label: string; value: number; tone: string }) {
+  return (
+    <div className="flex-1 bg-white border border-gray-200 rounded-xl px-3 py-2">
+      <p className={`text-xl font-bold leading-tight ${tone}`}>{value}</p>
+      <p className="text-[11px] text-gray-500">{label}</p>
+    </div>
+  );
 }
 
 export default function PharmacyDashboard() {
@@ -61,8 +77,10 @@ export default function PharmacyDashboard() {
   const [busy, setBusy] = useState<string | null>(null);
   const [handover, setHandover] = useState<Record<string, Record<number, { qty: string; reason: string }>>>({});
   const [filter, setFilter] = useState<"received" | "given">("received");
-  const [openStock, setOpenStock] = useState<Record<string, boolean>>({});
+  const [manualDeduct, setManualDeduct] = useState<Record<string, boolean>>({});
   const [query, setQuery] = useState("");
+  const [newestFirst, setNewestFirst] = useState(true);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
   const headers = { Authorization: `Bearer ${getToken()}` };
 
   const fetchPrescriptions = useCallback(async () => {
@@ -161,154 +179,230 @@ export default function PharmacyDashboard() {
 
   const receivedList = prescriptions.filter(p => p.status !== "handed_over");
   const givenList = prescriptions.filter(p => p.status === "handed_over");
+  const givenToday = givenList.filter(p => isToday(p.created_at)).length;
   const q = query.trim().toLowerCase();
+  const dir = newestFirst ? -1 : 1;
   const shown = (filter === "given" ? givenList : receivedList)
     .filter(p => !q || (p.patient_name || "").toLowerCase().includes(q))
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  const groups: { label: string; items: Prescription[] }[] = filter === "given"
+    .sort((a, b) => dir * (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
+  const sections: { label: string; items: Prescription[] }[] = filter === "given"
     ? [
         { label: "Today", items: shown.filter(p => isToday(p.created_at)) },
         { label: "Earlier", items: shown.filter(p => !isToday(p.created_at)) },
       ].filter(g => g.items.length > 0)
     : [{ label: "", items: shown }];
 
-  function renderCard(p: Prescription) {
+  // group prescriptions of the same patient together (keeps sorted order of first appearance)
+  function byPatient(list: Prescription[]) {
+    const map = new Map<string, Prescription[]>();
+    for (const p of list) {
+      const k = (p.patient_name || "").trim().toLowerCase();
+      map.set(k, [...(map.get(k) ?? []), p]);
+    }
+    return Array.from(map.values());
+  }
+
+  function renderMedicine(p: Prescription, item: RxItem, i: number) {
+    const editable = p.status === "pending";
+    const isGiven = p.status === "handed_over";
+    const suggested = calcTablets(item);
+    const pl = getPlan(p, i);
+    const st = stock.find(s => s.id === pl.itemId);
+    const qty = Number(pl.qty);
+    const short = st && qty > tabletsAvailable(st);
+    const reduced = qty > 0 && qty < suggested;
+    const key = `${p.id}-${i}`;
+    const deduct = !!pl.itemId || !!manualDeduct[key];
+    const parts = splitList(item.instructions);
+    const times = parts.filter(isTime);
+    const food = parts.filter(t => !isTime(t));
+    return (
+      <div key={i} className="px-3 py-3 space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-sm font-semibold text-gray-900">{item.name}</p>
+          {!isGiven && (
+            <span className="text-xs font-semibold text-teal-700 bg-teal-50 rounded-md px-2 py-0.5 whitespace-nowrap">
+              {suggested} tablets
+            </span>
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+          <div><span className="text-gray-400">Dosage </span><span className="text-gray-700">{item.dosage || "-"}</span></div>
+          <div><span className="text-gray-400">Duration </span><span className="text-gray-700">{item.duration || "-"}</span></div>
+        </div>
+        {(times.length > 0 || food.length > 0) && (
+          <div className="flex flex-wrap gap-1.5">
+            {times.map((t, n) => <Pillbox key={`t${n}`} text={t} tone="time" />)}
+            {food.map((t, n) => <Pillbox key={`f${n}`} text={t} tone="food" />)}
+          </div>
+        )}
+
+        {editable && (
+          <div className="pt-1 space-y-2">
+            <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer select-none">
+              <input type="checkbox" checked={deduct} className="w-4 h-4 accent-teal-600"
+                onChange={e => {
+                  if (e.target.checked) {
+                    setManualDeduct(prev => ({ ...prev, [key]: true }));
+                    if (!pl.itemId) setPlan(p, i, { itemId: matchStock(item.name, stock)?.id ?? "" });
+                  } else {
+                    setManualDeduct(prev => ({ ...prev, [key]: false }));
+                    setPlan(p, i, { itemId: "" });
+                  }
+                }} />
+              Deduct from stock
+              {st && qty > 0 && <span className="text-gray-400">({qty} from {st.name})</span>}
+            </label>
+            {deduct && (
+              <div className="space-y-2 pl-6">
+                <select value={pl.itemId} onChange={e => setPlan(p, i, { itemId: e.target.value })}
+                  className="w-full border border-gray-200 rounded-md text-xs px-2 py-1.5 bg-white">
+                  <option value="">Select stock item...</option>
+                  {stock.map(s => <option key={s.id} value={s.id}>{s.name} ({tabletsAvailable(s)} in stock)</option>)}
+                </select>
+                {pl.itemId && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500">Give</span>
+                    <input type="number" min={1} value={pl.qty}
+                      onChange={e => setPlan(p, i, { qty: e.target.value })}
+                      className="w-20 border border-gray-200 rounded-md text-sm px-2 py-1 bg-white" />
+                    <span className="text-xs text-gray-500">tablets</span>
+                  </div>
+                )}
+                {reduced && pl.itemId && (
+                  <input placeholder="Reason for reducing (e.g. patient can't afford)" value={pl.reason}
+                    onChange={e => setPlan(p, i, { reason: e.target.value })}
+                    className="w-full border border-gray-200 rounded-md text-xs px-2 py-1.5 bg-white" />
+                )}
+                {short && <p className="text-xs text-red-600">Not enough stock: only {tabletsAvailable(st!)} available.</p>}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function renderRx(p: Prescription, multi: boolean) {
     const editable = p.status === "pending";
     const isGiven = p.status === "handed_over";
     let dispensed: any[] = [];
     try { dispensed = p.dispensed_items ? JSON.parse(p.dispensed_items) : []; } catch {}
+    const confirming = confirmId === p.id;
     return (
-      <Card key={p.id}>
-        <CardContent className="p-4 space-y-3">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="font-semibold text-base truncate">{p.patient_name}</p>
-              <p className="text-xs text-gray-400">Dr. {p.doctor_name} {"\u00b7"} {whenLabel(p.created_at)}</p>
-            </div>
-            <Badge className={`text-xs border shrink-0 ${isGiven
-              ? "bg-gray-100 text-gray-500 border-gray-200"
+      <div key={p.id} className="px-4 py-3 space-y-3">
+        <div className="flex items-center justify-between gap-2 text-xs text-gray-500">
+          <span className="flex items-center gap-1 min-w-0 truncate">
+            <Clock className="w-3 h-3 shrink-0" />
+            Dr. {p.doctor_name} {"\u00b7"} <span title={exactLabel(p.created_at)}>{agoLabel(p.created_at)}</span>
+          </span>
+          <span className={`shrink-0 rounded-full px-2 py-0.5 font-medium border ${isGiven
+            ? "bg-gray-100 text-gray-500 border-gray-200"
+            : p.status === "ready"
+              ? "bg-blue-50 text-blue-700 border-blue-200"
               : "bg-yellow-100 text-yellow-800 border-yellow-200"}`}>
-              {isGiven ? "Given" : "Received"}
-            </Badge>
-          </div>
+            {isGiven ? "Given" : p.status === "ready" ? "Ready" : "Received"}
+          </span>
+        </div>
 
-          <div className="rounded-lg bg-gray-50 divide-y divide-gray-200">
-            {p.items.map((item, i) => {
-              const suggested = calcTablets(item);
-              const pl = getPlan(p, i);
-              const st = stock.find(s => s.id === pl.itemId);
-              const qty = Number(pl.qty);
-              const short = st && qty > tabletsAvailable(st);
-              const reduced = qty > 0 && qty < suggested;
-              const key = p.id + "-" + i;
-              const open = !!openStock[key];
-              return (
-                <div key={i} className="px-3 py-2.5 space-y-1.5">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <p className="text-sm font-medium">{item.name}</p>
-                    {!isGiven && <span className="text-xs text-teal-700 whitespace-nowrap">{suggested} tablets</span>}
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {item.dosage && <Chip text={item.dosage} />}
-                    {item.duration && <Chip text={item.duration} />}
-                    {splitList(item.instructions).map((t, n) => <Chip key={`${t}-${n}`} text={t} />)}
-                  </div>
+        <div className="rounded-xl border border-gray-100 bg-gray-50/70 divide-y divide-gray-100">
+          {p.items.map((item, i) => renderMedicine(p, item, i))}
+        </div>
 
-                  {editable && (
-                    <div className="space-y-2 pt-0.5">
-                      <button type="button"
-                        onClick={() => setOpenStock(prev => ({ ...prev, [key]: !open }))}
-                        className="text-xs text-teal-700 underline">
-                        {open ? "Hide stock options" : "Deduct from stock (optional)"}
-                      </button>
-                      {!open && st && qty > 0 && (
-                        <p className="text-xs text-gray-500">{qty} tablets will be deducted from {st.name}</p>
-                      )}
-                      {open && (
-                        <div className="space-y-2">
-                          <select value={pl.itemId} onChange={e => setPlan(p, i, { itemId: e.target.value })}
-                            className="w-full border rounded-md text-xs px-2 py-1.5 bg-white">
-                            <option value="">Don't deduct from stock</option>
-                            {stock.map(s => <option key={s.id} value={s.id}>{s.name} ({tabletsAvailable(s)} tablets in stock)</option>)}
-                          </select>
-                          {pl.itemId && (
-                            <div className="flex items-center gap-2">
-                              <label className="text-xs text-gray-500">Give</label>
-                              <input type="number" min={1} value={pl.qty}
-                                onChange={e => setPlan(p, i, { qty: e.target.value })}
-                                className="w-20 border rounded-md text-sm px-2 py-1 bg-white" />
-                              <span className="text-xs text-gray-500">tablets</span>
-                            </div>
-                          )}
-                          {reduced && pl.itemId && (
-                            <input placeholder="Reason for reducing (e.g. patient can't afford)" value={pl.reason}
-                              onChange={e => setPlan(p, i, { reason: e.target.value })}
-                              className="w-full border rounded-md text-xs px-2 py-1.5 bg-white" />
-                          )}
-                          {short && <p className="text-xs text-red-600">Not enough stock: only {tabletsAvailable(st!)} available.</p>}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {isGiven && dispensed.length > 0 && (
-            <p className="text-xs text-gray-500">
+        {isGiven && dispensed.length > 0 && (
+          <p className="text-xs text-gray-500 flex items-start gap-1.5">
+            <Package className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+            <span>
               Handed over: {dispensed.map(d => `${d.inventoryName} \u00d7${d.tablets}`).join(", ")}
               {dispensed.some(d => d.returned) ? " (some returned to stock)" : ""}
-            </p>
-          )}
+            </span>
+          </p>
+        )}
 
-          {!editable && !isGiven && dispensed.length > 0 && (
-            <div className="text-xs text-gray-500 space-y-0.5">
-              {dispensed.map((d, i) => (
-                <div key={i} className="space-y-1">
-                  <p>Dispensed <b>{d.tablets}</b> {"\u00d7"} {d.inventoryName}{d.reduced ? ` (reduced from ${d.suggested})` : ""}</p>
-                  {p.status === "ready" && (
-                    <div className="bg-amber-50 border border-amber-200 rounded-md p-2 space-y-1.5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-600">Patient takes</span>
-                        <input type="number" min={0} max={d.tablets} value={getHo(p.id, i, d.tablets).qty}
-                          onChange={e => setHo(p.id, i, d.tablets, { qty: e.target.value })}
-                          className="w-20 border rounded-md text-sm px-2 py-1 bg-white" />
-                        <span className="text-xs text-gray-600">of {d.tablets} tablets</span>
-                      </div>
-                      {Number(getHo(p.id, i, d.tablets).qty) < d.tablets && (
+        {!editable && !isGiven && dispensed.length > 0 && (
+          <div className="text-xs text-gray-500 space-y-2">
+            {dispensed.map((d, i) => (
+              <div key={i} className="space-y-1">
+                <p>Dispensed <b>{d.tablets}</b> {"\u00d7"} {d.inventoryName}{d.reduced ? ` (reduced from ${d.suggested})` : ""}</p>
+                {p.status === "ready" && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-600">Patient takes</span>
+                      <input type="number" min={0} max={d.tablets} value={getHo(p.id, i, d.tablets).qty}
+                        onChange={e => setHo(p.id, i, d.tablets, { qty: e.target.value })}
+                        className="w-20 border border-gray-200 rounded-md text-sm px-2 py-1 bg-white" />
+                      <span className="text-xs text-gray-600">of {d.tablets} tablets</span>
+                    </div>
+                    {Number(getHo(p.id, i, d.tablets).qty) < d.tablets && (
+                      <>
                         <input placeholder="Reason (e.g. patient needs fewer)" value={getHo(p.id, i, d.tablets).reason}
                           onChange={e => setHo(p.id, i, d.tablets, { reason: e.target.value })}
-                          className="w-full border rounded-md text-xs px-2 py-1.5 bg-white" />
-                      )}
-                      {Number(getHo(p.id, i, d.tablets).qty) < d.tablets && (
+                          className="w-full border border-gray-200 rounded-md text-xs px-2 py-1.5 bg-white" />
                         <p className="text-xs text-amber-700">{d.tablets - Number(getHo(p.id, i, d.tablets).qty || 0)} tablets will be returned to stock.</p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
-          {p.notes && <p className="text-xs text-gray-500 italic">Note: {p.notes}</p>}
+        {p.notes && (
+          <p className="text-xs text-gray-600 bg-yellow-50 border border-yellow-100 rounded-lg px-3 py-2 italic">
+            Note: {p.notes}
+          </p>
+        )}
 
-          {!isGiven && (
-            <div className="border-t pt-3">
-              <Button className="w-full h-10 text-sm" disabled={busy === p.id} onClick={() => markGiven(p)}>
-                <HandMetal className="w-4 h-4 mr-2" />
-                {busy === p.id ? "Please wait..." : "Mark Given"}
+        {!isGiven && (
+          confirming ? (
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1 h-10 text-sm" disabled={busy === p.id}
+                onClick={() => setConfirmId(null)}>
+                Cancel
+              </Button>
+              <Button className="flex-[2] h-10 text-sm bg-teal-600 hover:bg-teal-700" disabled={busy === p.id}
+                onClick={async () => { await markGiven(p); setConfirmId(null); }}>
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+                {busy === p.id ? "Please wait..." : multi ? "Yes, give this prescription" : "Yes, give to patient"}
               </Button>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          ) : (
+            <Button className="w-full h-10 text-sm bg-teal-600 hover:bg-teal-700" disabled={busy === p.id}
+              onClick={() => setConfirmId(p.id)}>
+              <HandMetal className="w-4 h-4 mr-2" />
+              Mark Given
+            </Button>
+          )
+        )}
+      </div>
+    );
+  }
+
+  function renderPatient(list: Prescription[]) {
+    const first = list[0];
+    const multi = list.length > 1;
+    return (
+      <div key={first.id} className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+        <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 border-b border-gray-100">
+          <div className="w-9 h-9 rounded-full bg-teal-600 text-white flex items-center justify-center font-semibold text-sm shrink-0">
+            {(first.patient_name || "?").trim().charAt(0).toUpperCase()}
+          </div>
+          <div className="min-w-0">
+            <p className="font-semibold text-sm truncate">{first.patient_name}</p>
+            <p className="text-xs text-gray-400">{multi ? `${list.length} prescriptions` : "1 prescription"}</p>
+          </div>
+        </div>
+        <div className="divide-y divide-gray-100">
+          {list.map(p => renderRx(p, multi))}
+        </div>
+      </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b px-4 py-3 flex items-center justify-between">
+      <div className="sticky top-0 z-10 bg-white border-b px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Pill className="w-5 h-5 text-teal-600" />
           <div>
@@ -316,7 +410,7 @@ export default function PharmacyDashboard() {
             <p className="text-xs text-gray-400">{(user as any)?.hospitalName ?? ""}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <button onClick={() => { fetchPrescriptions(); fetchStock(); }} className="text-gray-400 hover:text-gray-600">
             <RefreshCw className="w-4 h-4" />
           </button>
@@ -328,14 +422,28 @@ export default function PharmacyDashboard() {
 
       <div className="px-4 pt-3 space-y-3">
         <div className="flex gap-2">
-          {(["received", "given"] as const).map(f => (
-            <button key={f} onClick={() => setFilter(f)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap border transition-colors ${
-                filter === f ? "bg-teal-600 text-white border-teal-600" : "bg-white text-gray-600 border-gray-200"}`}>
-              {f === "received" ? `Received (${receivedList.length})` : `Given (${givenList.length})`}
-            </button>
-          ))}
+          <Stat label="Waiting" value={receivedList.length} tone="text-yellow-600" />
+          <Stat label="Given today" value={givenToday} tone="text-teal-600" />
+          <Stat label="Total given" value={givenList.length} tone="text-gray-700" />
         </div>
+
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex gap-2">
+            {(["received", "given"] as const).map(f => (
+              <button key={f} onClick={() => setFilter(f)}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap border transition-colors ${
+                  filter === f ? "bg-teal-600 text-white border-teal-600" : "bg-white text-gray-600 border-gray-200"}`}>
+                {f === "received" ? `Received (${receivedList.length})` : `Given (${givenList.length})`}
+              </button>
+            ))}
+          </div>
+          <button onClick={() => setNewestFirst(v => !v)}
+            className="flex items-center gap-1 text-xs text-gray-500 border border-gray-200 bg-white rounded-full px-3 py-1.5">
+            <ArrowUpDown className="w-3 h-3" />
+            {newestFirst ? "Newest" : "Oldest"}
+          </button>
+        </div>
+
         <div className="relative">
           <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search patient name"
@@ -355,10 +463,10 @@ export default function PharmacyDashboard() {
                 : "No prescriptions given yet."}
             </p>
           </div>
-        ) : groups.map(g => (
+        ) : sections.map(g => (
           <div key={g.label || "all"} className="space-y-3">
             {g.label && <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{g.label}</p>}
-            {g.items.map(renderCard)}
+            {byPatient(g.items).map(renderPatient)}
           </div>
         ))}
       </div>
