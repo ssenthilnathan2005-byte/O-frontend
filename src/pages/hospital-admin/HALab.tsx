@@ -3,6 +3,7 @@ import { useStore } from "../../context/StoreContext";
 import { FlaskConical, Plus, X, Trash2, CheckCircle, XCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { getToken } from "../../api";
+import { toast } from "sonner";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
@@ -14,7 +15,7 @@ type LabTest = {
 type LabOrder = {
   id: string; patient_name: string; doctor_name: string | null;
   test_name: string; status: string; priority: string;
-  notes: string | null; result_value: string | null; ordered_at: string;
+  notes: string | null; result_value: string | null; ordered_at: string; slot_date?: string | null; slot_time?: string | null; token_number?: number | null; phone?: string | null; source?: string | null;
 };
 
 const STATUS_FILTERS = ["ordered","report_ready","cancelled"];
@@ -50,6 +51,18 @@ export default function HALab() {
   const [resultModal, setResultModal] = useState<LabOrder | null>(null);
   const [resultValue, setResultValue] = useState("");
   const [loading, setLoading] = useState(false);
+  const [hasLab, setHasLab] = useState<boolean | null>(null);
+  async function loadSettings() {
+    try { const d = await apiFetch("/hospital-lab/settings"); setHasLab(!!d.hasLab); } catch {}
+  }
+  async function toggleLab(val: boolean) {
+    try {
+      const d = await apiFetch("/hospital-lab/toggle", "PATCH", { hasLab: val });
+      if (d?.error) throw new Error(d.error);
+      setHasLab(val);
+      toast.success(val ? "Lab facility enabled for patients" : "Lab facility disabled");
+    } catch { toast.error("Failed to update setting"); }
+  }
 
   async function apiFetch(path: string, method="GET", body?: any) {
     const res = await fetch(`${BASE}${path}`, {
@@ -66,7 +79,7 @@ export default function HALab() {
     try { setTests(await apiFetch("/hospital-lab/tests")); } catch {}
   }
 
-  useEffect(() => { if (hospitalId) { loadOrders(); loadTests(); } }, [hospitalId]);
+  useEffect(() => { if (hospitalId) { loadOrders(); loadTests(); loadSettings(); } }, [hospitalId]);
 
   async function handleAddTest() {
     if (!testForm.name.trim()) return;
@@ -164,6 +177,24 @@ export default function HALab() {
         </div>
       </div>
 
+      <div className="flex items-center justify-between bg-white border rounded-xl px-4 py-3">
+        <div className="min-w-0">
+          <p className="font-medium text-sm">Lab facility for patients</p>
+          <p className="text-xs text-gray-400 leading-snug">
+            {hasLab
+              ? `Patients can see and book your ${tests.filter(t => t.is_active).length} active tests`
+              : "Turn on to show your tests to patients on the hospital page"}
+          </p>
+        </div>
+        <button
+          onClick={() => toggleLab(!hasLab)}
+          disabled={hasLab === null}
+          className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${hasLab ? "bg-teal-500" : "bg-gray-300"}`}
+        >
+          <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${hasLab ? "translate-x-5" : ""}`} />
+        </button>
+      </div>
+
       {/* Tabs */}
       <div className="flex gap-2">
         {(["orders","tests"] as const).map(t => (
@@ -208,6 +239,13 @@ export default function HALab() {
                         )}
                       </div>
                       <p className="text-sm text-gray-500 mt-0.5">{order.test_name}</p>
+                      {order.source === "patient" && (
+                        <p className="text-xs text-teal-700 mt-0.5">
+                          Patient booking · {order.slot_date} · {order.slot_time}
+                          {order.token_number != null ? ` · Token #${order.token_number}` : ""}
+                          {order.phone ? ` · ${order.phone}` : ""}
+                        </p>
+                      )}
                       {order.doctor_name && <p className="text-xs text-gray-400">Dr. {order.doctor_name}</p>}
                       {order.result_value && (
                         <p className="text-xs text-green-700 mt-1 font-medium">Result: {order.result_value}</p>
