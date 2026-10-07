@@ -1,3 +1,4 @@
+﻿import PharmacyAnalytics from "./PharmacyAnalytics";
 import { useMemo, useState, useEffect, type ReactNode } from "react";
 import {
   UserCog, Users2, CalendarCheck, Pill, Activity, BedDouble, FlaskConical, Package,
@@ -497,52 +498,10 @@ export default function HADashboard() {
         </Section>
       )}
 
-      {/* Pharmacy statistics + revenue chart */}
+      {/* Pharmacy analytics: cards on the left, revenue split on the right */}
       {show("fin") && (
         <Section title="Pharmacy" subtitle="Pharmacy sales for the selected period, updates automatically">
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">{isToday ? "Patients served today" : "Patients served"}</span>
-                  <div className="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center"><UserCog className="w-4 h-4 text-teal-600" /></div>
-                </div>
-                <span className="text-3xl font-bold text-gray-900">{pharmNow ? pharmNow.patientsServed : DASH}</span>
-              </div>
-              <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">{isToday ? "Tablets sold today" : "Tablets sold"}</span>
-                  <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center"><Pill className="w-4 h-4 text-orange-600" /></div>
-                </div>
-                <span className="text-3xl font-bold text-gray-900">{pharmNow ? pharmNow.tabletsSold : DASH}</span>
-              </div>
-              <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">{isToday ? "Pharmacy revenue today" : "Pharmacy revenue"}</span>
-                  <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center"><IndianRupee className="w-4 h-4 text-emerald-600" /></div>
-                </div>
-                <span className="text-3xl font-bold text-gray-900">{pharmNow ? money(pharmNow.revenue) : DASH}</span>
-              </div>
-            </div>
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3">
-              <span className="text-sm text-gray-500">Pharmacy revenue</span>
-              {pharmSeries.some((r) => r.amount > 0) ? (
-                <div style={{ width: "100%", height: 200 }}>
-                  <ResponsiveContainer>
-                    <BarChart data={pharmSeries} margin={{ top: 4, right: 4, left: -8, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                      <XAxis dataKey="label" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-                      <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={44} />
-                      <Tooltip cursor={{ fill: "rgba(0,0,0,0.04)" }} formatter={(v) => [money(Number(v)), "Pharmacy revenue"]} />
-                      <Bar dataKey="amount" name="Pharmacy revenue" fill="#f97316" maxBarSize={32} radius={[3, 3, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              ) : (
-                <p className="text-sm text-gray-400 py-10 text-center">No pharmacy revenue in this period</p>
-              )}
-            </div>
-          </div>
+          <PharmacyAnalytics hospitalId={hospitalId} from={range.from} to={range.to} isToday={isToday} stats={pharmNow} consultRevenue={kpis.revenue ?? 0} />
         </Section>
       )}
       {/* 3. Hospital detail cards (middle) */}
@@ -609,3 +568,4 @@ export default function HADashboard() {
     </div>
   );
 }
+
