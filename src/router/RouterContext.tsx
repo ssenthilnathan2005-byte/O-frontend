@@ -72,6 +72,8 @@ interface RouterCtx {
   route: Route;
   navigate: (r: Route) => void;
   goBack: () => void;
+  replace: (r: Route) => void;
+  reset: (r: Route) => void;
 }
 const RouterContext = createContext<RouterCtx | null>(null);
 
@@ -161,6 +163,14 @@ function getInitialRoute(): Route {
   return { path: "/" };
 }
 
+const LOGIN_ROUTE: Route = { path: "/login", tab: "patient", patientMode: "login" };
+function hasSession(): boolean {
+  try { return !!localStorage.getItem("db_jwt"); } catch { return false; }
+}
+function isPatientProtected(r: Route): boolean {
+  return r.path.startsWith("/patient/");
+}
+
 export function RouterProvider({ children }: { children: ReactNode }) {
   // full in-app navigation stack (used for rendering)
   const [history, setHistory] = useState<Route[]>([getInitialRoute()]);
@@ -191,6 +201,20 @@ export function RouterProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const replace = useCallback((r: Route) => {
+    setHistory((prev) => {
+      const next = [...prev.slice(0, -1), r];
+      window.history.replaceState({ stack: next }, "");
+      return next;
+    });
+  }, []);
+
+  const reset = useCallback((r: Route) => {
+    const next = [r];
+    window.history.replaceState({ stack: next }, "");
+    setHistory(next);
+  }, []);
+
   const goBack = useCallback(() => {
     // Delegate to the browser's own back navigation. This fires a
     // popstate event, which the listener below uses to update our
@@ -206,6 +230,13 @@ export function RouterProvider({ children }: { children: ReactNode }) {
     const onPopState = (e: PopStateEvent) => {
       const stack = (e.state as { stack?: Route[] } | null)?.stack;
       if (stack && stack.length > 0) {
+        const top = stack[stack.length - 1];
+        if (isPatientProtected(top) && !hasSession()) {
+          const nx = [LOGIN_ROUTE];
+          window.history.replaceState({ stack: nx }, "");
+          setHistory(nx);
+          return;
+        }
         setHistory(stack);
       }
       // If there's no stack in state (user has backed out past everything
@@ -215,6 +246,18 @@ export function RouterProvider({ children }: { children: ReactNode }) {
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  // Back-forward cache: a frozen copy of an old page can reappear after logout.
+  useEffect(() => {
+    const onPageShow = (e: PageTransitionEvent) => {
+      const cur = historyRef.current[historyRef.current.length - 1];
+      if (e.persisted && !hasSession() && isPatientProtected(cur)) {
+        window.location.replace("/login");
+      }
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
   }, []);
 
   // Hardware back button — native app only
@@ -231,7 +274,7 @@ export function RouterProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <RouterContext.Provider value={{ route, navigate, goBack }}>
+    <RouterContext.Provider value={{ route, navigate, replace, reset, goBack }}>
       {children}
     </RouterContext.Provider>
   );

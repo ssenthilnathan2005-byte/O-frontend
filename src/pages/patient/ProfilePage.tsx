@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 type PermStatus = "granted" | "denied" | "prompt" | "gps-off" | "unknown";
 
 export default function ProfilePage() {
-  const { navigate } = useRouter();
+  const { navigate, replace } = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [wasComplete, setWasComplete] = useState(false);
@@ -202,7 +202,7 @@ export default function ProfilePage() {
       await patients.updateProfile({ name: name.trim(), phone: phone.trim(), age: age.trim() });
       toast.success("Profile saved");
       setWasComplete(true);
-      navigate({ path: "/" });
+      replace({ path: "/" });
     } catch (err: any) {
       toast.error(err.message || "Could not save your profile");
     } finally {

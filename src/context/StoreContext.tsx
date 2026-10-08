@@ -78,7 +78,7 @@ export function useStore(): Store {
 const REFRESH_MS = 10_000; // 10 seconds
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const { navigate } = useRouter();
+  const { navigate, reset } = useRouter();
 
   // Auto-register push for already logged-in patients on app start
   useEffect(() => {
@@ -335,6 +335,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [user?.id, user?.role]);
 
   const logout = useCallback(() => {
+    const wasPatient = userRef.current?.role === "patient";
     import("../lib/push").then(({ disablePushNotifications }) => {
       disablePushNotifications();
     });
@@ -343,7 +344,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setUser(null); setBookings([]); setPatients([]); setTokenStates({});
     Object.values(wsRefs.current).forEach(fn => fn());
     wsRefs.current = {};
-  }, []);
+    try { (window as any).google?.accounts?.id?.disableAutoSelect?.(); } catch {}
+    if (wasPatient) reset({ path: "/login", tab: "patient", patientMode: "login" });
+  }, [reset]);
 
   // ── Hospitals ─────────────────────────────────────────────────────────────
   const addHospital = useCallback(async (data: Partial<Hospital>) => {

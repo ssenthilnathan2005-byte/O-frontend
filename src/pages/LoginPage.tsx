@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Activity, KeyRound, Loader2, Lock, Mail, Phone, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { auth, forgotPassword, resetPasswordByToken } from "../api";
+import { auth, patients, forgotPassword, resetPasswordByToken } from "../api";
 import { useStore } from "../context/StoreContext";
 import { useRouter } from "../router/RouterContext";
 
@@ -65,7 +65,7 @@ export default function LoginPage({
   initialPatientMode = "login",
 }: LoginPageProps) {
   const { login } = useStore();
-  const { navigate } = useRouter();
+  const { navigate, replace } = useRouter();
 
   const [activeTab, setActiveTab] = useState<"patient" | "doctor">(initialTab);
   const [patientMode, setPatientMode] = useState<"login" | "signup">(initialPatientMode);
@@ -197,6 +197,15 @@ export default function LoginPage({
   }, [activeTab, patientMode, screen]);
 
   // ── Google credential callback ──────────────────────────────────────────────
+  async function routeAfterLogin() {
+    try {
+      const p = await patients.getProfile();
+      replace({ path: p.isComplete ? "/" : "/patient/profile" });
+    } catch {
+      replace({ path: "/" });
+    }
+  }
+
   async function handleGoogleCredential(response: { credential: string }) {
     setGoogleLoading(true);
     try {
@@ -204,7 +213,7 @@ export default function LoginPage({
       if (result.token && result.user) {
         login(result.user, result.token);
         toast.success(`Welcome, ${(result.user as any).name || ""}!`);
-        navigate({ path: "/" });
+        await routeAfterLogin();
       }
     } catch (err: any) {
       toast.error(err.message || "Google sign-in failed");
@@ -220,7 +229,7 @@ export default function LoginPage({
       if (result.token && result.user) {
         login(result.user, result.token);
         toast.success(`Welcome, ${(result.user as any).name || ""}!`);
-        navigate({ path: "/" });
+        await routeAfterLogin();
       }
     } catch (err: any) {
       toast.error(err.message || "Google sign-in failed");
@@ -251,7 +260,7 @@ export default function LoginPage({
       if (res.token && res.user) {
         login(res.user, res.token);
         toast.success("Account created! Welcome to Doctor Booked.");
-        navigate({ path: "/" });
+        await routeAfterLogin();
         return;
       }
     } catch (err: any) { toast.error(err.message || "Registration failed"); }
@@ -295,7 +304,7 @@ export default function LoginPage({
       const res = await auth.patientLogin(type === "email" ? id.toLowerCase() : id, pw);
       if (res.token && res.user) {
         login(res.user, res.token);
-        navigate({ path: "/" });
+        await routeAfterLogin();
         return;
       }
     } catch (err: any) { toast.error(err.message || "Login failed"); }
