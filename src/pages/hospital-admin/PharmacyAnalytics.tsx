@@ -290,12 +290,12 @@ export default function PharmacyAnalytics({ hospitalId, from, to, isToday, stats
     { name: "Pharmacy", value: pharmRevenue, color: "#f97316" },
   ];
   const total = slices.reduce((s, x) => s + x.value, 0);
-  const cardCls = "bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-2 cursor-pointer transition-shadow hover:shadow-md";
+  const cardCls = "bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-2";
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="flex flex-col gap-4">
-          <div className={cardCls} onClick={() => setView("revenue")}>
+          <div className={cardCls}>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-500">{isToday ? "Pharmacy revenue today" : "Pharmacy revenue"}</span>
               <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center"><IndianRupee className="w-4 h-4 text-emerald-600" /></div>
@@ -313,14 +313,14 @@ export default function PharmacyAnalytics({ hospitalId, from, to, isToday, stats
               })()}
             </div>
           </div>
-          <div className={cardCls} onClick={() => setView("tablets")}>
+          <div className={cardCls}>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-500">{isToday ? "Tablets sold today" : "Tablets sold"}</span>
               <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center"><Pill className="w-4 h-4 text-orange-600" /></div>
             </div>
             <span className="text-3xl font-bold text-gray-900">{stats ? stats.tabletsSold : DASH}</span>
           </div>
-          <div className={cardCls} onClick={() => setView("patients")}>
+          <div className={cardCls}>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-500">{isToday ? "Patients served today" : "Patients served"}</span>
               <div className="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center"><UserCog className="w-4 h-4 text-teal-600" /></div>
