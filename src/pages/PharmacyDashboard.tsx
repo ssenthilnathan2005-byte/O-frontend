@@ -482,7 +482,7 @@ export default function PharmacyDashboard() {
         {sidebar}
         <div className="flex-1 min-w-0">
           {mobileTabs}
-          {tab === "revenue" ? <PharmRevenue /> : tab === "inventory" ? <PharmInventory readOnly /> : tab === "patients" ? <PharmPatients /> : <PharmSold />}
+          {tab === "revenue" ? <PharmRevenue /> : tab === "inventory" ? <PharmInventory /> : tab === "patients" ? <PharmPatients /> : <PharmSold />}
         </div>
       </div>
     );

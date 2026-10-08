@@ -177,7 +177,7 @@ type InvStatus = "ok" | "low_stock" | "out_of_stock" | "expiring_soon" | "expire
 type Inv = {
   id: string; name: string; quantity: number; packSize: number; tabletsAvailable: number; reorderLevel: number;
   purchasePrice: number | null; sellingPrice: number | null; supplier: string | null; batchNo: string | null;
-  expiryDate: string | null; status: InvStatus;
+  expiryDate: string | null; location: string | null; status: InvStatus;
 };
 const STATUS_UI: Record<InvStatus, [string, string]> = {
   ok: ["In stock", "bg-emerald-50 text-emerald-700"],
@@ -193,8 +193,17 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
   const [q, setQ] = useState("");
   const [flt, setFlt] = useState("all");
   const [edit, setEdit] = useState<Inv | null>(null);
-  const [f, setF] = useState({ batchNo: "", expiryDate: "", supplier: "", sellingPrice: "" });
+  const [f, setF] = useState({ batchNo: "", expiryDate: "", supplier: "", location: "", sellingPrice: "" });
   const [saving, setSaving] = useState(false);
+  const [stock, setStock] = useState<Inv | null>(null);
+  const [sMode, setSMode] = useState<"add" | "set">("add");
+  const [sQty, setSQty] = useState("");
+  const [sReason, setSReason] = useState("");
+  const [sErr, setSErr] = useState("");
+  const BLANK = { name: "", packSize: "1", openingTablets: "", reorderLevel: "", purchasePrice: "", sellingPrice: "", supplier: "", batchNo: "", expiryDate: "", location: "" };
+  const [adding, setAdding] = useState(false);
+  const [nf, setNf] = useState(BLANK);
+  const [nErr, setNErr] = useState("");
   useLive(async () => {
     try { setRows(await pm<Inv[]>("/inventory")); setErr(""); } catch (e: any) { setErr(e.message); }
   }, [hid]);
@@ -202,7 +211,38 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
   const shown = rows.filter(r => (flt === "all" || r.status === flt) && r.name.toLowerCase().includes(q.trim().toLowerCase()));
   function openEdit(r: Inv) {
     setEdit(r);
-    setF({ batchNo: r.batchNo || "", expiryDate: r.expiryDate || "", supplier: r.supplier || "", sellingPrice: r.sellingPrice == null ? "" : String(r.sellingPrice) });
+    setF({ batchNo: r.batchNo || "", expiryDate: r.expiryDate || "", supplier: r.supplier || "", location: r.location || "", sellingPrice: r.sellingPrice == null ? "" : String(r.sellingPrice) });
+  }
+  async function saveStock() {
+    if (!stock) return;
+    const n = Number(sQty);
+    if (sQty.trim() === "" || !(n >= 0) || (sMode === "add" && !(n > 0))) { setSErr("Enter a valid number of tablets"); return; }
+    setSaving(true); setSErr("");
+    try {
+      await pm("/inventory/" + stock.id + "/stock", { method: "POST", body: JSON.stringify({ mode: sMode, tablets: n, reason: sReason }) });
+      setStock(null);
+      setRows(await pm<Inv[]>("/inventory"));
+    } catch (e: any) { setSErr(e.message); }
+    setSaving(false);
+  }
+  async function saveNew() {
+    if (!nf.name.trim()) { setNErr("Medicine name is required"); return; }
+    setSaving(true); setNErr("");
+    try {
+      await pm("/inventory", { method: "POST", body: JSON.stringify({
+        name: nf.name.trim(),
+        packSize: nf.packSize === "" ? 1 : Number(nf.packSize),
+        openingTablets: nf.openingTablets === "" ? 0 : Number(nf.openingTablets),
+        reorderLevel: nf.reorderLevel === "" ? undefined : Number(nf.reorderLevel),
+        purchasePrice: nf.purchasePrice === "" ? undefined : Number(nf.purchasePrice),
+        sellingPrice: nf.sellingPrice === "" ? undefined : Number(nf.sellingPrice),
+        supplier: nf.supplier || undefined, batchNo: nf.batchNo || undefined,
+        expiryDate: nf.expiryDate || undefined, location: nf.location || undefined,
+      }) });
+      setAdding(false);
+      setRows(await pm<Inv[]>("/inventory"));
+    } catch (e: any) { setNErr(e.message); }
+    setSaving(false);
   }
   async function save() {
     if (!edit) return;
@@ -212,7 +252,7 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
         method: "PATCH",
         body: JSON.stringify({
           batchNo: f.batchNo || undefined, expiryDate: f.expiryDate || undefined,
-          supplier: f.supplier || undefined, sellingPrice: f.sellingPrice === "" ? undefined : Number(f.sellingPrice),
+          supplier: f.supplier || undefined, location: f.location.trim(), sellingPrice: f.sellingPrice === "" ? undefined : Number(f.sellingPrice),
         }),
       });
       setEdit(null);
@@ -229,6 +269,9 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
         </div>
       )}
       <div className="flex flex-wrap gap-2">
+        {!readOnly && (
+          <button type="button" onClick={() => { setNf(BLANK); setNErr(""); setAdding(true); }} className="px-3 py-2 rounded-md bg-teal-600 text-white text-sm">+ Add medicine</button>
+        )}
         <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search medicine"
           className="border border-gray-200 rounded-md text-sm px-3 py-2 bg-white w-64" />
         <select value={flt} onChange={e => setFlt(e.target.value)} className="border border-gray-200 rounded-md text-sm px-2 py-2 bg-white">
@@ -240,7 +283,7 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
       <div className="overflow-x-auto bg-white rounded-xl border border-gray-100">
         <table className="w-full">
           <thead className="bg-gray-50"><tr>
-            {["Medicine", "Batch no.", "Available", "Expiry", "Supplier", "Reorder level", "Sell price/pack", "Status", ""].map(h => <th key={h} className={TH}>{h}</th>)}
+            {["Medicine", "Batch no.", "Available", "Expiry", "Supplier", "Location", "Reorder level", "Sell price/pack", "Status", ""].map(h => <th key={h} className={TH}>{h}</th>)}
           </tr></thead>
           <tbody>
             {shown.map(r => (
@@ -250,21 +293,79 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
                 <td className={TD}>{r.tabletsAvailable} <span className="text-xs text-gray-400">({r.quantity} packs)</span></td>
                 <td className={TD}>{r.expiryDate || "-"}</td>
                 <td className={TD}>{r.supplier || "-"}</td>
+                <td className={TD}>{r.location || "-"}</td>
                 <td className={TD}>{r.reorderLevel}</td>
                 <td className={TD}>{inr(r.sellingPrice)}</td>
                 <td className={TD}><span className={"px-2 py-0.5 rounded-full text-xs font-medium " + STATUS_UI[r.status][1]}>{STATUS_UI[r.status][0]}</span></td>
-                <td className={TD}>{!readOnly && <button type="button" onClick={() => openEdit(r)} className="text-teal-700 text-sm hover:underline">Edit</button>}</td>
+                <td className={TD + " whitespace-nowrap"}>{!readOnly && (
+                  <>
+                    <button type="button" onClick={() => { setStock(r); setSMode("add"); setSQty(""); setSReason(""); setSErr(""); }} className="text-teal-700 text-sm hover:underline mr-3">Update stock</button>
+                    <button type="button" onClick={() => openEdit(r)} className="text-teal-700 text-sm hover:underline">Edit</button>
+                  </>
+                )}</td>
               </tr>
             ))}
-            {shown.length === 0 && <tr><td colSpan={9} className="px-3 py-8 text-center text-sm text-gray-400">No medicines found</td></tr>}
+            {shown.length === 0 && <tr><td colSpan={10} className="px-3 py-8 text-center text-sm text-gray-400">No medicines found</td></tr>}
           </tbody>
         </table>
       </div>
+      {stock && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setStock(null)}>
+          <div className="bg-white rounded-xl p-5 w-full max-w-md space-y-3" onClick={e => e.stopPropagation()}>
+            <p className="font-semibold text-gray-900">{stock.name}</p>
+            <p className="text-sm text-gray-500">Currently {stock.tabletsAvailable} tablets in stock</p>
+            <div className="flex gap-2">
+              {(["add", "set"] as const).map(m => (
+                <button key={m} type="button" onClick={() => setSMode(m)}
+                  className={"flex-1 px-3 py-1.5 rounded-md text-sm border " + (sMode === m ? "bg-teal-600 text-white border-teal-600" : "bg-white text-gray-700 border-gray-200")}>
+                  {m === "add" ? "Add received stock" : "Set correct count"}
+                </button>
+              ))}
+            </div>
+            <label className="block text-sm text-gray-600">{sMode === "add" ? "Tablets received" : "Correct total tablets"}
+              <input type="number" min={0} value={sQty} onChange={e => setSQty(e.target.value)}
+                className="mt-1 w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm" />
+            </label>
+            {sQty.trim() !== "" && Number(sQty) >= 0 && (
+              <p className="text-xs text-gray-500">New total: {sMode === "add" ? stock.tabletsAvailable + Number(sQty) : Number(sQty)} tablets</p>
+            )}
+            <label className="block text-sm text-gray-600">Reason {sMode === "set" ? "(required if reducing)" : "(optional, e.g. supplier invoice)"}
+              <input type="text" value={sReason} onChange={e => setSReason(e.target.value)}
+                className="mt-1 w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm" />
+            </label>
+            {sErr && <p className="text-sm text-red-600">{sErr}</p>}
+            <div className="flex justify-end gap-2 pt-1">
+              <button type="button" onClick={() => setStock(null)} className="px-3 py-1.5 text-sm rounded-md border border-gray-200">Cancel</button>
+              <button type="button" disabled={saving} onClick={saveStock} className="px-3 py-1.5 text-sm rounded-md bg-teal-600 text-white">{saving ? "Saving..." : "Save stock"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {adding && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-start justify-center p-4 overflow-y-auto" onClick={() => setAdding(false)}>
+          <div className="bg-white rounded-xl p-5 w-full max-w-lg space-y-3 my-8" onClick={e => e.stopPropagation()}>
+            <p className="font-semibold text-gray-900">Add new medicine</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {([["Medicine name *", "name", "text"], ["Tablets per pack", "packSize", "number"], ["Opening stock (tablets)", "openingTablets", "number"], ["Reorder level", "reorderLevel", "number"], ["Purchase price per pack (\u20B9)", "purchasePrice", "number"], ["Selling price per pack (\u20B9)", "sellingPrice", "number"], ["Supplier", "supplier", "text"], ["Batch number", "batchNo", "text"], ["Expiry date", "expiryDate", "date"], ["Location (shelf / rack)", "location", "text"]] as const).map(([l, k, t]) => (
+                <label key={k} className={"block text-sm text-gray-600" + (k === "name" ? " sm:col-span-2" : "")}>{l}
+                  <input type={t} value={nf[k]} onChange={e => setNf(prev => ({ ...prev, [k]: e.target.value }))}
+                    className="mt-1 w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm" />
+                </label>
+              ))}
+            </div>
+            {nErr && <p className="text-sm text-red-600">{nErr}</p>}
+            <div className="flex justify-end gap-2 pt-1">
+              <button type="button" onClick={() => setAdding(false)} className="px-3 py-1.5 text-sm rounded-md border border-gray-200">Cancel</button>
+              <button type="button" disabled={saving} onClick={saveNew} className="px-3 py-1.5 text-sm rounded-md bg-teal-600 text-white">{saving ? "Saving..." : "Add medicine"}</button>
+            </div>
+          </div>
+        </div>
+      )}
       {edit && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setEdit(null)}>
           <div className="bg-white rounded-xl p-5 w-full max-w-md space-y-3" onClick={e => e.stopPropagation()}>
             <p className="font-semibold text-gray-900">{edit.name}</p>
-            {([["Batch number", "batchNo", "text"], ["Expiry date", "expiryDate", "date"], ["Supplier", "supplier", "text"], ["Selling price per pack (\u20B9)", "sellingPrice", "number"]] as const).map(([l, k, t]) => (
+            {([["Batch number", "batchNo", "text"], ["Expiry date", "expiryDate", "date"], ["Supplier", "supplier", "text"], ["Location (shelf / rack)", "location", "text"], ["Selling price per pack (\u20B9)", "sellingPrice", "number"]] as const).map(([l, k, t]) => (
               <label key={k} className="block text-sm text-gray-600">{l}
                 <input type={t} value={f[k]} onChange={e => setF(prev => ({ ...prev, [k]: e.target.value }))}
                   className="mt-1 w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm" />
