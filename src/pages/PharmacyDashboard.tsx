@@ -83,6 +83,7 @@ export default function PharmacyDashboard() {
   const [query, setQuery] = useState("");
   const [newestFirst, setNewestFirst] = useState(true);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [openRx, setOpenRx] = useState<Record<string, boolean>>({});
   const [tab, setTab] = useState<"rx" | "revenue" | "inventory" | "patients" | "sold">("rx");
   usePharmacySocket(hospitalId);
   const headers = { Authorization: `Bearer ${getToken()}` };
@@ -306,6 +307,7 @@ export default function PharmacyDashboard() {
     let dispensed: any[] = [];
     try { dispensed = p.dispensed_items ? JSON.parse(p.dispensed_items) : []; } catch {}
     const confirming = confirmId === p.id;
+    const showMeds = !isGiven || !!openRx[p.id];
     return (
       <div key={p.id} className="px-4 py-3 space-y-3">
         <div className="flex items-center justify-between gap-2 text-xs text-gray-500">
@@ -322,11 +324,23 @@ export default function PharmacyDashboard() {
           </span>
         </div>
 
-        <div className="rounded-xl border border-gray-100 bg-gray-50/70 divide-y divide-gray-100">
-          {p.items.map((item, i) => renderMedicine(p, item, i))}
-        </div>
+        {isGiven && (
+          <button type="button"
+            onClick={() => setOpenRx(prev => ({ ...prev, [p.id]: !prev[p.id] }))}
+            className="w-full flex items-center justify-center gap-2 rounded-lg border border-teal-200 bg-teal-50 hover:bg-teal-100 text-teal-700 text-xs font-semibold px-3 py-2 transition-colors">
+            <Package className="w-3.5 h-3.5" />
+            {showMeds ? "Hide medicines" : "View medicines (" + p.items.length + ")"}
+            <span aria-hidden="true">{showMeds ? "\u25b4" : "\u25be"}</span>
+          </button>
+        )}
 
-        {isGiven && dispensed.length > 0 && (
+        {showMeds && (
+          <div className="rounded-xl border border-gray-100 bg-gray-50/70 divide-y divide-gray-100">
+            {p.items.map((item, i) => renderMedicine(p, item, i))}
+          </div>
+        )}
+
+        {isGiven && showMeds && dispensed.length > 0 && (
           <p className="text-xs text-gray-500 flex items-start gap-1.5">
             <Package className="w-3.5 h-3.5 mt-0.5 shrink-0" />
             <span>
