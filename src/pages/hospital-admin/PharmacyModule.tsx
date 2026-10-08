@@ -134,7 +134,6 @@ export function PharmRevenue() {
     try { setD(await pm<Rev>("/revenue?from=" + range.from + "&to=" + range.to)); setErr(""); }
     catch (e: any) { setErr(e.message); }
   }, [hid, range.from, range.to]);
-  const pay: [string, number][] = d ? [["Cash", d.byPayment.cash], ["UPI", d.byPayment.upi], ["Insurance / TPA", d.byPayment.insurance]] : [];
   return (
     <Shell title="Pharmacy Revenue" subtitle="Earnings, margin and payment modes. Updates live when medicines are handed over.">
       {ui}
@@ -144,27 +143,29 @@ export function PharmRevenue() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <Stat label="Gross revenue" value={inr(d.grossRevenue)} sub={d.prescriptions + " prescriptions"} color="text-teal-700" />
             <Stat label="Cost of goods" value={inr(d.costOfGoods)} sub={d.costOfGoods === 0 ? "Add purchase prices in Inventory" : undefined} />
-            <Stat label="Net margin" value={inr(d.netMargin)} sub={d.netMarginPct + "% of gross"} color="text-emerald-700" />
+            <Stat label="Net margin" value={inr(d.netMargin)} sub={Math.round(d.netMarginPct) + "% of gross"} color={d.netMargin < 0 ? "text-red-600" : "text-emerald-700"} />
             <Stat label="Tablets sold" value={String(d.tabletsSold)} />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {pay.map(([l, v]) => (
-              <Stat key={l} label={l} value={inr(v)} sub={d.grossRevenue > 0 ? Math.round((v / d.grossRevenue) * 100) + "% of revenue" : "0%"} />
-            ))}
-          </div>
           <div className="bg-white rounded-xl border border-gray-100 p-4">
-            <p className="text-sm font-semibold text-gray-800 mb-3">Revenue per day</p>
-            <div style={{ width: "100%", height: 280 }}>
-              <ResponsiveContainer>
-                <BarChart data={d.daily.map(x => ({ date: x.date.slice(5), revenue: x.revenue }))}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip formatter={(v: any) => inr(Number(v))} />
-                  <Bar dataKey="revenue" fill="#0d9488" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="flex items-baseline justify-between mb-3">
+              <p className="text-sm font-semibold text-gray-800">Revenue per day</p>
+              <p className="text-xs text-gray-500">{d.daily.length} day{d.daily.length === 1 ? "" : "s"}</p>
             </div>
+            {d.daily.length > 1 ? (
+              <div style={{ width: "100%", height: 240 }}>
+                <ResponsiveContainer>
+                  <BarChart data={d.daily.map(x => ({ date: x.date.slice(8) + "/" + x.date.slice(5, 7), revenue: x.revenue }))} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                    <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#6b7280" }} tickLine={false} axisLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} tickLine={false} axisLine={false} width={48} tickFormatter={(v: number) => "\u20b9" + (v >= 1000 ? Math.round(v / 100) / 10 + "k" : v)} />
+                    <Tooltip formatter={(v: any) => inr(Number(v))} cursor={{ fill: "#f0fdfa" }} />
+                    <Bar dataKey="revenue" fill="#0d9488" radius={[4, 4, 0, 0]} maxBarSize={36} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 py-8 text-center">The daily trend appears when the selected range covers more than one day. Pick a longer range above.</p>
+            )}
           </div>
         </>
       )}
