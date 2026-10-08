@@ -1,6 +1,6 @@
 ﻿import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Download, FlaskConical, IndianRupee, Stethoscope, TrendingUp, Users } from "lucide-react";
+import { Download, FlaskConical, IndianRupee, TrendingUp, Users } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -235,9 +235,9 @@ export default function HABilling() {
       unpriced,
     };
 
-    const byDay = new Map<string, { consultation: number; lab: number }>();
-    const bump = (date: string, k: "consultation" | "lab", n: number) => {
-      const cur = byDay.get(date) ?? { consultation: 0, lab: 0 };
+    const byDay = new Map<string, { consultation: number; lab: number; pharmacy: number }>();
+    const bump = (date: string, k: "consultation" | "lab" | "pharmacy", n: number) => {
+      const cur = byDay.get(date) ?? { consultation: 0, lab: 0, pharmacy: 0 };
       cur[k] += n;
       byDay.set(date, cur);
     };
@@ -247,9 +247,13 @@ export default function HABilling() {
       const price = (o.test_id ? priceById.get(o.test_id) : undefined) ?? priceByName.get(nameKey(o.test_name)) ?? 0;
       bump((o.ordered_at || "").slice(0, 10), "lab", price);
     }
+    for (const r of pharmRows.rows) {
+      const d = ymd(new Date(r.at));
+      if (inRange(d)) bump(d, "pharmacy", r.amount);
+    }
     const daily = Array.from(byDay.entries())
       .sort(([a], [b]) => (a < b ? -1 : 1))
-      .map(([date, v]) => ({ date: date.slice(5), full: date, ...v, amount: v.consultation + v.lab }));
+      .map(([date, v]) => ({ date: date.slice(5), full: date, ...v, amount: v.consultation + v.lab + v.pharmacy }));
 
     const count = (s: string) => scoped.filter((b) => b.status === s).length;
     const outcomes = [
@@ -270,7 +274,7 @@ export default function HABilling() {
       .filter((x) => x.value > 0);
 
     return { rows, labRows, daily, labTotals, outcomes, weekday, sessions };
-  }, [list, myDoctors, labOrders, labTests, range]);
+  }, [list, myDoctors, labOrders, labTests, range, pharmRows.rows]);
 
   const sum = (k: "visits" | "total" | "paidAmt" | "unpaidAmt" | "lost" | "lostAmt") =>
     rows.reduce((s, r) => s + r[k], 0);
@@ -279,10 +283,11 @@ export default function HABilling() {
   const grandRevenue = consultRevenue + labTotals.revenue + pharmRows.rows.reduce((s, r) => s + r.amount, 0);
   const lostRevenue = sum("lostAmt") + labTotals.lost;
   const lostCount = sum("lost") + labTotals.cancelled;
+  const pharmTotal = pharmRows.rows.reduce((s, r) => s + r.amount, 0);
+  const showPharm = pharmTotal > 0;
   const hasLab = labTests.length > 0 || labOrders.length > 0;
   const showLab = hasLab && labTotals.revenue > 0;
   const missingFee = rows.filter((r) => !r.hasFee).length;
-  const topDoctor = rows[0] && rows[0].total > 0 ? rows[0] : null;
   const avgPerDay = daily.length ? Math.round(grandRevenue / daily.length) : 0;
   const bestDay = daily.reduce<{ date: string; amount: number } | null>(
     (best, d) => (!best || d.amount > best.amount ? d : best),
@@ -411,11 +416,6 @@ export default function HABilling() {
           <p className="text-2xl font-bold mt-1">{rupee(avgPerDay)}</p>
           {bestDay && <p className="text-[11px] text-muted-foreground mt-0.5">Best day {bestDay.date}: {rupee(bestDay.amount)}</p>}
         </div>
-        <div className={card}>
-          <p className={cardLabel}><Stethoscope className="w-3.5 h-3.5" />Top doctor</p>
-          <p className="text-base font-bold mt-1 truncate">{topDoctor ? topDoctor.name : "\u2014"}</p>
-          {topDoctor && <p className="text-[11px] text-muted-foreground mt-0.5">{rupee(topDoctor.total)}</p>}
-        </div>
       </div>
 
       <div className={`grid grid-cols-2 ${hasLab ? "lg:grid-cols-5" : "lg:grid-cols-4"} gap-4 mb-6`}>
@@ -430,6 +430,11 @@ export default function HABilling() {
             <p className="text-[11px] text-muted-foreground mt-0.5">{labTotals.done} reports</p>
           </div>
         )}
+        <div className={card}>
+          <p className="text-xs text-muted-foreground">Pharmacy</p>
+          <p className="text-xl font-bold mt-1">{rupee(pharmTotal)}</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">{pharmRows.rows.length} sales</p>
+        </div>
         <div className={card}>
           <p className="text-xs text-muted-foreground">Consultations paid</p>
           <p className="text-xl font-bold text-green-600 mt-1">{rupee(sum("paidAmt"))}</p>
@@ -459,10 +464,11 @@ export default function HABilling() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {daily.length > 0 && (
             <ChartCard title="Revenue per day" sub={`${rupee(grandRevenue)} total`}>
-              {showLab && (
+              {(showLab || showPharm) && (
                 <div className="flex gap-3 text-[11px] text-muted-foreground mb-1">
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm" style={{ background: "#0d9488" }} />Consultations</span>
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm" style={{ background: "#6366f1" }} />Laboratory</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm" style={{ background: "#f97316" }} />Pharmacy</span>
                 </div>
               )}
               <div style={{ width: "100%", height: 170 }}>
@@ -473,8 +479,9 @@ export default function HABilling() {
                     <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={44} />
                     <Tooltip cursor={{ fill: "rgba(0,0,0,0.04)" }} content={<HintTip fmt={rupee} hint={CLICK_HINT} />} />
                     <Bar dataKey="consultation" name="Consultations" stackId="rev" fill="#0d9488" maxBarSize={32} onClick={onDayClick}
-                      radius={showLab ? undefined : [3, 3, 0, 0]} />
-                    {showLab && <Bar dataKey="lab" name="Laboratory" stackId="rev" fill="#6366f1" maxBarSize={32} radius={[3, 3, 0, 0]} onClick={() => navigate({ path: "/hospital-admin/lab" })} />}
+                      radius={showLab || showPharm ? undefined : [3, 3, 0, 0]} />
+                    {showLab && <Bar dataKey="lab" name="Laboratory" stackId="rev" fill="#6366f1" maxBarSize={32} radius={showPharm ? undefined : [3, 3, 0, 0]} onClick={() => navigate({ path: "/hospital-admin/lab" })} />}
+                    {showPharm && <Bar dataKey="pharmacy" name="Pharmacy" stackId="rev" fill="#f97316" maxBarSize={32} radius={[3, 3, 0, 0]} onClick={() => openPharmacyDrawer(hospitalId, pharmRange[0], pharmRange[1])} />}
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -497,7 +504,7 @@ export default function HABilling() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             <PieCard title="Revenue by doctor" data={doctorShare} money />
-            {showLab ? (
+            {showLab || showPharm ? (
               <PieCard title="Consultations vs laboratory vs pharmacy" data={sourceSplit} money />
             ) : (
               <PieCard title="Paid vs unpaid" data={paidSplit} money />
