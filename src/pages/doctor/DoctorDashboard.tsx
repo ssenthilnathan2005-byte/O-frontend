@@ -420,15 +420,75 @@ export default function DoctorDashboard() {
   const [showPrescription, setShowPrescription] = useState(false);
   const [completionMode, setCompletionMode] = useState<"normal" | "skipped">("normal");
 
+  // Clock tick (every 30s) so sessions hide / auto-end on time without a refresh
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNowTick(Date.now()), 30000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // True once the session end time + 10 minutes has passed
+  function isPastAutoEnd(date: string, session: string): boolean {
+    if (date < today) return true;
+    if (date > today) return false;
+    const times =
+      doctor?.sessionTimings?.[session as SessionType] ?? SESSION_TIMES[session as SessionType];
+    if (!times) return false;
+    const [h, m] = times.end.split(":").map(Number);
+    const end = new Date(nowTick);
+    end.setHours(h, m + 10, 0, 0);
+    return nowTick >= end.getTime();
+  }
+
   const visibleSessions = useMemo((): SessionType[] => {
     if (!doctor) return [];
     return (doctor.sessions as string[]).filter((s) => {
       if (isSessionCancelled(doctor.id, regDate, s)) return false;
       const sid = makeSessionId(doctor.id, regDate, s);
       if (tokenStates[sid]?.isClosed === true) return false;
+      if (isPastAutoEnd(regDate, s)) return false;
       return true;
     }) as SessionType[];
-  }, [doctor, regDate, tokenStates, isSessionCancelled]);
+  }, [doctor, regDate, tokenStates, isSessionCancelled, nowTick]);
+
+  // Pick the session that is running now, otherwise the next one; leave an ended one
+  const sessionInitRef = useRef(false);
+  useEffect(() => {
+    if (!doctor || visibleSessions.length === 0) return;
+    const startMin = (s: SessionType) => {
+      const tm = doctor.sessionTimings?.[s] ?? SESSION_TIMES[s];
+      if (!tm) return 0;
+      const [h, m] = tm.start.split(":").map(Number);
+      return h * 60 + m;
+    };
+    const sorted = [...visibleSessions].sort((a, b) => startMin(a) - startMin(b));
+    const running = sorted.find((s) => isSessionAccessibleForRegulator(regDate, s, doctor.sessionTimings));
+    const best = running ?? sorted[0];
+    const invalid = !visibleSessions.includes(regSession);
+    if (invalid || (!sessionInitRef.current && regDate === today)) {
+      sessionInitRef.current = true;
+      if (best !== regSession) setRegSession(best);
+    }
+  }, [doctor, visibleSessions, regDate, regSession, nowTick]);
+
+  // Auto-end: if not ended manually, close it at end time + 10 minutes
+  const autoEndedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!doctor) return;
+    for (const s of doctor.sessions as string[]) {
+      if (!isPastAutoEnd(today, s)) continue;
+      if (isSessionCancelled(doctor.id, today, s)) continue;
+      const sid = makeSessionId(doctor.id, today, s);
+      const st = tokenStates[sid];
+      if (!st || st.isClosed === true) continue;
+      if (autoEndedRef.current.has(sid)) continue;
+      autoEndedRef.current.add(sid);
+      const label = getSessionLabel(s as SessionType, doctor.sessionTimings);
+      closeSession(sid, "Session ended automatically")
+        .then(() => toast.info(label + " ended automatically"))
+        .catch((e: unknown) => console.warn("Auto-end failed", sid, e));
+    }
+  }, [nowTick, doctor, tokenStates]);
 
   const availableDates = useMemo(() => getAvailableDates(), []);
 
