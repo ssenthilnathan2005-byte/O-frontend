@@ -126,7 +126,7 @@ export default function HospitalAdminPanel() {
                 type="button"
                 onClick={() => navigate({ path } as Parameters<typeof navigate>[0])}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  isActive ? "bg-white/15 text-white" : "text-white/60 hover:bg-white/8 hover:text-white/90"
+                  isActive ? "bg-white/15 text-white border-l-2 border-teal-400" : "text-white/60 hover:bg-white/8 hover:text-white/90"
                 }`}
               >
                 <Icon className="w-4 h-4 shrink-0" />
@@ -185,7 +185,7 @@ export default function HospitalAdminPanel() {
                   key={path}
                   type="button"
                   onClick={() => { navigate({ path } as Parameters<typeof navigate>[0]); setDrawerOpen(false); }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+                  className={"w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors " + (route.path === path ? "bg-white/15 text-white border-l-2 border-teal-400" : "text-white/70 hover:bg-white/10 hover:text-white")}
                 >
                   <Icon className="w-4 h-4 shrink-0" />
                   {label}
