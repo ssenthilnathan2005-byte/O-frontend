@@ -74,6 +74,7 @@ interface RouterCtx {
   goBack: () => void;
   replace: (r: Route) => void;
   reset: (r: Route) => void;
+  resetToLogin: (role?: string) => void;
 }
 const RouterContext = createContext<RouterCtx | null>(null);
 
@@ -163,12 +164,30 @@ function getInitialRoute(): Route {
   return { path: "/" };
 }
 
-const LOGIN_ROUTE: Route = { path: "/login", tab: "patient", patientMode: "login" };
+
 function hasSession(): boolean {
   try { return !!localStorage.getItem("db_jwt"); } catch { return false; }
 }
-function isPatientProtected(r: Route): boolean {
-  return r.path.startsWith("/patient/");
+function isProtectedRoute(r: Route): boolean {
+  const p = r.path;
+  if (p === "/hospital-admin/login") return false;
+  return (
+    p.startsWith("/patient/") ||
+    p === "/doctor" ||
+    p.startsWith("/admin") ||
+    p.startsWith("/hospital-admin") ||
+    p === "/pharmacy-owner/dashboard"
+  );
+}
+function loginRouteForPath(_p: string): Route {
+  return { path: "/login", tab: "patient", patientMode: "login" };
+}
+function loginRouteForRole(_role?: string): Route {
+  return { path: "/login", tab: "patient", patientMode: "login" };
+}
+function loginUrl(r: Route): string {
+  if (r.path === "/login" && r.tab === "doctor") return "/login?tab=doctor&patientMode=login";
+  return r.path;
 }
 
 export function RouterProvider({ children }: { children: ReactNode }) {
@@ -215,6 +234,10 @@ export function RouterProvider({ children }: { children: ReactNode }) {
     setHistory(next);
   }, []);
 
+  const resetToLogin = useCallback((role?: string) => {
+    reset(loginRouteForRole(role));
+  }, [reset]);
+
   const goBack = useCallback(() => {
     // Delegate to the browser's own back navigation. This fires a
     // popstate event, which the listener below uses to update our
@@ -231,8 +254,8 @@ export function RouterProvider({ children }: { children: ReactNode }) {
       const stack = (e.state as { stack?: Route[] } | null)?.stack;
       if (stack && stack.length > 0) {
         const top = stack[stack.length - 1];
-        if (isPatientProtected(top) && !hasSession()) {
-          const nx = [LOGIN_ROUTE];
+        if (isProtectedRoute(top) && !hasSession()) {
+          const nx = [loginRouteForPath(top.path)];
           window.history.replaceState({ stack: nx }, "");
           setHistory(nx);
           return;
@@ -252,8 +275,8 @@ export function RouterProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const onPageShow = (e: PageTransitionEvent) => {
       const cur = historyRef.current[historyRef.current.length - 1];
-      if (e.persisted && !hasSession() && isPatientProtected(cur)) {
-        window.location.replace("/login");
+      if (e.persisted && !hasSession() && isProtectedRoute(cur)) {
+        window.location.replace(loginUrl(loginRouteForPath(cur.path)));
       }
     };
     window.addEventListener("pageshow", onPageShow);
@@ -274,7 +297,7 @@ export function RouterProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <RouterContext.Provider value={{ route, navigate, replace, reset, goBack }}>
+    <RouterContext.Provider value={{ route, navigate, replace, reset, resetToLogin, goBack }}>
       {children}
     </RouterContext.Provider>
   );
