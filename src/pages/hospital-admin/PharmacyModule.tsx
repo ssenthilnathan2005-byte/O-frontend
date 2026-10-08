@@ -136,7 +136,7 @@ export function PharmRevenue() {
   }, [hid, range.from, range.to]);
   const pay: [string, number][] = d ? [["Cash", d.byPayment.cash], ["UPI", d.byPayment.upi], ["Insurance / TPA", d.byPayment.insurance]] : [];
   return (
-    <Shell title="Revenue Pharmacy" subtitle="Earnings, margin and payment modes. Updates live when medicines are handed over.">
+    <Shell title="Pharmacy Revenue" subtitle="Earnings, margin and payment modes. Updates live when medicines are handed over.">
       {ui}
       {err && <p className="text-sm text-red-600">{err}</p>}
       {d && (
@@ -407,7 +407,7 @@ export function PharmPatients() {
     try { setInv(await pm<Invoice>("/invoice/" + encodeURIComponent(id))); } catch (e: any) { setErr(e.message); }
   }
   return (
-    <Shell title="Medicine Buying by Patient" subtitle="Patient-wise dispensing log with bill status. Open an invoice for the itemized pharmacy bill.">
+    <Shell title="Patient Purchases" subtitle="Patient-wise dispensing log with bill status. Open an invoice for the itemized pharmacy bill.">
       {ui}
       <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search patient name"
         className="border border-gray-200 rounded-md text-sm px-3 py-2 bg-white w-64" />
@@ -484,7 +484,7 @@ export function PharmSold() {
   const totU = shown.reduce((s, r) => s + units(r), 0);
   const totR = shown.reduce((s, r) => s + rev(r), 0);
   return (
-    <Shell title="Medicine Sold" subtitle="Real-time sales register: units sold, unit price and line revenue per medicine.">
+    <Shell title="Sales History" subtitle="Real-time sales register: units sold, unit price and line revenue per medicine.">
       <div className="flex gap-2">
         {(["Today", "Week", "Month"] as const).map(k => (
           <button key={k} type="button" onClick={() => setPer(k)}

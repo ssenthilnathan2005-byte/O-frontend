@@ -432,10 +432,10 @@ export default function PharmacyDashboard() {
 
   const NAV_ITEMS = [
     { key: "rx", label: "Prescriptions", icon: Pill },
-    { key: "revenue", label: "Revenue Pharmacy", icon: BarChart3 },
-    { key: "inventory", label: "Inventory", icon: Package },
-    { key: "patients", label: "Medicine Buying by Patient", icon: Users },
-    { key: "sold", label: "Medicine Sold", icon: ShoppingCart },
+    { key: "revenue", label: "Pharmacy Revenue", icon: BarChart3 },
+    { key: "inventory", label: "Inventory Management", icon: Package },
+    { key: "patients", label: "Patient Purchases", icon: Users },
+    { key: "sold", label: "Sales History", icon: ShoppingCart },
   ] as const;
   const sidebar = (
     <aside className="hidden md:flex w-60 shrink-0 flex-col bg-admin-sidebar text-admin-sidebar-fg sticky top-0 h-screen">
