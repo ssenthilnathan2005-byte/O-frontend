@@ -70,7 +70,13 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
   const [patientPhone, setPatientPhone] = useState("");
   const [patientAge, setPatientAge]     = useState("");
   const [bookingFor, setBookingFor]     = useState<"self" | "other" | "">("");
-  const [profile, setProfile] = useState<{ name: string; phone: string; age: string; isComplete: boolean } | null>(null);
+  const [patientYob, setPatientYob] = useState("");
+  const bookingYearNow = new Date().getFullYear();
+  const patientYobNum = Number(patientYob);
+  const patientYobValid = /^\d{4}$/.test(patientYob) && patientYobNum >= bookingYearNow - 120 && patientYobNum <= bookingYearNow;
+  // Someone else: age is worked out from the year of birth. Myself: age comes from the saved profile.
+  const patientAgeFinal = bookingFor === "other" ? (patientYobValid ? String(bookingYearNow - patientYobNum) : "") : patientAge;
+  const [profile, setProfile] = useState<{ name: string; phone: string; age: string; yearOfBirth?: string; isComplete: boolean } | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [paying, setPaying]             = useState(false);
   const [payError, setPayError]         = useState("");
@@ -164,7 +170,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
 
   function handleClose() {
     pushedRef.current = 0; setStep("date"); setSelectedDate(""); setSelectedSession("");
-    setTokenNumber(0); setComplaint(""); setSelectedSymptoms([]); setPatientName(""); setPatientPhone(""); setPatientAge(""); setBookingFor(""); setPayError("");
+    setTokenNumber(0); setComplaint(""); setSelectedSymptoms([]); setPatientName(""); setPatientPhone(""); setPatientAge(""); setPatientYob(""); setBookingFor(""); setPayError("");
     setTrackerSessionId("");
     setPrefetchedOrder(null); setPrefetchingOrder(false);
     onClose();
@@ -223,7 +229,8 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
         complaint: complaint.trim() || undefined,
         phone: patientPhone.trim(),
         patientName: patientName.trim() || undefined,
-        patientAge: patientAge.trim() || undefined,
+        patientAge: patientAgeFinal.trim() || undefined,
+        patientYearOfBirth: patientYob.trim() || undefined,
       });
 
       // Step 2: Open Razorpay checkout
@@ -339,7 +346,8 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
         complaint: complaint.trim() || undefined,
         phone: patientPhone.trim(),
         patientName: patientName.trim() || undefined,
-        patientAge: patientAge.trim() || undefined,
+        patientAge: patientAgeFinal.trim() || undefined,
+        patientYearOfBirth: patientYob.trim() || undefined,
       });
 
       if (addBookingToStore) addBookingToStore(booking);
@@ -435,7 +443,8 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
           complaint: complaint.trim() || undefined,
           phone: patientPhone.trim(),
           patientName: patientName.trim() || undefined,
-          patientAge: patientAge.trim() || undefined,
+          patientAge: patientAgeFinal.trim() || undefined,
+          patientYearOfBirth: patientYob.trim() || undefined,
         });
 
         if (cancelled) return;
@@ -457,7 +466,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
     return () => {
       cancelled = true;
     };
-  }, [step, selectedDate, selectedSession, complaint, doctor.id, patientName, patientPhone, patientAge, hospital.isFree]);
+  }, [step, selectedDate, selectedSession, complaint, doctor.id, patientName, patientPhone, patientAge, patientYob, hospital.isFree]);
 
   return (
     <Dialog open={dialogOpen} onOpenChange={dismiss}>
@@ -623,6 +632,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
                   setPatientName(profile.name);
                   setPatientPhone(profile.phone);
                   setPatientAge(profile.age);
+                  setPatientYob(profile.yearOfBirth || "");
                   setBookingFor("self");
                   goToStep("complaint");
                 }}
@@ -640,7 +650,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
               <button
                 type="button"
                 onClick={() => {
-                  setPatientName(""); setPatientPhone(""); setPatientAge("");
+                  setPatientName(""); setPatientPhone(""); setPatientAge(""); setPatientYob("");
                   setBookingFor("other");
                   goToStep("complaint");
                 }}
@@ -703,16 +713,30 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
                       className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
                     />
                   </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">Age <span className="text-red-500">*</span></label>
-                    <input
-                      type="number"
-                      placeholder="Enter age"
-                      value={patientAge}
-                      onChange={e => setPatientAge(e.target.value)}
-                      min={0} max={120}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
-                    />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-medium text-gray-600 mb-1 block">Year of Birth <span className="text-red-500">*</span></label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="e.g. 1998"
+                        value={patientYob}
+                        onChange={e => setPatientYob(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                        maxLength={4}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-600 mb-1 block">Age</label>
+                      <input
+                        type="text"
+                        value={patientAgeFinal}
+                        readOnly
+                        tabIndex={-1}
+                        placeholder="Auto"
+                        className="w-full border border-gray-200 bg-gray-50 text-gray-600 rounded-lg px-3 py-2 text-sm cursor-not-allowed focus:outline-none"
+                      />
+                    </div>
                   </div>
                 </>
               )}
@@ -782,8 +806,8 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
             <div className="flex gap-3">
               <Button className="w-full bg-teal-500 hover:bg-teal-600 rounded-full"
                 onClick={() => {
-                  if (!patientName.trim() || !patientPhone.trim() || !patientAge.trim()) {
-                    toast.error("Please fill in patient name, phone number, and age");
+                  if (!patientName.trim() || !patientPhone.trim() || !patientAgeFinal.trim()) {
+                    toast.error("Please fill in patient name, phone number, and a valid 4-digit year of birth");
                     return;
                   }
                   if (!isValidPhone(patientPhone)) {
