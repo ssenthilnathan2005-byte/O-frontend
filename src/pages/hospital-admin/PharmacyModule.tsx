@@ -51,7 +51,7 @@ export function usePharmacySocket(hospitalId: string) {
 
 function useHid() {
   const { user } = useStore();
-  return user?.role === "hospital_admin" ? user.hospitalId : "";
+  return user?.role === "hospital_admin" || user?.role === "pharmacy" ? user.hospitalId : "";
 }
 
 // Loads now, every 10s, and whenever a pharmacy update arrives.
@@ -186,7 +186,7 @@ const STATUS_UI: Record<InvStatus, [string, string]> = {
   expiring_soon: ["Expiring soon", "bg-orange-50 text-orange-700"],
   expired: ["Expired", "bg-red-100 text-red-800"],
 };
-export function PharmInventory() {
+export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
   const hid = useHid();
   const [rows, setRows] = useState<Inv[]>([]);
   const [err, setErr] = useState("");
@@ -253,7 +253,7 @@ export function PharmInventory() {
                 <td className={TD}>{r.reorderLevel}</td>
                 <td className={TD}>{inr(r.sellingPrice)}</td>
                 <td className={TD}><span className={"px-2 py-0.5 rounded-full text-xs font-medium " + STATUS_UI[r.status][1]}>{STATUS_UI[r.status][0]}</span></td>
-                <td className={TD}><button type="button" onClick={() => openEdit(r)} className="text-teal-700 text-sm hover:underline">Edit</button></td>
+                <td className={TD}>{!readOnly && <button type="button" onClick={() => openEdit(r)} className="text-teal-700 text-sm hover:underline">Edit</button>}</td>
               </tr>
             ))}
             {shown.length === 0 && <tr><td colSpan={9} className="px-3 py-8 text-center text-sm text-gray-400">No medicines found</td></tr>}
