@@ -17,7 +17,8 @@ export default function ProfilePage() {
   const [wasComplete, setWasComplete] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [age, setAge] = useState("");
+  const [yearOfBirth, setYearOfBirth] = useState("");
+  const [legacyAge, setLegacyAge] = useState("");
   const [locStatus, setLocStatus] = useState<PermStatus>("unknown");
   const [notifStatus, setNotifStatus] = useState<PermStatus>("unknown");
 
@@ -167,7 +168,8 @@ export default function ProfilePage() {
         if (cancelled) return;
         setName(data.name || "");
         setPhone(data.phone || "");
-        setAge(data.age || "");
+        setYearOfBirth(data.yearOfBirth || "");
+        setLegacyAge(data.yearOfBirth ? "" : (data.age || ""));
         setWasComplete(data.isComplete);
       } catch (err: any) {
         toast.error(err.message || "Could not load your profile");
@@ -183,23 +185,23 @@ export default function ProfilePage() {
   }
 
   async function handleSave() {
-    if (!name.trim() || !phone.trim() || !age.trim()) {
-      toast.error("Please fill in your name, phone number, and age");
+    if (!name.trim() || !phone.trim() || !yearOfBirth.trim()) {
+      toast.error("Please fill in your name, phone number, and year of birth");
       return;
     }
     if (!isValidPhone(phone)) {
       toast.error("Please enter a valid 10-digit phone number");
       return;
     }
-    const ageNum = Number(age);
-    if (!Number.isFinite(ageNum) || ageNum <= 0 || ageNum > 120) {
-      toast.error("Please enter a valid age");
+    const yearNum = Number(yearOfBirth);
+    if (!/^\d{4}$/.test(yearOfBirth.trim()) || yearNum < new Date().getFullYear() - 120 || yearNum > new Date().getFullYear()) {
+      toast.error("Please enter a valid 4-digit year of birth");
       return;
     }
 
     setSaving(true);
     try {
-      await patients.updateProfile({ name: name.trim(), phone: phone.trim(), age: age.trim() });
+      await patients.updateProfile({ name: name.trim(), phone: phone.trim(), yearOfBirth: yearOfBirth.trim() });
       toast.success("Profile saved");
       setWasComplete(true);
       replace({ path: "/" });
@@ -209,6 +211,11 @@ export default function ProfilePage() {
       setSaving(false);
     }
   }
+
+  const thisYear = new Date().getFullYear();
+  const yobNum = Number(yearOfBirth);
+  const yobValid = /^\d{4}$/.test(yearOfBirth) && yobNum >= thisYear - 120 && yobNum <= thisYear;
+  const displayAge = yobValid ? String(thisYear - yobNum) : (yearOfBirth ? "" : legacyAge);
 
   if (loading) {
     return (
@@ -254,16 +261,30 @@ export default function ProfilePage() {
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
           />
         </div>
-        <div>
-          <label className="text-xs font-medium text-gray-600 mb-1 block">Age <span className="text-red-500">*</span></label>
-          <input
-            type="number"
-            placeholder="Enter your age"
-            value={age}
-            onChange={e => setAge(e.target.value)}
-            min={0} max={120}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
-          />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs font-medium text-gray-600 mb-1 block">Year of Birth <span className="text-red-500">*</span></label>
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="e.g. 1998"
+              value={yearOfBirth}
+              onChange={e => setYearOfBirth(e.target.value.replace(/\D/g, "").slice(0, 4))}
+              maxLength={4}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-600 mb-1 block">Your Age</label>
+            <input
+              type="text"
+              value={displayAge}
+              readOnly
+              tabIndex={-1}
+              placeholder="Auto"
+              className="w-full border border-gray-200 bg-gray-50 text-gray-600 rounded-lg px-3 py-2 text-sm cursor-not-allowed focus:outline-none"
+            />
+          </div>
         </div>
 
         <button
