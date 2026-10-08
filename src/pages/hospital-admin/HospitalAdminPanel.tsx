@@ -32,7 +32,6 @@ const NAV_ITEMS = [
 ] as const;
 
 const PHARMACY_SUB = [
-  { path: "/hospital-admin/pharmacy/revenue", label: "Pharmacy Revenue", icon: BarChart3 },
   { path: "/hospital-admin/pharmacy/inventory", label: "Inventory Management", icon: Package },
   { path: "/hospital-admin/pharmacy/patients", label: "Patient Purchases", icon: Users },
   { path: "/hospital-admin/pharmacy/sold", label: "Sales History", icon: ShoppingCart },
