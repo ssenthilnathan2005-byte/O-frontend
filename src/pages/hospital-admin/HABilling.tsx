@@ -25,12 +25,17 @@ import { bookings as bookingsApi, getToken } from "@/api";
 import type { Booking } from "../../api";
 import { useStore } from "../../context/StoreContext";
 import { useRouter } from "@/router/RouterContext";
-import { openPharmacyDrawer, periodRange, usePharmacyRx } from "./PharmacyAnalytics";
+import { openPharmacyDrawer, periodRange } from "./PharmacyAnalytics";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
 type LabTest = { id: string; name: string; price: number };
 type LabOrder = { id: string; test_id?: string | null; test_name: string; status: string; ordered_at: string };
+type SoldRow = {
+  name: string; unitPrice: number;
+  unitsToday: number; unitsWeek: number; unitsMonth: number;
+  revenueToday: number; revenueWeek: number; revenueMonth: number;
+};
 
 type Period = "today" | "week" | "month" | "all" | "custom";
 const PERIODS: { key: Period; label: string }[] = [
@@ -154,7 +159,41 @@ export default function HABilling() {
   const [labTests, setLabTests] = useState<LabTest[]>([]);
   const [loading, setLoading] = useState(true);
   const pharmRange = periodRange(period, from, to);
-  const pharmRows = usePharmacyRx(hospitalId, pharmRange[0], pharmRange[1]);
+  const [pharmStats, setPharmStats] = useState<{ revenue: number; patientsServed: number; daily: { date: string; revenue: number }[] }>({ revenue: 0, patientsServed: 0, daily: [] });
+  const [medSold, setMedSold] = useState<SoldRow[]>([]);
+  useEffect(() => {
+    if (!hospitalId) return;
+    let off = false;
+    const h = { Authorization: `Bearer ${getToken()}` };
+    const load = async () => {
+      try {
+        const qs = new URLSearchParams({ hospitalId, from: pharmRange[0], to: pharmRange[1] });
+        const res = await fetch(`${BASE}/pharmacy-stats?${qs.toString()}`, { headers: h });
+        if (res.ok) {
+          const d = await res.json();
+          if (!off && d) {
+            setPharmStats({
+              revenue: Number(d.revenue) || 0,
+              patientsServed: Number(d.patientsServed) || 0,
+              daily: Array.isArray(d.daily) ? d.daily : [],
+            });
+          }
+        }
+      } catch { /* ignore */ }
+      try {
+        const res = await fetch(`${BASE}/pharmacy-module/medicines-sold`, { headers: h });
+        if (res.ok) {
+          const d = await res.json();
+          if (!off && Array.isArray(d)) setMedSold(d);
+        }
+      } catch { /* ignore */ }
+    };
+    load();
+    const timer = setInterval(load, 10000);
+    const onUp = () => { load(); };
+    window.addEventListener("pharmacy-updated", onUp);
+    return () => { off = true; clearInterval(timer); window.removeEventListener("pharmacy-updated", onUp); };
+  }, [hospitalId, pharmRange[0], pharmRange[1]]);
 
   useEffect(() => {
     if (!hospitalId) return;
@@ -247,9 +286,9 @@ export default function HABilling() {
       const price = (o.test_id ? priceById.get(o.test_id) : undefined) ?? priceByName.get(nameKey(o.test_name)) ?? 0;
       bump((o.ordered_at || "").slice(0, 10), "lab", price);
     }
-    for (const r of pharmRows.rows) {
-      const d = ymd(new Date(r.at));
-      if (inRange(d)) bump(d, "pharmacy", r.amount);
+    for (const r of pharmStats.daily) {
+      const d = String(r.date).slice(0, 10);
+      if (inRange(d)) bump(d, "pharmacy", Number(r.revenue) || 0);
     }
     const daily = Array.from(byDay.entries())
       .sort(([a], [b]) => (a < b ? -1 : 1))
@@ -274,16 +313,16 @@ export default function HABilling() {
       .filter((x) => x.value > 0);
 
     return { rows, labRows, daily, labTotals, outcomes, weekday, sessions };
-  }, [list, myDoctors, labOrders, labTests, range, pharmRows.rows]);
+  }, [list, myDoctors, labOrders, labTests, range, pharmStats.daily]);
 
   const sum = (k: "visits" | "total" | "paidAmt" | "unpaidAmt" | "lost" | "lostAmt") =>
     rows.reduce((s, r) => s + r[k], 0);
   const totalVisits = sum("visits");
   const consultRevenue = sum("total");
-  const grandRevenue = consultRevenue + labTotals.revenue + pharmRows.rows.reduce((s, r) => s + r.amount, 0);
+  const grandRevenue = consultRevenue + labTotals.revenue + pharmStats.revenue;
   const lostRevenue = sum("lostAmt") + labTotals.lost;
   const lostCount = sum("lost") + labTotals.cancelled;
-  const pharmTotal = pharmRows.rows.reduce((s, r) => s + r.amount, 0);
+  const pharmTotal = pharmStats.revenue;
   const showPharm = pharmTotal > 0;
   const hasLab = labTests.length > 0 || labOrders.length > 0;
   const showLab = hasLab && labTotals.revenue > 0;
@@ -316,7 +355,7 @@ export default function HABilling() {
   const sourceSplit = [
     { name: "Consultations", value: consultRevenue, go: () => drillTo({ status: "completed" }) },
     { name: "Laboratory", value: labTotals.revenue, go: () => navigate({ path: "/hospital-admin/lab" }) },
-    { name: "Pharmacy", value: pharmRows.rows.reduce((s, r) => s + r.amount, 0), go: () => openPharmacyDrawer(hospitalId, pharmRange[0], pharmRange[1]) },
+    { name: "Pharmacy", value: pharmStats.revenue, go: () => openPharmacyDrawer(hospitalId, pharmRange[0], pharmRange[1]) },
   ].filter((x) => x.value > 0);
   const paidSplit = [
     { name: "Paid", value: sum("paidAmt"), go: () => drillTo({ status: "completed", payment: "paid" }) },
@@ -357,6 +396,12 @@ export default function HABilling() {
     URL.revokeObjectURL(url);
   }
 
+  const medKey = period === "today" ? "Today" : period === "week" ? "Week" : period === "month" ? "Month" : null;
+  const medUnits = (r: SoldRow) => (medKey === "Today" ? r.unitsToday : medKey === "Week" ? r.unitsWeek : r.unitsMonth);
+  const medRev = (r: SoldRow) => (medKey === "Today" ? r.revenueToday : medKey === "Week" ? r.revenueWeek : r.revenueMonth);
+  const medRows = medKey ? medSold.filter((r) => medUnits(r) > 0) : [];
+  const medTotU = medRows.reduce((s, r) => s + medUnits(r), 0);
+  const medTotR = medRows.reduce((s, r) => s + medRev(r), 0);
   const card = "rounded-xl border border-border bg-card p-4";
   const cardLabel = "text-xs text-muted-foreground flex items-center gap-1.5";
 
@@ -433,7 +478,7 @@ export default function HABilling() {
         <div className={card}>
           <p className="text-xs text-muted-foreground">Pharmacy</p>
           <p className="text-xl font-bold mt-1">{rupee(pharmTotal)}</p>
-          <p className="text-[11px] text-muted-foreground mt-0.5">{pharmRows.rows.length} sales</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">{pharmStats.patientsServed} patients</p>
         </div>
         <div className={card}>
           <p className="text-xs text-muted-foreground">Consultations paid</p>
@@ -633,6 +678,52 @@ export default function HABilling() {
             </Table>
           </div>
         </>
+      )}
+
+      {!loading && (
+        <div className="mt-6">
+          <p className="text-sm font-semibold mb-2">Pharmacy by medicine</p>
+          <div className="rounded-xl border border-border overflow-x-auto bg-card">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40">
+                  <TableHead>Medicine</TableHead>
+                  <TableHead className="text-right">Units sold</TableHead>
+                  <TableHead className="text-right">Unit price</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {!medKey && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-muted-foreground py-8">Medicine breakdown is available for Today, Last 7 days and This month.</TableCell>
+                  </TableRow>
+                )}
+                {medKey && medRows.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-muted-foreground py-8">Nothing sold in this period.</TableCell>
+                  </TableRow>
+                )}
+                {medRows.map((r) => (
+                  <TableRow key={r.name}>
+                    <TableCell className="font-medium">{r.name}</TableCell>
+                    <TableCell className="text-right">{medUnits(r)}</TableCell>
+                    <TableCell className="text-right">{rupee(r.unitPrice)}</TableCell>
+                    <TableCell className="text-right font-semibold">{rupee(medRev(r))}</TableCell>
+                  </TableRow>
+                ))}
+                {medRows.length > 0 && (
+                  <TableRow className="bg-muted/40">
+                    <TableCell className="font-bold">Total</TableCell>
+                    <TableCell className="text-right font-bold">{medTotU}</TableCell>
+                    <TableCell />
+                    <TableCell className="text-right font-bold text-teal-600">{rupee(medTotR)}</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
       )}
     </div>
   );
