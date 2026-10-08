@@ -408,10 +408,10 @@ export default function HADashboard() {
   const revenueChartTotal = revenueSeries.reduce((s, r) => s + r.amount, 0);
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-4 max-w-5xl mx-auto space-y-3">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard Overview</h1>
+        <h1 className="text-xl font-bold text-gray-900">Dashboard Overview</h1>
         <p className="text-sm text-gray-500 mt-0.5">
           {hospitalName} &mdash; system stats at a glance
         </p>
@@ -479,12 +479,12 @@ export default function HADashboard() {
 
       {/* 1. Financial Overview (top) */}
       {show("fin") && (
-        <Section title="Financial Overview" subtitle="Revenue for the selected period">
+        <Section title="Financial Overview">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <MetricCard label={isToday ? "Today's Revenue" : "Revenue"} icon={IndianRupee} color="text-emerald-600" bg="bg-emerald-50">
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-3xl font-bold text-gray-900">{money(kpis.revenue === null ? null : totalRev)}</span>
+                  <span className="text-2xl font-bold text-gray-900">{money(kpis.revenue === null ? null : totalRev)}</span>
                   {revChange !== null && (
                     <Badge tone={revChange >= 0 ? "green" : "red"}>
                       {revChange >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
@@ -511,13 +511,13 @@ export default function HADashboard() {
               </div>
             </MetricCard>
 
-            <div className="md:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3">
+            <div className="md:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm p-3 flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-500">Revenue trend</span>
                 <span className="text-xs text-gray-400">{money(revenueChartTotal)} from completed visits</span>
               </div>
               {revenueSeries.some((r) => r.amount > 0) ? (
-                <div style={{ width: "100%", height: 190 }}>
+                <div style={{ width: "100%", height: 130 }}>
                   <ResponsiveContainer>
                     <BarChart data={revenueSeries} margin={{ top: 4, right: 4, left: -8, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
@@ -538,7 +538,7 @@ export default function HADashboard() {
 
       {/* Pharmacy analytics: cards on the left, revenue split on the right */}
       {show("fin") && (
-        <Section title="Pharmacy" subtitle="Pharmacy sales for the selected period, updates automatically">
+        <Section title="Pharmacy">
           <PharmacyAnalytics hospitalId={hospitalId} from={range.from} to={range.to} isToday={isToday} stats={pharmNow} consultRevenue={kpis.revenue ?? 0} prevRevenue={pharmPrevNow} />
         </Section>
       )}

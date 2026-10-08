@@ -290,18 +290,18 @@ export default function PharmacyAnalytics({ hospitalId, from, to, isToday, stats
     { name: "Pharmacy", value: pharmRevenue, color: "#f97316" },
   ];
   const total = slices.reduce((s, x) => s + x.value, 0);
-  const cardCls = "bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-2";
+  const cardCls = "bg-white rounded-xl border border-gray-100 shadow-sm p-3 flex flex-col gap-1";
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="flex flex-col gap-3">
           <div className={cardCls}>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-500">{isToday ? "Pharmacy revenue today" : "Pharmacy revenue"}</span>
               <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center"><IndianRupee className="w-4 h-4 text-emerald-600" /></div>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-3xl font-bold text-gray-900">{stats ? rupee(stats.revenue) : DASH}</span>
+              <span className="text-2xl font-bold text-gray-900">{stats ? rupee(stats.revenue) : DASH}</span>
               {stats && prevRevenue != null && (prevRevenue > 0 || stats.revenue > 0) && (() => {
                 const up = prevRevenue > 0 ? ((stats.revenue - prevRevenue) / prevRevenue) * 100 : 100;
                 const label = prevRevenue > 0 ? Math.abs(up).toFixed(0) + "%" : "New";
@@ -318,18 +318,18 @@ export default function PharmacyAnalytics({ hospitalId, from, to, isToday, stats
               <span className="text-sm text-gray-500">{isToday ? "Tablets sold today" : "Tablets sold"}</span>
               <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center"><Pill className="w-4 h-4 text-orange-600" /></div>
             </div>
-            <span className="text-3xl font-bold text-gray-900">{stats ? stats.tabletsSold : DASH}</span>
+            <span className="text-2xl font-bold text-gray-900">{stats ? stats.tabletsSold : DASH}</span>
           </div>
           <div className={cardCls}>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-500">{isToday ? "Patients served today" : "Patients served"}</span>
               <div className="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center"><UserCog className="w-4 h-4 text-teal-600" /></div>
             </div>
-            <span className="text-3xl font-bold text-gray-900">{stats ? stats.patientsServed : DASH}</span>
+            <span className="text-2xl font-bold text-gray-900">{stats ? stats.patientsServed : DASH}</span>
           </div>
         </div>
 
-        <div className="md:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3">
+        <div className="md:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm p-3 flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-500">Revenue distribution</span>
             <span className="text-xs text-gray-400">Consultations vs Laboratory vs Pharmacy</span>
@@ -337,11 +337,11 @@ export default function PharmacyAnalytics({ hospitalId, from, to, isToday, stats
           {total === 0 ? (
             <p className="text-sm text-gray-400 py-10 text-center">No revenue in this period</p>
           ) : (
-            <div className="flex flex-col sm:flex-row items-center gap-6 py-2">
-              <div className="relative shrink-0" style={{ width: 220, height: 220 }}>
+            <div className="flex flex-col sm:flex-row items-center gap-4 py-0">
+              <div className="relative shrink-0" style={{ width: 160, height: 160 }}>
                 <ResponsiveContainer>
                   <PieChart className="[&_.recharts-pie-sector]:cursor-pointer [&_.recharts-pie-sector]:transition-opacity [&_.recharts-pie-sector:hover]:opacity-80">
-                    <Pie data={slices.filter((s) => s.value > 0)} dataKey="value" nameKey="name" innerRadius={70} outerRadius={105}
+                    <Pie data={slices.filter((s) => s.value > 0)} dataKey="value" nameKey="name" innerRadius={50} outerRadius={75}
                       paddingAngle={2} stroke="none"
                       onClick={(d: any) => { if (d?.name === "Pharmacy") setView("revenue"); }}>
                       {slices.filter((s) => s.value > 0).map((s) => <Cell key={s.name} fill={s.color} />)}
@@ -361,7 +361,7 @@ export default function PharmacyAnalytics({ hospitalId, from, to, isToday, stats
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                   <span className="text-[11px] text-gray-400">Total</span>
-                  <span className="text-xl font-bold text-gray-900">{rupee(total)}</span>
+                  <span className="text-lg font-bold text-gray-900">{rupee(total)}</span>
                 </div>
               </div>
               <ul className="flex-1 w-full space-y-2">
