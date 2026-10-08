@@ -519,3 +519,163 @@ export function PharmSold() {
     </Shell>
   );
 }
+
+// ---- 5. Stock Update ----
+type PendLine = { rxId: string; patient: string; index: number; name: string; tablets: number };
+type PendMed = { name: string; soldTablets: number; deductedTablets: number; pendingTablets: number; pendingLines: number };
+type PendData = { date: string; medicines: PendMed[]; pending: PendLine[] };
+
+function matchInv(name: string, inv: Inv[]): Inv | undefined {
+  const n = name.toLowerCase().replace(/\s+/g, " ").trim();
+  const base = n.replace(/\s*\d+(\.\d+)?\s*(mg|ml|g|mcg)\b.*$/, "").trim();
+  return inv.find(i => i.name.toLowerCase().trim() === n)
+    || inv.find(i => {
+      const m = i.name.toLowerCase().trim();
+      return base.length > 2 && (m.includes(base) || base.includes(m));
+    });
+}
+
+export function PharmStockUpdate() {
+  const hid = useHid();
+  const [d, setD] = useState<PendData | null>(null);
+  const [inv, setInv] = useState<Inv[]>([]);
+  const [err, setErr] = useState("");
+  const [pick, setPick] = useState<Record<string, string>>({});
+  const [qty, setQty] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState("");
+  const [msg, setMsg] = useState("");
+
+  useLive(async () => {
+    try {
+      const [a, b] = await Promise.all([pm<PendData>("/stock-pending"), pm<Inv[]>("/inventory")]);
+      setD(a); setInv(b); setErr("");
+    } catch (e: any) { setErr(e.message); }
+  }, [hid]);
+
+  const keyOf = (l: PendLine) => l.rxId + ":" + l.index;
+  const itemOf = (l: PendLine) => pick[keyOf(l)] ?? matchInv(l.name, inv)?.id ?? "";
+  const qtyOf = (l: PendLine) => qty[keyOf(l)] ?? String(l.tablets);
+
+  async function deduct(l: PendLine): Promise<string | null> {
+    const itemId = itemOf(l);
+    const n = Number(qtyOf(l));
+    if (!itemId) return "Select a stock item for " + l.name;
+    if (!(n > 0)) return "Enter a valid quantity for " + l.name;
+    try {
+      await pm("/stock-deduct", {
+        method: "POST",
+        body: JSON.stringify({ rxId: l.rxId, index: l.index, inventoryItemId: itemId, tablets: n }),
+      });
+      return null;
+    } catch (e: any) { return l.name + ": " + e.message; }
+  }
+  async function deductOne(l: PendLine) {
+    setBusy(keyOf(l)); setMsg("");
+    const e = await deduct(l);
+    setBusy("");
+    setMsg(e ? e : l.name + " deducted from stock");
+    window.dispatchEvent(new CustomEvent("pharmacy-updated"));
+  }
+  async function deductAll() {
+    if (!d) return;
+    setBusy("all"); setMsg("");
+    let ok = 0; const bad: string[] = [];
+    for (const l of d.pending) {
+      const e = await deduct(l);
+      if (e) bad.push(e); else ok++;
+    }
+    setBusy("");
+    setMsg("Deducted " + ok + " line(s)." + (bad.length ? " Skipped " + bad.length + ": " + bad.slice(0, 3).join("; ") : ""));
+    window.dispatchEvent(new CustomEvent("pharmacy-updated"));
+  }
+
+  const sum = (f: (m: PendMed) => number) => (d ? d.medicines.reduce((s, m) => s + f(m), 0) : 0);
+  return (
+    <Shell title="Stock Update" subtitle="Medicines sold today that are not yet deducted from your stock. Check the stock item and quantity, then deduct.">
+      {err && <p className="text-sm text-red-600">{err}</p>}
+      {msg && <p className="text-sm rounded-lg border border-teal-200 bg-teal-50 text-teal-800 px-3 py-2">{msg}</p>}
+      {d && (
+        <>
+          <div className="grid grid-cols-3 gap-3">
+            <Stat label="Tablets sold" value={String(sum(m => m.soldTablets))} />
+            <Stat label="Already deducted" value={String(sum(m => m.deductedTablets))} color="text-teal-700" />
+            <Stat label="Pending" value={String(sum(m => m.pendingTablets))} color={sum(m => m.pendingTablets) > 0 ? "text-amber-600" : "text-gray-900"} />
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
+            <p className="text-sm font-semibold text-gray-800 px-4 pt-4">Medicines sold on {d.date}</p>
+            {d.medicines.length === 0 ? (
+              <p className="text-sm text-gray-500 px-4 py-6">No medicines have been given today.</p>
+            ) : (
+              <table className="w-full mt-2">
+                <thead className="bg-gray-50"><tr>
+                  <th className={TH}>Medicine</th><th className={TH}>Sold</th><th className={TH}>Deducted</th><th className={TH}>Pending</th>
+                </tr></thead>
+                <tbody className="divide-y divide-gray-100">
+                  {d.medicines.map(m => (
+                    <tr key={m.name}>
+                      <td className={TD}>{m.name}</td>
+                      <td className={TD}>{m.soldTablets}</td>
+                      <td className={TD}>{m.deductedTablets}</td>
+                      <td className={TD + (m.pendingTablets > 0 ? " text-amber-700 font-semibold" : "")}>{m.pendingTablets}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {d.pending.length === 0 ? (
+            <p className="text-sm rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 px-4 py-3">
+              All sold medicines are already deducted from stock.
+            </p>
+          ) : (
+            <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
+              <div className="flex items-center justify-between gap-2 px-4 pt-4">
+                <p className="text-sm font-semibold text-gray-800">Waiting to be deducted ({d.pending.length})</p>
+                <button type="button" disabled={busy !== ""} onClick={deductAll}
+                  className="px-3 py-1.5 rounded-lg text-sm font-medium bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50">
+                  {busy === "all" ? "Deducting..." : "Deduct all"}
+                </button>
+              </div>
+              <table className="w-full mt-2">
+                <thead className="bg-gray-50"><tr>
+                  <th className={TH}>Medicine</th><th className={TH}>Patient</th><th className={TH}>Tablets</th>
+                  <th className={TH}>Stock item</th><th className={TH}></th>
+                </tr></thead>
+                <tbody className="divide-y divide-gray-100">
+                  {d.pending.map(l => {
+                    const k = keyOf(l);
+                    return (
+                      <tr key={k}>
+                        <td className={TD}>{l.name}</td>
+                        <td className={TD}>{l.patient}</td>
+                        <td className={TD}>
+                          <input type="number" min={1} value={qtyOf(l)} onChange={e => setQty(prev => ({ ...prev, [k]: e.target.value }))}
+                            className="w-20 border border-gray-200 rounded-md text-sm px-2 py-1 bg-white" />
+                        </td>
+                        <td className={TD}>
+                          <select value={itemOf(l)} onChange={e => setPick(prev => ({ ...prev, [k]: e.target.value }))}
+                            className="w-full min-w-[12rem] border border-gray-200 rounded-md text-sm px-2 py-1 bg-white">
+                            <option value="">Select stock item...</option>
+                            {inv.map(i => <option key={i.id} value={i.id}>{i.name} ({i.tabletsAvailable} in stock)</option>)}
+                          </select>
+                        </td>
+                        <td className={TD}>
+                          <button type="button" disabled={busy !== ""} onClick={() => deductOne(l)}
+                            className="px-3 py-1.5 rounded-lg text-xs font-medium border border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100 disabled:opacity-50">
+                            {busy === k ? "..." : "Deduct"}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+    </Shell>
+  );
+}

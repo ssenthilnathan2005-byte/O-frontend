@@ -4,7 +4,7 @@ import { getToken } from "@/api";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { PharmRevenue, PharmInventory, PharmPatients, PharmSold, usePharmacySocket } from "./hospital-admin/PharmacyModule";
+import { PharmRevenue, PharmInventory, PharmPatients, PharmSold, PharmStockUpdate, usePharmacySocket } from "./hospital-admin/PharmacyModule";
 import {
   Pill, LogOut, RefreshCw, HandMetal, Search, Inbox, ArrowUpDown, Clock, CheckCircle2, Package, BarChart3, ShoppingCart, Users,
 } from "lucide-react";
@@ -84,7 +84,7 @@ export default function PharmacyDashboard() {
   const [newestFirst, setNewestFirst] = useState(true);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [openRx, setOpenRx] = useState<Record<string, boolean>>({});
-  const [tab, setTab] = useState<"rx" | "revenue" | "inventory" | "patients" | "sold">("rx");
+  const [tab, setTab] = useState<"rx" | "revenue" | "inventory" | "patients" | "sold" | "stock">("rx");
   usePharmacySocket(hospitalId);
   const headers = { Authorization: `Bearer ${getToken()}` };
 
@@ -450,6 +450,7 @@ export default function PharmacyDashboard() {
     { key: "inventory", label: "Inventory Management", icon: Package },
     { key: "patients", label: "Patient Purchases", icon: Users },
     { key: "sold", label: "Sales History", icon: ShoppingCart },
+    { key: "stock", label: "Stock Update", icon: RefreshCw },
   ] as const;
   const sidebar = (
     <aside className="hidden md:flex w-60 shrink-0 flex-col bg-admin-sidebar text-admin-sidebar-fg sticky top-0 h-screen">
@@ -496,7 +497,7 @@ export default function PharmacyDashboard() {
         {sidebar}
         <div className="flex-1 min-w-0">
           {mobileTabs}
-          {tab === "revenue" ? <PharmRevenue /> : tab === "inventory" ? <PharmInventory /> : tab === "patients" ? <PharmPatients /> : <PharmSold />}
+          {tab === "revenue" ? <PharmRevenue /> : tab === "inventory" ? <PharmInventory /> : tab === "patients" ? <PharmPatients /> : tab === "stock" ? <PharmStockUpdate /> : <PharmSold />}
         </div>
       </div>
     );
@@ -558,6 +559,10 @@ export default function PharmacyDashboard() {
                 {f === "received" ? `Received (${receivedList.length})` : `Given (${givenList.length})`}
               </button>
             ))}
+            <button type="button" onClick={() => setTab("stock")}
+              className="px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap border transition-colors bg-white text-gray-600 border-gray-200">
+              Stock Update
+            </button>
           </div>
           <button onClick={() => setNewestFirst(v => !v)}
             className="flex items-center gap-1 text-xs text-gray-500 border border-gray-200 bg-white rounded-full px-3 py-1.5">
