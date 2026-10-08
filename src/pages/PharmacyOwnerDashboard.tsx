@@ -51,7 +51,7 @@ export default function PharmacyOwnerDashboard() {
             </div>
             <span className="font-bold text-gray-900">{pharmacy?.name || "My Pharmacy"}</span>
           </div>
-          <button type="button" onClick={() => { logout(); navigate({ path: "/" }); }}
+          <button type="button" onClick={() => { logout(); }}
             className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-red-500 transition-colors">
             <LogOut className="w-4 h-4" /> Logout
           </button>
