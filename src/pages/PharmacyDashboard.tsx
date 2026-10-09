@@ -41,7 +41,7 @@ function matchStock(name: string, stock: StockItem[]): StockItem | undefined {
   return stock.find(s => norm(s.name) === n)
     || stock.find(s => norm(s.name).includes(n) || n.includes(norm(s.name)));
 }
-const tabletsAvailable = (s: StockItem) => Math.floor(s.quantity * (s.pack_size || 1) + 1e-6);
+const tabletsAvailable = (s: StockItem) => Math.round(s.quantity * (s.pack_size || 1));
 
 const isToday = (iso: string) => new Date(iso).toDateString() === new Date().toDateString();
 const agoLabel = (iso: string) => formatDistanceToNow(new Date(iso), { addSuffix: true });
