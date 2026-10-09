@@ -156,25 +156,25 @@ export default function HospitalDoctorsPage({ id }: Props) {
       )}
 
       {(hospital.website || (lab?.enabled && lab.tests.length > 0)) && (
-        <div className="flex flex-col sm:flex-row gap-3 mb-4">
+        <div className="flex flex-row gap-2 sm:gap-3 mb-4">
       {hospital.website && (
         <a
           href={hospital.website}
           target="_blank"
           rel="noopener noreferrer"
-          className="group flex-1 min-w-0 rounded-xl px-4 py-3 flex items-center justify-between bg-gradient-to-r from-teal-600 to-teal-500 shadow-md hover:shadow-lg hover:from-teal-700 hover:to-teal-600 transition-all text-white"
+          className="group flex-1 min-w-0 rounded-xl px-3 sm:px-4 py-3 flex items-center justify-between bg-gradient-to-r from-teal-600 to-teal-500 shadow-md hover:shadow-lg hover:from-teal-700 hover:to-teal-600 transition-all text-white"
         >
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+            <div className="hidden sm:flex w-9 h-9 rounded-lg bg-white/20 items-center justify-center shrink-0">
               <Globe className="w-4 h-4 text-white" />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-white">Official website</p>
+              <p className="text-sm font-semibold text-white truncate">Official website</p>
               <p className="text-xs text-white mt-0.5 truncate opacity-90">{hospital.website.replace(/^https?:\/\//, "").replace(/\/$/, "")}</p>
             </div>
           </div>
           <span className="text-xs font-semibold text-white shrink-0 flex items-center gap-1">
-            Visit site <ExternalLink className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            <span className="hidden sm:inline">Visit site</span><ExternalLink className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </span>
         </a>
       )}
@@ -182,19 +182,19 @@ export default function HospitalDoctorsPage({ id }: Props) {
         <button
           type="button"
           onClick={() => { setShowLab(true); window.scrollTo(0, 0); }}
-          className="flex-1 min-w-0 bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between shadow-sm hover:border-teal-400 transition-colors text-left"
+          className="flex-1 min-w-0 bg-white border border-gray-200 rounded-xl px-3 sm:px-4 py-3 flex items-center justify-between shadow-sm hover:border-teal-400 transition-colors text-left"
         >
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-lg bg-teal-50 flex items-center justify-center shrink-0">
+            <div className="hidden sm:flex w-9 h-9 rounded-lg bg-teal-50 items-center justify-center shrink-0">
               <FlaskConical className="w-4 h-4 text-teal-600" />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-gray-800">Lab facility</p>
-              <p className="text-xs text-gray-400 mt-0.5">{lab.tests.length} tests available to book</p>
+              <p className="text-sm font-semibold text-gray-800 truncate">Lab facility</p>
+              <p className="text-xs text-gray-400 mt-0.5 truncate">{lab.tests.length} tests available to book</p>
             </div>
           </div>
           <span className="text-xs font-semibold text-teal-600 shrink-0 flex items-center gap-0.5">
-            View lab <ChevronRight className="w-4 h-4" />
+            <span className="hidden sm:inline">View lab</span><ChevronRight className="w-4 h-4" />
           </span>
         </button>
       )}
