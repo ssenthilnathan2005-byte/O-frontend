@@ -1,0 +1,828 @@
+Abacavir
+Abiraterone
+Acamprosate
+Acarbose
+Acebrophylline
+Acebrophylline Syrup
+Aceclofenac
+Acetazolamide
+Acetylcysteine
+Acetylcysteine Syrup
+Acitretin
+Aclidinium
+Acyclovir
+Acyclovir Suspension
+Adapalene
+Adefovir
+Ademetionine
+Adrenaline
+Afatinib
+Agomelatine
+Albendazole
+Albendazole Suspension
+Alendronate
+Alfacalcidol
+Alfuzosin
+Allopurinol
+Almotriptan
+Alogliptin
+Alosetron
+Alprazolam
+Alteplase
+Aluminium Hydroxide Suspension
+Amantadine
+Ambrisentan
+Ambroxol Syrup
+Amino Acid Tonic
+Amiodarone
+Amisulpride
+Amitriptyline
+Amlodipine
+Ammonium Chloride Syrup
+Amorolfine
+Amoxapine
+Amoxicillin
+Amoxicillin + Clavulanic Acid
+Amoxicillin + Clavulanic Acid Suspension
+Amoxicillin Suspension
+Anagrelide
+Anastrozole
+Antacid Suspension
+Apalutamide
+Apixaban
+Appetite Tonic
+Apremilast
+Aripiprazole
+Armodafinil
+Artemether
+Artemether + Lumefantrine
+Artemisinin
+Artesunate
+Asenapine
+Aspirin
+Atazanavir
+Atenolol
+Atomoxetine
+Atorvastatin
+Atovaquone
+Atropine
+Avanafil
+Avapritinib
+Azathioprine
+Azilsartan
+Azithromycin
+Azithromycin Suspension
+Bacampicillin
+Baclofen
+Baloxavir
+Balsalazide
+Bambuterol
+Baricitinib
+Bazedoxifene
+Beclometasone
+Bedaquiline
+Belimumab
+Benazepril
+Bendamustine
+Benidipine
+Benserazide
+Benzbromarone
+Benzonatate
+Benzoyl Peroxide
+Benzphetamine
+Benztropine
+Betahistine
+Betamethasone
+Betaxolol
+Bexarotene
+Bezafibrate
+Bicalutamide
+Bilastine
+Bimatoprost
+Biotin
+Biotin Syrup
+Biperiden
+Bisacodyl
+Bisoprolol
+Blinatumomab
+Bortezomib
+Bosentan
+Bosutinib
+Brimonidine
+Bromazepam
+Bromelain
+Bromelain Syrup
+Bromhexine Syrup
+Bromocriptine
+Brotizolam
+Budesonide
+Bumetanide
+Bupivacaine
+Bupropion
+Buspirone
+Busulfan
+Butorphanol
+Cabergoline
+Cabozantinib
+Caffeine
+Calcipotriol
+Calcitonin
+Calcitriol
+Calcium + Magnesium + Zinc Syrup
+Calcium + Vitamin D3 Syrup
+Calcium Acetate
+Calcium Carbonate
+Calcium Citrate
+Calcium Gluconate
+Calcium Lactate
+Calcium Tonic
+Canagliflozin
+Candesartan
+Captopril
+Carbamazepine
+Carbidopa
+Carbimazole
+Carbocisteine
+Carboplatin
+Carvedilol
+Cefaclor
+Cefadroxil
+Cefalexin
+Cefdinir
+Cefditoren
+Cefixime
+Cefixime Suspension
+Cefpodoxime
+Cefpodoxime Suspension
+Cefprozil
+Cefuroxime
+Celecoxib
+Cephalexin
+Cephalexin Suspension
+Ceritinib
+Cetirizine
+Cetirizine Syrup
+Chlorambucil
+Chloramphenicol
+Chlordiazepoxide
+Chloroquine
+Chlorpheniramine
+Chlorpheniramine Syrup
+Chlorpromazine
+Chlorpropamide
+Chlorthalidone
+Cholecalciferol
+Cholestyramine
+Ciclesonide
+Cilnidipine
+Cilostazol
+Cimetidine
+Cinacalcet
+Cinnarizine
+Ciprofloxacin
+Cisplatin
+Citalopram
+Clarithromycin
+Clarithromycin Suspension
+Clindamycin
+Clobazam
+Clobetasol
+Clomiphene
+Clomipramine
+Clonazepam
+Clonidine
+Clopidogrel
+Clorazepate
+Clotrimazole
+Clozapine
+Codeine
+Colchicine
+Colesevelam
+Colestipol
+Conivaptan
+Cortisone
+Crizotinib
+Cromolyn
+Cyanocobalamin
+Cyclizine
+Cyclobenzaprine
+Cyclophosphamide
+Cyclosporine
+Cyproheptadine
+Cyproheptadine + Tricholine Citrate Syrup
+Cyproheptadine Syrup
+Dabigatran
+Daclatasvir
+Dapagliflozin
+Dapoxetine
+Dapsone
+Darbepoetin Alfa
+Daridorexant
+Darunavir
+Dasatinib
+Deferasirox
+Deferiprone
+Deflazacort
+Delamanid
+Desipramine
+Desloratadine
+Desloratadine Syrup
+Desmopressin
+Desogestrel
+Desvenlafaxine
+Dexamethasone
+Dexketoprofen
+Dexlansoprazole
+Dexmedetomidine
+Dextroamphetamine
+Dextromethorphan
+Dextromethorphan Syrup
+Diazepam
+Diclofenac
+Dicyclomine
+Didanosine
+Dienogest
+Diethylstilbestrol
+Digestive Enzyme Syrup
+Digestive Tonic
+Digoxin
+Diltiazem
+Dimenhydrinate
+Dimethyl Fumarate
+Diphenhydramine
+Dipyridamole
+Disopyramide
+Disulfiram
+Divalproex
+Divalproex Sodium
+Dobutamine
+Docetaxel
+Domperidone
+Domperidone Suspension
+Donepezil
+Dorzolamide
+Doxazosin
+Doxepin
+Doxofylline
+Doxofylline Syrup
+Doxorubicin
+Doxycycline
+Dronedarone
+Drospirenone
+Drotaverine
+Duloxetine
+Dutasteride
+Ebastine
+Econazole
+Efavirenz
+Elagolix
+Electrolyte Solution
+Eltrombopag
+Empagliflozin
+Emtricitabine
+Enalapril
+Enasidenib
+Encorafenib
+Enoxaparin
+Entecavir
+Entresto
+Enzalutamide
+Eplerenone
+Eprosartan
+Erlotinib
+Ertugliflozin
+Erythromycin
+Escitalopram
+Eslicarbazepine
+Esomeprazole
+Estradiol
+Estriol
+Estrone
+Ethambutol
+Ethinylestradiol
+Ethosuximide
+Etodolac
+Etoricoxib
+Etravirine
+Everolimus
+Exemestane
+Ezetimibe
+Ezogabine
+Famciclovir
+Famotidine
+Febuxostat
+Fedratinib
+Felbamate
+Felodipine
+Fenofibrate
+Fentanyl
+Ferrous Ascorbate
+Ferrous Fumarate
+Ferrous Sulfate
+Fesoterodine
+Fexofenadine
+Fexofenadine Suspension
+Finasteride
+Fingolimod
+Flecainide
+Fluconazole
+Fluconazole Suspension
+Flucytosine
+Fludarabine
+Fludrocortisone
+Flunarizine
+Fluorouracil
+Fluoxetine
+Flupentixol
+Fluphenazine
+Flutamide
+Fluticasone
+Fluvoxamine
+Folic Acid
+Folic Acid Oral Solution
+Fomepizole
+Fondaparinux
+Fosaprepitant
+Foscarnet
+Fosfomycin
+Fosinopril
+Fostemsavir
+Fulvestrant
+Furosemide
+Gabapentin
+Galantamine
+Galcanezumab
+Ganciclovir
+Gatifloxacin
+Gefitinib
+Gemcitabine
+Gemfibrozil
+General Health Tonic
+Gilteritinib
+Glecaprevir
+Glecaprevir + Pibrentasvir
+Glibenclamide
+Gliclazide
+Glimepiride
+Glipizide
+Glucagon
+Glucose Solution
+Glycopyrrolate
+Glycopyrronium
+Goserelin
+Granisetron
+Griseofulvin
+Guaifenesin
+Guaifenesin Syrup
+Guanfacine
+Guselkumab
+Haloperidol
+Hydralazine
+Hydrochlorothiazide
+Hydrocortisone
+Hydroxychloroquine
+Hydroxyurea
+Hydroxyzine
+Hydroxyzine Syrup
+Hyoscine Butylbromide
+Ibandronate
+Ibandronic Acid
+Ibrutinib
+Ibuprofen
+Ibuprofen Suspension
+Icosapent Ethyl
+Idarubicin
+Ifosfamide
+Iloperidone
+Imatinib
+Imidapril
+Imipramine
+Indapamide
+Indinavir
+Indomethacin
+Infliximab
+Insulin
+Ipratropium
+Irbesartan
+Irinotecan
+Iron + Folic Acid + Zinc Syrup
+Iron + Folic Acid Syrup
+Iron + Vitamin B12 Syrup
+Iron Tonic
+Isavuconazole
+Isocarboxazid
+Isoniazid
+Isosorbide Dinitrate
+Isosorbide Mononitrate
+Isradipine
+Itopride
+Itraconazole
+Ivabradine
+Ivermectin
+Ivermectin Suspension
+Ixazomib
+Ketamine
+Ketoconazole
+Ketoprofen
+Ketorolac
+Ketotifen
+L-Arginine Syrup
+L-Carnitine Syrup
+L-Lysine Syrup
+Labetalol
+Lacosamide
+Lactobacillus + Zinc Suspension
+Lactobacillus Suspension
+Lactulose
+Lactulose Syrup
+Lamivudine
+Lamotrigine
+Lansoprazole
+Lapatinib
+Lasmiditan
+Ledipasvir
+Leflunomide
+Lenalidomide
+Lenvatinib
+Lercanidipine
+Letrozole
+Leucovorin
+Leuprolide
+Levetiracetam
+Levocetirizine
+Levocetirizine Syrup
+Levofloxacin
+Levomepromazine
+Levonorgestrel
+Levosulpiride
+Levothyroxine
+Lidocaine
+Linagliptin
+Linezolid
+Liothyronine
+Liquid Paraffin
+Liraglutide
+Lisinopril
+Lithium Carbonate
+Liver Tonic
+Lofepramine
+Lomustine
+Loperamide
+Lopinavir
+Loratadine
+Loratadine Syrup
+Lorazepam
+Lorlatinib
+Losartan
+Lovastatin
+Lumacaftor
+Lumefantrine
+Lurasidone
+Lycopene Syrup
+Macitentan
+Magaldrate Suspension
+Magnesium Hydroxide Suspension
+Magnesium Oxide
+Magnesium Syrup
+Mavacamten
+Mebendazole
+Mebendazole Suspension
+Mebeverine
+Medroxyprogesterone
+Mefenamic Acid
+Mefenamic Acid Suspension
+Mefloquine
+Melatonin
+Meloxicam
+Memantine
+Meperidine
+Mercaptopurine
+Meropenem
+Mesalamine
+Metaxalone
+Metformin
+Methadone
+Methimazole
+Methocarbamol
+Methotrexate
+Methylcobalamin
+Methyldopa
+Methylprednisolone
+Methysergide
+Metoclopramide
+Metoclopramide Syrup
+Metolazone
+Metoprolol
+Metronidazole
+Metronidazole Suspension
+Mianserin
+Miconazole
+Midazolam
+Midodrine
+Mifepristone
+Milnacipran
+Minocycline
+Mirabegron
+Mirtazapine
+Misoprostol
+Mitomycin
+Mitotane
+Moclobemide
+Modafinil
+Mometasone
+Montelukast
+Montelukast Syrup
+Mosapride
+Moxifloxacin
+Multivitamin + Minerals Syrup
+Multivitamin Tonic
+Mycophenolate Mofetil
+Nabilone
+Nabumetone
+Nadolol
+Naldemedine
+Naloxegol
+Naloxone
+Naltrexone
+Naproxen
+NaproxenDabrafenib
+Naratriptan
+Nateglinide
+Nebivolol
+Nefopam
+Nelfinavir
+Neomycin
+Neostigmine
+Neratinib
+Netupitant
+Nevirapine
+Niacin
+Niclosamide
+Nicorandil
+Nicotinamide
+Nifedipine
+Nimesulide
+Nimodipine
+Nintedanib
+Nitrazepam
+Nitrofurantoin
+Nitroglycerin
+Nivolumab
+Nizatidine
+Norepinephrine
+Norethisterone
+Norfloxacin
+Nortriptyline
+Nystatin
+Nystatin Suspension
+Obeticholic Acid
+Obinutuzumab
+Ofloxacin
+Olanzapine
+Olaparib
+Olmesartan
+Omalizumab
+Omega-3 Syrup
+Omeprazole
+Ondansetron
+Ondansetron Syrup
+Orlistat
+Ornidazole
+ORS Solution
+Oseltamivir
+Osimertinib
+Oxcarbazepine
+Oxybutynin
+Oxycodone
+Oxymetazoline
+Ozagrel
+Palbociclib
+Paliperidone
+Palonosetron
+Panobinostat
+Pantoprazole
+Papain + Fungal Diastase Syrup
+Paracetamol
+Paracetamol Suspension
+Paricalcitol
+Paroxetine
+Pazopanib
+Pediatric Multivitamin Syrup
+Peginterferon
+Pemetrexed
+Penicillamine
+Pentoxifylline
+Pepsin + Fungal Diastase Syrup
+Perampanel
+Perindopril
+Permethrin
+Phenazopyridine
+Phenelzine
+Phenobarbital
+Phentermine
+Phenytoin
+Pimavanserin
+Pioglitazone
+Piperazine
+Piracetam
+Pirfenidone
+Piroxicam
+Pitavastatin
+Pivmecillinam
+Potassium Chloride
+Potassium Chloride Solution
+Potassium Citrate Solution
+Potassium Iodide Syrup
+Potassium Syrup
+Pramipexole
+Prasugrel
+Pravastatin
+Praziquantel
+Prazosin
+Prednisolone
+Prednisone
+Pregabalin
+Primaquine
+Primidone
+Probenecid
+Procainamide
+Prochlorperazine
+Progesterone
+Promethazine
+Propafenone
+Propranolol
+Propylthiouracil
+Protein Supplement
+Prucalopride
+Pseudoephedrine
+Pyridoxine
+Pyridoxine Syrup
+Quetiapine
+Quinapril
+Quinine
+Rabeprazole
+Raloxifene
+Ramelteon
+Ramipril
+Ranitidine
+Ranolazine
+Rasagiline
+Ravulizumab
+Regorafenib
+Relugolix
+Repaglinide
+Ribavirin
+Riboflavin
+Riboflavin Syrup
+Rifabutin
+Rifampicin
+Rifaximin
+Rilpivirine
+Rimegepant
+Risedronate
+Risperidone
+Ritonavir
+Rivaroxaban
+Rizatriptan
+Ropinirole
+Rosuvastatin
+Rufinamide
+Rupatadine
+Ruxolitinib
+Saccharomyces Boulardii Suspension
+Sacubitril
+Sacubitril + Valsartan
+Safinamide
+Salbutamol
+Salbutamol Syrup
+Salmeterol
+Saxagliptin
+Secukinumab
+Selegiline
+Selpercatinib
+Semaglutide
+Senna
+Serratiopeptidase
+Sertaconazole
+Sertraline
+Sildenafil
+Silodosin
+Simethicone Suspension
+Simvastatin
+Siponimod
+Sitagliptin
+Sodium Chloride Oral Solution
+Sodium Citrate Solution
+Sodium Picosulfate
+Sodium Picosulfate Solution
+Sodium Valproate
+Sofosbuvir
+Solifenacin
+Sonidegib
+Sorafenib
+Sotalol
+Spironolactone
+Stavudine
+Sucralfate
+Sucralfate Suspension
+Sulfamethoxazole
+Sulfasalazine
+Sumatriptan
+Sunitinib
+Suvorexant
+Tacrolimus
+Tadalafil
+Tafamidis
+Tafluprost
+Tamoxifen
+Tamsulosin
+Tapentadol
+Tasimelteon
+Telmisartan
+Temazepam
+Teneligliptin
+Tenofovir
+Tepotinib
+Terazosin
+Terbinafine
+Terbutaline
+Terbutaline Syrup
+Teriflunomide
+Tetrabenazine
+Tetracycline
+Theophylline
+Theophylline Syrup
+Thiamine
+Thiamine Syrup
+Thiocolchicoside
+Ticagrelor
+Ticlopidine
+Timolol
+Tinidazole
+Tinidazole Suspension
+Tiotropium
+Tizanidine
+Tocilizumab
+Tofacitinib
+Tolterodine
+Tolvaptan
+Topiramate
+Torsemide
+Trabectedin
+Tramadol
+Tranylcypromine
+Travoprost
+Trazodone
+Triamcinolone
+Trifluridine
+Trihexyphenidyl
+Trimetazidine
+Trimethoprim
+Triptorelin
+Trypsin + Chymotrypsin
+Ubrogepant
+Upadacitinib
+Ursodeoxycholic Acid
+Ustekinumab
+Valacyclovir
+Valbenazine
+Valganciclovir
+Valproic Acid
+Valsartan
+Vardenafil
+Varenicline
+Venetoclax
+Venlafaxine
+Verapamil
+Vilazodone
+Vildagliptin
+Vinblastine
+Vincristine
+Vitamin A Oral Solution
+Vitamin B-Complex Tonic
+Vitamin B12 Syrup
+Vitamin C
+Vitamin C Syrup
+Vitamin D3 Oral Solution
+Vitamin E
+Vitamin E Oral Solution
+Vitamin K
+Vitamin K Oral Solution
+Voglibose
+Voriconazole
+Vortioxetine
+Warfarin
+Zaleplon
+Zanamivir
+Zavegepant
+Zidovudine
+Zileuton
+Zinc + ORS Solution
+Zinc Sulfate
+Zinc Syrup
+Ziprasidone
+Zolmitriptan
+Zolpidem
+Zonisamide
+Zopiclone
+Zuclopenthixol

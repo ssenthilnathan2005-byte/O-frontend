@@ -1,3 +1,4 @@
+import { ClipboardList } from "lucide-react";
 import PrescriptionPresetsManager from "@/components/PrescriptionPresetsManager";
 import {
   AlertDialog,
@@ -1033,6 +1034,7 @@ export default function DoctorDashboard() {
           </TabsTrigger>
 
       <TabsTrigger value="presets" data-ocid="doctor.tab">
+        <ClipboardList className="w-4 h-4 mr-1.5 sm:mr-2" />
         Presets
       </TabsTrigger>
         </TabsList>
