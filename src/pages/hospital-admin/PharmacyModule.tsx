@@ -417,13 +417,12 @@ export function PharmPatients() {
       <div className="overflow-x-auto bg-white rounded-xl border border-gray-100">
         <table className="w-full">
           <thead className="bg-gray-50"><tr>
-            {["Patient", "Patient ID", "Prescribing doctor", "Medicines & dosage", "Bill", "Payment", "Date & time", ""].map(h => <th key={h} className={TH}>{h}</th>)}
+            {["Patient", "Prescribing doctor", "Medicines & dosage", "Bill", "Payment", "Date & time", ""].map(h => <th key={h} className={TH}>{h}</th>)}
           </tr></thead>
           <tbody>
             {rows.map(r => (
               <tr key={r.prescriptionId} className="border-t border-gray-100">
                 <td className={TD + " font-medium"}>{r.patientName}</td>
-                <td className={TD + " text-xs text-gray-500"}>{r.patientId}</td>
                 <td className={TD}>{r.doctorName}</td>
                 <td className={TD}>
                   {r.medicines.map((m, i) => (
@@ -439,7 +438,7 @@ export function PharmPatients() {
                 <td className={TD}><button type="button" onClick={() => openInvoice(r.prescriptionId)} className="text-teal-700 text-sm hover:underline">Invoice</button></td>
               </tr>
             ))}
-            {rows.length === 0 && <tr><td colSpan={8} className="px-3 py-8 text-center text-sm text-gray-400">No dispensing records in this period</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={7} className="px-3 py-8 text-center text-sm text-gray-400">No dispensing records in this period</td></tr>}
           </tbody>
         </table>
       </div>
