@@ -10,6 +10,7 @@ const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/
 type Ward = {
   id: string; name: string; type: string; total_beds: number;
   available_beds: number; occupied_beds: number; maintenance_beds: number;
+  bed_prefix?: string | null;
   cleaning_minutes?: number | null;
 };
 
@@ -195,24 +196,32 @@ export default function HAWards() {
 
   // ---- Manage wards & beds: edit ward, add / edit / remove bed ----
   const [editWard, setEditWard] = useState<Ward | null>(null);
-  const [editWardForm, setEditWardForm] = useState({ name: "", type: "general" });
+  const [editWardForm, setEditWardForm] = useState({ name: "", type: "general", bedPrefix: "" });
+  const [editWardPrefixOrig, setEditWardPrefixOrig] = useState("");
   const [bedDialog, setBedDialog] = useState<{ mode: "add" | "edit"; wardId: string; bed?: Bed } | null>(null);
   const [bedNumberInput, setBedNumberInput] = useState("");
+  const [bedCountInput, setBedCountInput] = useState("1");
   const [manageSaving, setManageSaving] = useState(false);
   const [manageError, setManageError] = useState("");
 
   function openEditWard(ward: Ward) {
     setManageError("");
-    setEditWardForm({ name: ward.name, type: ward.type });
+    const pfx = ward.bed_prefix || (ward.name.trim().slice(0, 2).toUpperCase() + "-");
+    setEditWardForm({ name: ward.name, type: ward.type, bedPrefix: pfx });
+    setEditWardPrefixOrig(pfx);
     setEditWard(ward);
   }
 
   async function saveEditWard() {
     if (!editWard) return;
     if (!editWardForm.name.trim()) { setManageError("Ward name is required."); return; }
+    const newPrefix = editWardForm.bedPrefix.trim().toUpperCase();
+    const prefixChanged = !!newPrefix && newPrefix !== editWardPrefixOrig;
+    if (prefixChanged && !/^[A-Z0-9-]{1,10}$/.test(newPrefix)) { setManageError("Bed prefix can have only letters, numbers and dashes (max 10 characters)."); return; }
+    if (prefixChanged && !confirm(`Rename all existing beds in this ward to use the prefix "${newPrefix}"?`)) return;
     setManageSaving(true); setManageError("");
     try {
-      const r = await api(`/wards/${editWard.id}`, "PATCH", { name: editWardForm.name.trim(), type: editWardForm.type });
+      const r = await api(`/wards/${editWard.id}`, "PATCH", { name: editWardForm.name.trim(), type: editWardForm.type, ...(prefixChanged ? { bedPrefix: newPrefix } : {}) });
       if (r && r.error) throw new Error(r.error);
       setEditWard(null);
       await loadWards();
@@ -222,7 +231,7 @@ export default function HAWards() {
   }
 
   function openAddBed(wardId: string) {
-    setManageError(""); setBedNumberInput("");
+    setManageError(""); setBedNumberInput(""); setBedCountInput("1");
     setBedDialog({ mode: "add", wardId });
   }
 
@@ -235,11 +244,14 @@ export default function HAWards() {
     if (!bedDialog) return;
     const num = bedNumberInput.trim();
     if (bedDialog.mode === "edit" && !num) { setManageError("Bed number is required."); return; }
+    const count = bedDialog.mode === "add" ? Number(bedCountInput) : 1;
+    if (bedDialog.mode === "add" && (!Number.isInteger(count) || count < 1 || count > 100)) { setManageError("Enter a number of beds between 1 and 100."); return; }
+    if (bedDialog.mode === "add" && num && count > 1) { setManageError("Leave Bed Number blank to add more than one bed."); return; }
     const wardId = bedDialog.wardId;
     setManageSaving(true); setManageError("");
     try {
       const r = bedDialog.mode === "add"
-        ? await api(`/wards/${wardId}/beds`, "POST", num ? { bedNumber: num } : {})
+        ? await api(`/wards/${wardId}/beds`, "POST", { ...(num ? { bedNumber: num } : {}), ...(count > 1 ? { count } : {}) })
         : await api(`/wards/${wardId}/beds/${bedDialog.bed!.id}`, "PATCH", { bedNumber: num });
       if (r && r.error) throw new Error(r.error);
       setBedDialog(null);
@@ -714,6 +726,12 @@ export default function HAWards() {
                   ))}
                 </select>
               </div>
+              <div>
+                <label className="text-sm font-medium text-gray-600 mb-1 block">Bed Prefix</label>
+                <Input placeholder="e.g. M" value={editWardForm.bedPrefix} maxLength={10}
+                  onChange={e => setEditWardForm(f => ({ ...f, bedPrefix: e.target.value.toUpperCase() }))} />
+                <p className="text-xs text-gray-400 mt-1">Changing the prefix renames this ward's existing beds (e.g. NO-01 becomes M1) and is used for new beds.</p>
+              </div>
               {manageError && <p className="text-xs text-red-600">{manageError}</p>}
             </div>
             <div className="px-6 py-4 border-t flex gap-3 justify-end">
@@ -749,6 +767,15 @@ export default function HAWards() {
                   value={bedNumberInput} maxLength={30}
                   onChange={e => setBedNumberInput(e.target.value)} />
               </div>
+              {bedDialog.mode === "add" && (
+                <div>
+                  <label className="text-sm font-medium text-gray-600 mb-1 block">How many beds?</label>
+                  <Input type="number" min={1} max={100} placeholder="1"
+                    value={bedCountInput}
+                    onChange={e => setBedCountInput(e.target.value)} />
+                  <p className="text-xs text-gray-400 mt-1">Beds are numbered automatically using the ward's bed prefix (e.g. 5 beds with prefix M gives M1 to M5).</p>
+                </div>
+              )}
               {manageError && <p className="text-xs text-red-600">{manageError}</p>}
             </div>
             <div className="px-6 py-4 border-t flex gap-3 justify-end">
