@@ -154,10 +154,6 @@ export default function HAInward() {
             className="flex items-center gap-2 border px-4 py-2 rounded-lg text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50">
             <Download className="w-4 h-4" /> {exporting ? "Exporting..." : "Download"}
           </button>
-          <button onClick={openAdmit}
-            className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-            <Plus className="w-4 h-4" /> Admit Patient
-          </button>
         </div>
       </div>
 
