@@ -8,6 +8,8 @@ import type { LucideIcon } from "lucide-react";
 import { useStore } from "../../context/StoreContext";
 import { isLiveBookingStatus, normalizeBookingStatus } from "../../lib/bookingStatus";
 import { useRouter } from "../../router/RouterContext";
+import { toast } from "sonner";
+import { getToken as getAuthToken } from "../../api";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 // Local (not UTC) date as YYYY-MM-DD, so "today" matches the user's calendar day.
@@ -167,6 +169,38 @@ export default function HADashboard() {
   const kpis = kpisState.key === rangeKey ? kpisState.data : EMPTY_KPIS;
 
   const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
+
+  const [website, setWebsite] = useState("");
+  const [savedWebsite, setSavedWebsite] = useState("");
+  const [savingSite, setSavingSite] = useState(false);
+
+  useEffect(() => {
+    if (!hospitalId) return;
+    fetch(`${BASE}/hospitals/${hospitalId}`, { headers: { Authorization: `Bearer ${getAuthToken()}` } })
+      .then((r) => r.json())
+      .then((d) => { setWebsite(d.website || ""); setSavedWebsite(d.website || ""); })
+      .catch(() => {});
+  }, [hospitalId]);
+
+  async function saveWebsite() {
+    setSavingSite(true);
+    try {
+      const res = await fetch(`${BASE}/hospitals/${hospitalId}/website`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getAuthToken()}` },
+        body: JSON.stringify({ website }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to save website");
+      setWebsite(data.website || "");
+      setSavedWebsite(data.website || "");
+      toast.success(data.website ? "Website saved" : "Website removed");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to save website");
+    } finally {
+      setSavingSite(false);
+    }
+  }
 
   useEffect(() => {
     if (!hospitalId) return;
@@ -415,6 +449,28 @@ export default function HADashboard() {
         <p className="text-sm text-gray-500 mt-0.5">
           {hospitalName} &mdash; system stats at a glance
         </p>
+      </div>
+
+      {/* Hospital website */}
+      <div className="bg-white border border-gray-200 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center gap-2">
+        <label htmlFor="ha-website" className="text-sm font-medium text-gray-700 shrink-0">Website</label>
+        <input
+          id="ha-website"
+          type="url"
+          inputMode="url"
+          value={website}
+          onChange={(e) => setWebsite(e.target.value)}
+          placeholder="https://www.yourhospital.com"
+          className="flex-1 min-w-0 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+        />
+        <button
+          type="button"
+          onClick={saveWebsite}
+          disabled={savingSite || website.trim() === savedWebsite}
+          className="px-4 py-1.5 rounded-lg bg-teal-600 text-white text-sm font-medium hover:bg-teal-700 disabled:opacity-50"
+        >
+          {savingSite ? "Saving..." : "Save"}
+        </button>
       </div>
 
       {/* Filter tabs */}
