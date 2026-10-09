@@ -106,7 +106,7 @@ export default function AdminPanel() {
                 }
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   isActive
-                    ? "bg-white/15 text-white"
+                    ? "bg-white/15 text-white border-l-2 border-teal-400"
                     : "text-white/60 hover:bg-white/8 hover:text-white/90"
                 }`}
                 data-ocid="admin.link"
@@ -203,7 +203,7 @@ export default function AdminPanel() {
                     }}
                     className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors ${
                       isActive
-                        ? "bg-white/15 text-white"
+                        ? "bg-white/15 text-white border-l-2 border-teal-400"
                         : "text-white/60 hover:bg-white/8 hover:text-white/90"
                     }`}
                     data-ocid="admin.link"

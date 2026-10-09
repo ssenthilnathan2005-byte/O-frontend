@@ -330,7 +330,7 @@ export const bookings = {
       return get<Booking[]>(`/hospital/bookings?hospitalId=${encodeURIComponent(hospitalId)}`);
     }
   },
-  create:     (data: { doctorId: string; date: string; session: string; complaint?: string; phone: string; patientName?: string; patientAge?: string | number }) =>
+  create:     (data: { doctorId: string; date: string; session: string; complaint?: string; phone: string; patientName?: string; patientAge?: string | number; patientYearOfBirth?: string | number }) =>
     post<Booking>("/bookings", data),
   updateStatus: (id: string, status: string)  => patch<Booking>(`/bookings/${id}/status`, { status }),
   markLate:   (id: string, etaMinutes: number) => post<{ success: boolean; etaMinutes: number }>(`/bookings/${id}/mark-late`, { etaMinutes }),
@@ -357,7 +357,7 @@ export const payments = {
   // Step 1: create Razorpay order → returns orderId, amount, keyId
   createOrder: (data: {
     doctorId: string; date: string; session: string; complaint?: string; phone: string;
-    patientName?: string; patientAge?: string | number;
+    patientName?: string; patientAge?: string | number; patientYearOfBirth?: string | number;
   }) => post<{
     orderId: string; amount: number; amountRupees: number;
     currency: string; keyId: string; doctorName: string; hospitalName: string;
@@ -375,8 +375,8 @@ export const payments = {
 export const patients = {
   list: () => get<PatientRecord[]>("/patients"),
   getProfile: () =>
-    get<{ name: string; phone: string; age: string; isComplete: boolean }>("/patients/profile"),
-  updateProfile: (data: { name: string; phone: string; age: string }) =>
+    get<{ name: string; phone: string; age: string; yearOfBirth: string; isComplete: boolean }>("/patients/profile"),
+  updateProfile: (data: { name: string; phone: string; yearOfBirth: string }) =>
     patch<{ success: boolean }>("/patients/profile", data),
 };
 

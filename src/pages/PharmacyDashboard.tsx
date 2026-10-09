@@ -466,7 +466,7 @@ export default function PharmacyDashboard() {
       <nav className="flex-1 px-3 py-4 space-y-1">
         {NAV_ITEMS.map(({ key, label, icon: Icon }) => (
           <button key={key} type="button" onClick={() => setTab(key)}
-            className={"w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors " + (tab === key ? "bg-white/15 text-white" : "text-white/60 hover:bg-white/8 hover:text-white/90")}>
+            className={"w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors " + (tab === key ? "bg-white/15 text-white border-l-2 border-teal-400" : "text-white/60 hover:bg-white/8 hover:text-white/90")}>
             <Icon className="w-4 h-4 shrink-0" />
             <span className="text-left leading-tight">{label}</span>
           </button>
