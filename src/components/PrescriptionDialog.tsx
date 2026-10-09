@@ -9,6 +9,7 @@ import { Plus, Trash2, Pill, Send, Pencil, Check, Mic } from "lucide-react";
 import { getToken } from "@/api";
 import { toast } from "sonner";
 import VoicePrescription, { type VoiceItem } from "@/components/VoicePrescription";
+import PresetSuggestions, { presetItemToMedicine, type PresetItem } from "@/components/PresetSuggestions";
 
 interface Medicine {
   name: string;
@@ -32,6 +33,7 @@ interface Props {
     patientId?: string;
     patientName?: string;
     patientAge?: number;
+    complaint?: string | null;
   } | null;
   doctorId: string;
   doctorName: string;
@@ -245,6 +247,22 @@ export default function PrescriptionDialog({
     });
   }
 
+  // Fill the manual form from a preset: keeps medicines already entered, skips duplicates by name
+  function applyPreset(items: PresetItem[]) {
+    setMedicines(prev => {
+      const existing = prev.filter(m => m.name.trim());
+      const have = new Set(existing.map(m => m.name.trim().toLowerCase()));
+      const added = items
+        .filter(i => !have.has(i.name.trim().toLowerCase()))
+        .map(presetItemToMedicine);
+      const next = [...existing, ...added];
+      return next.length ? next : [{ ...EMPTY_MED }];
+    });
+    setCollapsed(new Set());
+    setOtherOpen(new Set());
+    setMode("manual");
+  }
+
   async function handleSave() {
     const validMeds = medicines
       .filter(m => m.name.trim())
@@ -344,6 +362,12 @@ export default function PrescriptionDialog({
             </button>
           )}
         </div>
+
+        <PresetSuggestions
+          complaint={booking?.complaint ?? ""}
+          age={booking?.patientAge}
+          onApply={applyPreset}
+        />
 
         {mode === "voice" && (
           <VoicePrescription

@@ -1,3 +1,4 @@
+import PrescriptionPresetsManager from "@/components/PrescriptionPresetsManager";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1179,7 +1180,8 @@ export default function DoctorDashboard() {
                     )}
                   </CardTitle>
                   <div className="flex flex-wrap items-center gap-2">
-                    {/* End Session: only when session is accessible now */}
+                    <PrescriptionPresetsManager doctor={doctor} />
+          {/* End Session: only when session is accessible now */}
                     {!isClosed && !cancelled && isSessionAccessibleNow && (
                       <AlertDialog onOpenChange={(v) => { if (!v) setCloseReason(""); }}>
                         <AlertDialogTrigger asChild>
