@@ -6,6 +6,7 @@ import { soundAlikeMatches } from "./voicePrescription";
 export const MISHEARD: Record<string, string> = {
   "electronics": "cough tonic",
   "meenakshil": "minoxidil",
+  "stirrup": "syrup",
 };
 
 export function fixMisheard(text: string): string {

@@ -360,9 +360,17 @@ export function soundAlikeMatches(spoken: string, catalog: string[], limit = 5, 
   return ranked.filter(r => keep.has(r.bk)).map(r => r.name).slice(0, limit + 3);
 }
 
+import { findCategory, categoryCandidates } from "./voiceCategories";
+
 export type MedicineSearch = (q: string) => Promise<string[]>;
 
 export async function resolveMed(m: VoiceMed, search: MedicineSearch, catalog: string[] = []): Promise<VoiceMed> {
+  // a generic word like "cough syrup" is not a medicine: offer the choices instead of picking one
+  const cat = findCategory(m.spoken, m.searchTerm);
+  if (cat) {
+    const options = await categoryCandidates(cat, search, catalog);
+    if (options.length) return { ...m, name: "", nameState: "ambiguous", candidates: options };
+  }
   const term = m.searchTerm;
   const key = letters(term);
   const strength = m.strengthAmount ? parseFloat(m.strengthAmount) : null;

@@ -78,7 +78,10 @@ function getCatalog(): Promise<string[]> {
 // ---- nurse conversation helpers ----
 type Ask = { medId: string; field: "name" | "freq" | "duration" | "food"; text: string };
 
-function chipOptions(f: Ask["field"]): { label: string; say: string }[] {
+const PICK = "@@pick@@"; // marks an answer that is a tapped medicine name, not speech
+
+function chipOptions(f: Ask["field"], med?: VoiceMed): { label: string; say: string }[] {
+  if (f === "name") return (med?.candidates ?? []).slice(0, 8).map(n => ({ label: n, say: PICK + n }));
   if (f === "freq") return [
     { label: "Once daily", say: "once a day" }, { label: "Twice daily", say: "twice a day" },
     { label: "3 times daily", say: "three times a day" }, { label: "Night only", say: "night" },
@@ -286,7 +289,9 @@ export default function VoicePrescription({ saving, notes, onNotesChange, onSkip
       if (!m.name && includeName) {
         if (open(m, "name")) {
           const text = m.nameState === "ambiguous"
-            ? `Which medicine is ${m.spoken}? Say the full name.`
+            ? (m.candidates.length > 1
+              ? `Which medicine is ${m.spoken}? ${m.candidates.slice(0, 3).join(", ")}, or another? Say the name or tap one.`
+              : `Which medicine is ${m.spoken}? Say the full name.`)
             : `${m.spoken} isn't in the list. Say the name again.`;
           return { medId: m.id, field: "name", text };
         }
@@ -344,10 +349,13 @@ export default function VoicePrescription({ saving, notes, onNotesChange, onSkip
     let list = medsRef.current;
     const cur = list.find(m => m.id === q.medId);
     if (cur && t) {
-      setLive(t);
+      setLive(t.startsWith(PICK) ? t.slice(PICK.length) : t);
       let next = cur;
       let ok = false;
-      if (q.field === "name") {
+      if (q.field === "name" && t.startsWith(PICK)) {
+        next = { ...cur, name: t.slice(PICK.length), nameState: "matched", candidates: [] };
+        ok = true;
+      } else if (q.field === "name") {
         const p = parseTranscript(t)[0];
         const probe: VoiceMed = { ...cur, spoken: p?.spoken ?? t, searchTerm: p?.searchTerm ?? t.toLowerCase() };
         next = await resolveMed(probe, searchDb, await getCatalog());
@@ -666,7 +674,7 @@ export default function VoicePrescription({ saving, notes, onNotesChange, onSkip
               </div>
               <p className="text-sm font-medium text-blue-900">{ask.text}</p>
               <div className="flex flex-wrap gap-2">
-                {chipOptions(ask.field).map(o => (
+                {chipOptions(ask.field, meds.find(x => x.id === ask.medId)).map(o => (
                   <button key={o.label} className={chip(false)} onClick={() => chipAnswer(o.say)}>{o.label}</button>
                 ))}
               </div>
