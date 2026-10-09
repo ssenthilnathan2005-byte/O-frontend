@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Calendar, ChevronRight, FlaskConical, Globe, LogIn, Phone, User } from "lucide-react";
+import { ArrowLeft, Calendar, ChevronRight, ExternalLink, FlaskConical, Globe, LogIn, Phone, User } from "lucide-react";
 import { motion } from "motion/react";
 import { type KeyboardEvent, type MouseEvent, useEffect, useState } from "react";
 import BookingDialog from "../../components/booking/BookingDialog";
@@ -155,33 +155,34 @@ export default function HospitalDoctorsPage({ id }: Props) {
         </div>
       )}
 
+      {(hospital.website || (lab?.enabled && lab.tests.length > 0)) && (
+        <div className="flex flex-col sm:flex-row gap-3 mb-4">
       {hospital.website && (
         <a
           href={hospital.website}
           target="_blank"
           rel="noopener noreferrer"
-          className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 mb-4 flex items-center justify-between shadow-sm hover:border-teal-400 transition-colors"
+          className="group flex-1 min-w-0 rounded-xl px-4 py-3 flex items-center justify-between bg-gradient-to-r from-teal-600 to-teal-500 shadow-md hover:shadow-lg hover:from-teal-700 hover:to-teal-600 transition-all text-white"
         >
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-lg bg-teal-50 flex items-center justify-center shrink-0">
-              <Globe className="w-4 h-4 text-teal-600" />
+            <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+              <Globe className="w-4 h-4 text-white" />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-gray-800">Official website</p>
-              <p className="text-xs text-gray-400 mt-0.5 truncate">{hospital.website.replace(/^https?:\/\//, "").replace(/\/$/, "")}</p>
+              <p className="text-sm font-semibold text-white">Official website</p>
+              <p className="text-xs text-white mt-0.5 truncate opacity-90">{hospital.website.replace(/^https?:\/\//, "").replace(/\/$/, "")}</p>
             </div>
           </div>
-          <span className="text-xs font-semibold text-teal-600 shrink-0 flex items-center gap-0.5">
-            Visit site <ChevronRight className="w-4 h-4" />
+          <span className="text-xs font-semibold text-white shrink-0 flex items-center gap-1">
+            Visit site <ExternalLink className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </span>
         </a>
       )}
-
       {lab?.enabled && lab.tests.length > 0 && (
         <button
           type="button"
           onClick={() => { setShowLab(true); window.scrollTo(0, 0); }}
-          className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 mb-4 flex items-center justify-between shadow-sm hover:border-teal-400 transition-colors text-left"
+          className="flex-1 min-w-0 bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between shadow-sm hover:border-teal-400 transition-colors text-left"
         >
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-9 h-9 rounded-lg bg-teal-50 flex items-center justify-center shrink-0">
@@ -196,6 +197,8 @@ export default function HospitalDoctorsPage({ id }: Props) {
             View lab <ChevronRight className="w-4 h-4" />
           </span>
         </button>
+      )}
+        </div>
       )}
 
       {/* Doctors header */}
