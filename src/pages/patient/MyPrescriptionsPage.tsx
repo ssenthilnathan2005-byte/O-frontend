@@ -16,7 +16,7 @@ interface Prescription {
   id: string;
   doctor_name: string;
   hospital_name: string;
-  items: { name: string; dosage: string; duration: string; instructions: string }[];
+  items: { name: string; dosage: string; duration: string; instructions: string; form?: string; quantity?: number; quantityUnit?: string }[];
   notes: string;
   status: string;
   created_at: string;
@@ -36,6 +36,15 @@ function getTimestamp(p: Prescription, status: string): string | null {
 function isReached(current: string, check: string): boolean {
   const order = ["pending", "packed", "ready", "handed_over"];
   return order.indexOf(current) >= order.indexOf(check);
+}
+
+const TIME_WORDS = ["morning", "afternoon", "evening", "night"];
+function splitInstr(s: string) {
+  const parts = (s || "").split(",").map(x => x.trim()).filter(Boolean);
+  return {
+    times: parts.filter(p => TIME_WORDS.includes(p.toLowerCase())),
+    other: parts.filter(p => !TIME_WORDS.includes(p.toLowerCase())),
+  };
 }
 
 export default function MyPrescriptionsPage() {
@@ -124,10 +133,22 @@ export default function MyPrescriptionsPage() {
                           <span className="font-medium text-gray-700">{item.duration}</span>
                         </span>
                       )}
-                      {item.instructions && (
+                      {splitInstr(item.instructions).times.length > 0 && (
                         <span className="text-xs text-gray-500">
-                          <span className="text-gray-400">When to take:</span>{" "}
-                          <span className="font-medium text-gray-700">{item.instructions}</span>
+                          <span className="text-gray-400">Frequency:</span>{" "}
+                          <span className="font-medium text-gray-700">{splitInstr(item.instructions).times.join(", ")} ({splitInstr(item.instructions).times.length}x a day)</span>
+                        </span>
+                      )}
+                      {item.quantity ? (
+                        <span className="text-xs text-gray-500">
+                          <span className="text-gray-400">Quantity:</span>{" "}
+                          <span className="font-medium text-gray-700">{item.quantity} {item.quantityUnit || ""}</span>
+                        </span>
+                      ) : null}
+                      {splitInstr(item.instructions).other.length > 0 && (
+                        <span className="text-xs text-gray-500">
+                          <span className="text-gray-400">Instructions:</span>{" "}
+                          <span className="font-medium text-gray-700">{splitInstr(item.instructions).other.join(", ")}</span>
                         </span>
                       )}
                     </div>
