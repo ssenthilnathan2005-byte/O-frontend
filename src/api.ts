@@ -434,7 +434,7 @@ export type UserRole = "patient" | "doctor" | "admin" | "hospital_admin" | "phar
 export interface Hospital {
   id: string; name: string; area: string; address?: string;
   phone?: string; rating: number; gradient: string;
-  photoUrl?: string | null; doctorCount: number; isFree?: boolean; hasPharmacy?: boolean;
+  photoUrl?: string | null; website?: string | null; doctorCount: number; isFree?: boolean; hasPharmacy?: boolean;
   plan?: "basic" | "premium"; ratePerToken?: number;
 }
 export interface Doctor {

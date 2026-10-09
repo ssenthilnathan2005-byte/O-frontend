@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Calendar, ChevronRight, FlaskConical, LogIn, Phone, User } from "lucide-react";
+import { ArrowLeft, Calendar, ChevronRight, FlaskConical, Globe, LogIn, Phone, User } from "lucide-react";
 import { motion } from "motion/react";
 import { type KeyboardEvent, type MouseEvent, useEffect, useState } from "react";
 import BookingDialog from "../../components/booking/BookingDialog";
@@ -153,6 +153,28 @@ export default function HospitalDoctorsPage({ id }: Props) {
             </p>
           </div>
         </div>
+      )}
+
+      {hospital.website && (
+        <a
+          href={hospital.website}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 mb-4 flex items-center justify-between shadow-sm hover:border-teal-400 transition-colors"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-lg bg-teal-50 flex items-center justify-center shrink-0">
+              <Globe className="w-4 h-4 text-teal-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-800">Official website</p>
+              <p className="text-xs text-gray-400 mt-0.5 truncate">{hospital.website.replace(/^https?:\/\//, "").replace(/\/$/, "")}</p>
+            </div>
+          </div>
+          <span className="text-xs font-semibold text-teal-600 shrink-0 flex items-center gap-0.5">
+            Visit site <ChevronRight className="w-4 h-4" />
+          </span>
+        </a>
       )}
 
       {lab?.enabled && lab.tests.length > 0 && (

@@ -10,6 +10,7 @@ export interface Hospital {
   address?: string;
   phone?: string;
   photoUrl?: string | null;
+  website?: string | null;
   isFree?: boolean;
   hasPharmacy?: boolean;
   plan?: "basic" | "premium";
