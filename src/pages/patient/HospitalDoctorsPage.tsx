@@ -49,6 +49,12 @@ export default function HospitalDoctorsPage({ id }: Props) {
       .catch(() => setLab(null));
   }, [id]);
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [id]);
+
   const hospital = hospitals.find((h) => h.id === id);
   const hospitalDoctors = doctors.filter((d) => d.hospitalId === id && d.isAvailable !== false);
 
