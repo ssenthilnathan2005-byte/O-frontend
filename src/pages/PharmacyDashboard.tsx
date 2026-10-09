@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useStore } from "../context/StoreContext";
 import { getToken } from "@/api";
+import { printInvoice } from "@/lib/printInvoice";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -14,16 +15,17 @@ const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/
 
 type PrescStatus = "pending" | "packed" | "ready" | "handed_over";
 
-interface RxItem { name: string; dosage: string; duration: string; instructions: string }
+interface RxItem { name: string; dosage: string; duration: string; instructions: string; form?: string; quantity?: number; quantityUnit?: string }
 interface Prescription {
   id: string; patient_name: string; doctor_name: string; items: RxItem[];
   notes: string; status: PrescStatus; created_at: string; dispensed_items?: string | null;
 }
-interface StockItem { id: string; name: string; unit: string; quantity: number; pack_size: number }
-interface Plan { itemId: string; qty: string; reason: string }
+interface StockItem { id: string; name: string; unit: string; quantity: number; pack_size: number; selling_price?: number | null }
+interface Plan { itemId: string; qty: string; reason: string; price?: string }
 
 // tablets = tablets per dose x doses per day x days
 function calcTablets(item: RxItem): number {
+  if (Number(item.quantity) > 0) return Math.round(Number(item.quantity)); // doctor's quantity wins
   const dm = /([\d.]+)\s*(tablet|capsule)/i.exec(item.dosage || "");
   const perDose = dm ? parseFloat(dm[1]) : 1;
   const times = ["Morning", "Afternoon", "Evening", "Night"].filter(t => (item.instructions || "").includes(t)).length || 1;
@@ -130,6 +132,32 @@ export default function PharmacyDashboard() {
     setPlans(prev => ({ ...prev, [p.id]: { ...(prev[p.id] ?? {}), [idx]: { ...base, ...patch } } }));
   }
 
+  const round2 = (n: number) => Math.round((n || 0) * 100) / 100;
+  const round4 = (n: number) => Math.round((n || 0) * 10000) / 10000;
+  const defaultUnitPrice = (st?: StockItem) =>
+    st && Number(st.selling_price) > 0 ? round4(Number(st.selling_price) / (Number(st.pack_size) || 1)) : 0;
+  function unitPriceFor(p: Prescription, i: number): number {
+    const pl = getPlan(p, i);
+    const st = stock.find(s => s.id === pl.itemId);
+    return pl.price === undefined ? defaultUnitPrice(st) : round4(Number(pl.price) || 0);
+  }
+  function lineTotal(p: Prescription, i: number): number {
+    const pl = getPlan(p, i);
+    if (!pl.itemId) return 0;
+    return round2((Number(pl.qty) || 0) * unitPriceFor(p, i));
+  }
+  function grandTotal(p: Prescription): number {
+    return round2(p.items.reduce((s, _it, i) => s + lineTotal(p, i), 0));
+  }
+  async function printInvoiceFor(id: string) {
+    try {
+      const res = await fetch(`${BASE}/pharmacy-module/invoice/${encodeURIComponent(id)}`, { headers });
+      const inv = await res.json();
+      if (!res.ok) return toast.error(inv.error || "Could not load invoice");
+      if (!printInvoice(inv)) toast.error("Allow pop-ups to print the invoice");
+    } catch { toast.error("Could not load invoice"); }
+  }
+
   function getHo(pid: string, i: number, max: number) {
     return handover[pid]?.[i] ?? { qty: String(max), reason: "" };
   }
@@ -141,7 +169,14 @@ export default function PharmacyDashboard() {
   // One tap: runs packed -> ready -> handed_over in order, skipping steps already done.
   async function markGiven(p: Prescription) {
     if (busy) return;
-    const amt = amounts[p.id];
+    const rxLines: any[] = (() => { try { return p.dispensed_items ? JSON.parse(p.dispensed_items) : []; } catch { return []; } })();
+    const legacyManual = p.status !== "pending" && rxLines.some(l => l.unitPrice == null);
+    const billTotal = p.status === "pending"
+      ? grandTotal(p)
+      : legacyManual
+        ? Number(amounts[p.id])
+        : round2(rxLines.reduce((s, l, idx) => s + round2((Number(getHo(p.id, idx, l.tablets).qty) || 0) * Number(l.unitPrice)), 0));
+    const amt = String(billTotal);
     if (amt === undefined || String(amt).trim() === "" || !(Number(amt) >= 0))
       return toast.error("Enter the bill amount first (enter 0 if free)");
     const dispense: any[] = [];
@@ -154,7 +189,7 @@ export default function PharmacyDashboard() {
         const qty = Number(pl.qty);
         if (!(qty > 0)) return toast.error(`Enter a quantity for ${p.items[i].name}`);
         if (st && qty > tabletsAvailable(st)) return toast.error(`Only ${tabletsAvailable(st)} available for ${st.name}`);
-        dispense.push({ index: i, inventoryItemId: pl.itemId, quantity: qty, reason: pl.reason });
+        dispense.push({ index: i, inventoryItemId: pl.itemId, quantity: qty, reason: pl.reason, unitPrice: unitPriceFor(p, i) });
       }
       handoverPayload = dispense.map((d, line) => ({ line, quantity: d.quantity, reason: "" }));
     } else {
@@ -183,7 +218,7 @@ export default function PharmacyDashboard() {
     try {
       if (p.status === "pending") await send("packed", { dispense });
       if (p.status === "pending" || p.status === "packed") await send("ready", {});
-      await send("handed_over", { handover: handoverPayload, billAmount: Number(amounts[p.id]), paymentMode: payModes[p.id] || "cash" });
+      await send("handed_over", { handover: handoverPayload, billAmount: billTotal, paymentMode: payModes[p.id] || "cash" });
       toast.success("Marked as packed. Patient notified");
     } catch (err: any) {
       toast.error(err?.message || "Network error");
@@ -240,7 +275,7 @@ export default function PharmacyDashboard() {
           <p className="text-sm font-semibold text-gray-900">{item.name}</p>
           {!isGiven && (
             <span className="text-xs font-semibold text-teal-700 bg-teal-50 rounded-md px-2 py-0.5 whitespace-nowrap">
-              {suggested} tablets
+              Prescribed: {suggested} {item.quantityUnit || "tablets"}
             </span>
           )}
         </div>
@@ -280,11 +315,21 @@ export default function PharmacyDashboard() {
                 </select>
                 {pl.itemId && (
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500">Give</span>
+                    <span className="text-xs text-gray-500">Dispensed</span>
                     <input type="number" min={1} value={pl.qty}
                       onChange={e => setPlan(p, i, { qty: e.target.value })}
                       className="w-20 border border-gray-200 rounded-md text-sm px-2 py-1 bg-white" />
-                    <span className="text-xs text-gray-500">tablets</span>
+                    <span className="text-xs text-gray-500">{item.quantityUnit || "tablets"}</span>
+                  </div>
+                )}
+                {pl.itemId && st && (
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <span className="text-gray-500">Price per {(item.quantityUnit || "tablets").replace(/\(s\)$|s$/, "")} {"\u20b9"}</span>
+                    <input type="number" min={0} step="any" value={pl.price ?? String(defaultUnitPrice(st))}
+                      onChange={e => setPlan(p, i, { price: e.target.value })}
+                      className="w-24 border border-gray-200 rounded-md text-sm px-2 py-1 bg-white" />
+                    <span className="text-gray-500">{"\u00d7"} {qty > 0 ? qty : 0} =</span>
+                    <b className="text-gray-900">{"\u20b9"}{lineTotal(p, i).toFixed(2)}</b>
                   </div>
                 )}
                 {reduced && pl.itemId && (
@@ -308,6 +353,11 @@ export default function PharmacyDashboard() {
     try { dispensed = p.dispensed_items ? JSON.parse(p.dispensed_items) : []; } catch {}
     const confirming = confirmId === p.id;
     const showMeds = !isGiven || !!openRx[p.id];
+    const legacyManual = !editable && dispensed.some((d: any) => d.unitPrice == null);
+    const autoBill = !legacyManual;
+    const billShown = editable
+      ? grandTotal(p)
+      : round2(dispensed.reduce((s: number, d: any, idx: number) => s + round2((Number(getHo(p.id, idx, d.tablets).qty) || 0) * Number(d.unitPrice)), 0));
     return (
       <div key={p.id} className="px-4 py-3 space-y-3">
         <div className="flex items-center justify-between gap-2 text-xs text-gray-500">
@@ -338,6 +388,12 @@ export default function PharmacyDashboard() {
           <div className="rounded-xl border border-gray-100 bg-gray-50/70 divide-y divide-gray-100">
             {p.items.map((item, i) => renderMedicine(p, item, i))}
           </div>
+        )}
+
+        {isGiven && (
+          <Button variant="outline" className="w-full h-9 text-xs" onClick={() => printInvoiceFor(p.id)}>
+            Print invoice
+          </Button>
         )}
 
         {isGiven && showMeds && dispensed.length > 0 && (
@@ -387,9 +443,10 @@ export default function PharmacyDashboard() {
 
         {!isGiven && (
           <div className="flex items-center gap-2">
-            <label className="text-xs text-gray-600 shrink-0">Bill amount ({"\u20b9"})</label>
-            <input type="number" min={0} step="0.01" inputMode="decimal" placeholder="Enter 0 if free"
-              value={amounts[p.id] ?? ""}
+            <label className="text-xs text-gray-600 shrink-0">Grand Total ({"\u20b9"})</label>
+            <input type="number" min={0} step="0.01" inputMode="decimal" placeholder="Auto total"
+              value={autoBill ? billShown.toFixed(2) : (amounts[p.id] ?? "")}
+              readOnly={autoBill}
               onChange={e => setAmounts(prev => ({ ...prev, [p.id]: e.target.value }))}
               className="flex-1 border border-gray-200 rounded-md text-sm px-2 py-1.5 bg-white" />
             <select value={payModes[p.id] ?? "cash"} onChange={e => setPayModes(prev => ({ ...prev, [p.id]: e.target.value }))}

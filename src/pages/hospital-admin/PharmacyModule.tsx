@@ -393,6 +393,7 @@ type Invoice = {
   invoiceNo: string; hospitalName: string; patientId: string; patientName: string; doctorName: string; issuedAt: string | null;
   paymentMode: string | null; lines: { name: string; tablets: number; unitPrice: number; amount: number }[]; total: number | null; status: string;
 };
+import { printInvoice } from "@/lib/printInvoice";
 export function PharmPatients() {
   const hid = useHid();
   const { range, ui } = useRange();
@@ -458,7 +459,7 @@ export function PharmPatients() {
             </table>
             <div className="flex justify-between border-t border-gray-200 pt-2 font-semibold"><span>Total ({inv.paymentMode || "cash"})</span><span>{inr(inv.total)}</span></div>
             <p className="text-xs text-gray-400">{fmtTime(inv.issuedAt)}</p>
-            <div className="flex justify-end"><button type="button" onClick={() => setInv(null)} className="px-3 py-1.5 text-sm rounded-md border border-gray-200">Close</button></div>
+            <div className="flex justify-end gap-2"><button type="button" onClick={() => { if (!printInvoice(inv)) alert("Allow pop-ups to print the invoice"); }} className="px-3 py-1.5 text-sm rounded-md bg-teal-600 text-white">Print</button><button type="button" onClick={() => setInv(null)} className="px-3 py-1.5 text-sm rounded-md border border-gray-200">Close</button></div>
           </div>
         </div>
       )}

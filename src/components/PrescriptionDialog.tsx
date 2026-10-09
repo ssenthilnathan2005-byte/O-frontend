@@ -19,6 +19,8 @@ interface Medicine {
   dosageUnit: string;
   durationAmount: string;
   durationUnit: string;
+  form?: string;
+  qtyOverride?: string;
 }
 
 interface Props {
@@ -67,6 +69,45 @@ function formatDuration(amount: string, unit: string): string {
 
 function isMedFilled(m: Medicine) {
   return m.name.trim() && m.dosageAmount.trim() && m.durationAmount.trim();
+}
+
+type MedForm = "tablet" | "syrup" | "drops" | "injection" | "ointment" | "spray" | "other";
+const FORM_OPTIONS: { value: MedForm; label: string; unit: string }[] = [
+  { value: "tablet", label: "Tablet / Capsule", unit: "tablets" },
+  { value: "syrup", label: "Syrup / Tonic", unit: "bottle(s)" },
+  { value: "drops", label: "Drops", unit: "bottle(s)" },
+  { value: "injection", label: "Injection", unit: "vial(s)" },
+  { value: "ointment", label: "Ointment / Cream", unit: "tube(s)" },
+  { value: "spray", label: "Spray / Inhaler", unit: "unit(s)" },
+  { value: "other", label: "Other", unit: "unit(s)" },
+];
+function guessForm(m: Medicine): MedForm {
+  if (m.form) return m.form as MedForm;
+  if (m.dosageUnit === "ml") return "syrup";
+  if (m.dosageUnit === "drop") return "drops";
+  if (m.dosageUnit === "puff") return "spray";
+  return "tablet";
+}
+function timesPerDay(m: Medicine): number {
+  return ["Morning", "Afternoon", "Evening", "Night"].filter(t => (m.instructions || "").includes(t)).length || 1;
+}
+function totalDays(m: Medicine): number {
+  const n = parseFloat(m.durationAmount) || 0;
+  return (m.durationUnit === "week" ? n * 7 : n) || 1;
+}
+function autoQuantity(m: Medicine): number {
+  if (guessForm(m) !== "tablet") return 1;
+  const perDose = (m.dosageUnit === "tablet" || m.dosageUnit === "capsule") ? (parseFloat(m.dosageAmount) || 1) : 1;
+  return Math.max(1, Math.ceil(perDose * timesPerDay(m) * totalDays(m)));
+}
+function finalQuantity(m: Medicine): number {
+  const o = parseFloat(m.qtyOverride || "");
+  return o > 0 ? Math.round(o) : autoQuantity(m);
+}
+function qtyHint(m: Medicine): string {
+  if (guessForm(m) !== "tablet") return "Dosage is the amount per time. Dispensing quantity is separate: default 1, change if needed.";
+  const perDose = (m.dosageUnit === "tablet" || m.dosageUnit === "capsule") ? (parseFloat(m.dosageAmount) || 1) : 1;
+  return `Auto: ${perDose} per dose x ${timesPerDay(m)} times/day x ${totalDays(m)} days = ${autoQuantity(m)}. Type a number to override.`;
 }
 
 function getParts(instructions: string): string[] {
@@ -207,11 +248,14 @@ export default function PrescriptionDialog({
   async function handleSave() {
     const validMeds = medicines
       .filter(m => m.name.trim())
-      .map(({ name, dosageAmount, dosageUnit, durationAmount, durationUnit, instructions }) => ({
-        name,
-        dosage: formatDosage(dosageAmount, dosageUnit),
-        duration: formatDuration(durationAmount, durationUnit),
-        instructions,
+      .map(m => ({
+        name: m.name,
+        dosage: formatDosage(m.dosageAmount, m.dosageUnit),
+        duration: formatDuration(m.durationAmount, m.durationUnit),
+        instructions: m.instructions,
+        form: guessForm(m),
+        quantity: finalQuantity(m),
+        quantityUnit: FORM_OPTIONS.find(o => o.value === guessForm(m))?.unit ?? "units",
       }));
     await submitPrescription(validMeds);
   }
@@ -421,6 +465,33 @@ export default function PrescriptionDialog({
                       </select>
                     </div>
                   </div>
+                </div>
+
+                <div className="rounded-lg border border-teal-100 bg-teal-50/50 p-2 space-y-1.5">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs text-gray-500">Medicine type</Label>
+                      <select
+                        value={guessForm(med)}
+                        onChange={e => setMedicines(prev => prev.map((m, i) => i === idx ? { ...m, form: e.target.value, qtyOverride: "" } : m))}
+                        className="w-full border rounded-md text-sm px-2 py-2 bg-white"
+                      >
+                        {FORM_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-500">Quantity to dispense ({FORM_OPTIONS.find(o => o.value === guessForm(med))?.unit})</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        step="1"
+                        placeholder={String(autoQuantity(med))}
+                        value={med.qtyOverride ?? ""}
+                        onChange={e => setMedicines(prev => prev.map((m, i) => i === idx ? { ...m, qtyOverride: e.target.value } : m))}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-gray-500">{qtyHint(med)} Final quantity: <b>{finalQuantity(med)}</b></p>
                 </div>
 
                 <div>
