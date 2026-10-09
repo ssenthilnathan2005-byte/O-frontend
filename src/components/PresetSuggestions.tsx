@@ -45,7 +45,20 @@ interface Props {
 
 export default function PresetSuggestions({ complaint, age, onApply }: Props) {
   const [presets, setPresets] = useState<Preset[]>([]);
-  useEffect(() => { fetchPresets().then(setPresets).catch(() => setPresets([])); }, []);
+  const [loaded, setLoaded] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+  useEffect(() => {
+    fetchPresets().then(setPresets).catch(() => setPresets([])).finally(() => setLoaded(true));
+  }, []);
+
+  if (!loaded) return null;
+  if (!presets.length) {
+    return (
+      <p className="text-[11px] text-gray-400">
+        No presets yet. Add them in the Presets tab of your dashboard to get one-tap suggestions here.
+      </p>
+    );
+  }
 
   const text = (complaint || "").toLowerCase();
   const matches = presets.filter(p => {
@@ -53,25 +66,33 @@ export default function PresetSuggestions({ complaint, age, onApply }: Props) {
     if (age != null && p.maxAge != null && age > p.maxAge) return false;
     return p.symptoms.some(s => text.includes(s.toLowerCase()));
   });
-  if (!matches.length) return null;
+  const shown = showAll ? presets : matches;
 
   return (
     <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-3">
       <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-blue-800">
-        <Sparkles className="h-3.5 w-3.5" /> Your presets for this patient's symptoms
+        <Sparkles className="h-3.5 w-3.5" />
+        {showAll ? "All your presets" : matches.length ? "Your presets for this patient's symptoms" : "No preset matches this patient's symptoms"}
       </p>
       <div className="flex flex-wrap gap-2">
-        {matches.map(p => (
+        {shown.map(p => (
           <button
             key={p.id}
             onClick={() => onApply(p.items)}
             className="rounded-full border border-blue-300 bg-white px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
           >
-            {p.name} · {p.items.length} med{p.items.length > 1 ? "s" : ""}
+            {p.name} ? {p.items.length} med{p.items.length > 1 ? "s" : ""}
           </button>
         ))}
       </div>
-      <p className="mt-2 text-[11px] text-gray-500">Tap to fill the prescription. You can review and edit before saving.</p>
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <p className="text-[11px] text-gray-500">Tap to fill the prescription. You can review and edit before saving.</p>
+        {(matches.length < presets.length || showAll) && (
+          <button onClick={() => setShowAll(v => !v)} className="shrink-0 text-[11px] font-medium text-blue-700 underline">
+            {showAll ? "Show matching only" : `Browse all my presets (${presets.length})`}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

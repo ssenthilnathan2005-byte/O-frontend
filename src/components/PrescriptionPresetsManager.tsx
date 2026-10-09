@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ClipboardList, Plus, Trash2, Pencil } from "lucide-react";
+import { Plus, Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { getToken } from "@/api";
 import { getSymptomsForSpecialty } from "@/data/doctorSymptoms";
@@ -48,7 +47,6 @@ async function call(method: string, url: string, body?: unknown) {
 }
 
 export default function PrescriptionPresetsManager({ doctor }: { doctor?: { specialty?: string } | null }) {
-  const [open, setOpen] = useState(false);
   const [presets, setPresets] = useState<Preset[]>([]);
   const [editing, setEditing] = useState<string | "new" | null>(null);
   const [name, setName] = useState("");
@@ -61,7 +59,7 @@ export default function PrescriptionPresetsManager({ doctor }: { doctor?: { spec
   const symptomList = getSymptomsForSpecialty(doctor?.specialty || "")?.symptoms ?? [];
 
   const reload = () => fetchPresets().then(setPresets).catch(() => {});
-  useEffect(() => { if (open) reload(); }, [open]);
+  useEffect(() => { reload(); }, []);
 
   function startNew() {
     setEditing("new"); setName(""); setSymptoms([]); setMeds([emptyMed()]); setMinAge(""); setMaxAge("");
@@ -103,13 +101,11 @@ export default function PrescriptionPresetsManager({ doctor }: { doctor?: { spec
   }
 
   return (
-    <>
-      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-        <ClipboardList className="mr-1.5 h-4 w-4" /> Prescription Presets
-      </Button>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:w-screen max-sm:max-w-none max-sm:rounded-none">
-          <DialogHeader><DialogTitle>Prescription Presets</DialogTitle></DialogHeader>
+    <div className="max-w-2xl space-y-4">
+      <div>
+        <h2 className="text-lg font-semibold">Prescription Presets</h2>
+        <p className="text-sm text-gray-500">Add your usual medicines for common symptoms whenever you are free. They appear as one-tap suggestions in Write Prescription when a patient's symptoms match.</p>
+      </div>
 
           {editing === null ? (
             <div className="space-y-3">
@@ -212,8 +208,6 @@ export default function PrescriptionPresetsManager({ doctor }: { doctor?: { spec
               </div>
             </div>
           )}
-        </DialogContent>
-      </Dialog>
-    </>
+    </div>
   );
 }

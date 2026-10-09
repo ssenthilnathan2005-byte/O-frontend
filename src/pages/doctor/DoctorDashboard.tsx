@@ -198,16 +198,16 @@ function sanitizeSessionTimings(
   return result;
 }
 
-type DoctorTab = "regulator" | "livetokens" | "profile";
+type DoctorTab = "regulator" | "livetokens" | "profile" | "presets";
 
 function getInitialDoctorTab(): DoctorTab {
   if (typeof window === "undefined") return "regulator";
   const params = new URLSearchParams(window.location.search);
   const queryTab = params.get("doctorTab") as DoctorTab | null;
-  if (queryTab === "livetokens" || queryTab === "profile") return queryTab;
+  if (queryTab === "livetokens" || queryTab === "profile" || queryTab === "presets") return queryTab;
 
   const savedTab = window.localStorage.getItem("doctorTab") as DoctorTab | null;
-  if (savedTab === "livetokens" || savedTab === "profile") return savedTab;
+  if (savedTab === "livetokens" || savedTab === "profile" || savedTab === "presets") return savedTab;
 
   return "regulator";
 }
@@ -1031,6 +1031,10 @@ export default function DoctorDashboard() {
             <User className="w-4 h-4 mr-1.5 sm:mr-2" />
             Profile
           </TabsTrigger>
+
+      <TabsTrigger value="presets" data-ocid="doctor.tab">
+        Presets
+      </TabsTrigger>
         </TabsList>
 
         {/* Token Regulator Tab */}
@@ -1180,8 +1184,7 @@ export default function DoctorDashboard() {
                     )}
                   </CardTitle>
                   <div className="flex flex-wrap items-center gap-2">
-                    <PrescriptionPresetsManager doctor={doctor} />
-          {/* End Session: only when session is accessible now */}
+                    {/* End Session: only when session is accessible now */}
                     {!isClosed && !cancelled && isSessionAccessibleNow && (
                       <AlertDialog onOpenChange={(v) => { if (!v) setCloseReason(""); }}>
                         <AlertDialogTrigger asChild>
@@ -1536,6 +1539,10 @@ export default function DoctorDashboard() {
             </CardContent>
           </Card>
         </TabsContent>
+
+      <TabsContent value="presets">
+        <PrescriptionPresetsManager doctor={doctor} />
+      </TabsContent>
 
       <TabsContent value="profile">
           <div className="space-y-4">
