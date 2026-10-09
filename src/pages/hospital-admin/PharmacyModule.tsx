@@ -194,7 +194,7 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
   const [q, setQ] = useState("");
   const [flt, setFlt] = useState("all");
   const [edit, setEdit] = useState<Inv | null>(null);
-  const [f, setF] = useState({ batchNo: "", expiryDate: "", supplier: "", location: "", sellingPrice: "" });
+  const [f, setF] = useState({ batchNo: "", expiryDate: "", supplier: "", location: "", sellingPrice: "", packSize: "1" });
   const [saving, setSaving] = useState(false);
   const [stock, setStock] = useState<Inv | null>(null);
   const [sMode, setSMode] = useState<"add" | "set">("add");
@@ -212,7 +212,7 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
   const shown = rows.filter(r => (flt === "all" || r.status === flt) && r.name.toLowerCase().includes(q.trim().toLowerCase()));
   function openEdit(r: Inv) {
     setEdit(r);
-    setF({ batchNo: r.batchNo || "", expiryDate: r.expiryDate || "", supplier: r.supplier || "", location: r.location || "", sellingPrice: r.sellingPrice == null ? "" : String(r.sellingPrice) });
+    setF({ batchNo: r.batchNo || "", expiryDate: r.expiryDate || "", supplier: r.supplier || "", location: r.location || "", sellingPrice: r.sellingPrice == null ? "" : String(r.sellingPrice), packSize: String(r.packSize || 1) });
   }
   async function saveStock() {
     if (!stock) return;
@@ -253,7 +253,7 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
         method: "PATCH",
         body: JSON.stringify({
           batchNo: f.batchNo || undefined, expiryDate: f.expiryDate || undefined,
-          supplier: f.supplier || undefined, location: f.location.trim(), sellingPrice: f.sellingPrice === "" ? undefined : Number(f.sellingPrice),
+          supplier: f.supplier || undefined, location: f.location.trim(), sellingPrice: f.sellingPrice === "" ? undefined : Number(f.sellingPrice), packSize: f.packSize === "" ? undefined : Number(f.packSize),
         }),
       });
       setEdit(null);
@@ -366,7 +366,7 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setEdit(null)}>
           <div className="bg-white rounded-xl p-5 w-full max-w-md space-y-3" onClick={e => e.stopPropagation()}>
             <p className="font-semibold text-gray-900">{edit.name}</p>
-            {([["Batch number", "batchNo", "text"], ["Expiry date", "expiryDate", "date"], ["Supplier", "supplier", "text"], ["Location (shelf / rack)", "location", "text"], ["Selling price per pack (\u20B9)", "sellingPrice", "number"]] as const).map(([l, k, t]) => (
+            {([["Tablets per pack", "packSize", "number"], ["Batch number", "batchNo", "text"], ["Expiry date", "expiryDate", "date"], ["Supplier", "supplier", "text"], ["Location (shelf / rack)", "location", "text"], ["Selling price per pack (\u20B9)", "sellingPrice", "number"]] as const).map(([l, k, t]) => (
               <label key={k} className="block text-sm text-gray-600">{l}
                 <input type={t} value={f[k]} onChange={e => setF(prev => ({ ...prev, [k]: e.target.value }))}
                   className="mt-1 w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm" />
