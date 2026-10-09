@@ -390,7 +390,7 @@ type Log = {
   billAmount: number | null; paymentMode: string | null; billStatus: "Billed" | "Pending"; timestamp: string;
 };
 type Invoice = {
-  invoiceNo: string; hospitalName: string; patientId: string; patientName: string; doctorName: string; issuedAt: string | null;
+  invoiceNo?: string; billNo?: number | null; hospitalName: string; patientId: string; patientName: string; doctorName: string; issuedAt: string | null;
   paymentMode: string | null; lines: { name: string; tablets: number; unitPrice: number; amount: number }[]; total: number | null; status: string;
 };
 import { printInvoice } from "@/lib/printInvoice";
@@ -447,10 +447,10 @@ export function PharmPatients() {
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setInv(null)}>
           <div className="bg-white rounded-xl p-5 w-full max-w-lg space-y-3" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-start">
-              <div><p className="font-bold text-gray-900">Pharmacy invoice</p><p className="text-xs text-gray-500">{inv.invoiceNo} | {inv.hospitalName}</p></div>
+              <div><p className="font-bold text-gray-900">Pharmacy invoice</p><p className="text-base font-bold text-teal-700">Bill No: {inv.billNo != null ? inv.billNo : "-"}</p><p className="text-xs text-gray-500">{inv.hospitalName}</p></div>
               <span className={"px-2 py-0.5 rounded-full text-xs font-medium " + (inv.status === "Billed" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700")}>{inv.status}</span>
             </div>
-            <p className="text-sm text-gray-700">{inv.patientName} <span className="text-gray-400">({inv.patientId})</span> | Dr. {inv.doctorName}</p>
+            <p className="text-sm text-gray-700">{inv.patientName} | Dr. {inv.doctorName}</p>
             <table className="w-full text-sm">
               <thead><tr className="text-left text-xs text-gray-500"><th className="py-1">Medicine</th><th>Qty</th><th>Rate</th><th className="text-right">Amount</th></tr></thead>
               <tbody>{inv.lines.map((l, i) => (
