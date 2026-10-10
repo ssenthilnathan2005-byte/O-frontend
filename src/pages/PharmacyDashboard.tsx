@@ -171,7 +171,7 @@ export default function PharmacyDashboard() {
     if (busy) return;
     const rxLines: any[] = (() => { try { return p.dispensed_items ? JSON.parse(p.dispensed_items) : []; } catch { return []; } })();
     const legacyManual = p.status !== "pending" && rxLines.some(l => l.unitPrice == null);
-    const billTotal = p.status === "pending"
+    const manualPending = p.status === "pending" && !p.items.some((_it: any, i: number) => !!getPlan(p, i).itemId); const billTotal = manualPending ? (amounts[p.id] === undefined || String(amounts[p.id]).trim() === "" ? NaN : Number(amounts[p.id])) : p.status === "pending"
       ? grandTotal(p)
       : legacyManual
         ? Number(amounts[p.id])
@@ -354,7 +354,7 @@ export default function PharmacyDashboard() {
     const confirming = confirmId === p.id;
     const showMeds = !isGiven || !!openRx[p.id];
     const legacyManual = !editable && dispensed.some((d: any) => d.unitPrice == null);
-    const autoBill = !legacyManual;
+    const hasStockLines = editable && p.items.some((_it: any, i: number) => !!getPlan(p, i).itemId); const autoBill = editable ? hasStockLines : !legacyManual;
     const billShown = editable
       ? grandTotal(p)
       : round2(dispensed.reduce((s: number, d: any, idx: number) => s + round2((Number(getHo(p.id, idx, d.tablets).qty) || 0) * Number(d.unitPrice)), 0));
