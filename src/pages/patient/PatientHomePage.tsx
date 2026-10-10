@@ -279,22 +279,22 @@ export default function PatientHomePage() {
           {/* Book an appointment */}
           <motion.div
             initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-            className="relative bg-gradient-to-br from-teal-600 to-teal-700 rounded-3xl px-5 py-6 overflow-hidden cursor-pointer shadow-lg shadow-teal-200 lg:order-1 lg:flex lg:items-center lg:px-5 lg:py-4 lg:rounded-2xl"
+            className="relative bg-gradient-to-br from-teal-600 to-teal-700 rounded-2xl px-4 py-3.5 overflow-hidden cursor-pointer shadow-md shadow-teal-200 lg:order-1 lg:flex lg:items-center lg:px-5 lg:py-4 lg:rounded-2xl"
             onClick={() => navigate({ path: "/patient/hospitals" })}
           >
-            <div className="absolute -right-6 -top-6 w-32 h-32 bg-teal-500 rounded-full opacity-30" />
-            <div className="absolute -right-2 -bottom-8 w-40 h-40 bg-teal-500 rounded-full opacity-20" />
-            <Building2 className="absolute right-4 bottom-2 w-20 h-20 lg:w-12 lg:h-12 text-white opacity-20" strokeWidth={0.8} />
-            <div className="relative z-10 max-w-[65%] lg:max-w-[80%]">
+            <div className="absolute -right-6 -top-6 w-24 h-24 bg-teal-500 rounded-full opacity-30" />
+            <div className="absolute -right-2 -bottom-8 w-28 h-28 bg-teal-500 rounded-full opacity-20" />
+            <Building2 className="absolute right-3 bottom-2 w-14 h-14 lg:w-12 lg:h-12 text-white opacity-20" strokeWidth={0.8} />
+            <div className="relative z-10 max-w-[72%] lg:max-w-[80%]">
               <div className="flex items-center gap-3 mb-2">
                 <div className="bg-white/20 rounded-xl p-2 backdrop-blur-sm">
                   <Calendar className="w-5 h-5 text-white" />
                 </div>
-                <h2 className="text-white font-bold text-lg lg:text-base leading-tight">Book an appointment</h2>
+                <h2 className="text-white font-bold text-base lg:text-base leading-tight">Book an appointment</h2>
               </div>
-              <p className="text-teal-100 text-sm mb-5 lg:text-xs lg:mb-3">Find a hospital and get your token in minutes</p>
+              <p className="text-teal-100 text-xs mb-3 lg:text-xs lg:mb-3">Find a hospital and get your token in minutes</p>
               <button type="button"
-                className="flex items-center gap-2 bg-white text-teal-700 font-bold text-sm px-5 py-2.5 lg:text-xs lg:px-4 lg:py-1.5 rounded-full shadow-md hover:bg-teal-50 transition-colors"
+                className="flex items-center gap-2 bg-white text-teal-700 font-bold text-xs px-4 py-1.5 lg:text-xs lg:px-4 lg:py-1.5 rounded-full shadow-md hover:bg-teal-50 transition-colors"
                 onClick={(e) => { e.stopPropagation(); navigate({ path: "/patient/hospitals" }); }}
               >
                 Get Started <ChevronRight className="w-4 h-4" />
@@ -351,22 +351,22 @@ export default function PatientHomePage() {
           {/* Lab Tests — full width, matches Book an appointment style */}
           <motion.div
             initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}
-            className="relative bg-gradient-to-br from-sky-600 to-sky-700 rounded-3xl px-5 py-6 overflow-hidden cursor-pointer shadow-lg shadow-sky-200 lg:order-2 lg:flex lg:items-center lg:px-5 lg:py-4 lg:rounded-2xl"
+            className="relative bg-gradient-to-br from-sky-600 to-sky-700 rounded-2xl px-4 py-3.5 overflow-hidden cursor-pointer shadow-md shadow-sky-200 lg:order-2 lg:flex lg:items-center lg:px-5 lg:py-4 lg:rounded-2xl"
             onClick={() => navigate({ path: "/labs" })}
           >
-            <div className="absolute -right-6 -top-6 w-32 h-32 bg-sky-500 rounded-full opacity-30" />
-            <div className="absolute -right-2 -bottom-8 w-40 h-40 bg-sky-500 rounded-full opacity-20" />
-            <FlaskConical className="absolute right-4 bottom-2 w-20 h-20 lg:w-12 lg:h-12 text-white opacity-20" strokeWidth={0.8} />
-            <div className="relative z-10 max-w-[65%] lg:max-w-[80%]">
+            <div className="absolute -right-6 -top-6 w-24 h-24 bg-sky-500 rounded-full opacity-30" />
+            <div className="absolute -right-2 -bottom-8 w-28 h-28 bg-sky-500 rounded-full opacity-20" />
+            <FlaskConical className="absolute right-3 bottom-2 w-14 h-14 lg:w-12 lg:h-12 text-white opacity-20" strokeWidth={0.8} />
+            <div className="relative z-10 max-w-[72%] lg:max-w-[80%]">
               <div className="flex items-center gap-3 mb-2">
                 <div className="bg-white/20 rounded-xl p-2 backdrop-blur-sm">
                   <FlaskConical className="w-5 h-5 text-white" />
                 </div>
-                <h2 className="text-white font-bold text-lg lg:text-base leading-tight">Lab Tests</h2>
+                <h2 className="text-white font-bold text-base lg:text-base leading-tight">Lab Tests</h2>
               </div>
-              <p className="text-sky-100 text-sm mb-5 lg:text-xs lg:mb-3">Book a diagnostic test with home sample collection</p>
+              <p className="text-sky-100 text-xs mb-3 lg:text-xs lg:mb-3">Book a diagnostic test with home sample collection</p>
               <button type="button"
-                className="flex items-center gap-2 bg-white text-sky-700 font-bold text-sm px-5 py-2.5 lg:text-xs lg:px-4 lg:py-1.5 rounded-full shadow-md hover:bg-sky-50 transition-colors"
+                className="flex items-center gap-2 bg-white text-sky-700 font-bold text-xs px-4 py-1.5 lg:text-xs lg:px-4 lg:py-1.5 rounded-full shadow-md hover:bg-sky-50 transition-colors"
                 onClick={(e) => { e.stopPropagation(); navigate({ path: "/labs" }); }}
               >
                 Book a Test <ChevronRight className="w-4 h-4" />
