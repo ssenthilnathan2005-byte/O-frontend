@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { LogOut, RefreshCw, UserCheck, BedDouble, Undo2, ClipboardList } from "lucide-react";
+import { LogOut, RefreshCw, UserCheck, BedDouble, Undo2, ClipboardList, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getToken } from "@/api";
 import { useStore } from "../context/StoreContext";
+import { Vitals, vitalsText } from "@/lib/vitals";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
@@ -22,7 +23,7 @@ async function call(path: string, method = "GET", body?: any) {
 
 interface OPBooking {
   id: string; patient_name: string; patient_age: number | null; phone: string | null; complaint: string | null;
-  doctor_name: string; session: string; token_number: number; status: string; checked_in_at: string | null;
+  doctor_name: string; session: string; token_number: number; status: string; checked_in_at: string | null; vitals?: Vitals | null;
 }
 interface Bed { bed_id: string; bed_number: string; ward_id: string; ward_name: string }
 interface Admitted {
@@ -40,6 +41,9 @@ function Outpatients() {
   const [editId, setEditId] = useState<string | null>(null);
   const [f, setF] = useState({ phone: "", patientAge: "", complaint: "" });
   const [q, setQ] = useState("");
+  const [vitalsId, setVitalsId] = useState<string | null>(null);
+  const emptyV = { temperature: "", tempUnit: "F", bpSystolic: "", bpDiastolic: "", pulse: "", spo2: "", weight: "", notes: "" };
+  const [vf, setVf] = useState(emptyV);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -63,6 +67,16 @@ function Outpatients() {
   }
   async function undo(id: string) {
     try { await call("/bookings/" + id + "/undo-check-in", "POST", {}); toast.success("Check-in undone"); load(); }
+    catch (e: any) { toast.error(e.message); }
+  }
+
+  function startVitals(b: OPBooking) {
+    setEditId(null); setVitalsId(b.id);
+    const v: any = b.vitals || {};
+    setVf({ ...emptyV, ...Object.fromEntries(Object.entries(v).map(([k, x]) => [k, String(x)])) } as any);
+  }
+  async function saveVitals(id: string) {
+    try { await call("/bookings/" + id + "/vitals", "POST", vf); toast.success("Vitals saved"); setVitalsId(null); load(); }
     catch (e: any) { toast.error(e.message); }
   }
 
@@ -97,12 +111,37 @@ function Outpatients() {
                 ) : b.checked_in_at ? (
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-md px-2 py-1">Checked in</span>
+                    <Button size="sm" variant="outline" onClick={() => startVitals(b)}><Activity className="w-4 h-4 mr-1" />{b.vitals ? "Edit vitals" : "Vitals"}</Button>
                     <Button size="sm" variant="ghost" onClick={() => undo(b.id)}><Undo2 className="w-4 h-4" /></Button>
                   </div>
                 ) : (
                   <Button size="sm" onClick={() => startEdit(b)}><UserCheck className="w-4 h-4 mr-1" />Check in</Button>
                 )}
               </div>
+              {b.vitals && vitalsId !== b.id && <p className="mt-2 text-xs text-teal-700 bg-teal-50 border border-teal-100 rounded-md px-2 py-1">{vitalsText(b.vitals)}</p>}
+              {vitalsId === b.id && (
+                <div className="mt-3 space-y-2">
+                  <p className="text-xs text-gray-500">All fields are optional. Fill only what was measured.</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <div className="flex gap-1">
+                      <Input placeholder="Temp" value={vf.temperature} onChange={e => setVf({ ...vf, temperature: e.target.value })} />
+                      <select className="h-10 rounded-md border border-gray-200 bg-white px-1 text-sm" value={vf.tempUnit} onChange={e => setVf({ ...vf, tempUnit: e.target.value })}><option value="F">F</option><option value="C">C</option></select>
+                    </div>
+                    <div className="flex gap-1">
+                      <Input placeholder="BP high" value={vf.bpSystolic} onChange={e => setVf({ ...vf, bpSystolic: e.target.value })} />
+                      <Input placeholder="BP low" value={vf.bpDiastolic} onChange={e => setVf({ ...vf, bpDiastolic: e.target.value })} />
+                    </div>
+                    <Input placeholder="Pulse" value={vf.pulse} onChange={e => setVf({ ...vf, pulse: e.target.value })} />
+                    <Input placeholder="SpO2 %" value={vf.spo2} onChange={e => setVf({ ...vf, spo2: e.target.value })} />
+                    <Input placeholder="Weight kg" value={vf.weight} onChange={e => setVf({ ...vf, weight: e.target.value })} />
+                    <Input className="col-span-2" placeholder="Note" value={vf.notes} onChange={e => setVf({ ...vf, notes: e.target.value })} />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={() => saveVitals(b.id)}>Save vitals</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setVitalsId(null)}>Cancel</Button>
+                  </div>
+                </div>
+              )}
               {editId === b.id && (
                 <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <Input placeholder="Phone" value={f.phone} onChange={e => setF({ ...f, phone: e.target.value })} />
