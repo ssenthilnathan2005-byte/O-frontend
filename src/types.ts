@@ -135,7 +135,7 @@ export interface PharmacyUser {
   role: "pharmacy";
 }
 
-export type AppUser = PatientUser | DoctorUser | AdminUser | HospitalAdminUser | PharmacyUser;
+export type AppUser = PatientUser | DoctorUser | AdminUser | HospitalAdminUser | PharmacyUser | NurseUser;
 
 export interface PatientRecord {
   id: string;
@@ -143,3 +143,5 @@ export interface PatientRecord {
   email?: string;
   createdAt: string;
 }
+
+export interface NurseUser { id: string; nurseId: string; code: string; name: string; hospitalId: string; hospitalName: string; role: "nurse"; }

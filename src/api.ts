@@ -264,6 +264,10 @@ export const auth = {
     post<{ token: string; user: AppUser; firstLogin?: boolean }>("/auth/pharmacy/login", { code, password }),
   pharmacySetPassword: (code: string, currentPassword: string, newPassword: string) =>
     post<{ token: string; user: AppUser }>("/auth/pharmacy/set-password", { code, currentPassword, newPassword }),
+  nurseLogin: (code: string, password: string) =>
+    post<{ token: string; user: AppUser; firstLogin?: boolean }>("/auth/nurse/login", { code, password }),
+  nurseSetPassword: (code: string, currentPassword: string, newPassword: string) =>
+    post<{ token: string; user: AppUser }>("/auth/nurse/set-password", { code, currentPassword, newPassword }),
   labLogin: (loginId: string, password: string) =>
     post<{ firstLogin?: boolean; loginId?: string; labId?: string; labName?: string; token?: string; user?: AppUser }>(
       "/auth/lab/login", { loginId, password }

@@ -802,15 +802,12 @@ export default function LoginPage({
             </div>
           )}
 
-          {!showStaffOptions ? (
-            <button
+          {!showStaffOptions ? (<><button
               type="button"
               onClick={() => { setStaffGroup(false); setShowStaffOptions(true); }}
               className="block mx-auto mt-6 text-xs text-gray-400 hover:text-gray-600 transition-colors"
             >
-              Hospital login
-            </button>
-          ) : (
+              Hospital login</button><button type="button" onClick={() => navigate({ path: "/nurse/login" })} className="block mx-auto mt-3 text-xs text-gray-400 hover:text-gray-600 transition-colors">Nurse login</button></>) : (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-[1px] px-4">
               <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-gray-100 p-5 shadow-lg">
                 <div className="mb-4 flex items-center justify-between border-b border-gray-200 pb-3">
