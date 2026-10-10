@@ -532,7 +532,7 @@ export default function HAWards() {
       });
       setVitalsForm({ ...EMPTY_VITALS }); setShowVitalsAdd(false);
       await loadHistory(bed);
-    } catch {} finally { setVitalsSaving(false); }
+    } catch (e: any) { alert(e?.message || "Could not save vitals."); } finally { setVitalsSaving(false); }
   }
 
   async function handleAddNoteInline() {
