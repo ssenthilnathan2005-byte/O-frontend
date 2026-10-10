@@ -908,15 +908,13 @@ export default function DoctorDashboard() {
     // Tokens whose patients have told us they're running late
     const bookingByToken = new Map<number, string>();
     for (const bk of getBookingsForSession(sessionId)) {
-      if (bk.status === "confirmed") bookingByToken.set(bk.tokenNumber, bk.id);
+      if (bk.status !== "cancelled") bookingByToken.set(bk.tokenNumber, bk.id);
     }
     const arrivalRing = (n: number, st: TokenStatus) => {
-      if (st !== "red" && st !== "yellow") return "";
       const bid = bookingByToken.get(n);
       if (!bid || !foInfo[bid]) return "";
-      return foInfo[bid].checked_in_at
-        ? "ring-4 ring-emerald-500 ring-offset-2"
-        : "ring-4 ring-red-400 ring-offset-2";
+      if (foInfo[bid].checked_in_at) return "ring-4 ring-emerald-500 ring-offset-2";
+      return st === "red" || st === "yellow" ? "ring-4 ring-red-400 ring-offset-2" : "";
     };
     const lateTokens = new Set<number>(
       getBookingsForSession(sessionId)
