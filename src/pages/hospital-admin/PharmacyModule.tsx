@@ -177,7 +177,7 @@ export function PharmRevenue() {
 type InvStatus = "ok" | "low_stock" | "out_of_stock" | "expiring_soon" | "expired";
 type Inv = {
   id: string; name: string; quantity: number; packSize: number; tabletsAvailable: number; reorderLevel: number;
-  purchasePrice: number | null; sellingPrice: number | null; supplier: string | null; batchNo: string | null; medCategory: string | null;
+  purchasePrice: number | null; sellingPrice: number | null; supplier: string | null; batchNo: string | null; batches?: { batchNo: string | null; expiryDate: string | null; tablets: number; supplier: string | null }[]; medCategory: string | null;
   expiryDate: string | null; location: string | null; status: InvStatus;
   stripsPerBox?: number | null; tabletsPerBox?: number | null; schedule?: string; gstPercent?: number | null;
   breakdown?: { boxes: number; strips: number; tablets: number };
@@ -439,7 +439,7 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
       <div className="overflow-x-auto bg-white rounded-xl border border-gray-100">
         <table className="w-full">
           <thead className="bg-gray-50"><tr>
-            {["Medicine", "Category", "Available", "Expiry", "Supplier", "Location", "Reorder level (strips)", "MRP / strip", "Status", ""].map(h => <th key={h} className={TH}>{h}</th>)}
+            {["Medicine", "Category", "Available", "Batches / expiry", "Supplier", "Location", "Reorder level (strips)", "MRP / strip", "Status", ""].map(h => <th key={h} className={TH}>{h}</th>)}
           </tr></thead>
           <tbody>
             {shown.map(r => (
@@ -447,7 +447,7 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
                 <td className={TD + " font-medium"}>{r.name}{r.schedule && r.schedule !== "none" && <span className="ml-2 px-1.5 py-0.5 rounded bg-red-50 text-red-700 text-xs">{r.schedule}</span>}</td>
                 <td className={TD}>{r.medCategory || "-"}</td>
                 <td className={TD}>{r.tabletsAvailable} <span className="text-xs text-gray-400">({stockText(r)})</span></td>
-                <td className={TD}>{r.expiryDate || "-"}</td>
+                <td className={TD}>{r.batches && r.batches.length > 0 ? (<div className="space-y-0.5">{r.batches.map((b, i) => (<div key={i} className="text-xs whitespace-nowrap">{b.batchNo ? "Batch " + b.batchNo : "No batch recorded"} - {b.expiryDate || "no expiry"} - {b.tablets} tab</div>))}</div>) : (r.expiryDate || "-")}</td>
                 <td className={TD}>{r.supplier || "-"}</td>
                 <td className={TD}>{r.location || "-"}</td>
                 <td className={TD}>{r.reorderLevel} <span className="text-xs text-gray-400">({Math.round(r.reorderLevel * (r.packSize || 1))} tab)</span></td>
@@ -559,8 +559,8 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
             {Number(pf.reorderLevel) > 0 && Number(pf.tabletsPerStrip) >= 1 && <p className="text-xs text-gray-500">Low stock alert at {Number(pf.reorderLevel)} strips or fewer = {Number(pf.reorderLevel) * Number(pf.tabletsPerStrip)} tablets.</p>}
             <p className="text-xs text-amber-700">Changing tablets per strip keeps the total tablet count the same. If the count itself is wrong, fix it with Correct count.</p>
             <div className="grid grid-cols-2 gap-3">
-              <Fld label="Batch number" value={f.batchNo} onChange={v => setF(prev => ({ ...prev, batchNo: v }))} />
-              <Fld label="Expiry date" type="date" value={f.expiryDate} onChange={v => setF(prev => ({ ...prev, expiryDate: v }))} />
+              
+              
               <Fld label="Supplier" value={f.supplier} onChange={v => setF(prev => ({ ...prev, supplier: v }))} />
               <Fld label="Location (shelf / rack)" value={f.location} onChange={v => setF(prev => ({ ...prev, location: v }))} />
             </div>
