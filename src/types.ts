@@ -135,7 +135,6 @@ export interface PharmacyUser {
   role: "pharmacy";
 }
 
-<<<<<<< HEAD
 export interface FrontOfficeUser {
   id: string;
   code: string;
@@ -145,10 +144,7 @@ export interface FrontOfficeUser {
   role: "front_office";
 }
 
-export type AppUser = PatientUser | DoctorUser | AdminUser | HospitalAdminUser | PharmacyUser | FrontOfficeUser;
-=======
-export type AppUser = PatientUser | DoctorUser | AdminUser | HospitalAdminUser | PharmacyUser | NurseUser;
->>>>>>> origin/main
+export type AppUser = PatientUser | DoctorUser | AdminUser | HospitalAdminUser | PharmacyUser | NurseUser | FrontOfficeUser;
 
 export interface PatientRecord {
   id: string;
