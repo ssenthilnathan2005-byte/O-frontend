@@ -46,6 +46,15 @@ export default function PatientHomePage() {
   const [search, setSearch] = useState("");
   const [mapReady, setMapReady] = useState(false);
   const [mapHeight, setMapHeight] = useState(220);
+  const [isDesktop, setIsDesktop] = useState(
+    typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const on = () => setIsDesktop(mq.matches);
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
   const dragStartY = useRef<number>(0);
   const dragStartH = useRef<number>(220);
   const { state: nearState, locate, clear, sorted: sortedByDistance } = useNearMe(hospitals);
@@ -189,14 +198,14 @@ export default function PatientHomePage() {
   return (
     <div className="flex flex-col bg-gray-50" style={{ minHeight: "100dvh" }}>
       {/* Map */}
-      <div className="relative shrink-0 transition-all duration-200" style={{ height: mapHeight }}>
+      <div className="relative shrink-0 transition-all duration-200 lg:w-[calc(100%-3rem)] lg:max-w-7xl lg:mx-auto lg:mt-6 lg:rounded-3xl lg:overflow-hidden lg:border lg:border-gray-200 lg:shadow-md" style={{ height: isDesktop ? 340 : mapHeight }}>
         <div ref={mapRef} className="w-full h-full" />
         {!mapReady && (
           <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
             <Loader2 className="w-6 h-6 text-teal-500 animate-spin" />
           </div>
         )}
-        <div className="absolute bottom-5 left-3 right-3 z-10 flex gap-2">
+        <div className="absolute bottom-5 left-3 right-3 z-10 flex gap-2 lg:right-auto lg:left-5 lg:bottom-5 lg:w-[560px]">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
             <input value={search} onChange={e => setSearch(e.target.value)}
@@ -227,7 +236,7 @@ export default function PatientHomePage() {
 
       {/* Drag handle */}
       <div
-        className="shrink-0 flex flex-col items-center justify-center bg-white z-10 cursor-row-resize"
+        className="shrink-0 flex flex-col items-center justify-center bg-white z-10 cursor-row-resize lg:hidden"
         style={{ height: 26, borderRadius: "16px 16px 0 0", marginTop: -10, boxShadow: "0 -2px 8px rgba(0,0,0,0.08)" }}
         onMouseDown={e => { onDragStart(e.clientY); const mm = (ev: MouseEvent) => onDragMove(ev.clientY); const mu = (ev: MouseEvent) => { onDragEnd(ev.clientY); window.removeEventListener("mousemove", mm); window.removeEventListener("mouseup", mu); }; window.addEventListener("mousemove", mm); window.addEventListener("mouseup", mu); }}
         onTouchStart={e => { onDragStart(e.touches[0].clientY); const tm = (ev: TouchEvent) => onDragMove(ev.touches[0].clientY); const te = (ev: TouchEvent) => { onDragEnd(ev.changedTouches[0].clientY); window.removeEventListener("touchmove", tm); window.removeEventListener("touchend", te); }; window.addEventListener("touchmove", tm); window.addEventListener("touchend", te); }}
@@ -236,8 +245,8 @@ export default function PatientHomePage() {
       </div>
 
       {/* Scrollable content below map */}
-      <div className="flex-1 overflow-y-auto bg-white">
-        <div className="px-4 pb-28 space-y-4">
+      <div className="flex-1 overflow-y-auto bg-white lg:bg-gray-50">
+        <div className="px-4 pb-28 space-y-4 lg:max-w-7xl lg:mx-auto lg:px-6 lg:pb-12 lg:space-y-6">
           {/* Notification permission banner */}
           {notifState === "default" && (
             <div className="mt-4 flex items-center gap-3 bg-teal-50 border border-teal-200 rounded-2xl px-4 py-3">
@@ -259,15 +268,17 @@ export default function PatientHomePage() {
           )}
 
           {/* Greeting */}
-          <div className="pt-5 pb-1">
-            <h1 className="text-4xl font-extrabold text-gray-900 leading-tight">{getGreeting()} 👋</h1>
+          <div className="pt-5 pb-1 lg:pt-6">
+            <h1 className="text-4xl lg:text-3xl font-extrabold text-gray-900 leading-tight">{getGreeting()} 👋</h1>
             <p className="text-sm text-gray-400 mt-1 font-medium">Your health matters. We're here to help.</p>
           </div>
 
+          {/* Action cards (3 columns on desktop) */}
+          <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-3 lg:gap-6">
           {/* Book an appointment */}
           <motion.div
             initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-            className="relative bg-gradient-to-br from-teal-600 to-teal-700 rounded-3xl px-5 py-6 overflow-hidden cursor-pointer shadow-lg shadow-teal-200"
+            className="relative bg-gradient-to-br from-teal-600 to-teal-700 rounded-3xl px-5 py-6 overflow-hidden cursor-pointer shadow-lg shadow-teal-200 lg:order-1 lg:flex lg:items-center lg:px-7"
             onClick={() => navigate({ path: "/patient/hospitals" })}
           >
             <div className="absolute -right-6 -top-6 w-32 h-32 bg-teal-500 rounded-full opacity-30" />
@@ -291,7 +302,7 @@ export default function PatientHomePage() {
           </motion.div>
 
           {/* Track token + Prescriptions */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-1 lg:gap-4 lg:order-3">
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
               className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm cursor-pointer hover:shadow-md transition-all"
               onClick={() => activeBooking?.sessionId
@@ -339,7 +350,7 @@ export default function PatientHomePage() {
           {/* Lab Tests — full width, matches Book an appointment style */}
           <motion.div
             initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}
-            className="relative bg-gradient-to-br from-sky-600 to-sky-700 rounded-3xl px-5 py-6 overflow-hidden cursor-pointer shadow-lg shadow-sky-200"
+            className="relative bg-gradient-to-br from-sky-600 to-sky-700 rounded-3xl px-5 py-6 overflow-hidden cursor-pointer shadow-lg shadow-sky-200 lg:order-2 lg:flex lg:items-center lg:px-7"
             onClick={() => navigate({ path: "/labs" })}
           >
             <div className="absolute -right-6 -top-6 w-32 h-32 bg-sky-500 rounded-full opacity-30" />
@@ -361,6 +372,7 @@ export default function PatientHomePage() {
               </button>
             </div>
           </motion.div>
+          </div>
 
           {/* Hospitals near you — 3 col compact */}
           {nearbyHospitals.length > 0 && (
@@ -375,7 +387,7 @@ export default function PatientHomePage() {
                   See all <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-2 lg:grid-cols-6 lg:gap-4">
                 {nearbyHospitals.map((hospital, idx) => {
                   const photoUrl = resolvePhotoUrl(hospital.photoUrl);
                   return (
@@ -383,15 +395,15 @@ export default function PatientHomePage() {
                       className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
                       onClick={() => navigate({ path: "/patient/hospital", id: hospital.id })}
                     >
-                      <div className="h-16 relative">
+                      <div className="h-16 lg:h-28 relative">
                         {photoUrl
                           ? <img src={photoUrl} alt={hospital.name} className="w-full h-full object-cover" />
                           : <div className={`w-full h-full bg-gradient-to-br ${hospital.gradient}`} />}
-                        <span className="absolute top-1.5 left-1.5 bg-green-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">Open</span>
+                        <span className="absolute top-1.5 left-1.5 bg-green-500 text-white text-[9px] lg:text-[10px] font-bold px-1.5 py-0.5 rounded-full">Open</span>
                       </div>
-                      <div className="p-2">
-                        <p className="font-semibold text-gray-900 text-[10px] leading-tight line-clamp-2">{hospital.name}</p>
-                        <p className="text-gray-400 text-[9px] mt-0.5 flex items-center gap-0.5 truncate">
+                      <div className="p-2 lg:p-3">
+                        <p className="font-semibold text-gray-900 text-[10px] lg:text-sm leading-tight line-clamp-2">{hospital.name}</p>
+                        <p className="text-gray-400 text-[9px] lg:text-xs mt-0.5 flex items-center gap-0.5 truncate">
                           <MapPin className="w-2.5 h-2.5 shrink-0" />{hospital.area}
                         </p>
                       </div>
