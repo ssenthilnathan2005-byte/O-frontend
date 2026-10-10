@@ -1,4 +1,4 @@
-import { Calendar, ChevronRight, Clock, FileText, FlaskConical, Building2, MapPin, Search, Navigation, Loader2, XCircle, Bell } from "lucide-react";
+import { Calendar, ChevronRight, Clock, FileText, FlaskConical, Building2, MapPin, Search, Navigation, Loader2, XCircle, Bell, Hospital, BookOpen, Pill, Ambulance } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { useStore } from "../../context/StoreContext";
@@ -91,7 +91,8 @@ export default function PatientHomePage() {
       mapObj.current = map;
       setMapReady(true);
     }).catch(() => setMapReady(false));
-  }, []);
+    return () => { mapObj.current = null; markersRef.current = []; setMapReady(false); };
+  }, [isDesktop]);
 
   useEffect(() => {
     if (!mapReady || !mapObj.current) return;
@@ -195,7 +196,7 @@ export default function PatientHomePage() {
   const prescriptionCount = realPrescriptionCount ?? 0;
   const nearbyHospitals = hospitals.slice(0, 6);
 
-  return (
+  const mobileView = (
     <div className="flex flex-col bg-gray-50" style={{ minHeight: "100dvh" }}>
       {/* Map */}
       <div className="relative shrink-0 transition-all duration-200 lg:w-[calc(100%-3rem)] lg:max-w-6xl lg:mx-auto lg:mt-4 lg:rounded-3xl lg:overflow-hidden lg:border lg:border-gray-200 lg:shadow-md" style={{ height: isDesktop ? 190 : mapHeight }}>
@@ -417,4 +418,158 @@ export default function PatientHomePage() {
       </div>
     </div>
   );
+
+  // ── Desktop dashboard (lg and up): everything visible, no page scroll ──
+  const firstName = (((user as any)?.name as string) || "").split(" ")[0];
+  const services = [
+    { label: "Hospitals", sub: "Find & book", Icon: Hospital, path: "/patient/hospitals", tint: "bg-teal-50 text-teal-600" },
+    { label: "Labs", sub: "Diagnostic tests", Icon: FlaskConical, path: "/labs", tint: "bg-sky-50 text-sky-600" },
+    { label: "Bookings", sub: "Tokens & visits", Icon: BookOpen, path: "/patient/tokens", tint: "bg-indigo-50 text-indigo-600" },
+    { label: "Prescriptions", sub: prescriptionCount > 0 ? `${prescriptionCount} record${prescriptionCount > 1 ? "s" : ""}` : "No records", Icon: FileText, path: "/patient/prescriptions", tint: "bg-blue-50 text-blue-600" },
+    { label: "Pharmacies", sub: "Order medicines", Icon: Pill, path: "/pharmacies", tint: "bg-emerald-50 text-emerald-600" },
+    { label: "Ambulance", sub: "Emergency", Icon: Ambulance, path: "/ambulance", tint: "bg-red-50 text-red-600" },
+  ];
+
+  const desktopView = (
+    <div className="bg-gray-50 overflow-hidden" style={{ height: "calc(100dvh - 60px)" }}>
+      <div className="h-full max-w-7xl mx-auto px-6 py-4 grid grid-cols-12 gap-4">
+        {/* Left: greeting + map */}
+        <div className="col-span-7 flex flex-col min-h-0">
+          <div className="flex items-end justify-between mb-3 shrink-0">
+            <div>
+              <h1 className="text-xl font-bold text-gray-900 leading-tight">{getGreeting()}{firstName ? `, ${firstName}` : ""} 👋</h1>
+              <p className="text-xs text-gray-500 mt-0.5">Your health matters. We're here to help.</p>
+            </div>
+            {notifState === "default" && (
+              <button type="button"
+                onClick={() => enablePushNotifications().then(() => setNotifState(Notification.permission as "default"|"granted"|"denied"))}
+                className="flex items-center gap-1.5 bg-teal-50 border border-teal-200 text-teal-700 text-xs font-semibold px-3 py-1.5 rounded-full hover:bg-teal-100 transition-colors">
+                <Bell className="w-3.5 h-3.5" /> Enable notifications
+              </button>
+            )}
+          </div>
+          <div className="relative flex-1 min-h-0 rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-gray-100">
+            <div ref={mapRef} className="absolute inset-0" />
+            {!mapReady && (
+              <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
+                <Loader2 className="w-6 h-6 text-teal-500 animate-spin" />
+              </div>
+            )}
+            <div className="absolute top-3 left-3 z-10 flex gap-2 w-[440px] max-w-[calc(100%-1.5rem)]">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                <input value={search} onChange={e => setSearch(e.target.value)}
+                  placeholder="Search hospitals, doctors or areas"
+                  className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 bg-white text-sm shadow-md focus:outline-none focus:ring-2 focus:ring-teal-400" />
+              </div>
+              {nearState.status === "done" ? (
+                <button onClick={clear} className="flex items-center gap-1 bg-teal-500 text-white text-xs font-semibold px-3 py-2 rounded-lg shadow-md whitespace-nowrap">
+                  <XCircle className="w-3.5 h-3.5" /> Clear
+                </button>
+              ) : (
+                <button onClick={locate} disabled={nearState.status === "loading"}
+                  className="flex items-center gap-1 bg-white border border-gray-200 text-teal-700 text-xs font-semibold px-3 py-2 rounded-lg shadow-md whitespace-nowrap disabled:opacity-60">
+                  {nearState.status === "loading" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Navigation className="w-3.5 h-3.5" />}
+                  {nearState.status === "denied" || nearState.status === "gps-off" ? "Allow location" : "Near me"}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right: actions */}
+        <div className="col-span-5 flex flex-col gap-3 min-h-0">
+          {/* Primary action */}
+          <div
+            className="shrink-0 flex items-center justify-between gap-3 bg-gradient-to-r from-teal-600 to-teal-700 rounded-2xl px-4 py-3 cursor-pointer shadow-sm hover:shadow-md transition-shadow"
+            onClick={() => navigate({ path: "/patient/hospitals" })}
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="bg-white/20 rounded-lg p-2 shrink-0"><Calendar className="w-5 h-5 text-white" /></div>
+              <div className="min-w-0">
+                <h2 className="text-white font-semibold text-sm leading-tight">Book an appointment</h2>
+                <p className="text-teal-100 text-xs truncate">Find a hospital and get your token in minutes</p>
+              </div>
+            </div>
+            <button type="button"
+              className="shrink-0 flex items-center gap-1 bg-white text-teal-700 font-semibold text-xs px-3.5 py-1.5 rounded-full hover:bg-teal-50 transition-colors"
+              onClick={(e) => { e.stopPropagation(); navigate({ path: "/patient/hospitals" }); }}>
+              Get Started <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* All services */}
+          <div className="shrink-0 grid grid-cols-3 gap-2">
+            {services.map(({ label, sub, Icon, path, tint }) => (
+              <button key={label} type="button"
+                onClick={() => navigate({ path } as any)}
+                className="bg-white border border-gray-200 rounded-xl p-2.5 text-left hover:border-teal-300 hover:shadow-sm transition-all">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${tint}`}>
+                  <Icon className="w-4 h-4" />
+                </div>
+                <p className="text-sm font-semibold text-gray-900 leading-tight">{label}</p>
+                <p className="text-[11px] text-gray-500 truncate">{sub}</p>
+              </button>
+            ))}
+          </div>
+
+          {/* Token status */}
+          <button type="button"
+            className="shrink-0 flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-left hover:border-teal-300 hover:shadow-sm transition-all"
+            onClick={() => activeBooking?.sessionId
+              ? navigate({ path: "/patient/track", sessionId: activeBooking.sessionId, tokenNumber: activeBooking.tokenNumber ?? 0 })
+              : navigate({ path: "/patient/tokens" })}>
+            <div className="w-8 h-8 rounded-lg bg-teal-50 flex items-center justify-center shrink-0"><Clock className="w-4 h-4 text-teal-600" /></div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-gray-900 leading-tight">Track your token</p>
+              <p className="text-[11px] text-gray-500">See your position in the queue</p>
+            </div>
+            {myTokenNum != null ? (
+              <span className="flex items-center gap-1.5 bg-green-50 text-green-700 text-xs font-semibold px-2.5 py-1 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500" />#{myTokenNum}{aheadCount != null ? ` · ${aheadCount} ahead` : ""}
+              </span>
+            ) : (
+              <span className="bg-gray-100 text-gray-500 text-xs font-medium px-2.5 py-1 rounded-full">No active token</span>
+            )}
+          </button>
+
+          {/* Hospitals near you */}
+          <div className="flex-1 min-h-0 bg-white border border-gray-200 rounded-xl p-3 flex flex-col">
+            <div className="flex items-center justify-between mb-2 shrink-0">
+              <h2 className="text-sm font-semibold text-gray-900">Hospitals near you</h2>
+              <button type="button" className="text-teal-600 text-xs font-semibold flex items-center gap-0.5 hover:underline"
+                onClick={() => navigate({ path: "/patient/hospitals" })}>
+                See all <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5">
+              {nearbyHospitals.length === 0 && <p className="text-xs text-gray-400 py-2">No hospitals available yet</p>}
+              {nearbyHospitals.map((hospital) => {
+                const photoUrl = resolvePhotoUrl(hospital.photoUrl);
+                return (
+                  <button key={hospital.id} type="button"
+                    onClick={() => navigate({ path: "/patient/hospital", id: hospital.id })}
+                    className="w-full flex items-center gap-3 rounded-lg p-1.5 text-left hover:bg-gray-50 transition-colors">
+                    <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0">
+                      {photoUrl
+                        ? <img src={photoUrl} alt={hospital.name} className="w-full h-full object-cover" />
+                        : <div className={`w-full h-full bg-gradient-to-br ${hospital.gradient}`} />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-gray-900 truncate leading-tight">{hospital.name}</p>
+                      <p className="text-[11px] text-gray-500 flex items-center gap-0.5 truncate"><MapPin className="w-3 h-3 shrink-0" />{hospital.area}</p>
+                    </div>
+                    <span className="bg-green-50 text-green-700 text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0">Open</span>
+                    <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return isDesktop ? desktopView : mobileView;
 }
