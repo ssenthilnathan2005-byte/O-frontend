@@ -54,6 +54,8 @@ import PrescriptionDialog from "@/components/PrescriptionDialog";
 import PatientHistoryModal from "@/components/PatientHistoryModal";
 import { toast } from "sonner";
 import { useStore } from "../../context/StoreContext";
+import { getToken as foGetToken } from "@/api";
+import { Vitals, vitalsText } from "@/lib/vitals";
 import MonthlyArchiveBanner from "../../components/MonthlyArchiveBanner";
 import {
   SESSION_TIMES,
@@ -401,6 +403,25 @@ export default function DoctorDashboard() {
   const [liveTokensView, setLiveTokensView] = useState<"tovisit" | "visited" | "archived">("tovisit");
   const [historyFor, setHistoryFor] = useState<{ patientId: string; patientName: string; bookingId: string } | null>(null);
   const [historyReturnToken, setHistoryReturnToken] = useState<number | null>(null);
+  const [foInfo, setFoInfo] = useState<Record<string, { checked_in_at: string | null; vitals: Vitals | null }>>({});
+  useEffect(() => {
+    let off = false;
+    const foBase = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
+    async function pull() {
+      try {
+        const r = await fetch(foBase + "/front-office/my-patients", { headers: { Authorization: "Bearer " + foGetToken() } });
+        if (!r.ok) return;
+        const j = await r.json();
+        if (off) return;
+        const m: Record<string, { checked_in_at: string | null; vitals: Vitals | null }> = {};
+        for (const x of j.bookings || []) m[x.id] = { checked_in_at: x.checked_in_at, vitals: x.vitals };
+        setFoInfo(m);
+      } catch {}
+    }
+    pull();
+    const t = setInterval(pull, 20000);
+    return () => { off = true; clearInterval(t); };
+  }, []);
   const allDoctorBookings = doctor
     ? bookings.filter((b: any) => b.doctorId === doctor.id)
     : [];
@@ -1518,6 +1539,14 @@ export default function DoctorDashboard() {
                           <Phone className="w-3 h-3 text-gray-400" />
                           {getBookingPhone(b.phone)}
                         </p>
+                        {foInfo[b.id]?.checked_in_at && (
+                          <p className="mt-1"><span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
+                            Checked in {new Date(foInfo[b.id].checked_in_at as string).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                          </span></p>
+                        )}
+                        {foInfo[b.id]?.vitals && (
+                          <p className="text-xs text-teal-700 bg-teal-50 border border-teal-100 rounded-md px-2 py-1 mt-1">{vitalsText(foInfo[b.id].vitals as Vitals)}</p>
+                        )}
                         <p className="text-xs text-gray-400 mt-0.5">{b.session} · {b.date}</p>
                         {b.complaint && <p className="text-xs text-gray-500 mt-0.5 italic line-clamp-2">📋 {b.complaint}</p>}
                         {b.patientId && (
