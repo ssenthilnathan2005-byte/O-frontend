@@ -484,7 +484,9 @@ export type AppUser =
   | { id: string; role: "hospital_admin"; hospitalId: string; hospitalName: string }
   | { id: string; role: "lab_admin"; labId: string; labName: string }
   | { id: string; code: string; pharmacyStaffId: string; hospitalId: string; hospitalName: string; role: "pharmacy" }
-  | { id: string; name: string; email: string; role: "pharmacy_owner"; pharmacyId: string; pharmacyName?: string };
+  | { id: string; name: string; email: string; role: "pharmacy_owner"; pharmacyId: string; pharmacyName?: string }
+  | { id: string; nurseId: string; code: string; name: string; hospitalId: string; hospitalName: string; role: "nurse" }
+  | { id: string; code: string; frontOfficeStaffId: string; hospitalId: string; hospitalName: string; role: "front_office" };
 export interface Stats {
   totalHospitals: number; totalDoctors: number; totalPatients: number;
   totalBookings: number; activeSessions: number;
