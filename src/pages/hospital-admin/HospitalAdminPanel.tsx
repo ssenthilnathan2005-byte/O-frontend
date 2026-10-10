@@ -1,4 +1,4 @@
-import { Activity, BarChart3, ChevronDown, ShoppingCart, Fingerprint, BedDouble, Building2, ClipboardList, FlaskConical, LayoutDashboard, LogOut, Menu, Package, Pill, Receipt, Stethoscope, UserCog, Users2, Users, X } from "lucide-react";
+import { HeartPulse, Activity, BarChart3, ChevronDown, ShoppingCart, Fingerprint, BedDouble, Building2, ClipboardList, FlaskConical, LayoutDashboard, LogOut, Menu, Package, Pill, Receipt, Stethoscope, UserCog, Users2, Users, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useStore } from "../../context/StoreContext";
 import { useRouter } from "../../router/RouterContext";
@@ -10,6 +10,7 @@ import HAPharmacy from "./HAPharmacy";
 import HAInward from "./HAInward";
 import HAWards from "./HAWards";
 import HAHR from "./HAHR";
+import HANurses from "./HANurses";
 import HAInventory from "./HAInventory";
 import HALab from "./HALab";
 import HAAttendance from "./HAAttendance";
@@ -28,6 +29,7 @@ const NAV_ITEMS = [
   { path: "/hospital-admin/ipd", label: "IPD / Inward", icon: BedDouble },
   { path: "/hospital-admin/lab", label: "Laboratory", icon: FlaskConical },
   { path: "/hospital-admin/patients", label: "Live Patients", icon: Users2 },
+  { path: "/hospital-admin/nurses", label: "Nurses", icon: HeartPulse },
   { path: "/hospital-admin/pharmacy", label: "Pharmacy", icon: Pill },
 ] as const;
 
@@ -94,6 +96,7 @@ export default function HospitalAdminPanel() {
     if (route.path === "/hospital-admin/wards") return <HAWards />;
     if (route.path === "/hospital-admin/inventory") return <HAInventory />;
     if (route.path === "/hospital-admin/hr") return <HAHR />;
+    if (route.path === "/hospital-admin/nurses") return <HANurses />;
     if (route.path === "/hospital-admin/attendance") return <HAAttendance />;
     if (route.path === "/hospital-admin/billing") return <HABilling />;
     return <HADashboard />;

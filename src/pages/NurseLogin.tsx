@@ -1,0 +1,131 @@
+import { HeartPulse, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import * as api from "../api";
+import { useStore } from "../context/StoreContext";
+import { useRouter } from "../router/RouterContext";
+
+export default function NurseLogin() {
+  const { login } = useStore();
+  const { navigate, replace } = useRouter();
+
+  const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [setupMode, setSetupMode] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  async function handleLogin() {
+    if (!code.trim() || !password.trim()) {
+      toast.error("Enter your Nurse ID and password");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await api.auth.nurseLogin(code.trim(), password);
+      if (res.firstLogin) {
+        setSetupMode(true);
+        toast.info("Please set a new password to continue");
+        return;
+      }
+      login(res.user, res.token);
+      replace({ path: "/nurse" });
+    } catch (err: any) {
+      toast.error(err.message || "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleSetPassword() {
+    if (newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await api.auth.nurseSetPassword(code.trim(), password, newPassword);
+      login(res.user, res.token);
+      replace({ path: "/nurse" });
+      toast.success("Password updated");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to set password");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="w-full max-w-sm">
+        <div className="flex flex-col items-center mb-6">
+          <div className="w-14 h-14 rounded-2xl bg-teal-500 flex items-center justify-center mb-3">
+            <HeartPulse className="w-7 h-7 text-white" />
+          </div>
+          <h1 className="text-xl font-bold text-gray-900">Nurse Login</h1>
+          <p className="text-sm text-gray-500 mt-1 text-center">
+            {setupMode ? "Set a new password for your account" : "Sign in with the Nurse ID given by your hospital"}
+          </p>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
+          {setupMode ? (
+            <>
+              <div className="space-y-1.5">
+                <Label>New Password</Label>
+                <Input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Min 8 characters"
+                  onKeyDown={(e) => e.key === "Enter" && handleSetPassword()}
+                  autoFocus
+                />
+              </div>
+              <Button className="w-full" onClick={handleSetPassword} disabled={loading}>
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Password & Sign In"}
+              </Button>
+            </>
+          ) : (
+            <>
+              <div className="space-y-1.5">
+                <Label>Nurse ID</Label>
+                <Input
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  placeholder="e.g. NUR-7K3QMA"
+                  className="font-mono tracking-widest"
+                  autoFocus
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Password</Label>
+                <Input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Your password"
+                  onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                />
+              </div>
+              <Button className="w-full" onClick={handleLogin} disabled={loading}>
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Sign In"}
+              </Button>
+            </>
+          )}
+
+          <button
+            type="button"
+            onClick={() => navigate({ path: "/login", tab: "patient", patientMode: "login" })}
+            className="w-full text-center text-xs text-gray-400 hover:text-teal-600 transition-colors"
+          >
+            Not a nurse? Go to patient login
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

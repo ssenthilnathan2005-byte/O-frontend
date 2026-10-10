@@ -164,6 +164,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     if (!u) return;
 
+    if (u.role === "nurse") return; // nurses do not need hospital-wide bookings
     try {
       const b = await api.bookings.list(u.role === "hospital_admin" ? u.hospitalId : undefined);
       setBookings(b);
