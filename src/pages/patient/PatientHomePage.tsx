@@ -1,4 +1,4 @@
-import { Calendar, ChevronRight, Clock, FileText, FlaskConical, Building2, MapPin, Search, Navigation, Loader2, XCircle, Bell, Hospital, BookOpen, Pill, Ambulance } from "lucide-react";
+import { Calendar, ChevronRight, Clock, FileText, FlaskConical, Building2, MapPin, Search, Navigation, Loader2, XCircle, Bell, Hospital, BookOpen, Pill, Ambulance, Maximize2, Minimize2 } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { useStore } from "../../context/StoreContext";
@@ -420,6 +420,27 @@ export default function PatientHomePage() {
   );
 
   // ── Desktop dashboard (lg and up): everything visible, no page scroll ──
+  const [mapExpanded, setMapExpanded] = useState<boolean>(() => {
+    try { return localStorage.getItem("db_map_expanded") === "1"; } catch { return false; }
+  });
+  function toggleMap() {
+    setMapExpanded(v => {
+      try { localStorage.setItem("db_map_expanded", v ? "0" : "1"); } catch {}
+      return !v;
+    });
+  }
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const g = (window as any).google;
+      if (g && mapObj.current) {
+        const c = mapObj.current.getCenter();
+        g.maps.event.trigger(mapObj.current, "resize");
+        if (c) mapObj.current.setCenter(c);
+      }
+    }, 60);
+    return () => clearTimeout(t);
+  }, [mapExpanded]);
+
   const [navH, setNavH] = useState(58);
   useEffect(() => {
     const el = Array.from(document.querySelectorAll("header")).find(h => h.offsetHeight > 0);
@@ -444,6 +465,7 @@ export default function PatientHomePage() {
     { label: "Ambulance", sub: "Emergency", Icon: Ambulance, path: "/ambulance", tint: "bg-red-50 text-red-600" },
   ];
 
+  const big = !mapExpanded; // map collapsed => actions panel gets the room and larger sizing
   const desktopView = (
     <div className="bg-gray-50 overflow-hidden" style={{ height: `calc(100dvh - ${navH}px)` }}>
       <div className="h-full w-full mx-auto px-6 py-4 flex flex-col gap-3">
@@ -462,9 +484,14 @@ export default function PatientHomePage() {
           )}
         </div>
 
-        {/* Content: map fills all remaining width, actions in a fixed-ratio column */}
+        {/* Content: map (left) + actions */}
         <div className="flex-1 min-h-0 grid gap-4"
-          style={{ gridTemplateColumns: "minmax(0, 1fr) clamp(400px, 34vw, 620px)", gridTemplateRows: "minmax(0, 1fr)" }}>
+          style={{
+            gridTemplateColumns: mapExpanded
+              ? "minmax(0, 1fr) clamp(400px, 34vw, 620px)"
+              : "clamp(320px, 28vw, 440px) minmax(0, 1fr)",
+            gridTemplateRows: "minmax(0, 1fr)",
+          }}>
           {/* Map */}
           <div className="relative min-h-0 rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-gray-100">
             <div ref={mapRef} className="absolute inset-0" />
@@ -473,8 +500,8 @@ export default function PatientHomePage() {
                 <Loader2 className="w-6 h-6 text-teal-500 animate-spin" />
               </div>
             )}
-            <div className="absolute top-3 left-3 z-10 flex gap-2 w-[440px] max-w-[calc(100%-1.5rem)]">
-              <div className="relative flex-1">
+            <div className={`absolute top-3 left-3 z-10 flex gap-2 ${mapExpanded ? "w-[440px] max-w-[calc(100%-4rem)]" : "right-14"}`}>
+              <div className="relative flex-1 min-w-0">
                 <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
                 <input value={search} onChange={e => setSearch(e.target.value)}
                   placeholder="Search hospitals, doctors or areas"
@@ -492,74 +519,80 @@ export default function PatientHomePage() {
                 </button>
               )}
             </div>
+            <button type="button" onClick={toggleMap}
+              title={mapExpanded ? "Shrink map" : "Expand map"}
+              aria-label={mapExpanded ? "Shrink map" : "Expand map"}
+              className="absolute top-3 right-3 z-10 w-9 h-9 flex items-center justify-center bg-white border border-gray-200 rounded-lg shadow-md text-gray-700 hover:text-teal-700 hover:border-teal-300 transition-colors">
+              {mapExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            </button>
           </div>
 
           {/* Actions */}
           <div className="min-h-0 flex flex-col gap-3 overflow-y-auto">
             {/* Primary action */}
             <div
-              className="shrink-0 flex items-center justify-between gap-3 bg-gradient-to-r from-teal-600 to-teal-700 rounded-2xl px-4 py-3 cursor-pointer shadow-sm hover:shadow-md transition-shadow"
+              className={`shrink-0 flex items-center justify-between gap-3 bg-gradient-to-r from-teal-600 to-teal-700 rounded-2xl cursor-pointer shadow-sm hover:shadow-md transition-shadow ${big ? "px-5 py-4" : "px-4 py-3"}`}
               onClick={() => navigate({ path: "/patient/hospitals" })}
             >
               <div className="flex items-center gap-3 min-w-0">
-                <div className="bg-white/20 rounded-lg p-2 shrink-0"><Calendar className="w-5 h-5 text-white" /></div>
+                <div className={`bg-white/20 rounded-lg shrink-0 ${big ? "p-2.5" : "p-2"}`}><Calendar className={big ? "w-6 h-6 text-white" : "w-5 h-5 text-white"} /></div>
                 <div className="min-w-0">
-                  <h2 className="text-white font-semibold text-sm leading-tight">Book an appointment</h2>
-                  <p className="text-teal-100 text-xs truncate">Find a hospital and get your token in minutes</p>
+                  <h2 className={`text-white font-semibold leading-tight ${big ? "text-base" : "text-sm"}`}>Book an appointment</h2>
+                  <p className={`text-teal-100 truncate ${big ? "text-sm" : "text-xs"}`}>Find a hospital and get your token in minutes</p>
                 </div>
               </div>
               <button type="button"
-                className="shrink-0 flex items-center gap-1 bg-white text-teal-700 font-semibold text-xs px-3.5 py-1.5 rounded-full hover:bg-teal-50 transition-colors"
+                className={`shrink-0 flex items-center gap-1 bg-white text-teal-700 font-semibold rounded-full hover:bg-teal-50 transition-colors ${big ? "text-sm px-5 py-2" : "text-xs px-3.5 py-1.5"}`}
                 onClick={(e) => { e.stopPropagation(); navigate({ path: "/patient/hospitals" }); }}>
                 Get Started <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
 
             {/* All services */}
-            <div className="shrink-0 grid grid-cols-3 gap-2">
+            <div className={`shrink-0 grid ${big ? "grid-cols-6 gap-3" : "grid-cols-3 gap-2"}`}>
               {services.map(({ label, sub, Icon, path, tint }) => (
                 <button key={label} type="button"
                   onClick={() => navigate({ path } as any)}
-                  className="bg-white border border-gray-200 rounded-xl p-2.5 text-left hover:border-teal-300 hover:shadow-sm transition-all">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${tint}`}>
-                    <Icon className="w-4 h-4" />
+                  className={`bg-white border border-gray-200 rounded-xl text-left hover:border-teal-300 hover:shadow-sm transition-all ${big ? "p-3.5" : "p-2.5"}`}>
+                  <div className={`rounded-lg flex items-center justify-center ${tint} ${big ? "w-10 h-10 mb-2.5" : "w-8 h-8 mb-2"}`}>
+                    <Icon className={big ? "w-5 h-5" : "w-4 h-4"} />
                   </div>
-                  <p className="text-sm font-semibold text-gray-900 leading-tight truncate">{label}</p>
-                  <p className="text-[11px] text-gray-500 truncate">{sub}</p>
+                  <p className={`font-semibold text-gray-900 leading-tight truncate ${big ? "text-base" : "text-sm"}`}>{label}</p>
+                  <p className={`text-gray-500 truncate ${big ? "text-xs" : "text-[11px]"}`}>{sub}</p>
                 </button>
               ))}
             </div>
 
             {/* Token status */}
             <button type="button"
-              className="shrink-0 flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-left hover:border-teal-300 hover:shadow-sm transition-all"
+              className={`shrink-0 flex items-center gap-3 bg-white border border-gray-200 rounded-xl text-left hover:border-teal-300 hover:shadow-sm transition-all ${big ? "px-4 py-3" : "px-3 py-2.5"}`}
               onClick={() => activeBooking?.sessionId
                 ? navigate({ path: "/patient/track", sessionId: activeBooking.sessionId, tokenNumber: activeBooking.tokenNumber ?? 0 })
                 : navigate({ path: "/patient/tokens" })}>
-              <div className="w-8 h-8 rounded-lg bg-teal-50 flex items-center justify-center shrink-0"><Clock className="w-4 h-4 text-teal-600" /></div>
+              <div className={`rounded-lg bg-teal-50 flex items-center justify-center shrink-0 ${big ? "w-10 h-10" : "w-8 h-8"}`}><Clock className={big ? "w-5 h-5 text-teal-600" : "w-4 h-4 text-teal-600"} /></div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-gray-900 leading-tight">Track your token</p>
-                <p className="text-[11px] text-gray-500 truncate">See your position in the queue</p>
+                <p className={`font-semibold text-gray-900 leading-tight ${big ? "text-base" : "text-sm"}`}>Track your token</p>
+                <p className={`text-gray-500 truncate ${big ? "text-xs" : "text-[11px]"}`}>See your position in the queue</p>
               </div>
               {myTokenNum != null ? (
-                <span className="flex items-center gap-1.5 bg-green-50 text-green-700 text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap">
+                <span className={`flex items-center gap-1.5 bg-green-50 text-green-700 font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${big ? "text-sm" : "text-xs"}`}>
                   <span className="w-1.5 h-1.5 rounded-full bg-green-500" />#{myTokenNum}{aheadCount != null ? ` · ${aheadCount} ahead` : ""}
                 </span>
               ) : (
-                <span className="bg-gray-100 text-gray-500 text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap">No active token</span>
+                <span className={`bg-gray-100 text-gray-500 font-medium px-2.5 py-1 rounded-full whitespace-nowrap ${big ? "text-sm" : "text-xs"}`}>No active token</span>
               )}
             </button>
 
             {/* Hospitals near you — takes all remaining height */}
-            <div className="flex-1 min-h-[150px] bg-white border border-gray-200 rounded-xl p-3 flex flex-col">
+            <div className={`flex-1 min-h-[150px] bg-white border border-gray-200 rounded-xl flex flex-col ${big ? "p-4" : "p-3"}`}>
               <div className="flex items-center justify-between mb-2 shrink-0">
-                <h2 className="text-sm font-semibold text-gray-900">Hospitals near you</h2>
+                <h2 className={`font-semibold text-gray-900 ${big ? "text-base" : "text-sm"}`}>Hospitals near you</h2>
                 <button type="button" className="text-teal-600 text-xs font-semibold flex items-center gap-0.5 hover:underline"
                   onClick={() => navigate({ path: "/patient/hospitals" })}>
                   See all <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5">
+              <div className={`flex-1 min-h-0 overflow-y-auto ${big ? "grid grid-cols-2 gap-x-3 gap-y-1.5 content-start" : "space-y-1.5"}`}>
                 {nearbyHospitals.length === 0 && <p className="text-xs text-gray-400 py-2">No hospitals available yet</p>}
                 {nearbyHospitals.map((hospital) => {
                   const photoUrl = resolvePhotoUrl(hospital.photoUrl);
@@ -567,17 +600,16 @@ export default function PatientHomePage() {
                     <button key={hospital.id} type="button"
                       onClick={() => navigate({ path: "/patient/hospital", id: hospital.id })}
                       className="w-full flex items-center gap-3 rounded-lg p-1.5 text-left hover:bg-gray-50 transition-colors">
-                      <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0">
+                      <div className={`rounded-lg overflow-hidden shrink-0 ${big ? "w-12 h-12" : "w-10 h-10"}`}>
                         {photoUrl
                           ? <img src={photoUrl} alt={hospital.name} className="w-full h-full object-cover" />
                           : <div className={`w-full h-full bg-gradient-to-br ${hospital.gradient}`} />}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-gray-900 truncate leading-tight">{hospital.name}</p>
-                        <p className="text-[11px] text-gray-500 flex items-center gap-0.5 truncate"><MapPin className="w-3 h-3 shrink-0" />{hospital.area}</p>
+                        <p className={`font-semibold text-gray-900 truncate leading-tight ${big ? "text-base" : "text-sm"}`}>{hospital.name}</p>
+                        <p className={`text-gray-500 flex items-center gap-0.5 truncate ${big ? "text-xs" : "text-[11px]"}`}><MapPin className="w-3 h-3 shrink-0" />{hospital.area}</p>
                       </div>
                       <span className="bg-green-50 text-green-700 text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0">Open</span>
-                      <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
                     </button>
                   );
                 })}
