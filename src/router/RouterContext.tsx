@@ -54,6 +54,7 @@ type Route =
   | { path: "/hospital-admin/attendance" }
   | { path: "/hospital-admin/billing" }
   | { path: "/pharmacy/login" }
+  | { path: "/front-office/login" }
   | { path: "/nurse/login" }
   | { path: "/nurse" }
   | { path: "/hospital-admin/nurses" }
@@ -149,6 +150,7 @@ function getInitialRoute(): Route {
   if (pathname === "/hospital-admin/billing") return { path: "/hospital-admin/billing" };
   if (pathname === "/hospital-admin") return { path: "/hospital-admin" };
   if (pathname === "/pharmacy/login") return { path: "/pharmacy/login" };
+  if (pathname === "/front-office/login") return { path: "/front-office/login" };
   if (pathname === "/nurse/login") return { path: "/nurse/login" };
   if (pathname === "/nurse") return { path: "/nurse" };
   if (pathname === "/hospital-admin/nurses") return { path: "/hospital-admin/nurses" };
