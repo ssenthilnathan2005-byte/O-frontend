@@ -177,9 +177,10 @@ export function PharmRevenue() {
 type InvStatus = "ok" | "low_stock" | "out_of_stock" | "expiring_soon" | "expired";
 type Inv = {
   id: string; name: string; quantity: number; packSize: number; tabletsAvailable: number; reorderLevel: number;
-  purchasePrice: number | null; sellingPrice: number | null; supplier: string | null; batchNo: string | null;
+  purchasePrice: number | null; sellingPrice: number | null; supplier: string | null; batchNo: string | null; medCategory: string | null;
   expiryDate: string | null; location: string | null; status: InvStatus;
 };
+const MED_CATEGORIES = ["Tablet", "Capsule", "Syrup/Tonic", "Injection", "Oil", "Ointment/Cream", "Drops", "Powder", "Others"];
 const STATUS_UI: Record<InvStatus, [string, string]> = {
   ok: ["In stock", "bg-emerald-50 text-emerald-700"],
   low_stock: ["Low stock", "bg-amber-50 text-amber-700"],
@@ -194,14 +195,14 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
   const [q, setQ] = useState("");
   const [flt, setFlt] = useState("all");
   const [edit, setEdit] = useState<Inv | null>(null);
-  const [f, setF] = useState({ batchNo: "", expiryDate: "", supplier: "", location: "", sellingPrice: "", packSize: "1" });
+  const [f, setF] = useState({ batchNo: "", expiryDate: "", supplier: "", location: "", sellingPrice: "", packSize: "1", medCategory: "" });
   const [saving, setSaving] = useState(false);
   const [stock, setStock] = useState<Inv | null>(null);
   const [sMode, setSMode] = useState<"add" | "set">("add");
   const [sQty, setSQty] = useState("");
   const [sReason, setSReason] = useState("");
   const [sErr, setSErr] = useState("");
-  const BLANK = { name: "", packSize: "1", openingTablets: "", reorderLevel: "", purchasePrice: "", sellingPrice: "", supplier: "", batchNo: "", expiryDate: "", location: "" };
+  const BLANK = { name: "", packSize: "1", medCategory: "Tablet", openingTablets: "", reorderLevel: "", purchasePrice: "", sellingPrice: "", supplier: "", batchNo: "", expiryDate: "", location: "" };
   const [adding, setAdding] = useState(false);
   const [nf, setNf] = useState(BLANK);
   const [nErr, setNErr] = useState("");
@@ -212,7 +213,7 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
   const shown = rows.filter(r => (flt === "all" || r.status === flt) && r.name.toLowerCase().includes(q.trim().toLowerCase()));
   function openEdit(r: Inv) {
     setEdit(r);
-    setF({ batchNo: r.batchNo || "", expiryDate: r.expiryDate || "", supplier: r.supplier || "", location: r.location || "", sellingPrice: r.sellingPrice == null ? "" : String(r.sellingPrice), packSize: String(r.packSize || 1) });
+    setF({ batchNo: r.batchNo || "", expiryDate: r.expiryDate || "", supplier: r.supplier || "", location: r.location || "", sellingPrice: r.sellingPrice == null ? "" : String(r.sellingPrice), packSize: String(r.packSize || 1), medCategory: r.medCategory || "" });
   }
   async function saveStock() {
     if (!stock) return;
@@ -232,7 +233,7 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
     try {
       await pm("/inventory", { method: "POST", body: JSON.stringify({
         name: nf.name.trim(),
-        packSize: nf.packSize === "" ? 1 : Number(nf.packSize),
+        packSize: nf.packSize === "" ? 1 : Number(nf.packSize), medCategory: nf.medCategory || undefined,
         openingTablets: nf.openingTablets === "" ? 0 : Number(nf.openingTablets),
         reorderLevel: nf.reorderLevel === "" ? undefined : Number(nf.reorderLevel),
         purchasePrice: nf.purchasePrice === "" ? undefined : Number(nf.purchasePrice),
@@ -253,7 +254,7 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
         method: "PATCH",
         body: JSON.stringify({
           batchNo: f.batchNo || undefined, expiryDate: f.expiryDate || undefined,
-          supplier: f.supplier || undefined, location: f.location.trim(), sellingPrice: f.sellingPrice === "" ? undefined : Number(f.sellingPrice), packSize: f.packSize === "" ? undefined : Number(f.packSize),
+          supplier: f.supplier || undefined, location: f.location.trim(), sellingPrice: f.sellingPrice === "" ? undefined : Number(f.sellingPrice), packSize: f.packSize === "" ? undefined : Number(f.packSize), medCategory: f.medCategory || undefined,
         }),
       });
       setEdit(null);
@@ -284,13 +285,13 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
       <div className="overflow-x-auto bg-white rounded-xl border border-gray-100">
         <table className="w-full">
           <thead className="bg-gray-50"><tr>
-            {["Medicine", "Batch no.", "Available", "Expiry", "Supplier", "Location", "Reorder level", "Sell price/pack", "Status", ""].map(h => <th key={h} className={TH}>{h}</th>)}
+            {["Medicine", "Category", "Available", "Expiry", "Supplier", "Location", "Reorder level", "Sell price/pack", "Status", ""].map(h => <th key={h} className={TH}>{h}</th>)}
           </tr></thead>
           <tbody>
             {shown.map(r => (
               <tr key={r.id} className="border-t border-gray-100">
                 <td className={TD + " font-medium"}>{r.name}</td>
-                <td className={TD}>{r.batchNo || "-"}</td>
+                <td className={TD}>{r.medCategory || "-"}</td>
                 <td className={TD}>{r.tabletsAvailable} <span className="text-xs text-gray-400">({r.quantity} packs)</span></td>
                 <td className={TD}>{r.expiryDate || "-"}</td>
                 <td className={TD}>{r.supplier || "-"}</td>
@@ -354,6 +355,12 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
                 </label>
               ))}
             </div>
+            <label className="block text-sm text-gray-600">Category
+              <select value={nf.medCategory} onChange={e => setNf(prev => ({ ...prev, medCategory: e.target.value }))}
+                className="mt-1 w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm bg-white">
+                {MED_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </label>
             {nErr && <p className="text-sm text-red-600">{nErr}</p>}
             <div className="flex justify-end gap-2 pt-1">
               <button type="button" onClick={() => setAdding(false)} className="px-3 py-1.5 text-sm rounded-md border border-gray-200">Cancel</button>
@@ -366,6 +373,13 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setEdit(null)}>
           <div className="bg-white rounded-xl p-5 w-full max-w-md space-y-3" onClick={e => e.stopPropagation()}>
             <p className="font-semibold text-gray-900">{edit.name}</p>
+            <label className="block text-sm text-gray-600">Category
+              <select value={f.medCategory} onChange={e => setF(prev => ({ ...prev, medCategory: e.target.value }))}
+                className="mt-1 w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm bg-white">
+                <option value="">Select category</option>
+                {MED_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </label>
             {([["Tablets per pack", "packSize", "number"], ["Batch number", "batchNo", "text"], ["Expiry date", "expiryDate", "date"], ["Supplier", "supplier", "text"], ["Location (shelf / rack)", "location", "text"], ["Selling price per pack (\u20B9)", "sellingPrice", "number"]] as const).map(([l, k, t]) => (
               <label key={k} className="block text-sm text-gray-600">{l}
                 <input type={t} value={f[k]} onChange={e => setF(prev => ({ ...prev, [k]: e.target.value }))}
