@@ -279,6 +279,9 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
   const [rc, setRc] = useState<Inv | null>(null);
   const [rf, setRf] = useState({ boxes: "", strips: "", tablets: "", batchNo: "", expiryDate: "", supplier: "", invoiceNo: "", mrpStrip: "", purchaseBox: "" });
   const [rErr, setRErr] = useState("");
+  const [rm, setRm] = useState<Inv | null>(null);
+  const [rmReason, setRmReason] = useState("");
+  const [rmErr, setRmErr] = useState("");
   useLive(async () => {
     try { setRows(await pm<Inv[]>("/inventory")); setErr(""); } catch (e: any) { setErr(e.message); }
     try { setCats(await pm<string[]>("/inventory-categories")); } catch (_) { /* keep current list */ }
@@ -353,6 +356,16 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
       setNErr(newId ? "The medicine was created, but a later step failed: " + e.message + ". Close this window, then use Edit or Receive stock on it." : e.message);
     }
     try { setRows(await pm<Inv[]>("/inventory")); } catch (_) { /* keep current list */ }
+    setSaving(false);
+  }
+  async function removeMed() {
+    if (!rm) return;
+    setSaving(true); setRmErr("");
+    try {
+      await pm("/inventory/" + rm.id, { method: "DELETE", body: JSON.stringify({ reason: rmReason.trim() }) });
+      setRm(null);
+      setRows(await pm<Inv[]>("/inventory"));
+    } catch (e: any) { setRmErr(e.message); }
     setSaving(false);
   }
   async function saveReceive() {
@@ -441,7 +454,8 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
                   <>
                     <button type="button" onClick={() => openReceive(r)} className="text-teal-700 text-sm hover:underline mr-3">Receive stock</button>
                     <button type="button" onClick={() => { setStock(r); setSMode("add"); setSQty(""); setSReason(""); setSErr(""); }} className="text-teal-700 text-sm hover:underline mr-3">Correct count</button>
-                    <button type="button" onClick={() => openEdit(r)} className="text-teal-700 text-sm hover:underline">Edit</button>
+                    <button type="button" onClick={() => openEdit(r)} className="text-teal-700 text-sm hover:underline mr-3">Edit</button>
+                    <button type="button" onClick={() => { setRm(r); setRmReason(""); setRmErr(""); }} className="text-red-600 text-sm hover:underline">Remove</button>
                   </>
                 )}</td>
               </tr>
@@ -549,6 +563,23 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
             <div className="flex justify-end gap-2 pt-1">
               <button type="button" onClick={() => setEdit(null)} className="px-3 py-1.5 text-sm rounded-md border border-gray-200">Cancel</button>
               <button type="button" disabled={saving} onClick={save} className="px-3 py-1.5 text-sm rounded-md bg-teal-600 text-white">{saving ? "Saving..." : "Save"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {rm && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setRm(null)}>
+          <div className="bg-white rounded-xl p-5 w-full max-w-md space-y-3" onClick={e => e.stopPropagation()}>
+            <p className="font-semibold text-gray-900">Remove {rm.name}?</p>
+            <p className="text-sm text-gray-600">It will disappear from Inventory and from the dispensing list. Old bills and reports keep their data.</p>
+            {rm.tabletsAvailable > 0 && (
+              <p className="text-sm text-amber-700">{rm.tabletsAvailable} tablets are still in stock. They will be written off in the stock log.</p>
+            )}
+            <Fld label="Reason (optional)" value={rmReason} onChange={setRmReason} />
+            {rmErr && <p className="text-sm text-red-600">{rmErr}</p>}
+            <div className="flex justify-end gap-2 pt-1">
+              <button type="button" onClick={() => setRm(null)} className="px-3 py-1.5 text-sm rounded-md border border-gray-200">Cancel</button>
+              <button type="button" disabled={saving} onClick={removeMed} className="px-3 py-1.5 text-sm rounded-md bg-red-600 text-white">{saving ? "Removing..." : "Remove"}</button>
             </div>
           </div>
         </div>
