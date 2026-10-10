@@ -198,14 +198,14 @@ export default function PatientHomePage() {
   return (
     <div className="flex flex-col bg-gray-50" style={{ minHeight: "100dvh" }}>
       {/* Map */}
-      <div className="relative shrink-0 transition-all duration-200 lg:w-[calc(100%-3rem)] lg:max-w-7xl lg:mx-auto lg:mt-6 lg:rounded-3xl lg:overflow-hidden lg:border lg:border-gray-200 lg:shadow-md" style={{ height: isDesktop ? 340 : mapHeight }}>
+      <div className="relative shrink-0 transition-all duration-200 lg:w-[calc(100%-3rem)] lg:max-w-6xl lg:mx-auto lg:mt-4 lg:rounded-3xl lg:overflow-hidden lg:border lg:border-gray-200 lg:shadow-md" style={{ height: isDesktop ? 190 : mapHeight }}>
         <div ref={mapRef} className="w-full h-full" />
         {!mapReady && (
           <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
             <Loader2 className="w-6 h-6 text-teal-500 animate-spin" />
           </div>
         )}
-        <div className="absolute bottom-5 left-3 right-3 z-10 flex gap-2 lg:right-auto lg:left-5 lg:bottom-5 lg:w-[560px]">
+        <div className="absolute bottom-5 left-3 right-3 z-10 flex gap-2 lg:right-auto lg:left-4 lg:bottom-4 lg:w-[420px]">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
             <input value={search} onChange={e => setSearch(e.target.value)}
@@ -246,7 +246,7 @@ export default function PatientHomePage() {
 
       {/* Scrollable content below map */}
       <div className="flex-1 overflow-y-auto bg-white lg:bg-gray-50">
-        <div className="px-4 pb-28 space-y-4 lg:max-w-7xl lg:mx-auto lg:px-6 lg:pb-12 lg:space-y-6">
+        <div className="px-4 pb-28 space-y-4 lg:max-w-6xl lg:mx-auto lg:px-6 lg:pb-8 lg:space-y-4">
           {/* Notification permission banner */}
           {notifState === "default" && (
             <div className="mt-4 flex items-center gap-3 bg-teal-50 border border-teal-200 rounded-2xl px-4 py-3">
@@ -268,32 +268,32 @@ export default function PatientHomePage() {
           )}
 
           {/* Greeting */}
-          <div className="pt-5 pb-1 lg:pt-6">
-            <h1 className="text-4xl lg:text-3xl font-extrabold text-gray-900 leading-tight">{getGreeting()} 👋</h1>
+          <div className="pt-5 pb-1 lg:pt-4 lg:pb-0">
+            <h1 className="text-4xl lg:text-2xl font-extrabold text-gray-900 leading-tight">{getGreeting()} 👋</h1>
             <p className="text-sm text-gray-400 mt-1 font-medium">Your health matters. We're here to help.</p>
           </div>
 
           {/* Action cards (3 columns on desktop) */}
-          <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-3 lg:gap-6">
+          <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-3 lg:gap-4">
           {/* Book an appointment */}
           <motion.div
             initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-            className="relative bg-gradient-to-br from-teal-600 to-teal-700 rounded-3xl px-5 py-6 overflow-hidden cursor-pointer shadow-lg shadow-teal-200 lg:order-1 lg:flex lg:items-center lg:px-7"
+            className="relative bg-gradient-to-br from-teal-600 to-teal-700 rounded-3xl px-5 py-6 overflow-hidden cursor-pointer shadow-lg shadow-teal-200 lg:order-1 lg:flex lg:items-center lg:px-5 lg:py-4 lg:rounded-2xl"
             onClick={() => navigate({ path: "/patient/hospitals" })}
           >
             <div className="absolute -right-6 -top-6 w-32 h-32 bg-teal-500 rounded-full opacity-30" />
             <div className="absolute -right-2 -bottom-8 w-40 h-40 bg-teal-500 rounded-full opacity-20" />
-            <Building2 className="absolute right-4 bottom-2 w-20 h-20 text-white opacity-20" strokeWidth={0.8} />
-            <div className="relative z-10 max-w-[65%]">
+            <Building2 className="absolute right-4 bottom-2 w-20 h-20 lg:w-12 lg:h-12 text-white opacity-20" strokeWidth={0.8} />
+            <div className="relative z-10 max-w-[65%] lg:max-w-[80%]">
               <div className="flex items-center gap-3 mb-2">
                 <div className="bg-white/20 rounded-xl p-2 backdrop-blur-sm">
                   <Calendar className="w-5 h-5 text-white" />
                 </div>
-                <h2 className="text-white font-bold text-lg leading-tight">Book an appointment</h2>
+                <h2 className="text-white font-bold text-lg lg:text-base leading-tight">Book an appointment</h2>
               </div>
-              <p className="text-teal-100 text-sm mb-5">Find a hospital and get your token in minutes</p>
+              <p className="text-teal-100 text-sm mb-5 lg:text-xs lg:mb-3">Find a hospital and get your token in minutes</p>
               <button type="button"
-                className="flex items-center gap-2 bg-white text-teal-700 font-bold text-sm px-5 py-2.5 rounded-full shadow-md hover:bg-teal-50 transition-colors"
+                className="flex items-center gap-2 bg-white text-teal-700 font-bold text-sm px-5 py-2.5 lg:text-xs lg:px-4 lg:py-1.5 rounded-full shadow-md hover:bg-teal-50 transition-colors"
                 onClick={(e) => { e.stopPropagation(); navigate({ path: "/patient/hospitals" }); }}
               >
                 Get Started <ChevronRight className="w-4 h-4" />
@@ -302,14 +302,14 @@ export default function PatientHomePage() {
           </motion.div>
 
           {/* Track token + Prescriptions */}
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-1 lg:gap-4 lg:order-3">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-1 lg:gap-3 lg:order-3">
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-              className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm cursor-pointer hover:shadow-md transition-all"
+              className="bg-white rounded-2xl p-4 lg:p-3 border border-gray-100 shadow-sm cursor-pointer hover:shadow-md transition-all"
               onClick={() => activeBooking?.sessionId
                 ? navigate({ path: "/patient/track", sessionId: activeBooking.sessionId, tokenNumber: activeBooking.tokenNumber ?? 0 })
                 : navigate({ path: "/patient/tokens" })}
             >
-              <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center mb-3">
+              <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center mb-3 lg:w-8 lg:h-8 lg:mb-2">
                 <Clock className="w-5 h-5 text-teal-600" />
               </div>
               <h3 className="font-bold text-gray-900 text-sm">Track your token</h3>
@@ -329,10 +329,10 @@ export default function PatientHomePage() {
             </motion.div>
 
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-              className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm cursor-pointer hover:shadow-md transition-all"
+              className="bg-white rounded-2xl p-4 lg:p-3 border border-gray-100 shadow-sm cursor-pointer hover:shadow-md transition-all"
               onClick={() => navigate({ path: "/patient/prescriptions" })}
             >
-              <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center mb-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center mb-3 lg:w-8 lg:h-8 lg:mb-2">
                 <FileText className="w-5 h-5 text-blue-500" />
               </div>
               <h3 className="font-bold text-gray-900 text-sm">Prescriptions</h3>
@@ -350,22 +350,22 @@ export default function PatientHomePage() {
           {/* Lab Tests — full width, matches Book an appointment style */}
           <motion.div
             initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}
-            className="relative bg-gradient-to-br from-sky-600 to-sky-700 rounded-3xl px-5 py-6 overflow-hidden cursor-pointer shadow-lg shadow-sky-200 lg:order-2 lg:flex lg:items-center lg:px-7"
+            className="relative bg-gradient-to-br from-sky-600 to-sky-700 rounded-3xl px-5 py-6 overflow-hidden cursor-pointer shadow-lg shadow-sky-200 lg:order-2 lg:flex lg:items-center lg:px-5 lg:py-4 lg:rounded-2xl"
             onClick={() => navigate({ path: "/labs" })}
           >
             <div className="absolute -right-6 -top-6 w-32 h-32 bg-sky-500 rounded-full opacity-30" />
             <div className="absolute -right-2 -bottom-8 w-40 h-40 bg-sky-500 rounded-full opacity-20" />
-            <FlaskConical className="absolute right-4 bottom-2 w-20 h-20 text-white opacity-20" strokeWidth={0.8} />
-            <div className="relative z-10 max-w-[65%]">
+            <FlaskConical className="absolute right-4 bottom-2 w-20 h-20 lg:w-12 lg:h-12 text-white opacity-20" strokeWidth={0.8} />
+            <div className="relative z-10 max-w-[65%] lg:max-w-[80%]">
               <div className="flex items-center gap-3 mb-2">
                 <div className="bg-white/20 rounded-xl p-2 backdrop-blur-sm">
                   <FlaskConical className="w-5 h-5 text-white" />
                 </div>
-                <h2 className="text-white font-bold text-lg leading-tight">Lab Tests</h2>
+                <h2 className="text-white font-bold text-lg lg:text-base leading-tight">Lab Tests</h2>
               </div>
-              <p className="text-sky-100 text-sm mb-5">Book a diagnostic test with home sample collection</p>
+              <p className="text-sky-100 text-sm mb-5 lg:text-xs lg:mb-3">Book a diagnostic test with home sample collection</p>
               <button type="button"
-                className="flex items-center gap-2 bg-white text-sky-700 font-bold text-sm px-5 py-2.5 rounded-full shadow-md hover:bg-sky-50 transition-colors"
+                className="flex items-center gap-2 bg-white text-sky-700 font-bold text-sm px-5 py-2.5 lg:text-xs lg:px-4 lg:py-1.5 rounded-full shadow-md hover:bg-sky-50 transition-colors"
                 onClick={(e) => { e.stopPropagation(); navigate({ path: "/labs" }); }}
               >
                 Book a Test <ChevronRight className="w-4 h-4" />
@@ -387,7 +387,7 @@ export default function PatientHomePage() {
                   See all <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
-              <div className="grid grid-cols-3 gap-2 lg:grid-cols-6 lg:gap-4">
+              <div className="grid grid-cols-3 gap-2 lg:grid-cols-6 lg:gap-3">
                 {nearbyHospitals.map((hospital, idx) => {
                   const photoUrl = resolvePhotoUrl(hospital.photoUrl);
                   return (
@@ -395,15 +395,15 @@ export default function PatientHomePage() {
                       className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
                       onClick={() => navigate({ path: "/patient/hospital", id: hospital.id })}
                     >
-                      <div className="h-16 lg:h-28 relative">
+                      <div className="h-16 lg:h-20 relative">
                         {photoUrl
                           ? <img src={photoUrl} alt={hospital.name} className="w-full h-full object-cover" />
                           : <div className={`w-full h-full bg-gradient-to-br ${hospital.gradient}`} />}
                         <span className="absolute top-1.5 left-1.5 bg-green-500 text-white text-[9px] lg:text-[10px] font-bold px-1.5 py-0.5 rounded-full">Open</span>
                       </div>
-                      <div className="p-2 lg:p-3">
-                        <p className="font-semibold text-gray-900 text-[10px] lg:text-sm leading-tight line-clamp-2">{hospital.name}</p>
-                        <p className="text-gray-400 text-[9px] lg:text-xs mt-0.5 flex items-center gap-0.5 truncate">
+                      <div className="p-2 lg:p-2.5">
+                        <p className="font-semibold text-gray-900 text-[10px] lg:text-xs leading-tight line-clamp-2">{hospital.name}</p>
+                        <p className="text-gray-400 text-[9px] lg:text-[11px] mt-0.5 flex items-center gap-0.5 truncate">
                           <MapPin className="w-2.5 h-2.5 shrink-0" />{hospital.area}
                         </p>
                       </div>
