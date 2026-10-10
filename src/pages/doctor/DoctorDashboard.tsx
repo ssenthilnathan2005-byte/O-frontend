@@ -1517,7 +1517,7 @@ export default function DoctorDashboard() {
               ) : (
                 <div className="space-y-3">
                   {(liveTokensView === "tovisit" ? liveToVisit : liveTokensView === "visited" ? liveVisited : liveArchived).map((b) => (
-                    <div key={b.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
+                    <div key={b.id} className={"flex items-center justify-between rounded-xl px-4 py-3 " + (b.status === "confirmed" && foInfo[b.id] ? (foInfo[b.id].checked_in_at ? "bg-emerald-50 border-2 border-emerald-500" : "bg-red-50 border-2 border-red-400") : "bg-gray-50 border border-gray-100")}>
                       <div>
                         <p className="font-semibold text-gray-900 text-sm flex items-center gap-1.5 flex-wrap">
                           {getBookingPatientName(b.patientName)}
