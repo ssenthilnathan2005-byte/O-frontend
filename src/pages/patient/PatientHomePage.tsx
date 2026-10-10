@@ -47,10 +47,10 @@ export default function PatientHomePage() {
   const [mapReady, setMapReady] = useState(false);
   const [mapHeight, setMapHeight] = useState(220);
   const [isDesktop, setIsDesktop] = useState(
-    typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches
+    typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches
   );
   useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1024px)");
+    const mq = window.matchMedia("(min-width: 768px)");
     const on = () => setIsDesktop(mq.matches);
     mq.addEventListener("change", on);
     return () => mq.removeEventListener("change", on);
@@ -420,6 +420,20 @@ export default function PatientHomePage() {
   );
 
   // ── Desktop dashboard (lg and up): everything visible, no page scroll ──
+  const [navH, setNavH] = useState(58);
+  useEffect(() => {
+    const el = Array.from(document.querySelectorAll("header")).find(h => h.offsetHeight > 0);
+    const measure = () => {
+      const target = Array.from(document.querySelectorAll("header")).find(h => h.offsetHeight > 0);
+      setNavH(target ? Math.ceil(target.getBoundingClientRect().height) : 58);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    let ro: ResizeObserver | null = null;
+    if (el && typeof ResizeObserver !== "undefined") { ro = new ResizeObserver(measure); ro.observe(el); }
+    return () => { window.removeEventListener("resize", measure); ro?.disconnect(); };
+  }, [isDesktop]);
+
   const firstName = (((user as any)?.name as string) || "").split(" ")[0];
   const services = [
     { label: "Hospitals", sub: "Find & book", Icon: Hospital, path: "/patient/hospitals", tint: "bg-teal-50 text-teal-600" },
@@ -431,24 +445,28 @@ export default function PatientHomePage() {
   ];
 
   const desktopView = (
-    <div className="bg-gray-50 overflow-hidden" style={{ height: "calc(100dvh - 60px)" }}>
-      <div className="h-full max-w-7xl mx-auto px-6 py-4 grid grid-cols-12 gap-4">
-        {/* Left: greeting + map */}
-        <div className="col-span-7 flex flex-col min-h-0">
-          <div className="flex items-end justify-between mb-3 shrink-0">
-            <div>
-              <h1 className="text-xl font-bold text-gray-900 leading-tight">{getGreeting()}{firstName ? `, ${firstName}` : ""} 👋</h1>
-              <p className="text-xs text-gray-500 mt-0.5">Your health matters. We're here to help.</p>
-            </div>
-            {notifState === "default" && (
-              <button type="button"
-                onClick={() => enablePushNotifications().then(() => setNotifState(Notification.permission as "default"|"granted"|"denied"))}
-                className="flex items-center gap-1.5 bg-teal-50 border border-teal-200 text-teal-700 text-xs font-semibold px-3 py-1.5 rounded-full hover:bg-teal-100 transition-colors">
-                <Bell className="w-3.5 h-3.5" /> Enable notifications
-              </button>
-            )}
+    <div className="bg-gray-50 overflow-hidden" style={{ height: `calc(100dvh - ${navH}px)` }}>
+      <div className="h-full w-full mx-auto px-6 py-4 flex flex-col gap-3">
+        {/* Header row */}
+        <div className="flex items-end justify-between shrink-0">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900 leading-tight">{getGreeting()}{firstName ? `, ${firstName}` : ""} 👋</h1>
+            <p className="text-xs text-gray-500 mt-0.5">Your health matters. We're here to help.</p>
           </div>
-          <div className="relative flex-1 min-h-0 rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-gray-100">
+          {notifState === "default" && (
+            <button type="button"
+              onClick={() => enablePushNotifications().then(() => setNotifState(Notification.permission as "default"|"granted"|"denied"))}
+              className="flex items-center gap-1.5 bg-teal-50 border border-teal-200 text-teal-700 text-xs font-semibold px-3 py-1.5 rounded-full hover:bg-teal-100 transition-colors">
+              <Bell className="w-3.5 h-3.5" /> Enable notifications
+            </button>
+          )}
+        </div>
+
+        {/* Content: map fills all remaining width, actions in a fixed-ratio column */}
+        <div className="flex-1 min-h-0 grid gap-4"
+          style={{ gridTemplateColumns: "minmax(0, 1fr) clamp(400px, 34vw, 620px)", gridTemplateRows: "minmax(0, 1fr)" }}>
+          {/* Map */}
+          <div className="relative min-h-0 rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-gray-100">
             <div ref={mapRef} className="absolute inset-0" />
             {!mapReady && (
               <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
@@ -475,95 +493,95 @@ export default function PatientHomePage() {
               )}
             </div>
           </div>
-        </div>
 
-        {/* Right: actions */}
-        <div className="col-span-5 flex flex-col gap-3 min-h-0">
-          {/* Primary action */}
-          <div
-            className="shrink-0 flex items-center justify-between gap-3 bg-gradient-to-r from-teal-600 to-teal-700 rounded-2xl px-4 py-3 cursor-pointer shadow-sm hover:shadow-md transition-shadow"
-            onClick={() => navigate({ path: "/patient/hospitals" })}
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="bg-white/20 rounded-lg p-2 shrink-0"><Calendar className="w-5 h-5 text-white" /></div>
-              <div className="min-w-0">
-                <h2 className="text-white font-semibold text-sm leading-tight">Book an appointment</h2>
-                <p className="text-teal-100 text-xs truncate">Find a hospital and get your token in minutes</p>
-              </div>
-            </div>
-            <button type="button"
-              className="shrink-0 flex items-center gap-1 bg-white text-teal-700 font-semibold text-xs px-3.5 py-1.5 rounded-full hover:bg-teal-50 transition-colors"
-              onClick={(e) => { e.stopPropagation(); navigate({ path: "/patient/hospitals" }); }}>
-              Get Started <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {/* All services */}
-          <div className="shrink-0 grid grid-cols-3 gap-2">
-            {services.map(({ label, sub, Icon, path, tint }) => (
-              <button key={label} type="button"
-                onClick={() => navigate({ path } as any)}
-                className="bg-white border border-gray-200 rounded-xl p-2.5 text-left hover:border-teal-300 hover:shadow-sm transition-all">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${tint}`}>
-                  <Icon className="w-4 h-4" />
+          {/* Actions */}
+          <div className="min-h-0 flex flex-col gap-3 overflow-y-auto">
+            {/* Primary action */}
+            <div
+              className="shrink-0 flex items-center justify-between gap-3 bg-gradient-to-r from-teal-600 to-teal-700 rounded-2xl px-4 py-3 cursor-pointer shadow-sm hover:shadow-md transition-shadow"
+              onClick={() => navigate({ path: "/patient/hospitals" })}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="bg-white/20 rounded-lg p-2 shrink-0"><Calendar className="w-5 h-5 text-white" /></div>
+                <div className="min-w-0">
+                  <h2 className="text-white font-semibold text-sm leading-tight">Book an appointment</h2>
+                  <p className="text-teal-100 text-xs truncate">Find a hospital and get your token in minutes</p>
                 </div>
-                <p className="text-sm font-semibold text-gray-900 leading-tight">{label}</p>
-                <p className="text-[11px] text-gray-500 truncate">{sub}</p>
-              </button>
-            ))}
-          </div>
-
-          {/* Token status */}
-          <button type="button"
-            className="shrink-0 flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-left hover:border-teal-300 hover:shadow-sm transition-all"
-            onClick={() => activeBooking?.sessionId
-              ? navigate({ path: "/patient/track", sessionId: activeBooking.sessionId, tokenNumber: activeBooking.tokenNumber ?? 0 })
-              : navigate({ path: "/patient/tokens" })}>
-            <div className="w-8 h-8 rounded-lg bg-teal-50 flex items-center justify-center shrink-0"><Clock className="w-4 h-4 text-teal-600" /></div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-gray-900 leading-tight">Track your token</p>
-              <p className="text-[11px] text-gray-500">See your position in the queue</p>
-            </div>
-            {myTokenNum != null ? (
-              <span className="flex items-center gap-1.5 bg-green-50 text-green-700 text-xs font-semibold px-2.5 py-1 rounded-full">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500" />#{myTokenNum}{aheadCount != null ? ` · ${aheadCount} ahead` : ""}
-              </span>
-            ) : (
-              <span className="bg-gray-100 text-gray-500 text-xs font-medium px-2.5 py-1 rounded-full">No active token</span>
-            )}
-          </button>
-
-          {/* Hospitals near you */}
-          <div className="flex-1 min-h-0 bg-white border border-gray-200 rounded-xl p-3 flex flex-col">
-            <div className="flex items-center justify-between mb-2 shrink-0">
-              <h2 className="text-sm font-semibold text-gray-900">Hospitals near you</h2>
-              <button type="button" className="text-teal-600 text-xs font-semibold flex items-center gap-0.5 hover:underline"
-                onClick={() => navigate({ path: "/patient/hospitals" })}>
-                See all <ChevronRight className="w-3.5 h-3.5" />
+              </div>
+              <button type="button"
+                className="shrink-0 flex items-center gap-1 bg-white text-teal-700 font-semibold text-xs px-3.5 py-1.5 rounded-full hover:bg-teal-50 transition-colors"
+                onClick={(e) => { e.stopPropagation(); navigate({ path: "/patient/hospitals" }); }}>
+                Get Started <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
-            <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5">
-              {nearbyHospitals.length === 0 && <p className="text-xs text-gray-400 py-2">No hospitals available yet</p>}
-              {nearbyHospitals.map((hospital) => {
-                const photoUrl = resolvePhotoUrl(hospital.photoUrl);
-                return (
-                  <button key={hospital.id} type="button"
-                    onClick={() => navigate({ path: "/patient/hospital", id: hospital.id })}
-                    className="w-full flex items-center gap-3 rounded-lg p-1.5 text-left hover:bg-gray-50 transition-colors">
-                    <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0">
-                      {photoUrl
-                        ? <img src={photoUrl} alt={hospital.name} className="w-full h-full object-cover" />
-                        : <div className={`w-full h-full bg-gradient-to-br ${hospital.gradient}`} />}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-gray-900 truncate leading-tight">{hospital.name}</p>
-                      <p className="text-[11px] text-gray-500 flex items-center gap-0.5 truncate"><MapPin className="w-3 h-3 shrink-0" />{hospital.area}</p>
-                    </div>
-                    <span className="bg-green-50 text-green-700 text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0">Open</span>
-                    <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
-                  </button>
-                );
-              })}
+
+            {/* All services */}
+            <div className="shrink-0 grid grid-cols-3 gap-2">
+              {services.map(({ label, sub, Icon, path, tint }) => (
+                <button key={label} type="button"
+                  onClick={() => navigate({ path } as any)}
+                  className="bg-white border border-gray-200 rounded-xl p-2.5 text-left hover:border-teal-300 hover:shadow-sm transition-all">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${tint}`}>
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  <p className="text-sm font-semibold text-gray-900 leading-tight truncate">{label}</p>
+                  <p className="text-[11px] text-gray-500 truncate">{sub}</p>
+                </button>
+              ))}
+            </div>
+
+            {/* Token status */}
+            <button type="button"
+              className="shrink-0 flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-left hover:border-teal-300 hover:shadow-sm transition-all"
+              onClick={() => activeBooking?.sessionId
+                ? navigate({ path: "/patient/track", sessionId: activeBooking.sessionId, tokenNumber: activeBooking.tokenNumber ?? 0 })
+                : navigate({ path: "/patient/tokens" })}>
+              <div className="w-8 h-8 rounded-lg bg-teal-50 flex items-center justify-center shrink-0"><Clock className="w-4 h-4 text-teal-600" /></div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-gray-900 leading-tight">Track your token</p>
+                <p className="text-[11px] text-gray-500 truncate">See your position in the queue</p>
+              </div>
+              {myTokenNum != null ? (
+                <span className="flex items-center gap-1.5 bg-green-50 text-green-700 text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" />#{myTokenNum}{aheadCount != null ? ` · ${aheadCount} ahead` : ""}
+                </span>
+              ) : (
+                <span className="bg-gray-100 text-gray-500 text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap">No active token</span>
+              )}
+            </button>
+
+            {/* Hospitals near you — takes all remaining height */}
+            <div className="flex-1 min-h-[150px] bg-white border border-gray-200 rounded-xl p-3 flex flex-col">
+              <div className="flex items-center justify-between mb-2 shrink-0">
+                <h2 className="text-sm font-semibold text-gray-900">Hospitals near you</h2>
+                <button type="button" className="text-teal-600 text-xs font-semibold flex items-center gap-0.5 hover:underline"
+                  onClick={() => navigate({ path: "/patient/hospitals" })}>
+                  See all <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5">
+                {nearbyHospitals.length === 0 && <p className="text-xs text-gray-400 py-2">No hospitals available yet</p>}
+                {nearbyHospitals.map((hospital) => {
+                  const photoUrl = resolvePhotoUrl(hospital.photoUrl);
+                  return (
+                    <button key={hospital.id} type="button"
+                      onClick={() => navigate({ path: "/patient/hospital", id: hospital.id })}
+                      className="w-full flex items-center gap-3 rounded-lg p-1.5 text-left hover:bg-gray-50 transition-colors">
+                      <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0">
+                        {photoUrl
+                          ? <img src={photoUrl} alt={hospital.name} className="w-full h-full object-cover" />
+                          : <div className={`w-full h-full bg-gradient-to-br ${hospital.gradient}`} />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-gray-900 truncate leading-tight">{hospital.name}</p>
+                        <p className="text-[11px] text-gray-500 flex items-center gap-0.5 truncate"><MapPin className="w-3 h-3 shrink-0" />{hospital.area}</p>
+                      </div>
+                      <span className="bg-green-50 text-green-700 text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0">Open</span>
+                      <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
