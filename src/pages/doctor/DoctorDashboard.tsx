@@ -56,6 +56,7 @@ import { toast } from "sonner";
 import { useStore } from "../../context/StoreContext";
 import { getToken as foGetToken } from "@/api";
 import { Vitals, vitalsText } from "@/lib/vitals";
+import VitalsPanel from "@/components/VitalsPanel";
 import MonthlyArchiveBanner from "../../components/MonthlyArchiveBanner";
 import {
   SESSION_TIMES,
@@ -2049,7 +2050,7 @@ export default function DoctorDashboard() {
                   </span>
                 </div>
                 {foInfo[dialogTokenBooking.id].vitals ? (
-                  <p className="text-sm text-gray-700">{vitalsText(foInfo[dialogTokenBooking.id].vitals as Vitals)}</p>
+                  <VitalsPanel vitals={foInfo[dialogTokenBooking.id].vitals as Vitals} />
                 ) : (
                   <p className="text-sm text-gray-400 italic">No vitals recorded</p>
                 )}
