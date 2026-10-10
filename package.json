@@ -105,6 +105,7 @@
     "recharts": "^2.15.1",
     "sonner": "^1.7.4",
     "tailwind-merge": "^2.5.2",
+    "tesseract.js": "^5.1.1",
     "three": "^0.176.0",
     "vaul": "^1.1.2",
     "zustand": "~5.0.5"

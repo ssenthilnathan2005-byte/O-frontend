@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import VitalsScanner, { validateVitals } from "@/components/VitalsScanner";
 import { useStore } from "../../context/StoreContext";
 import { BedDouble, Plus, X, Trash2, ChevronDown, ChevronUp, Clock, Settings, Pencil } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -41,13 +42,14 @@ type Vitals = {
   id: string; temperature: number | null; pulse: number | null;
   bp_systolic: number | null; bp_diastolic: number | null;
   spo2: number | null; resp_rate: number | null;
+  weight: number | null; blood_glucose: number | null;
   recorded_by: string | null; recorded_at: string;
 };
 type NoteEntry = {
   id: string; note: string; shift: string;
   recorded_by: string | null; recorded_at: string;
 };
-const EMPTY_VITALS = { temperature:"", pulse:"", bpSystolic:"", bpDiastolic:"", spo2:"", respRate:"", recordedBy:"" };
+const EMPTY_VITALS = { temperature:"", pulse:"", bpSystolic:"", bpDiastolic:"", spo2:"", respRate:"", weight:"", bloodGlucose:"", recordedBy:"" };
 const EMPTY_NOTE = { note:"", shift:"day", recordedBy:"" };
 
 const WARD_TYPES = ["general", "icu", "emergency", "maternity", "paediatric", "surgical", "orthopaedic", "private"];
@@ -511,6 +513,8 @@ export default function HAWards() {
   async function handleAddVitalsInline() {
     if (!detailsTarget) return;
     const { wardId, bed } = detailsTarget;
+    const vErr = validateVitals(vitalsForm);
+    if (vErr) { alert(vErr); return; }
     setVitalsSaving(true);
     try {
       await api("/nursing/vitals", "POST", {
@@ -522,6 +526,8 @@ export default function HAWards() {
         bpDiastolic: vitalsForm.bpDiastolic ? Number(vitalsForm.bpDiastolic) : null,
         spo2: vitalsForm.spo2 ? Number(vitalsForm.spo2) : null,
         respRate: vitalsForm.respRate ? Number(vitalsForm.respRate) : null,
+        weight: vitalsForm.weight ? Number(vitalsForm.weight) : null,
+        bloodGlucose: vitalsForm.bloodGlucose ? Number(vitalsForm.bloodGlucose) : null,
         recordedBy: vitalsForm.recordedBy || null,
       });
       setVitalsForm({ ...EMPTY_VITALS }); setShowVitalsAdd(false);
@@ -944,6 +950,7 @@ export default function HAWards() {
             <div className="px-6 pb-2 space-y-3 border-t pt-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-gray-700">Vitals</h3>
+                <VitalsScanner onApply={v => { setShowVitalsAdd(true); setVitalsForm(f => ({ ...f, ...v })); }} />
                 <button onClick={() => setShowVitalsAdd(s => !s)} className="text-xs text-teal-600 font-medium hover:underline">
                   {showVitalsAdd ? "Cancel" : "+ Add"}
                 </button>
@@ -968,6 +975,12 @@ export default function HAWards() {
                     <Input type="number" placeholder="Resp Rate" value={vitalsForm.respRate}
                       onChange={e => setVitalsForm(f => ({ ...f, respRate: e.target.value }))} />
                   </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input type="number" placeholder="Weight (kg)" value={vitalsForm.weight}
+                      onChange={e => setVitalsForm(f => ({ ...f, weight: e.target.value }))} />
+                    <Input type="number" placeholder="Glucose (mg/dL)" value={vitalsForm.bloodGlucose}
+                      onChange={e => setVitalsForm(f => ({ ...f, bloodGlucose: e.target.value }))} />
+                  </div>
                   <Input placeholder="Recorded by (nurse name)" value={vitalsForm.recordedBy}
                     onChange={e => setVitalsForm(f => ({ ...f, recordedBy: e.target.value }))} />
                   <button onClick={handleAddVitalsInline} disabled={vitalsSaving}
@@ -990,6 +1003,8 @@ export default function HAWards() {
                         {(v.bp_systolic != null && v.bp_diastolic != null) && <span>BP {v.bp_systolic}/{v.bp_diastolic}</span>}
                         {v.spo2 != null && <span>SpO2 {v.spo2}%</span>}
                         {v.resp_rate != null && <span>RR {v.resp_rate}</span>}
+                        {v.weight != null && <span>{v.weight} kg</span>}
+                        {v.blood_glucose != null && <span>Glucose {v.blood_glucose} mg/dL</span>}
                       </div>
                       <p className="text-[10px] text-gray-400 mt-0.5">
                         {new Date(v.recorded_at).toLocaleString()}{v.recorded_by ? ` · ${v.recorded_by}` : ""}
