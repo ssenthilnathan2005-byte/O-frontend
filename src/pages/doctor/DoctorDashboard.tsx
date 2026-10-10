@@ -2031,6 +2031,21 @@ export default function DoctorDashboard() {
               )}
             </div>
 
+            {dialogTokenBooking?.id && foInfo[dialogTokenBooking.id]?.checked_in_at && (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
+                    Vitals at check-in &middot; arrived {new Date(foInfo[dialogTokenBooking.id].checked_in_at as string).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                  </span>
+                </div>
+                {foInfo[dialogTokenBooking.id].vitals ? (
+                  <p className="text-sm text-gray-700">{vitalsText(foInfo[dialogTokenBooking.id].vitals as Vitals)}</p>
+                ) : (
+                  <p className="text-sm text-gray-400 italic">No vitals recorded</p>
+                )}
+              </div>
+            )}
+
             {dialogTokenBooking?.patientId && (
               <button
                 type="button"
