@@ -275,7 +275,7 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
   const [nf, setNf] = useState(BLANK);
   const [nErr, setNErr] = useState("");
   const [eErr, setEErr] = useState("");
-  const [pf, setPf] = useState({ tabletsPerStrip: "", stripsPerBox: "", mrpStrip: "", purchaseBox: "", schedule: "none", gstPercent: "" });
+  const [pf, setPf] = useState({ tabletsPerStrip: "", stripsPerBox: "", mrpStrip: "", purchaseBox: "", schedule: "none", gstPercent: "", reorderLevel: "" });
   const [rc, setRc] = useState<Inv | null>(null);
   const [rf, setRf] = useState({ boxes: "", strips: "", tablets: "", batchNo: "", expiryDate: "", supplier: "", invoiceNo: "", mrpStrip: "", purchaseBox: "" });
   const [rErr, setRErr] = useState("");
@@ -299,6 +299,7 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
       purchaseBox: r.purchasePrice != null && r.stripsPerBox ? String(Math.round(r.purchasePrice * r.stripsPerBox * 100) / 100) : "",
       schedule: r.schedule || "none",
       gstPercent: r.gstPercent == null ? "" : String(r.gstPercent),
+      reorderLevel: String(r.reorderLevel ?? ""),
     });
   }
   function openReceive(r: Inv) {
@@ -395,6 +396,7 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
     if (!(mrp >= 0)) { setEErr("MRP per strip is required"); return; }
     if (pf.purchaseBox.trim() !== "" && !(pbox >= 0)) { setEErr("Invalid purchase price per box"); return; }
     if (pf.gstPercent.trim() !== "" && !(gst >= 0 && gst <= 40)) { setEErr("GST percent must be between 0 and 40"); return; }
+    if (pf.reorderLevel.trim() !== "" && !(Number(pf.reorderLevel) >= 0)) { setEErr("Reorder level must be 0 or more"); return; }
     setSaving(true); setEErr("");
     try {
       await pm("/inventory/" + edit.id + "/meta", {
@@ -408,6 +410,7 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
         tabletsPerStrip: tps, stripsPerBox: spb, mrpStrip: mrp,
         purchaseBox: pf.purchaseBox.trim() === "" ? undefined : pbox, schedule: pf.schedule,
         gstPercent: pf.gstPercent.trim() === "" ? undefined : gst,
+        reorderLevel: pf.reorderLevel.trim() === "" ? undefined : Number(pf.reorderLevel),
       }) });
       setEdit(null);
       setRows(await pm<Inv[]>("/inventory"));
@@ -436,7 +439,7 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
       <div className="overflow-x-auto bg-white rounded-xl border border-gray-100">
         <table className="w-full">
           <thead className="bg-gray-50"><tr>
-            {["Medicine", "Category", "Available", "Expiry", "Supplier", "Location", "Reorder level", "MRP / strip", "Status", ""].map(h => <th key={h} className={TH}>{h}</th>)}
+            {["Medicine", "Category", "Available", "Expiry", "Supplier", "Location", "Reorder level (strips)", "MRP / strip", "Status", ""].map(h => <th key={h} className={TH}>{h}</th>)}
           </tr></thead>
           <tbody>
             {shown.map(r => (
@@ -447,7 +450,7 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
                 <td className={TD}>{r.expiryDate || "-"}</td>
                 <td className={TD}>{r.supplier || "-"}</td>
                 <td className={TD}>{r.location || "-"}</td>
-                <td className={TD}>{r.reorderLevel}</td>
+                <td className={TD}>{r.reorderLevel} <span className="text-xs text-gray-400">({Math.round(r.reorderLevel * (r.packSize || 1))} tab)</span></td>
                 <td className={TD}>{inr(r.sellingPrice)}{r.sellingPrice != null && <span className="text-xs text-gray-400"> ({rs(r.sellingPrice / (r.packSize || 1))}/tab)</span>}</td>
                 <td className={TD}><span className={"px-2 py-0.5 rounded-full text-xs font-medium " + STATUS_UI[r.status][1]}>{STATUS_UI[r.status][0]}</span></td>
                 <td className={TD + " whitespace-nowrap"}>{!readOnly && (
@@ -550,8 +553,10 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
               <Fld label={"Purchase price per box (\u20B9)"} type="number" value={pf.purchaseBox} onChange={v => setPf(p => ({ ...p, purchaseBox: v }))} />
               <ScheduleSelect value={pf.schedule} onChange={v => setPf(p => ({ ...p, schedule: v }))} />
               <Fld label="GST %" type="number" value={pf.gstPercent} onChange={v => setPf(p => ({ ...p, gstPercent: v }))} />
+              <Fld label="Reorder level (strips)" type="number" value={pf.reorderLevel} onChange={v => setPf(p => ({ ...p, reorderLevel: v }))} />
             </div>
             <PackPreview tps={pf.tabletsPerStrip} spb={pf.stripsPerBox} mrp={pf.mrpStrip} pbox={pf.purchaseBox} />
+            {Number(pf.reorderLevel) > 0 && Number(pf.tabletsPerStrip) >= 1 && <p className="text-xs text-gray-500">Low stock alert at {Number(pf.reorderLevel)} strips or fewer = {Number(pf.reorderLevel) * Number(pf.tabletsPerStrip)} tablets.</p>}
             <p className="text-xs text-amber-700">Changing tablets per strip keeps the total tablet count the same. If the count itself is wrong, fix it with Correct count.</p>
             <div className="grid grid-cols-2 gap-3">
               <Fld label="Batch number" value={f.batchNo} onChange={v => setF(prev => ({ ...prev, batchNo: v }))} />
