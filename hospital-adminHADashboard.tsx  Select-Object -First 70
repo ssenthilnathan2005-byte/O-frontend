@@ -1,0 +1,173 @@
+[35msrc/api.ts[m[36m-[m[32m432[m[36m-[m// ── Types ─────────────────────────────────────────────────────────────────────
+[35msrc/api.ts[m[36m-[m[32m433[m[36m-[mexport type UserRole = "patient" | "doctor" | "admin" | "hospital_admin" | "pharmacy" | "pharmacy_owner" | "lab_admin";
+[35msrc/api.ts[m[36m:[m[32m434[m[36m:[mexport [1;31minterface Hospital[m {
+[35msrc/api.ts[m[36m-[m[32m435[m[36m-[m  id: string; name: string; area: string; address?: string;
+[35msrc/api.ts[m[36m-[m[32m436[m[36m-[m  phone?: string; rating: number; gradient: string;
+[35msrc/api.ts[m[36m-[m[32m437[m[36m-[m  photoUrl?: string | null; doctorCount: number; isFree?: boolean; hasPharmacy?: boolean;
+[35msrc/api.ts[m[36m-[m[32m438[m[36m-[m  plan?: "basic" | "premium"; ratePerToken?: number;
+[35msrc/api.ts[m[36m-[m[32m439[m[36m-[m}
+[35msrc/api.ts[m[36m-[m[32m440[m[36m-[mexport interface Doctor {
+[35msrc/api.ts[m[36m-[m[32m441[m[36m-[m  id: string; hospitalId: string; code?: string; name: string;
+[35msrc/api.ts[m[36m-[m[32m442[m[36m-[m  specialty: string; phone?: string; contactPhone?: string; bio?: string; photo?: string | null;
+[35msrc/api.ts[m[36m-[m[32m443[m[36m-[m  price: number; consultationFee?: number; tokensPerSession: number; doctorFee?: number | null;
+[35msrc/api.ts[m[36m-[m[32m444[m[36m-[m  sessions: string[];
+[35msrc/api.ts[m[36m-[m[32m445[m[36m-[m  sessionTimings?: Partial<Record<string, { start: string; end: string }>>;
+[35msrc/api.ts[m[36m-[m[32m446[m[36m-[m  scheduleConfig?: {
+[35msrc/api.ts[m[36m-[m[32m447[m[36m-[m    weekday: Partial<Record<string, { count: number; start: string; end: string }>>;
+[35msrc/api.ts[m[36m-[m[32m448[m[36m-[m    weekend: Partial<Record<string, { count: number; start: string; end: string }>>;
+[35msrc/api.ts[m[36m-[m[32m449[m[36m-[m  };
+[35msrc/api.ts[m[36m-[m[32m450[m[36m-[m  isAvailable?: boolean; yearsOfExperience?: string;
+[35msrc/api.ts[m[36m-[m[32m451[m[36m-[m  education?: string; languages?: string[];
+[35msrc/api.ts[m[36m-[m[32m452[m[36m-[m  statusOverride?: string;
+[35msrc/api.ts[m[36m-[m[32m453[m[36m-[m  walkInInterval?: number;
+[35msrc/api.ts[m[36m-[m[32m454[m[36m-[m}
+[35msrc/api.ts[m[36m-[m[32m455[m[36m-[mexport interface Booking {
+[35msrc/api.ts[m[36m-[m[32m456[m[36m-[m  id: string; patientId: string; patientName: string;
+[35msrc/api.ts[m[36m-[m[32m457[m[36m-[m  doctorId: string; doctorName: string; hospitalName: string;
+[35msrc/api.ts[m[36m-[m[32m458[m[36m-[m  date: string; session: string; tokenNumber: number; sessionId: string;
+[35msrc/api.ts[m[36m-[m[32m459[m[36m-[m  paymentDone: boolean; status: "confirmed" | "completed" | "unvisited" | "cancelled";
+[36m--[m
+[35msrc/api.ts.bak4[m[36m-[m[32m417[m[36m-[m// ── Types ─────────────────────────────────────────────────────────────────────
+[35msrc/api.ts.bak4[m[36m-[m[32m418[m[36m-[mexport type UserRole = "patient" | "doctor" | "admin" | "hospital_admin" | "pharmacy" | "pharmacy_owner" | "lab_admin";
+[35msrc/api.ts.bak4[m[36m:[m[32m419[m[36m:[mexport [1;31minterface Hospital[m {
+[35msrc/api.ts.bak4[m[36m-[m[32m420[m[36m-[m  id: string; name: string; area: string; address?: string;
+[35msrc/api.ts.bak4[m[36m-[m[32m421[m[36m-[m  phone?: string; rating: number; gradient: string;
+[35msrc/api.ts.bak4[m[36m-[m[32m422[m[36m-[m  photoUrl?: string | null; doctorCount: number; isFree?: boolean; hasPharmacy?: boolean;
+[35msrc/api.ts.bak4[m[36m-[m[32m423[m[36m-[m}
+[35msrc/api.ts.bak4[m[36m-[m[32m424[m[36m-[mexport interface Doctor {
+[35msrc/api.ts.bak4[m[36m-[m[32m425[m[36m-[m  id: string; hospitalId: string; code?: string; name: string;
+[35msrc/api.ts.bak4[m[36m-[m[32m426[m[36m-[m  specialty: string; phone?: string; contactPhone?: string; bio?: string; photo?: string | null;
+[35msrc/api.ts.bak4[m[36m-[m[32m427[m[36m-[m  price: number; consultationFee?: number; tokensPerSession: number;
+[35msrc/api.ts.bak4[m[36m-[m[32m428[m[36m-[m  sessions: string[];
+[35msrc/api.ts.bak4[m[36m-[m[32m429[m[36m-[m  sessionTimings?: Partial<Record<string, { start: string; end: string }>>;
+[35msrc/api.ts.bak4[m[36m-[m[32m430[m[36m-[m  scheduleConfig?: {
+[35msrc/api.ts.bak4[m[36m-[m[32m431[m[36m-[m    weekday: Partial<Record<string, { count: number; start: string; end: string }>>;
+[35msrc/api.ts.bak4[m[36m-[m[32m432[m[36m-[m    weekend: Partial<Record<string, { count: number; start: string; end: string }>>;
+[35msrc/api.ts.bak4[m[36m-[m[32m433[m[36m-[m  };
+[35msrc/api.ts.bak4[m[36m-[m[32m434[m[36m-[m  isAvailable?: boolean; yearsOfExperience?: string;
+[35msrc/api.ts.bak4[m[36m-[m[32m435[m[36m-[m  education?: string; languages?: string[];
+[35msrc/api.ts.bak4[m[36m-[m[32m436[m[36m-[m  statusOverride?: string;
+[35msrc/api.ts.bak4[m[36m-[m[32m437[m[36m-[m  walkInInterval?: number;
+[35msrc/api.ts.bak4[m[36m-[m[32m438[m[36m-[m}
+[35msrc/api.ts.bak4[m[36m-[m[32m439[m[36m-[mexport interface Booking {
+[35msrc/api.ts.bak4[m[36m-[m[32m440[m[36m-[m  id: string; patientId: string; patientName: string;
+[35msrc/api.ts.bak4[m[36m-[m[32m441[m[36m-[m  doctorId: string; doctorName: string; hospitalName: string;
+[35msrc/api.ts.bak4[m[36m-[m[32m442[m[36m-[m  date: string; session: string; tokenNumber: number; sessionId: string;
+[35msrc/api.ts.bak4[m[36m-[m[32m443[m[36m-[m  paymentDone: boolean; status: "confirmed" | "completed" | "unvisited" | "cancelled";
+[35msrc/api.ts.bak4[m[36m-[m[32m444[m[36m-[m  phone: string; complaint?: string; patientAge?: number | null; createdAt: string;
+[36m--[m
+[35msrc/api.ts.bak7[m[36m-[m[32m417[m[36m-[m// ── Types ─────────────────────────────────────────────────────────────────────
+[35msrc/api.ts.bak7[m[36m-[m[32m418[m[36m-[mexport type UserRole = "patient" | "doctor" | "admin" | "hospital_admin" | "pharmacy" | "pharmacy_owner" | "lab_admin";
+[35msrc/api.ts.bak7[m[36m:[m[32m419[m[36m:[mexport [1;31minterface Hospital[m {
+[35msrc/api.ts.bak7[m[36m-[m[32m420[m[36m-[m  id: string; name: string; area: string; address?: string;
+[35msrc/api.ts.bak7[m[36m-[m[32m421[m[36m-[m  phone?: string; rating: number; gradient: string;
+[35msrc/api.ts.bak7[m[36m-[m[32m422[m[36m-[m  photoUrl?: string | null; doctorCount: number; isFree?: boolean; hasPharmacy?: boolean;
+[35msrc/api.ts.bak7[m[36m-[m[32m423[m[36m-[m}
+[35msrc/api.ts.bak7[m[36m-[m[32m424[m[36m-[mexport interface Doctor {
+[35msrc/api.ts.bak7[m[36m-[m[32m425[m[36m-[m  id: string; hospitalId: string; code?: string; name: string;
+[35msrc/api.ts.bak7[m[36m-[m[32m426[m[36m-[m  specialty: string; phone?: string; contactPhone?: string; bio?: string; photo?: string | null;
+[35msrc/api.ts.bak7[m[36m-[m[32m427[m[36m-[m  price: number; consultationFee?: number; tokensPerSession: number;
+[35msrc/api.ts.bak7[m[36m-[m[32m428[m[36m-[m  sessions: string[];
+[35msrc/api.ts.bak7[m[36m-[m[32m429[m[36m-[m  sessionTimings?: Partial<Record<string, { start: string; end: string }>>;
+[35msrc/api.ts.bak7[m[36m-[m[32m430[m[36m-[m  scheduleConfig?: {
+[35msrc/api.ts.bak7[m[36m-[m[32m431[m[36m-[m    weekday: Partial<Record<string, { count: number; start: string; end: string }>>;
+[35msrc/api.ts.bak7[m[36m-[m[32m432[m[36m-[m    weekend: Partial<Record<string, { count: number; start: string; end: string }>>;
+[35msrc/api.ts.bak7[m[36m-[m[32m433[m[36m-[m  };
+[35msrc/api.ts.bak7[m[36m-[m[32m434[m[36m-[m  isAvailable?: boolean; yearsOfExperience?: string;
+[35msrc/api.ts.bak7[m[36m-[m[32m435[m[36m-[m  education?: string; languages?: string[];
+[35msrc/api.ts.bak7[m[36m-[m[32m436[m[36m-[m  statusOverride?: string;
+[35msrc/api.ts.bak7[m[36m-[m[32m437[m[36m-[m  walkInInterval?: number;
+[35msrc/api.ts.bak7[m[36m-[m[32m438[m[36m-[m}
+[35msrc/api.ts.bak7[m[36m-[m[32m439[m[36m-[mexport interface Booking {
+[35msrc/api.ts.bak7[m[36m-[m[32m440[m[36m-[m  id: string; patientId: string; patientName: string;
+[35msrc/api.ts.bak7[m[36m-[m[32m441[m[36m-[m  doctorId: string; doctorName: string; hospitalName: string;
+[35msrc/api.ts.bak7[m[36m-[m[32m442[m[36m-[m  date: string; session: string; tokenNumber: number; sessionId: string;
+[35msrc/api.ts.bak7[m[36m-[m[32m443[m[36m-[m  paymentDone: boolean; status: "confirmed" | "completed" | "unvisited" | "cancelled";
+[35msrc/api.ts.bak7[m[36m-[m[32m444[m[36m-[m  phone: string; complaint?: string; patientAge?: number | null; createdAt: string;
+[36m--[m
+[35msrc/api.ts.bak9[m[36m-[m[32m417[m[36m-[m// ── Types ─────────────────────────────────────────────────────────────────────
+[35msrc/api.ts.bak9[m[36m-[m[32m418[m[36m-[mexport type UserRole = "patient" | "doctor" | "admin" | "hospital_admin" | "pharmacy" | "pharmacy_owner" | "lab_admin";
+[35msrc/api.ts.bak9[m[36m:[m[32m419[m[36m:[mexport [1;31minterface Hospital[m {
+[35msrc/api.ts.bak9[m[36m-[m[32m420[m[36m-[m  id: string; name: string; area: string; address?: string;
+[35msrc/api.ts.bak9[m[36m-[m[32m421[m[36m-[m  phone?: string; rating: number; gradient: string;
+[35msrc/api.ts.bak9[m[36m-[m[32m422[m[36m-[m  photoUrl?: string | null; doctorCount: number; isFree?: boolean; hasPharmacy?: boolean;
+[35msrc/api.ts.bak9[m[36m-[m[32m423[m[36m-[m}
+[35msrc/api.ts.bak9[m[36m-[m[32m424[m[36m-[mexport interface Doctor {
+[35msrc/api.ts.bak9[m[36m-[m[32m425[m[36m-[m  id: string; hospitalId: string; code?: string; name: string;
+[35msrc/api.ts.bak9[m[36m-[m[32m426[m[36m-[m  specialty: string; phone?: string; contactPhone?: string; bio?: string; photo?: string | null;
+[35msrc/api.ts.bak9[m[36m-[m[32m427[m[36m-[m  price: number; consultationFee?: number; tokensPerSession: number;
+[35msrc/api.ts.bak9[m[36m-[m[32m428[m[36m-[m  sessions: string[];
+[35msrc/api.ts.bak9[m[36m-[m[32m429[m[36m-[m  sessionTimings?: Partial<Record<string, { start: string; end: string }>>;
+[35msrc/api.ts.bak9[m[36m-[m[32m430[m[36m-[m  scheduleConfig?: {
+[35msrc/api.ts.bak9[m[36m-[m[32m431[m[36m-[m    weekday: Partial<Record<string, { count: number; start: string; end: string }>>;
+[35msrc/api.ts.bak9[m[36m-[m[32m432[m[36m-[m    weekend: Partial<Record<string, { count: number; start: string; end: string }>>;
+[35msrc/api.ts.bak9[m[36m-[m[32m433[m[36m-[m  };
+[35msrc/api.ts.bak9[m[36m-[m[32m434[m[36m-[m  isAvailable?: boolean; yearsOfExperience?: string;
+[35msrc/api.ts.bak9[m[36m-[m[32m435[m[36m-[m  education?: string; languages?: string[];
+[35msrc/api.ts.bak9[m[36m-[m[32m436[m[36m-[m  statusOverride?: string;
+[35msrc/api.ts.bak9[m[36m-[m[32m437[m[36m-[m  walkInInterval?: number;
+[35msrc/api.ts.bak9[m[36m-[m[32m438[m[36m-[m}
+[35msrc/api.ts.bak9[m[36m-[m[32m439[m[36m-[mexport interface Booking {
+[35msrc/api.ts.bak9[m[36m-[m[32m440[m[36m-[m  id: string; patientId: string; patientName: string;
+[35msrc/api.ts.bak9[m[36m-[m[32m441[m[36m-[m  doctorId: string; doctorName: string; hospitalName: string;
+[35msrc/api.ts.bak9[m[36m-[m[32m442[m[36m-[m  date: string; session: string; tokenNumber: number; sessionId: string;
+[35msrc/api.ts.bak9[m[36m-[m[32m443[m[36m-[m  paymentDone: boolean; status: "confirmed" | "completed" | "unvisited" | "cancelled";
+[35msrc/api.ts.bak9[m[36m-[m[32m444[m[36m-[m  phone: string; complaint?: string; patientAge?: number | null; createdAt: string;
+[36m--[m
+[35msrc/types.ts[m[36m-[m[32m1[m[36m-[mexport type UserRole = "patient" | "doctor" | "admin";
+[35msrc/types.ts[m[36m-[m[32m2[m[36m-[m
+[35msrc/types.ts[m[36m:[m[32m3[m[36m:[mexport [1;31minterface Hospital[m {
+[35msrc/types.ts[m[36m-[m[32m4[m[36m-[m  id: string;
+[35msrc/types.ts[m[36m-[m[32m5[m[36m-[m  name: string;
+[35msrc/types.ts[m[36m-[m[32m6[m[36m-[m  area: string;
+[35msrc/types.ts[m[36m-[m[32m7[m[36m-[m  doctorCount: number;
+[35msrc/types.ts[m[36m-[m[32m8[m[36m-[m  rating: number;
+[35msrc/types.ts[m[36m-[m[32m9[m[36m-[m  gradient: string;
+[35msrc/types.ts[m[36m-[m[32m10[m[36m-[m  address?: string;
+[35msrc/types.ts[m[36m-[m[32m11[m[36m-[m  phone?: string;
+[35msrc/types.ts[m[36m-[m[32m12[m[36m-[m  photoUrl?: string | null;
+[35msrc/types.ts[m[36m-[m[32m13[m[36m-[m  isFree?: boolean;
+[35msrc/types.ts[m[36m-[m[32m14[m[36m-[m  hasPharmacy?: boolean;
+[35msrc/types.ts[m[36m-[m[32m15[m[36m-[m  plan?: "basic" | "premium";
+[35msrc/types.ts[m[36m-[m[32m16[m[36m-[m  ratePerToken?: number;
+[35msrc/types.ts[m[36m-[m[32m17[m[36m-[m}
+[35msrc/types.ts[m[36m-[m[32m18[m[36m-[m
+[35msrc/types.ts[m[36m-[m[32m19[m[36m-[mexport type SessionType = "morning" | "afternoon" | "evening";
+[35msrc/types.ts[m[36m-[m[32m20[m[36m-[m
+[35msrc/types.ts[m[36m-[m[32m21[m[36m-[mexport interface SessionTiming {
+[35msrc/types.ts[m[36m-[m[32m22[m[36m-[m  start: string; // "HH:MM" 24h
+[35msrc/types.ts[m[36m-[m[32m23[m[36m-[m  end: string; // "HH:MM" 24h
+[35msrc/types.ts[m[36m-[m[32m24[m[36m-[m}
+[35msrc/types.ts[m[36m-[m[32m25[m[36m-[m
+[35msrc/types.ts[m[36m-[m[32m26[m[36m-[mexport interface Doctor {
+[35msrc/types.ts[m[36m-[m[32m27[m[36m-[m  id: string;
+[35msrc/types.ts[m[36m-[m[32m28[m[36m-[m  hospitalId: string;
+[36m--[m
+[35msrc/types.ts.bak9[m[36m-[m[32m1[m[36m-[mexport type UserRole = "patient" | "doctor" | "admin";
+[35msrc/types.ts.bak9[m[36m-[m[32m2[m[36m-[m
+[35msrc/types.ts.bak9[m[36m:[m[32m3[m[36m:[mexport [1;31minterface Hospital[m {
+[35msrc/types.ts.bak9[m[36m-[m[32m4[m[36m-[m  id: string;
+[35msrc/types.ts.bak9[m[36m-[m[32m5[m[36m-[m  name: string;
+[35msrc/types.ts.bak9[m[36m-[m[32m6[m[36m-[m  area: string;
+[35msrc/types.ts.bak9[m[36m-[m[32m7[m[36m-[m  doctorCount: number;
+[35msrc/types.ts.bak9[m[36m-[m[32m8[m[36m-[m  rating: number;
+[35msrc/types.ts.bak9[m[36m-[m[32m9[m[36m-[m  gradient: string;
+[35msrc/types.ts.bak9[m[36m-[m[32m10[m[36m-[m  address?: string;
+[35msrc/types.ts.bak9[m[36m-[m[32m11[m[36m-[m  phone?: string;
+[35msrc/types.ts.bak9[m[36m-[m[32m12[m[36m-[m  photoUrl?: string | null;
+[35msrc/types.ts.bak9[m[36m-[m[32m13[m[36m-[m  isFree?: boolean;
+[35msrc/types.ts.bak9[m[36m-[m[32m14[m[36m-[m  hasPharmacy?: boolean;
+[35msrc/types.ts.bak9[m[36m-[m[32m15[m[36m-[m}
+[35msrc/types.ts.bak9[m[36m-[m[32m16[m[36m-[m
+[35msrc/types.ts.bak9[m[36m-[m[32m17[m[36m-[mexport type SessionType = "morning" | "afternoon" | "evening";
+[35msrc/types.ts.bak9[m[36m-[m[32m18[m[36m-[m
+[35msrc/types.ts.bak9[m[36m-[m[32m19[m[36m-[mexport interface SessionTiming {
+[35msrc/types.ts.bak9[m[36m-[m[32m20[m[36m-[m  start: string; // "HH:MM" 24h
+[35msrc/types.ts.bak9[m[36m-[m[32m21[m[36m-[m  end: string; // "HH:MM" 24h
+[35msrc/types.ts.bak9[m[36m-[m[32m22[m[36m-[m}
+[35msrc/types.ts.bak9[m[36m-[m[32m23[m[36m-[m
+[35msrc/types.ts.bak9[m[36m-[m[32m24[m[36m-[mexport interface Doctor {
+[35msrc/types.ts.bak9[m[36m-[m[32m25[m[36m-[m  id: string;
+[35msrc/types.ts.bak9[m[36m-[m[32m26[m[36m-[m  hospitalId: string;
+[35msrc/types.ts.bak9[m[36m-[m[32m27[m[36m-[m  code?: string;
+[35msrc/types.ts.bak9[m[36m-[m[32m28[m[36m-[m  name: string;
