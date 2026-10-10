@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { BedDouble, Plus, X, Pencil, LogOut, ChevronDown, ChevronUp, Thermometer, HeartPulse, Download } from "lucide-react";
 import { getToken } from "../../api";
 import { downloadFile } from "../../lib/downloadFile";
+import HAFrontOfficeStaff from "./HAFrontOfficeStaff";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
@@ -355,6 +356,7 @@ export default function HAInward() {
           </div>
         </div>
       )}
+      <div className="mt-6"><HAFrontOfficeStaff hospitalId={hospitalId} /></div>
     </div>
   );
 }
