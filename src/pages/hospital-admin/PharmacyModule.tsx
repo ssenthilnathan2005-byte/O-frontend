@@ -181,6 +181,29 @@ type Inv = {
   expiryDate: string | null; location: string | null; status: InvStatus;
 };
 const MED_CATEGORIES = ["Tablet", "Capsule", "Syrup/Tonic", "Injection", "Oil", "Ointment/Cream", "Drops", "Powder", "Others"];
+const ADD_CUSTOM = "__add_custom__";
+function CategoryPicker({ value, onChange, options, allowBlank = false }: { value: string; onChange: (v: string) => void; options: string[]; allowBlank?: boolean }) {
+  const [custom, setCustom] = useState(false);
+  const opts = value && !custom && !options.includes(value) ? [...options, value] : options;
+  return (
+    <label className="block text-sm text-gray-600">Category
+      <select value={custom ? ADD_CUSTOM : value}
+        onChange={e => {
+          if (e.target.value === ADD_CUSTOM) { setCustom(true); onChange(""); }
+          else { setCustom(false); onChange(e.target.value); }
+        }}
+        className="mt-1 w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm bg-white">
+        {allowBlank && <option value="">Select category</option>}
+        {opts.map(c => <option key={c} value={c}>{c}</option>)}
+        <option value={ADD_CUSTOM}>+ Add custom category...</option>
+      </select>
+      {custom && (
+        <input value={value} onChange={e => onChange(e.target.value)} maxLength={40} placeholder="Type new category name"
+          className="mt-2 w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm" />
+      )}
+    </label>
+  );
+}
 const STATUS_UI: Record<InvStatus, [string, string]> = {
   ok: ["In stock", "bg-emerald-50 text-emerald-700"],
   low_stock: ["Low stock", "bg-amber-50 text-amber-700"],
@@ -191,6 +214,7 @@ const STATUS_UI: Record<InvStatus, [string, string]> = {
 export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
   const hid = useHid();
   const [rows, setRows] = useState<Inv[]>([]);
+  const [cats, setCats] = useState<string[]>(MED_CATEGORIES);
   const [err, setErr] = useState("");
   const [q, setQ] = useState("");
   const [flt, setFlt] = useState("all");
@@ -208,8 +232,10 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
   const [nErr, setNErr] = useState("");
   useLive(async () => {
     try { setRows(await pm<Inv[]>("/inventory")); setErr(""); } catch (e: any) { setErr(e.message); }
+    try { setCats(await pm<string[]>("/inventory-categories")); } catch (_) { /* keep current list */ }
   }, [hid]);
   const alerts = rows.filter(r => r.status !== "ok");
+  const catOptions = Array.from(new Set([...cats, ...rows.map(r => r.medCategory).filter((c): c is string => !!c)]));
   const shown = rows.filter(r => (flt === "all" || r.status === flt) && r.name.toLowerCase().includes(q.trim().toLowerCase()));
   function openEdit(r: Inv) {
     setEdit(r);
@@ -355,12 +381,7 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
                 </label>
               ))}
             </div>
-            <label className="block text-sm text-gray-600">Category
-              <select value={nf.medCategory} onChange={e => setNf(prev => ({ ...prev, medCategory: e.target.value }))}
-                className="mt-1 w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm bg-white">
-                {MED_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </label>
+            <CategoryPicker value={nf.medCategory} onChange={v => setNf(prev => ({ ...prev, medCategory: v }))} options={catOptions} />
             {nErr && <p className="text-sm text-red-600">{nErr}</p>}
             <div className="flex justify-end gap-2 pt-1">
               <button type="button" onClick={() => setAdding(false)} className="px-3 py-1.5 text-sm rounded-md border border-gray-200">Cancel</button>
@@ -373,13 +394,7 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setEdit(null)}>
           <div className="bg-white rounded-xl p-5 w-full max-w-md space-y-3" onClick={e => e.stopPropagation()}>
             <p className="font-semibold text-gray-900">{edit.name}</p>
-            <label className="block text-sm text-gray-600">Category
-              <select value={f.medCategory} onChange={e => setF(prev => ({ ...prev, medCategory: e.target.value }))}
-                className="mt-1 w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm bg-white">
-                <option value="">Select category</option>
-                {MED_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </label>
+            <CategoryPicker value={f.medCategory} onChange={v => setF(prev => ({ ...prev, medCategory: v }))} options={catOptions} allowBlank />
             {([["Tablets per pack", "packSize", "number"], ["Batch number", "batchNo", "text"], ["Expiry date", "expiryDate", "date"], ["Supplier", "supplier", "text"], ["Location (shelf / rack)", "location", "text"], ["Selling price per pack (\u20B9)", "sellingPrice", "number"]] as const).map(([l, k, t]) => (
               <label key={k} className="block text-sm text-gray-600">{l}
                 <input type={t} value={f[k]} onChange={e => setF(prev => ({ ...prev, [k]: e.target.value }))}
