@@ -218,7 +218,7 @@ const rs = (n: number) => "\u20B9" + n.toFixed(2);
 const SCHEDULE_OPTS: [string, string][] = [["none", "Normal (no schedule)"], ["H", "Schedule H"], ["H1", "Schedule H1"], ["X", "Schedule X"]];
 function stockText(r: Inv): string {
   if (!r.stripsPerBox || !r.breakdown) return "packing not set";
-  return r.breakdown.boxes + " box, " + r.breakdown.strips + " strip, " + r.breakdown.tablets + " tab";
+  const L = packLabels(r.medCategory); return r.breakdown.boxes + " box, " + r.breakdown.strips + " " + L.s + ", " + r.breakdown.tablets + " " + L.us;
 }
 function Fld({ label, value, onChange, type = "text", placeholder }: { label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string }) {
   return (
@@ -237,9 +237,22 @@ function ScheduleSelect({ value, onChange }: { value: string; onChange: (v: stri
     </label>
   );
 }
-function PackPreview({ tps, spb, mrp, pbox, boxes = "", strips = "", tablets = "" }: { tps: string; spb: string; mrp: string; pbox: string; boxes?: string; strips?: string; tablets?: string }) {
+function packLabels(cat?: string | null) {
+  const c = String(cat || "Tablet");
+  const mk = (s: string, ss: string, u: string, us: string, perStrip: string, perBox: string) => ({ s, ss, u, us, perStrip, perBox });
+  if (c === "Syrup/Tonic" || c === "Oil" || c === "Drops") return mk("bottle", "bottles", "ml", "ml", "Volume per bottle (ml)", "Bottles per box");
+  if (c === "Injection") return mk("vial", "vials", "ml", "ml", "Volume per vial (ml)", "Vials per box");
+  if (c === "Ointment/Cream") return mk("tube", "tubes", "grams", "g", "Grams per tube", "Tubes per box");
+  if (c === "Powder") return mk("sachet", "sachets", "grams", "g", "Grams per sachet", "Sachets per box");
+  if (c === "Capsule") return mk("strip", "strips", "capsules", "cap", "Capsules per strip", "Strips per box");
+  if (c === "Others") return mk("pack", "packs", "units", "unit", "Units per pack", "Packs per box");
+  return mk("strip", "strips", "tablets", "tab", "Tablets per strip", "Strips per box");
+}
+
+function PackPreview({ cat, tps, spb, mrp, pbox, boxes = "", strips = "", tablets = "" }: { cat?: string; tps: string; spb: string; mrp: string; pbox: string; boxes?: string; strips?: string; tablets?: string }) {
   const t = nOrNaN(tps), s = nOrNaN(spb), m = nOrNaN(mrp), p = nOrNaN(pbox);
-  if (!(t >= 1) || !(s >= 1)) return <p className="text-xs text-gray-400">Enter tablets per strip and strips per box to see the calculation.</p>;
+  const L = packLabels(cat);
+  if (!(t >= 1) || !(s >= 1)) return <p className="text-xs text-gray-400">Enter {L.perStrip.toLowerCase()} and {L.perBox.toLowerCase()} to see the calculation.</p>;
   const perBox = t * s;
   const mrpTab = m >= 0 ? m / t : NaN;
   const costTab = p >= 0 ? p / s / t : NaN;
@@ -247,9 +260,9 @@ function PackPreview({ tps, spb, mrp, pbox, boxes = "", strips = "", tablets = "
   const recv = (Number(boxes) || 0) * perBox + (Number(strips) || 0) * t + (Number(tablets) || 0);
   return (
     <div className="rounded-lg bg-teal-50 border border-teal-100 px-3 py-2 text-xs text-teal-900 space-y-0.5">
-      <p>1 box = {s} strips x {t} tablets = <b>{perBox}</b> tablets</p>
-      {Number.isFinite(mrpTab) && <p>MRP per tablet: <b>{rs(mrpTab)}</b></p>}
-      {Number.isFinite(costTab) && <p>Cost per tablet: <b>{rs(costTab)}</b>{Number.isFinite(margin) && <> | margin <b>{margin.toFixed(0)}%</b></>}</p>}
+      <p>1 box = {s} {L.ss} x {t} {L.u} = <b>{perBox}</b> {L.u}</p>
+      {Number.isFinite(mrpTab) && <p>MRP per {L.us}: <b>{rs(mrpTab)}</b></p>}
+      {Number.isFinite(costTab) && <p>Cost per {L.us}: <b>{rs(costTab)}</b>{Number.isFinite(margin) && <> | margin <b>{margin.toFixed(0)}%</b></>}</p>}
       {Number.isFinite(costTab) && Number.isFinite(mrpTab) && costTab > mrpTab && <p className="text-red-600">Purchase price is higher than MRP. Please check the box price.</p>}
       {recv > 0 && <p>Stock being added: <b>{recv}</b> tablets</p>}
     </div>
@@ -324,9 +337,9 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
     const tps = nOrNaN(nf.tabletsPerStrip), spb = nOrNaN(nf.stripsPerBox), mrp = nOrNaN(nf.mrpStrip), pbox = nOrNaN(nf.purchaseBox), gst = nOrNaN(nf.gstPercent);
     const opening = (Number(nf.boxes) || 0) * (spb || 0) * (tps || 0) + (Number(nf.strips) || 0) * (tps || 0) + (Number(nf.tablets) || 0);
     if (!name) { setNErr("Medicine name is required"); return; }
-    if (!Number.isInteger(tps) || tps < 1) { setNErr("Tablets per strip must be a whole number of 1 or more"); return; }
-    if (!Number.isInteger(spb) || spb < 1) { setNErr("Strips per box must be a whole number of 1 or more"); return; }
-    if (!(mrp >= 0)) { setNErr("MRP per strip is required"); return; }
+    if (!Number.isInteger(tps) || tps < 1) { setNErr(packLabels(nf.medCategory).perStrip + " must be a whole number of 1 or more"); return; }
+    if (!Number.isInteger(spb) || spb < 1) { setNErr(packLabels(nf.medCategory).perBox + " must be a whole number of 1 or more"); return; }
+    if (!(mrp >= 0)) { setNErr("MRP per " + packLabels(nf.medCategory).s + " is required"); return; }
     if (nf.purchaseBox.trim() !== "" && !(pbox >= 0)) { setNErr("Invalid purchase price per box"); return; }
     if (nf.gstPercent.trim() !== "" && !(gst >= 0 && gst <= 40)) { setNErr("GST percent must be between 0 and 40"); return; }
     if (opening > 0 && (!nf.batchNo.trim() || !nf.expiryDate)) { setNErr("Batch number and expiry date are required when adding opening stock"); return; }
@@ -391,9 +404,9 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
   async function save() {
     if (!edit) return;
     const tps = nOrNaN(pf.tabletsPerStrip), spb = nOrNaN(pf.stripsPerBox), mrp = nOrNaN(pf.mrpStrip), pbox = nOrNaN(pf.purchaseBox), gst = nOrNaN(pf.gstPercent);
-    if (!Number.isInteger(tps) || tps < 1) { setEErr("Tablets per strip must be a whole number of 1 or more"); return; }
-    if (!Number.isInteger(spb) || spb < 1) { setEErr("Strips per box must be a whole number of 1 or more"); return; }
-    if (!(mrp >= 0)) { setEErr("MRP per strip is required"); return; }
+    if (!Number.isInteger(tps) || tps < 1) { setEErr(packLabels(f.medCategory).perStrip + " must be a whole number of 1 or more"); return; }
+    if (!Number.isInteger(spb) || spb < 1) { setEErr(packLabels(f.medCategory).perBox + " must be a whole number of 1 or more"); return; }
+    if (!(mrp >= 0)) { setEErr("MRP per " + packLabels(f.medCategory).s + " is required"); return; }
     if (pf.purchaseBox.trim() !== "" && !(pbox >= 0)) { setEErr("Invalid purchase price per box"); return; }
     if (pf.gstPercent.trim() !== "" && !(gst >= 0 && gst <= 40)) { setEErr("GST percent must be between 0 and 40"); return; }
     if (pf.reorderLevel.trim() !== "" && !(Number(pf.reorderLevel) >= 0)) { setEErr("Reorder level must be 0 or more"); return; }
@@ -439,7 +452,7 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
       <div className="overflow-x-auto bg-white rounded-xl border border-gray-100">
         <table className="w-full">
           <thead className="bg-gray-50"><tr>
-            {["Medicine", "Category", "Available", "Batches / expiry", "Supplier", "Location", "Reorder level (strips)", "MRP / strip", "Status", ""].map(h => <th key={h} className={TH}>{h}</th>)}
+            {["Medicine", "Category", "Available", "Batches / expiry", "Supplier", "Location", "Reorder level (packs)", "MRP / pack", "Status", ""].map(h => <th key={h} className={TH}>{h}</th>)}
           </tr></thead>
           <tbody>
             {shown.map(r => (
@@ -450,8 +463,8 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
                 <td className={TD}>{r.batches && r.batches.length > 0 ? (<div className="space-y-0.5">{r.batches.map((b, i) => (<div key={i} className="text-xs whitespace-nowrap">{b.batchNo ? "Batch " + b.batchNo : "No batch recorded"} - {b.expiryDate || "no expiry"} - {b.tablets} tab</div>))}</div>) : (r.expiryDate || "-")}</td>
                 <td className={TD}>{r.supplier || "-"}</td>
                 <td className={TD}>{r.location || "-"}</td>
-                <td className={TD}>{r.reorderLevel} <span className="text-xs text-gray-400">({Math.round(r.reorderLevel * (r.packSize || 1))} tab)</span></td>
-                <td className={TD}>{inr(r.sellingPrice)}{r.sellingPrice != null && <span className="text-xs text-gray-400"> ({rs(r.sellingPrice / (r.packSize || 1))}/tab)</span>}</td>
+                <td className={TD}>{r.reorderLevel} <span className="text-xs text-gray-400">({Math.round(r.reorderLevel * (r.packSize || 1))} {packLabels(r.medCategory).us})</span></td>
+                <td className={TD}>{inr(r.sellingPrice)}{r.sellingPrice != null && <span className="text-xs text-gray-400"> ({rs(r.sellingPrice / (r.packSize || 1))}/{packLabels(r.medCategory).us})</span>}</td>
                 <td className={TD}><span className={"px-2 py-0.5 rounded-full text-xs font-medium " + STATUS_UI[r.status][1]}>{STATUS_UI[r.status][0]}</span></td>
                 <td className={TD + " whitespace-nowrap"}>{!readOnly && (
                   <>
@@ -471,7 +484,7 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setStock(null)}>
           <div className="bg-white rounded-xl p-5 w-full max-w-md space-y-3" onClick={e => e.stopPropagation()}>
             <p className="font-semibold text-gray-900">{stock.name}</p>
-            <p className="text-sm text-gray-500">Currently {stock.tabletsAvailable} tablets in stock</p>
+            <p className="text-sm text-gray-500">Currently {stock.tabletsAvailable} {packLabels(stock.medCategory).u} in stock</p>
             <div className="flex gap-2">
               {(["add", "set"] as const).map(m => (
                 <button key={m} type="button" onClick={() => setSMode(m)}
@@ -507,29 +520,29 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
             <CategoryPicker value={nf.medCategory} onChange={v => setNf(p => ({ ...p, medCategory: v }))} options={catOptions} />
             <p className="text-xs font-semibold text-gray-500 uppercase pt-1">Packing</p>
             <div className="grid grid-cols-2 gap-3">
-              <Fld label="Tablets per strip *" type="number" value={nf.tabletsPerStrip} onChange={v => setNf(p => ({ ...p, tabletsPerStrip: v }))} />
-              <Fld label="Strips per box *" type="number" value={nf.stripsPerBox} onChange={v => setNf(p => ({ ...p, stripsPerBox: v }))} />
+              <Fld label={packLabels(nf.medCategory).perStrip + " *"} type="number" value={nf.tabletsPerStrip} onChange={v => setNf(p => ({ ...p, tabletsPerStrip: v }))} />
+              <Fld label={packLabels(nf.medCategory).perBox + " *"} type="number" value={nf.stripsPerBox} onChange={v => setNf(p => ({ ...p, stripsPerBox: v }))} />
             </div>
             <p className="text-xs font-semibold text-gray-500 uppercase pt-1">Price and rules</p>
             <div className="grid grid-cols-2 gap-3">
-              <Fld label={"MRP per strip (\u20B9) *"} type="number" value={nf.mrpStrip} onChange={v => setNf(p => ({ ...p, mrpStrip: v }))} />
+              <Fld label={"MRP per " + packLabels(nf.medCategory).s + " (\u20B9) *"} type="number" value={nf.mrpStrip} onChange={v => setNf(p => ({ ...p, mrpStrip: v }))} />
               <Fld label={"Purchase price per box (\u20B9)"} type="number" value={nf.purchaseBox} onChange={v => setNf(p => ({ ...p, purchaseBox: v }))} />
               <ScheduleSelect value={nf.schedule} onChange={v => setNf(p => ({ ...p, schedule: v }))} />
               <Fld label="GST %" type="number" value={nf.gstPercent} onChange={v => setNf(p => ({ ...p, gstPercent: v }))} />
             </div>
-            <PackPreview tps={nf.tabletsPerStrip} spb={nf.stripsPerBox} mrp={nf.mrpStrip} pbox={nf.purchaseBox} boxes={nf.boxes} strips={nf.strips} tablets={nf.tablets} />
+            <PackPreview cat={nf.medCategory} tps={nf.tabletsPerStrip} spb={nf.stripsPerBox} mrp={nf.mrpStrip} pbox={nf.purchaseBox} boxes={nf.boxes} strips={nf.strips} tablets={nf.tablets} />
             <p className="text-xs font-semibold text-gray-500 uppercase pt-1">Opening stock (optional, can be added later with Receive stock)</p>
             <div className="grid grid-cols-3 gap-3">
               <Fld label="Boxes" type="number" value={nf.boxes} onChange={v => setNf(p => ({ ...p, boxes: v }))} />
-              <Fld label="Loose strips" type="number" value={nf.strips} onChange={v => setNf(p => ({ ...p, strips: v }))} />
-              <Fld label="Loose tablets" type="number" value={nf.tablets} onChange={v => setNf(p => ({ ...p, tablets: v }))} />
+              <Fld label={"Loose " + packLabels(nf.medCategory).ss} type="number" value={nf.strips} onChange={v => setNf(p => ({ ...p, strips: v }))} />
+              <Fld label={"Loose " + packLabels(nf.medCategory).u} type="number" value={nf.tablets} onChange={v => setNf(p => ({ ...p, tablets: v }))} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Fld label="Batch number" value={nf.batchNo} onChange={v => setNf(p => ({ ...p, batchNo: v }))} />
               <Fld label="Expiry date" type="date" value={nf.expiryDate} onChange={v => setNf(p => ({ ...p, expiryDate: v }))} />
               <Fld label="Supplier" value={nf.supplier} onChange={v => setNf(p => ({ ...p, supplier: v }))} />
               <Fld label="Supplier invoice no." value={nf.invoiceNo} onChange={v => setNf(p => ({ ...p, invoiceNo: v }))} />
-              <Fld label="Reorder level (strips)" type="number" value={nf.reorderLevel} onChange={v => setNf(p => ({ ...p, reorderLevel: v }))} />
+              <Fld label={"Reorder level (" + packLabels(nf.medCategory).ss + ")"} type="number" value={nf.reorderLevel} onChange={v => setNf(p => ({ ...p, reorderLevel: v }))} />
               <Fld label="Location (shelf / rack)" value={nf.location} onChange={v => setNf(p => ({ ...p, location: v }))} />
             </div>
             {nErr && <p className="text-sm text-red-600">{nErr}</p>}
@@ -547,17 +560,17 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
             <CategoryPicker value={f.medCategory} onChange={v => setF(prev => ({ ...prev, medCategory: v }))} options={catOptions} allowBlank />
             <p className="text-xs font-semibold text-gray-500 uppercase pt-1">Packing and price</p>
             <div className="grid grid-cols-2 gap-3">
-              <Fld label="Tablets per strip *" type="number" value={pf.tabletsPerStrip} onChange={v => setPf(p => ({ ...p, tabletsPerStrip: v }))} />
-              <Fld label="Strips per box *" type="number" value={pf.stripsPerBox} onChange={v => setPf(p => ({ ...p, stripsPerBox: v }))} />
-              <Fld label={"MRP per strip (\u20B9) *"} type="number" value={pf.mrpStrip} onChange={v => setPf(p => ({ ...p, mrpStrip: v }))} />
+              <Fld label={packLabels(f.medCategory).perStrip + " *"} type="number" value={pf.tabletsPerStrip} onChange={v => setPf(p => ({ ...p, tabletsPerStrip: v }))} />
+              <Fld label={packLabels(f.medCategory).perBox + " *"} type="number" value={pf.stripsPerBox} onChange={v => setPf(p => ({ ...p, stripsPerBox: v }))} />
+              <Fld label={"MRP per " + packLabels(f.medCategory).s + " (\u20B9) *"} type="number" value={pf.mrpStrip} onChange={v => setPf(p => ({ ...p, mrpStrip: v }))} />
               <Fld label={"Purchase price per box (\u20B9)"} type="number" value={pf.purchaseBox} onChange={v => setPf(p => ({ ...p, purchaseBox: v }))} />
               <ScheduleSelect value={pf.schedule} onChange={v => setPf(p => ({ ...p, schedule: v }))} />
               <Fld label="GST %" type="number" value={pf.gstPercent} onChange={v => setPf(p => ({ ...p, gstPercent: v }))} />
-              <Fld label="Reorder level (strips)" type="number" value={pf.reorderLevel} onChange={v => setPf(p => ({ ...p, reorderLevel: v }))} />
+              <Fld label={"Reorder level (" + packLabels(f.medCategory).ss + ")"} type="number" value={pf.reorderLevel} onChange={v => setPf(p => ({ ...p, reorderLevel: v }))} />
             </div>
-            <PackPreview tps={pf.tabletsPerStrip} spb={pf.stripsPerBox} mrp={pf.mrpStrip} pbox={pf.purchaseBox} />
-            {Number(pf.reorderLevel) > 0 && Number(pf.tabletsPerStrip) >= 1 && <p className="text-xs text-gray-500">Low stock alert at {Number(pf.reorderLevel)} strips or fewer = {Number(pf.reorderLevel) * Number(pf.tabletsPerStrip)} tablets.</p>}
-            <p className="text-xs text-amber-700">Changing tablets per strip keeps the total tablet count the same. If the count itself is wrong, fix it with Correct count.</p>
+            <PackPreview cat={f.medCategory} tps={pf.tabletsPerStrip} spb={pf.stripsPerBox} mrp={pf.mrpStrip} pbox={pf.purchaseBox} />
+            {Number(pf.reorderLevel) > 0 && Number(pf.tabletsPerStrip) >= 1 && <p className="text-xs text-gray-500">Low stock alert at {Number(pf.reorderLevel)} {packLabels(f.medCategory).ss} or fewer = {Number(pf.reorderLevel) * Number(pf.tabletsPerStrip)} {packLabels(f.medCategory).u}.</p>}
+            <p className="text-xs text-amber-700">Changing the pack size keeps the total quantity the same. If the count itself is wrong, fix it with Correct count.</p>
             <div className="grid grid-cols-2 gap-3">
               
               
@@ -595,26 +608,26 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
             <p className="font-semibold text-gray-900">Receive stock: {rc.name}</p>
             {!rc.stripsPerBox ? (
               <>
-                <p className="text-sm text-amber-700">Set the packing first. Close this window, click Edit, and fill tablets per strip and strips per box.</p>
+                <p className="text-sm text-amber-700">Set the packing first. Close this window, click Edit, and fill in the pack size and packs per box.</p>
                 <div className="flex justify-end"><button type="button" onClick={() => setRc(null)} className="px-3 py-1.5 text-sm rounded-md border border-gray-200">Close</button></div>
               </>
             ) : (
               <>
-                <p className="text-sm text-gray-500">Currently {rc.tabletsAvailable} tablets ({stockText(rc)})</p>
+                <p className="text-sm text-gray-500">Currently {rc.tabletsAvailable} {packLabels(rc.medCategory).u} ({stockText(rc)})</p>
                 <div className="grid grid-cols-3 gap-3">
                   <Fld label="Boxes" type="number" value={rf.boxes} onChange={v => setRf(p => ({ ...p, boxes: v }))} />
-                  <Fld label="Loose strips" type="number" value={rf.strips} onChange={v => setRf(p => ({ ...p, strips: v }))} />
-                  <Fld label="Loose tablets" type="number" value={rf.tablets} onChange={v => setRf(p => ({ ...p, tablets: v }))} />
+                  <Fld label={"Loose " + packLabels(rc.medCategory).ss} type="number" value={rf.strips} onChange={v => setRf(p => ({ ...p, strips: v }))} />
+                  <Fld label={"Loose " + packLabels(rc.medCategory).u} type="number" value={rf.tablets} onChange={v => setRf(p => ({ ...p, tablets: v }))} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <Fld label="Batch number *" value={rf.batchNo} onChange={v => setRf(p => ({ ...p, batchNo: v }))} />
                   <Fld label="Expiry date *" type="date" value={rf.expiryDate} onChange={v => setRf(p => ({ ...p, expiryDate: v }))} />
                   <Fld label="Supplier" value={rf.supplier} onChange={v => setRf(p => ({ ...p, supplier: v }))} />
                   <Fld label="Supplier invoice no." value={rf.invoiceNo} onChange={v => setRf(p => ({ ...p, invoiceNo: v }))} />
-                  <Fld label={"MRP per strip (\u20B9)"} type="number" value={rf.mrpStrip} onChange={v => setRf(p => ({ ...p, mrpStrip: v }))} />
+                  <Fld label={"MRP per " + packLabels(rc.medCategory).s + " (\u20B9)"} type="number" value={rf.mrpStrip} onChange={v => setRf(p => ({ ...p, mrpStrip: v }))} />
                   <Fld label={"Purchase price per box (\u20B9)"} type="number" value={rf.purchaseBox} onChange={v => setRf(p => ({ ...p, purchaseBox: v }))} />
                 </div>
-                <PackPreview tps={String(rc.packSize)} spb={String(rc.stripsPerBox)} mrp={rf.mrpStrip} pbox={rf.purchaseBox} boxes={rf.boxes} strips={rf.strips} tablets={rf.tablets} />
+                <PackPreview cat={rc.medCategory ?? undefined} tps={String(rc.packSize)} spb={String(rc.stripsPerBox)} mrp={rf.mrpStrip} pbox={rf.purchaseBox} boxes={rf.boxes} strips={rf.strips} tablets={rf.tablets} />
                 {rErr && <p className="text-sm text-red-600">{rErr}</p>}
                 <div className="flex justify-end gap-2 pt-1">
                   <button type="button" onClick={() => setRc(null)} className="px-3 py-1.5 text-sm rounded-md border border-gray-200">Cancel</button>
