@@ -179,6 +179,8 @@ type Inv = {
   id: string; name: string; quantity: number; packSize: number; tabletsAvailable: number; reorderLevel: number;
   purchasePrice: number | null; sellingPrice: number | null; supplier: string | null; batchNo: string | null; medCategory: string | null;
   expiryDate: string | null; location: string | null; status: InvStatus;
+  stripsPerBox?: number | null; tabletsPerBox?: number | null; schedule?: string; gstPercent?: number | null;
+  breakdown?: { boxes: number; strips: number; tablets: number };
 };
 const MED_CATEGORIES = ["Tablet", "Capsule", "Syrup/Tonic", "Injection", "Oil", "Ointment/Cream", "Drops", "Powder", "Others"];
 const ADD_CUSTOM = "__add_custom__";
@@ -211,6 +213,48 @@ const STATUS_UI: Record<InvStatus, [string, string]> = {
   expiring_soon: ["Expiring soon", "bg-orange-50 text-orange-700"],
   expired: ["Expired", "bg-red-100 text-red-800"],
 };
+const nOrNaN = (s: string) => (String(s ?? "").trim() === "" ? NaN : Number(s));
+const rs = (n: number) => "\u20B9" + n.toFixed(2);
+const SCHEDULE_OPTS: [string, string][] = [["none", "Normal (no schedule)"], ["H", "Schedule H"], ["H1", "Schedule H1"], ["X", "Schedule X"]];
+function stockText(r: Inv): string {
+  if (!r.stripsPerBox || !r.breakdown) return "packing not set";
+  return r.breakdown.boxes + " box, " + r.breakdown.strips + " strip, " + r.breakdown.tablets + " tab";
+}
+function Fld({ label, value, onChange, type = "text", placeholder }: { label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string }) {
+  return (
+    <label className="block text-sm text-gray-600">{label}
+      <input type={type} value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)}
+        className="mt-1 w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm" />
+    </label>
+  );
+}
+function ScheduleSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <label className="block text-sm text-gray-600">Schedule
+      <select value={value} onChange={e => onChange(e.target.value)} className="mt-1 w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm bg-white">
+        {SCHEDULE_OPTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+      </select>
+    </label>
+  );
+}
+function PackPreview({ tps, spb, mrp, pbox, boxes = "", strips = "", tablets = "" }: { tps: string; spb: string; mrp: string; pbox: string; boxes?: string; strips?: string; tablets?: string }) {
+  const t = nOrNaN(tps), s = nOrNaN(spb), m = nOrNaN(mrp), p = nOrNaN(pbox);
+  if (!(t >= 1) || !(s >= 1)) return <p className="text-xs text-gray-400">Enter tablets per strip and strips per box to see the calculation.</p>;
+  const perBox = t * s;
+  const mrpTab = m >= 0 ? m / t : NaN;
+  const costTab = p >= 0 ? p / s / t : NaN;
+  const margin = mrpTab > 0 && costTab >= 0 ? ((mrpTab - costTab) / mrpTab) * 100 : NaN;
+  const recv = (Number(boxes) || 0) * perBox + (Number(strips) || 0) * t + (Number(tablets) || 0);
+  return (
+    <div className="rounded-lg bg-teal-50 border border-teal-100 px-3 py-2 text-xs text-teal-900 space-y-0.5">
+      <p>1 box = {s} strips x {t} tablets = <b>{perBox}</b> tablets</p>
+      {Number.isFinite(mrpTab) && <p>MRP per tablet: <b>{rs(mrpTab)}</b></p>}
+      {Number.isFinite(costTab) && <p>Cost per tablet: <b>{rs(costTab)}</b>{Number.isFinite(margin) && <> | margin <b>{margin.toFixed(0)}%</b></>}</p>}
+      {Number.isFinite(costTab) && Number.isFinite(mrpTab) && costTab > mrpTab && <p className="text-red-600">Purchase price is higher than MRP. Please check the box price.</p>}
+      {recv > 0 && <p>Stock being added: <b>{recv}</b> tablets</p>}
+    </div>
+  );
+}
 export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
   const hid = useHid();
   const [rows, setRows] = useState<Inv[]>([]);
@@ -226,10 +270,15 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
   const [sQty, setSQty] = useState("");
   const [sReason, setSReason] = useState("");
   const [sErr, setSErr] = useState("");
-  const BLANK = { name: "", packSize: "1", medCategory: "Tablet", openingTablets: "", reorderLevel: "", purchasePrice: "", sellingPrice: "", supplier: "", batchNo: "", expiryDate: "", location: "" };
+  const BLANK = { name: "", medCategory: "Tablet", tabletsPerStrip: "", stripsPerBox: "", mrpStrip: "", purchaseBox: "", schedule: "none", gstPercent: "", reorderLevel: "", location: "", supplier: "", boxes: "", strips: "", tablets: "", batchNo: "", expiryDate: "", invoiceNo: "" };
   const [adding, setAdding] = useState(false);
   const [nf, setNf] = useState(BLANK);
   const [nErr, setNErr] = useState("");
+  const [eErr, setEErr] = useState("");
+  const [pf, setPf] = useState({ tabletsPerStrip: "", stripsPerBox: "", mrpStrip: "", purchaseBox: "", schedule: "none", gstPercent: "" });
+  const [rc, setRc] = useState<Inv | null>(null);
+  const [rf, setRf] = useState({ boxes: "", strips: "", tablets: "", batchNo: "", expiryDate: "", supplier: "", invoiceNo: "", mrpStrip: "", purchaseBox: "" });
+  const [rErr, setRErr] = useState("");
   useLive(async () => {
     try { setRows(await pm<Inv[]>("/inventory")); setErr(""); } catch (e: any) { setErr(e.message); }
     try { setCats(await pm<string[]>("/inventory-categories")); } catch (_) { /* keep current list */ }
@@ -238,10 +287,23 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
   const catOptions = Array.from(new Set([...cats, ...rows.map(r => r.medCategory).filter((c): c is string => !!c)]));
   const shown = rows.filter(r => (flt === "all" || r.status === flt) && r.name.toLowerCase().includes(q.trim().toLowerCase()));
   function openEdit(r: Inv) {
-    setEdit(r);
+    setEdit(r); setEErr("");
     setF({ batchNo: r.batchNo || "", expiryDate: r.expiryDate || "", supplier: r.supplier || "", location: r.location || "", sellingPrice: r.sellingPrice == null ? "" : String(r.sellingPrice), packSize: String(r.packSize || 1), medCategory: r.medCategory || "" });
+    setPf({
+      tabletsPerStrip: String(r.packSize || 1),
+      stripsPerBox: r.stripsPerBox ? String(r.stripsPerBox) : "",
+      mrpStrip: r.sellingPrice == null ? "" : String(r.sellingPrice),
+      purchaseBox: r.purchasePrice != null && r.stripsPerBox ? String(Math.round(r.purchasePrice * r.stripsPerBox * 100) / 100) : "",
+      schedule: r.schedule || "none",
+      gstPercent: r.gstPercent == null ? "" : String(r.gstPercent),
+    });
   }
-  async function saveStock() {
+  function openReceive(r: Inv) {
+    setRc(r); setRErr("");
+    setRf({ boxes: "", strips: "", tablets: "", batchNo: "", expiryDate: "", supplier: r.supplier || "", invoiceNo: "",
+      mrpStrip: r.sellingPrice == null ? "" : String(r.sellingPrice),
+      purchaseBox: r.purchasePrice != null && r.stripsPerBox ? String(Math.round(r.purchasePrice * r.stripsPerBox * 100) / 100) : "" });
+  }  async function saveStock() {
     if (!stock) return;
     const n = Number(sQty);
     if (sQty.trim() === "" || !(n >= 0) || (sMode === "add" && !(n > 0))) { setSErr("Enter a valid number of tablets"); return; }
@@ -254,41 +316,91 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
     setSaving(false);
   }
   async function saveNew() {
-    if (!nf.name.trim()) { setNErr("Medicine name is required"); return; }
+    const name = nf.name.trim();
+    const tps = nOrNaN(nf.tabletsPerStrip), spb = nOrNaN(nf.stripsPerBox), mrp = nOrNaN(nf.mrpStrip), pbox = nOrNaN(nf.purchaseBox), gst = nOrNaN(nf.gstPercent);
+    const opening = (Number(nf.boxes) || 0) * (spb || 0) * (tps || 0) + (Number(nf.strips) || 0) * (tps || 0) + (Number(nf.tablets) || 0);
+    if (!name) { setNErr("Medicine name is required"); return; }
+    if (!Number.isInteger(tps) || tps < 1) { setNErr("Tablets per strip must be a whole number of 1 or more"); return; }
+    if (!Number.isInteger(spb) || spb < 1) { setNErr("Strips per box must be a whole number of 1 or more"); return; }
+    if (!(mrp >= 0)) { setNErr("MRP per strip is required"); return; }
+    if (nf.purchaseBox.trim() !== "" && !(pbox >= 0)) { setNErr("Invalid purchase price per box"); return; }
+    if (nf.gstPercent.trim() !== "" && !(gst >= 0 && gst <= 40)) { setNErr("GST percent must be between 0 and 40"); return; }
+    if (opening > 0 && (!nf.batchNo.trim() || !nf.expiryDate)) { setNErr("Batch number and expiry date are required when adding opening stock"); return; }
     setSaving(true); setNErr("");
+    let newId = "";
     try {
-      await pm("/inventory", { method: "POST", body: JSON.stringify({
-        name: nf.name.trim(),
-        packSize: nf.packSize === "" ? 1 : Number(nf.packSize), medCategory: nf.medCategory || undefined,
-        openingTablets: nf.openingTablets === "" ? 0 : Number(nf.openingTablets),
+      const created = await pm<{ ok: boolean; id: string }>("/inventory", { method: "POST", body: JSON.stringify({
+        name, packSize: tps, medCategory: nf.medCategory || undefined, openingTablets: 0,
         reorderLevel: nf.reorderLevel === "" ? undefined : Number(nf.reorderLevel),
-        purchasePrice: nf.purchasePrice === "" ? undefined : Number(nf.purchasePrice),
-        sellingPrice: nf.sellingPrice === "" ? undefined : Number(nf.sellingPrice),
-        supplier: nf.supplier || undefined, batchNo: nf.batchNo || undefined,
-        expiryDate: nf.expiryDate || undefined, location: nf.location || undefined,
+        purchasePrice: nf.purchaseBox.trim() === "" ? undefined : pbox / spb, sellingPrice: mrp,
+        supplier: nf.supplier || undefined, location: nf.location || undefined,
       }) });
+      newId = created.id;
+      await pm("/inventory/" + newId + "/packing", { method: "POST", body: JSON.stringify({
+        tabletsPerStrip: tps, stripsPerBox: spb, mrpStrip: mrp,
+        purchaseBox: nf.purchaseBox.trim() === "" ? undefined : pbox, schedule: nf.schedule,
+        gstPercent: nf.gstPercent.trim() === "" ? undefined : gst,
+      }) });
+      if (opening > 0) {
+        await pm("/inventory/" + newId + "/receive", { method: "POST", body: JSON.stringify({
+          boxes: Number(nf.boxes) || 0, strips: Number(nf.strips) || 0, tablets: Number(nf.tablets) || 0,
+          batchNo: nf.batchNo.trim(), expiryDate: nf.expiryDate,
+          supplier: nf.supplier || undefined, invoiceNo: nf.invoiceNo || undefined,
+        }) });
+      }
       setAdding(false);
+    } catch (e: any) {
+      setNErr(newId ? "The medicine was created, but a later step failed: " + e.message + ". Close this window, then use Edit or Receive stock on it." : e.message);
+    }
+    try { setRows(await pm<Inv[]>("/inventory")); } catch (_) { /* keep current list */ }
+    setSaving(false);
+  }
+  async function saveReceive() {
+    if (!rc) return;
+    const b = Number(rf.boxes) || 0, s = Number(rf.strips) || 0, t = Number(rf.tablets) || 0;
+    if (b + s + t <= 0) { setRErr("Enter the boxes, strips or tablets received"); return; }
+    if (!rf.batchNo.trim()) { setRErr("Batch number is required"); return; }
+    if (!rf.expiryDate) { setRErr("Expiry date is required"); return; }
+    setSaving(true); setRErr("");
+    try {
+      await pm("/inventory/" + rc.id + "/receive", { method: "POST", body: JSON.stringify({
+        boxes: b, strips: s, tablets: t, batchNo: rf.batchNo.trim(), expiryDate: rf.expiryDate,
+        supplier: rf.supplier || undefined, invoiceNo: rf.invoiceNo || undefined,
+        mrpStrip: rf.mrpStrip.trim() === "" ? undefined : Number(rf.mrpStrip),
+        purchaseBox: rf.purchaseBox.trim() === "" ? undefined : Number(rf.purchaseBox),
+      }) });
+      setRc(null);
       setRows(await pm<Inv[]>("/inventory"));
-    } catch (e: any) { setNErr(e.message); }
+    } catch (e: any) { setRErr(e.message); }
     setSaving(false);
   }
   async function save() {
     if (!edit) return;
-    setSaving(true);
+    const tps = nOrNaN(pf.tabletsPerStrip), spb = nOrNaN(pf.stripsPerBox), mrp = nOrNaN(pf.mrpStrip), pbox = nOrNaN(pf.purchaseBox), gst = nOrNaN(pf.gstPercent);
+    if (!Number.isInteger(tps) || tps < 1) { setEErr("Tablets per strip must be a whole number of 1 or more"); return; }
+    if (!Number.isInteger(spb) || spb < 1) { setEErr("Strips per box must be a whole number of 1 or more"); return; }
+    if (!(mrp >= 0)) { setEErr("MRP per strip is required"); return; }
+    if (pf.purchaseBox.trim() !== "" && !(pbox >= 0)) { setEErr("Invalid purchase price per box"); return; }
+    if (pf.gstPercent.trim() !== "" && !(gst >= 0 && gst <= 40)) { setEErr("GST percent must be between 0 and 40"); return; }
+    setSaving(true); setEErr("");
     try {
       await pm("/inventory/" + edit.id + "/meta", {
         method: "PATCH",
         body: JSON.stringify({
           batchNo: f.batchNo || undefined, expiryDate: f.expiryDate || undefined,
-          supplier: f.supplier || undefined, location: f.location.trim(), sellingPrice: f.sellingPrice === "" ? undefined : Number(f.sellingPrice), packSize: f.packSize === "" ? undefined : Number(f.packSize), medCategory: f.medCategory || undefined,
+          supplier: f.supplier || undefined, location: f.location.trim(), medCategory: f.medCategory || undefined,
         }),
       });
+      await pm("/inventory/" + edit.id + "/packing", { method: "POST", body: JSON.stringify({
+        tabletsPerStrip: tps, stripsPerBox: spb, mrpStrip: mrp,
+        purchaseBox: pf.purchaseBox.trim() === "" ? undefined : pbox, schedule: pf.schedule,
+        gstPercent: pf.gstPercent.trim() === "" ? undefined : gst,
+      }) });
       setEdit(null);
       setRows(await pm<Inv[]>("/inventory"));
-    } catch (e: any) { setErr(e.message); }
+    } catch (e: any) { setEErr(e.message); }
     setSaving(false);
-  }
-  return (
+  }  return (
     <Shell title="Pharmacy Inventory" subtitle="Batches, stock, expiry, suppliers and reorder alerts. Stock reduces automatically when medicines are dispensed.">
       {alerts.length > 0 && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -311,23 +423,24 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
       <div className="overflow-x-auto bg-white rounded-xl border border-gray-100">
         <table className="w-full">
           <thead className="bg-gray-50"><tr>
-            {["Medicine", "Category", "Available", "Expiry", "Supplier", "Location", "Reorder level", "Sell price/pack", "Status", ""].map(h => <th key={h} className={TH}>{h}</th>)}
+            {["Medicine", "Category", "Available", "Expiry", "Supplier", "Location", "Reorder level", "MRP / strip", "Status", ""].map(h => <th key={h} className={TH}>{h}</th>)}
           </tr></thead>
           <tbody>
             {shown.map(r => (
               <tr key={r.id} className="border-t border-gray-100">
-                <td className={TD + " font-medium"}>{r.name}</td>
+                <td className={TD + " font-medium"}>{r.name}{r.schedule && r.schedule !== "none" && <span className="ml-2 px-1.5 py-0.5 rounded bg-red-50 text-red-700 text-xs">{r.schedule}</span>}</td>
                 <td className={TD}>{r.medCategory || "-"}</td>
-                <td className={TD}>{r.tabletsAvailable} <span className="text-xs text-gray-400">({r.quantity} packs)</span></td>
+                <td className={TD}>{r.tabletsAvailable} <span className="text-xs text-gray-400">({stockText(r)})</span></td>
                 <td className={TD}>{r.expiryDate || "-"}</td>
                 <td className={TD}>{r.supplier || "-"}</td>
                 <td className={TD}>{r.location || "-"}</td>
                 <td className={TD}>{r.reorderLevel}</td>
-                <td className={TD}>{inr(r.sellingPrice)}</td>
+                <td className={TD}>{inr(r.sellingPrice)}{r.sellingPrice != null && <span className="text-xs text-gray-400"> ({rs(r.sellingPrice / (r.packSize || 1))}/tab)</span>}</td>
                 <td className={TD}><span className={"px-2 py-0.5 rounded-full text-xs font-medium " + STATUS_UI[r.status][1]}>{STATUS_UI[r.status][0]}</span></td>
                 <td className={TD + " whitespace-nowrap"}>{!readOnly && (
                   <>
-                    <button type="button" onClick={() => { setStock(r); setSMode("add"); setSQty(""); setSReason(""); setSErr(""); }} className="text-teal-700 text-sm hover:underline mr-3">Update stock</button>
+                    <button type="button" onClick={() => openReceive(r)} className="text-teal-700 text-sm hover:underline mr-3">Receive stock</button>
+                    <button type="button" onClick={() => { setStock(r); setSMode("add"); setSQty(""); setSReason(""); setSErr(""); }} className="text-teal-700 text-sm hover:underline mr-3">Correct count</button>
                     <button type="button" onClick={() => openEdit(r)} className="text-teal-700 text-sm hover:underline">Edit</button>
                   </>
                 )}</td>
@@ -373,15 +486,35 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
         <div className="fixed inset-0 z-50 bg-black/40 flex items-start justify-center p-4 overflow-y-auto" onClick={() => setAdding(false)}>
           <div className="bg-white rounded-xl p-5 w-full max-w-lg space-y-3 my-8" onClick={e => e.stopPropagation()}>
             <p className="font-semibold text-gray-900">Add new medicine</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {([["Medicine name *", "name", "text"], ["Tablets per pack", "packSize", "number"], ["Opening stock (tablets)", "openingTablets", "number"], ["Reorder level", "reorderLevel", "number"], ["Purchase price per pack (\u20B9)", "purchasePrice", "number"], ["Selling price per pack (\u20B9)", "sellingPrice", "number"], ["Supplier", "supplier", "text"], ["Batch number", "batchNo", "text"], ["Expiry date", "expiryDate", "date"], ["Location (shelf / rack)", "location", "text"]] as const).map(([l, k, t]) => (
-                <label key={k} className={"block text-sm text-gray-600" + (k === "name" ? " sm:col-span-2" : "")}>{l}
-                  <input type={t} value={nf[k]} onChange={e => setNf(prev => ({ ...prev, [k]: e.target.value }))}
-                    className="mt-1 w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm" />
-                </label>
-              ))}
+            <Fld label="Medicine name *" value={nf.name} onChange={v => setNf(p => ({ ...p, name: v }))} />
+            <CategoryPicker value={nf.medCategory} onChange={v => setNf(p => ({ ...p, medCategory: v }))} options={catOptions} />
+            <p className="text-xs font-semibold text-gray-500 uppercase pt-1">Packing</p>
+            <div className="grid grid-cols-2 gap-3">
+              <Fld label="Tablets per strip *" type="number" value={nf.tabletsPerStrip} onChange={v => setNf(p => ({ ...p, tabletsPerStrip: v }))} />
+              <Fld label="Strips per box *" type="number" value={nf.stripsPerBox} onChange={v => setNf(p => ({ ...p, stripsPerBox: v }))} />
             </div>
-            <CategoryPicker value={nf.medCategory} onChange={v => setNf(prev => ({ ...prev, medCategory: v }))} options={catOptions} />
+            <p className="text-xs font-semibold text-gray-500 uppercase pt-1">Price and rules</p>
+            <div className="grid grid-cols-2 gap-3">
+              <Fld label={"MRP per strip (\u20B9) *"} type="number" value={nf.mrpStrip} onChange={v => setNf(p => ({ ...p, mrpStrip: v }))} />
+              <Fld label={"Purchase price per box (\u20B9)"} type="number" value={nf.purchaseBox} onChange={v => setNf(p => ({ ...p, purchaseBox: v }))} />
+              <ScheduleSelect value={nf.schedule} onChange={v => setNf(p => ({ ...p, schedule: v }))} />
+              <Fld label="GST %" type="number" value={nf.gstPercent} onChange={v => setNf(p => ({ ...p, gstPercent: v }))} />
+            </div>
+            <PackPreview tps={nf.tabletsPerStrip} spb={nf.stripsPerBox} mrp={nf.mrpStrip} pbox={nf.purchaseBox} boxes={nf.boxes} strips={nf.strips} tablets={nf.tablets} />
+            <p className="text-xs font-semibold text-gray-500 uppercase pt-1">Opening stock (optional, can be added later with Receive stock)</p>
+            <div className="grid grid-cols-3 gap-3">
+              <Fld label="Boxes" type="number" value={nf.boxes} onChange={v => setNf(p => ({ ...p, boxes: v }))} />
+              <Fld label="Loose strips" type="number" value={nf.strips} onChange={v => setNf(p => ({ ...p, strips: v }))} />
+              <Fld label="Loose tablets" type="number" value={nf.tablets} onChange={v => setNf(p => ({ ...p, tablets: v }))} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Fld label="Batch number" value={nf.batchNo} onChange={v => setNf(p => ({ ...p, batchNo: v }))} />
+              <Fld label="Expiry date" type="date" value={nf.expiryDate} onChange={v => setNf(p => ({ ...p, expiryDate: v }))} />
+              <Fld label="Supplier" value={nf.supplier} onChange={v => setNf(p => ({ ...p, supplier: v }))} />
+              <Fld label="Supplier invoice no." value={nf.invoiceNo} onChange={v => setNf(p => ({ ...p, invoiceNo: v }))} />
+              <Fld label="Reorder level (strips)" type="number" value={nf.reorderLevel} onChange={v => setNf(p => ({ ...p, reorderLevel: v }))} />
+              <Fld label="Location (shelf / rack)" value={nf.location} onChange={v => setNf(p => ({ ...p, location: v }))} />
+            </div>
             {nErr && <p className="text-sm text-red-600">{nErr}</p>}
             <div className="flex justify-end gap-2 pt-1">
               <button type="button" onClick={() => setAdding(false)} className="px-3 py-1.5 text-sm rounded-md border border-gray-200">Cancel</button>
@@ -391,16 +524,28 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
         </div>
       )}
       {edit && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setEdit(null)}>
-          <div className="bg-white rounded-xl p-5 w-full max-w-md space-y-3" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-start justify-center p-4 overflow-y-auto" onClick={() => setEdit(null)}>
+          <div className="bg-white rounded-xl p-5 w-full max-w-lg space-y-3 my-8" onClick={e => e.stopPropagation()}>
             <p className="font-semibold text-gray-900">{edit.name}</p>
             <CategoryPicker value={f.medCategory} onChange={v => setF(prev => ({ ...prev, medCategory: v }))} options={catOptions} allowBlank />
-            {([["Tablets per pack", "packSize", "number"], ["Batch number", "batchNo", "text"], ["Expiry date", "expiryDate", "date"], ["Supplier", "supplier", "text"], ["Location (shelf / rack)", "location", "text"], ["Selling price per pack (\u20B9)", "sellingPrice", "number"]] as const).map(([l, k, t]) => (
-              <label key={k} className="block text-sm text-gray-600">{l}
-                <input type={t} value={f[k]} onChange={e => setF(prev => ({ ...prev, [k]: e.target.value }))}
-                  className="mt-1 w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm" />
-              </label>
-            ))}
+            <p className="text-xs font-semibold text-gray-500 uppercase pt-1">Packing and price</p>
+            <div className="grid grid-cols-2 gap-3">
+              <Fld label="Tablets per strip *" type="number" value={pf.tabletsPerStrip} onChange={v => setPf(p => ({ ...p, tabletsPerStrip: v }))} />
+              <Fld label="Strips per box *" type="number" value={pf.stripsPerBox} onChange={v => setPf(p => ({ ...p, stripsPerBox: v }))} />
+              <Fld label={"MRP per strip (\u20B9) *"} type="number" value={pf.mrpStrip} onChange={v => setPf(p => ({ ...p, mrpStrip: v }))} />
+              <Fld label={"Purchase price per box (\u20B9)"} type="number" value={pf.purchaseBox} onChange={v => setPf(p => ({ ...p, purchaseBox: v }))} />
+              <ScheduleSelect value={pf.schedule} onChange={v => setPf(p => ({ ...p, schedule: v }))} />
+              <Fld label="GST %" type="number" value={pf.gstPercent} onChange={v => setPf(p => ({ ...p, gstPercent: v }))} />
+            </div>
+            <PackPreview tps={pf.tabletsPerStrip} spb={pf.stripsPerBox} mrp={pf.mrpStrip} pbox={pf.purchaseBox} />
+            <p className="text-xs text-amber-700">Changing tablets per strip keeps the total tablet count the same. If the count itself is wrong, fix it with Correct count.</p>
+            <div className="grid grid-cols-2 gap-3">
+              <Fld label="Batch number" value={f.batchNo} onChange={v => setF(prev => ({ ...prev, batchNo: v }))} />
+              <Fld label="Expiry date" type="date" value={f.expiryDate} onChange={v => setF(prev => ({ ...prev, expiryDate: v }))} />
+              <Fld label="Supplier" value={f.supplier} onChange={v => setF(prev => ({ ...prev, supplier: v }))} />
+              <Fld label="Location (shelf / rack)" value={f.location} onChange={v => setF(prev => ({ ...prev, location: v }))} />
+            </div>
+            {eErr && <p className="text-sm text-red-600">{eErr}</p>}
             <div className="flex justify-end gap-2 pt-1">
               <button type="button" onClick={() => setEdit(null)} className="px-3 py-1.5 text-sm rounded-md border border-gray-200">Cancel</button>
               <button type="button" disabled={saving} onClick={save} className="px-3 py-1.5 text-sm rounded-md bg-teal-600 text-white">{saving ? "Saving..." : "Save"}</button>
@@ -408,7 +553,42 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
           </div>
         </div>
       )}
-    </Shell>
+      {rc && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-start justify-center p-4 overflow-y-auto" onClick={() => setRc(null)}>
+          <div className="bg-white rounded-xl p-5 w-full max-w-lg space-y-3 my-8" onClick={e => e.stopPropagation()}>
+            <p className="font-semibold text-gray-900">Receive stock: {rc.name}</p>
+            {!rc.stripsPerBox ? (
+              <>
+                <p className="text-sm text-amber-700">Set the packing first. Close this window, click Edit, and fill tablets per strip and strips per box.</p>
+                <div className="flex justify-end"><button type="button" onClick={() => setRc(null)} className="px-3 py-1.5 text-sm rounded-md border border-gray-200">Close</button></div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-gray-500">Currently {rc.tabletsAvailable} tablets ({stockText(rc)})</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <Fld label="Boxes" type="number" value={rf.boxes} onChange={v => setRf(p => ({ ...p, boxes: v }))} />
+                  <Fld label="Loose strips" type="number" value={rf.strips} onChange={v => setRf(p => ({ ...p, strips: v }))} />
+                  <Fld label="Loose tablets" type="number" value={rf.tablets} onChange={v => setRf(p => ({ ...p, tablets: v }))} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Fld label="Batch number *" value={rf.batchNo} onChange={v => setRf(p => ({ ...p, batchNo: v }))} />
+                  <Fld label="Expiry date *" type="date" value={rf.expiryDate} onChange={v => setRf(p => ({ ...p, expiryDate: v }))} />
+                  <Fld label="Supplier" value={rf.supplier} onChange={v => setRf(p => ({ ...p, supplier: v }))} />
+                  <Fld label="Supplier invoice no." value={rf.invoiceNo} onChange={v => setRf(p => ({ ...p, invoiceNo: v }))} />
+                  <Fld label={"MRP per strip (\u20B9)"} type="number" value={rf.mrpStrip} onChange={v => setRf(p => ({ ...p, mrpStrip: v }))} />
+                  <Fld label={"Purchase price per box (\u20B9)"} type="number" value={rf.purchaseBox} onChange={v => setRf(p => ({ ...p, purchaseBox: v }))} />
+                </div>
+                <PackPreview tps={String(rc.packSize)} spb={String(rc.stripsPerBox)} mrp={rf.mrpStrip} pbox={rf.purchaseBox} boxes={rf.boxes} strips={rf.strips} tablets={rf.tablets} />
+                {rErr && <p className="text-sm text-red-600">{rErr}</p>}
+                <div className="flex justify-end gap-2 pt-1">
+                  <button type="button" onClick={() => setRc(null)} className="px-3 py-1.5 text-sm rounded-md border border-gray-200">Cancel</button>
+                  <button type="button" disabled={saving} onClick={saveReceive} className="px-3 py-1.5 text-sm rounded-md bg-teal-600 text-white">{saving ? "Saving..." : "Receive stock"}</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}    </Shell>
   );
 }
 
