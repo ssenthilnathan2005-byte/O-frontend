@@ -879,6 +879,13 @@ export default function LoginPage({
                       >
                         Hospital lab login
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => { setShowStaffOptions(false); navigate({ path: "/front-office/login" }); }}
+                        className="rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-200"
+                      >
+                        Front office login
+                      </button>
                     </>
                   )}
                 </div>
