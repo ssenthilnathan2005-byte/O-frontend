@@ -54,7 +54,13 @@ type Route =
   | { path: "/hospital-admin/attendance" }
   | { path: "/hospital-admin/billing" }
   | { path: "/pharmacy/login" }
+<<<<<<< HEAD
   | { path: "/front-office/login" }
+=======
+  | { path: "/nurse/login" }
+  | { path: "/nurse" }
+  | { path: "/hospital-admin/nurses" }
+>>>>>>> origin/main
   | { path: "/terms" }
   | { path: "/privacy" }
   | { path: "/pharmacies" }
@@ -147,7 +153,13 @@ function getInitialRoute(): Route {
   if (pathname === "/hospital-admin/billing") return { path: "/hospital-admin/billing" };
   if (pathname === "/hospital-admin") return { path: "/hospital-admin" };
   if (pathname === "/pharmacy/login") return { path: "/pharmacy/login" };
+<<<<<<< HEAD
   if (pathname === "/front-office/login") return { path: "/front-office/login" };
+=======
+  if (pathname === "/nurse/login") return { path: "/nurse/login" };
+  if (pathname === "/nurse") return { path: "/nurse" };
+  if (pathname === "/hospital-admin/nurses") return { path: "/hospital-admin/nurses" };
+>>>>>>> origin/main
   if (pathname === "/terms") return { path: "/terms" };
   if (pathname === "/privacy") return { path: "/privacy" };
   if (pathname === "/delete-account") return { path: "/delete-account" };
@@ -176,6 +188,7 @@ function isProtectedRoute(r: Route): boolean {
   return (
     p.startsWith("/patient/") ||
     p === "/doctor" ||
+    p === "/nurse" ||
     p.startsWith("/admin") ||
     p.startsWith("/hospital-admin") ||
     p === "/pharmacy-owner/dashboard"
