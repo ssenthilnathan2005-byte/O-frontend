@@ -11,6 +11,7 @@ import HAInward from "./HAInward";
 import HAWards from "./HAWards";
 import HAHR from "./HAHR";
 import HANurses from "./HANurses";
+import HAFrontOfficeStaff from "./HAFrontOfficeStaff";
 import HAInventory from "./HAInventory";
 import HALab from "./HALab";
 import HAAttendance from "./HAAttendance";
@@ -30,6 +31,7 @@ const NAV_ITEMS = [
   { path: "/hospital-admin/lab", label: "Laboratory", icon: FlaskConical },
   { path: "/hospital-admin/patients", label: "Live Patients", icon: Users2 },
   { path: "/hospital-admin/nurses", label: "Nurses", icon: HeartPulse },
+  { path: "/hospital-admin/front-desk", label: "Front Desk", icon: ClipboardList },
   { path: "/hospital-admin/pharmacy", label: "Pharmacy", icon: Pill },
 ] as const;
 
@@ -97,6 +99,7 @@ export default function HospitalAdminPanel() {
     if (route.path === "/hospital-admin/inventory") return <HAInventory />;
     if (route.path === "/hospital-admin/hr") return <HAHR />;
     if (route.path === "/hospital-admin/nurses") return <HANurses />;
+    if (route.path === "/hospital-admin/front-desk") return <div className="p-4 max-w-3xl"><HAFrontOfficeStaff /></div>;
     if (route.path === "/hospital-admin/attendance") return <HAAttendance />;
     if (route.path === "/hospital-admin/billing") return <HABilling />;
     return <HADashboard />;

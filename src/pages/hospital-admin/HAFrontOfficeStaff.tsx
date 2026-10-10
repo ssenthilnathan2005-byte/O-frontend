@@ -8,7 +8,7 @@ const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/
 type Staff = { id: string; name: string; phone: string | null; code: string; is_active: number; first_login: number };
 
 export default function HAFrontOfficeStaff({ hospitalId }: { hospitalId?: string }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const [list, setList] = useState<Staff[]>([]);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
