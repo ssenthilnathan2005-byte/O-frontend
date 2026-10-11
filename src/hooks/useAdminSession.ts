@@ -15,16 +15,16 @@ function playIntro() {
     "@keyframes haBang{0%{opacity:0;transform:translateY(-40px)}60%{opacity:1;transform:translateY(8px)}100%{opacity:1;transform:translateY(0)}}" +
     "@keyframes haOut{0%{opacity:1}100%{opacity:0}}";
   const el = document.createElement("div");
-  el.setAttribute("style", "position:fixed;inset:0;z-index:99999;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;animation:haOut .3s ease 1.1s forwards;");
+  el.setAttribute("style", "position:fixed;inset:0;z-index:99999;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;animation:haOut .8s cubic-bezier(.4,0,.2,1) 1.7s forwards;");
   el.innerHTML =
     '<div style="display:flex;align-items:baseline;font-family:system-ui,sans-serif;font-weight:700;font-size:clamp(56px,14vw,140px);color:#0d9488;">' +
-    '<span style="animation:haHello .6s ease both;">Hello</span>' +
-    '<span style="opacity:0;animation:haBang .4s ease .55s forwards;">!</span></div>';
+    '<span style="animation:haHello .8s cubic-bezier(.22,1,.36,1) both;">Hello</span>' +
+    '<span style="opacity:0;animation:haBang .6s cubic-bezier(.22,1,.36,1) .75s forwards;">!</span></div>';
   const done = () => { el.remove(); style.remove(); };
   el.addEventListener("click", done);
   document.head.appendChild(style);
   document.body.appendChild(el);
-  setTimeout(done, 1450);
+  setTimeout(done, 2550);
 }
 
 export default function useAdminSession(logout: () => void) {
