@@ -10,6 +10,8 @@ import { mergeVariants, finalize, pickRecheckTargets, uniqueKeys } from "@/lib/o
 import type { Recheck, Trace } from "@/lib/ocrConsensus";
 import { detectDisplay, assessQuality } from "@/lib/screenDetect";
 import type { QualityIssue } from "@/lib/screenDetect";
+import LiveCapture from "@/components/LiveCapture";
+import { combineMatches } from "@/lib/scanCombine";
 
 /**
  * "Scan All Vitals" - one photo of a multiparameter monitor fills every reading it can read.
@@ -241,7 +243,7 @@ export default function VitalsScanAll({ onApply, include, label, captureAudit }:
   const shown = uniqueKeys(include && include.length ? ALL_FIELDS.filter((f) => include.includes(f)) : ALL_FIELDS);
   const [open, setOpen] = useState(false);
   const [orig, setOrig] = useState<Pick<OcrAudit, "proposed" | "conf" | "flags" | "template"> | null>(null);
-  const [step, setStep] = useState<"capture" | "crop" | "reading" | "review">("capture");
+  const [step, setStep] = useState<"capture" | "live" | "crop" | "reading" | "review">("capture");
   const [imgUrl, setImgUrl] = useState<string | null>(null);
   const [imgEl, setImgEl] = useState<HTMLImageElement | null>(null);
   const [crop, setCrop] = useState<Frac | null>(null);
@@ -250,7 +252,7 @@ export default function VitalsScanAll({ onApply, include, label, captureAudit }:
   const [qMetrics, setQMetrics] = useState<Record<string, number> | null>(null);
   const pixels = useRef<{ data: Uint8ClampedArray; width: number; height: number } | null>(null);
   const cropRef = useRef<Frac | null>(null);
-  const [tplId, setTplId] = useState(MONITOR_TEMPLATES[0].id);
+  const tplId = "all"; // every monitor layout is tried on each photo and the results are merged
   const [out, setOut] = useState<MatchOutput | null>(null);
   const [vals, setVals] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -305,7 +307,10 @@ export default function VitalsScanAll({ onApply, include, label, captureAudit }:
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (!file) return;
+    if (file) loadPhoto(file);
+  }
+
+  function loadPhoto(file: Blob) {
     if (imgUrl) URL.revokeObjectURL(imgUrl);
     const url = URL.createObjectURL(file);
     const img = new Image();
@@ -392,9 +397,8 @@ export default function VitalsScanAll({ onApply, include, label, captureAudit }:
 
       const fin = finalize(merged.items, rechecks, { singleCap: SINGLE_CAP });
       // A fixed-position template is used only when the layout is recognised (or the nurse chose an unlabeled one).
-      const resolved = resolveTemplate(tplId, fin.words);
-      const matched = matchMonitorReadings(fin.words, { template: resolved.template, width: base.raw.width, height: base.raw.height });
-      const result: MatchOutput = { ...matched, notes: [...new Set([...merged.notes, ...fin.notes, ...matched.notes, ...(resolved.note && tplId !== "auto" ? [resolved.note] : [])])] };
+      const combined = combineMatches(fin.words, base.raw.width, base.raw.height, MIN_CONF);
+      const result: MatchOutput = { ...combined.output, notes: [...new Set([...merged.notes, ...fin.notes, ...(combined.output.notes || [])])] };
       // Scan data for the benchmark script: only numbers and monitor labels, so no patient name or other text leaves the phone.
       const exportJson = JSON.stringify({
         version: 1, tplId, width: base.raw.width, height: base.raw.height,
@@ -424,7 +428,7 @@ export default function VitalsScanAll({ onApply, include, label, captureAudit }:
         thumbs: VARIANTS.map((v, i) => ({ label: v.short + " = " + v.label, url: thumbOf(canvases[i]) })),
         rows,
         log: [`Crop: ${autoCrop ? "auto-detected" : crop ? "manual" : "whole photo"}. Photo check: ${issues.map((i) => i.code).join(", ") || "no warnings"} ${qMetrics ? JSON.stringify(Object.fromEntries(Object.entries(qMetrics).map(([k, v]) => [k, Math.round(v * 1000) / 1000]))) : ""}`, ...result.log],
-        templateNote: resolved.template ? "Layout used: " + resolved.template.name + (resolved.template.status ? " [" + resolved.template.status + "]" : "") : "Layout: generic label matching (no fixed template)",
+        templateNote: combined.summary,
         exportJson,
       });
       setOut(shownResult); setVals(next); setTouched({}); setVerified(false); setStep("review");
@@ -504,9 +508,17 @@ export default function VitalsScanAll({ onApply, include, label, captureAudit }:
             {step === "capture" && (
               <div className="space-y-3">
                 <p className="text-sm text-gray-600">Take one photo of the monitor screen. Fill the frame with the display and avoid glare. Every reading it can read clearly will be filled; you review them before anything is saved.</p>
-                <button type="button" onClick={() => cameraRef.current?.click()} className="w-full rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold py-2.5">Open camera</button>
+                <button type="button" onClick={() => setStep("live")} className="w-full rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold py-2.5">Open camera</button>
                 <button type="button" onClick={() => galleryRef.current?.click()} className="w-full rounded-lg border border-gray-300 text-sm text-gray-700 py-2">Choose a photo instead</button>
                 <button type="button" onClick={closeScanner} className="w-full text-sm text-gray-500 py-1">Enter values manually</button>
+              </div>
+            )}
+
+            {step === "live" && (
+              <div className="space-y-3">
+                <p className="text-sm text-gray-600">Point the camera at the monitor and hold steady. The photo is taken automatically once the screen is in focus.</p>
+                <LiveCapture onCapture={(blob) => loadPhoto(blob)} onClose={() => setStep("capture")} />
+                <button type="button" onClick={() => cameraRef.current?.click()} className="w-full rounded-lg border border-gray-300 text-sm text-gray-700 py-2">Use the phone camera app instead</button>
               </div>
             )}
 
@@ -541,16 +553,9 @@ export default function VitalsScanAll({ onApply, include, label, captureAudit }:
                     />
                   )}
                 </div>
-                {MONITOR_TEMPLATES.length > 1 && (
-                  <label className="block text-xs text-gray-600">Monitor model
-                    <select value={tplId} onChange={(e) => setTplId(e.target.value)} className="mt-1 w-full h-10 rounded-md border border-gray-200 bg-white px-2 text-sm">
-                      {MONITOR_TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-                    </select>
-                  </label>
-                )}
                 <div className="flex gap-2">
                   <button type="button" onClick={() => setStep("capture")} className="flex-1 rounded-lg border border-gray-300 text-sm text-gray-700 py-2">Retake photo</button>
-                  <button type="button" onClick={() => { if (imgEl) analysePhoto(imgEl, "detect", null); }} className="flex-1 rounded-lg border border-gray-300 text-sm text-gray-700 py-2">Auto-detect</button>
+                  <button type="button" onClick={() => { if (imgEl) analysePhoto(imgEl, "detect", null); }} className="flex-1 rounded-lg border border-gray-300 text-sm text-gray-700 py-2">Find screen</button>
                   <button type="button" onClick={readScreen} className="flex-1 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold py-2">Read screen</button>
                 </div>
               </div>
