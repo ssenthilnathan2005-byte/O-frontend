@@ -25,6 +25,7 @@ async function call(path: string, method = "GET", body?: any) {
 interface OPBooking {
   id: string; patient_name: string; patient_age: number | null; phone: string | null; complaint: string | null;
   doctor_name: string; session: string; token_number: number; status: string; checked_in_at: string | null; vitals?: Vitals | null;
+  fee_amount?: number | null; fee_mode?: string | null; fee_paid_at?: string | null; doctor_fee?: number | null;
 }
 interface Bed { bed_id: string; bed_number: string; ward_id: string; ward_name: string }
 interface Admitted {
@@ -37,12 +38,30 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 function Outpatients() {
   const [date, setDate] = useState("");
+  const { user: foUser } = useStore() as any;
+  function printReceipt(b: OPBooking) {
+    const esc = (x: any) => String(x ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" } as any)[c]);
+    const w = window.open("", "_blank", "width=380,height=560");
+    if (!w) { toast.error("Allow pop-ups to print"); return; }
+    w.document.write("<html><head><title>Receipt</title><style>body{font-family:Arial,sans-serif;padding:18px;font-size:13px}h2{margin:0 0 2px}hr{margin:10px 0}td{padding:3px 0}.r{text-align:right}</style></head><body>" +
+      "<h2>" + esc(foUser?.hospitalName) + "</h2><div>Consultation fee receipt</div><hr/><table width='100%'>" +
+      "<tr><td>Date</td><td class='r'>" + esc(new Date(b.fee_paid_at as string).toLocaleString()) + "</td></tr>" +
+      "<tr><td>Patient</td><td class='r'>" + esc(b.patient_name) + "</td></tr>" +
+      "<tr><td>Doctor</td><td class='r'>" + esc(b.doctor_name) + "</td></tr>" +
+      "<tr><td>Token</td><td class='r'>" + esc(b.token_number) + "</td></tr>" +
+      "<tr><td>Paid by</td><td class='r'>" + esc(String(b.fee_mode).toUpperCase()) + "</td></tr>" +
+      "<tr><td><b>Amount</b></td><td class='r'><b>Rs. " + esc(b.fee_amount) + "</b></td></tr></table><hr/><div>Thank you</div></body></html>");
+    w.document.close(); w.focus(); w.print();
+  }
   const [rows, setRows] = useState<OPBooking[]>([]);
   const [loading, setLoading] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [f, setF] = useState({ phone: "", patientAge: "", complaint: "" });
   const [q, setQ] = useState("");
   const [vitalsId, setVitalsId] = useState<string | null>(null);
+  const [feeId, setFeeId] = useState<string | null>(null);
+  const [feeAmt, setFeeAmt] = useState("");
+  const [feeMode, setFeeMode] = useState("cash");
   const emptyV = { temperature: "", tempUnit: "F", bpSystolic: "", bpDiastolic: "", pulse: "", spo2: "", weight: "", notes: "" };
   const [vf, setVf] = useState(emptyV);
 
@@ -81,6 +100,12 @@ function Outpatients() {
     catch (e: any) { toast.error(e.message); }
   }
 
+  function startFee(b: OPBooking) { setEditId(null); setVitalsId(null); setFeeId(b.id); setFeeAmt(b.doctor_fee != null ? String(b.doctor_fee) : ""); setFeeMode("cash"); }
+  async function saveFee(id: string) {
+    try { await call("/bookings/" + id + "/fee", "POST", { amount: feeAmt, mode: feeMode }); toast.success("Fee collected"); setFeeId(null); load(); }
+    catch (e: any) { toast.error(e.message); }
+  }
+
   const ql = q.trim().toLowerCase();
   const shown = rows.filter(b => !ql || b.patient_name.toLowerCase().includes(ql) || (b.phone || "").includes(ql) || String(b.token_number) === ql);
   const groups: Record<string, OPBooking[]> = {};
@@ -113,6 +138,10 @@ function Outpatients() {
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-md px-2 py-1">Checked in</span>
                     <Button size="sm" variant="outline" onClick={() => startVitals(b)}><Activity className="w-4 h-4 mr-1" />{b.vitals ? "Edit vitals" : "Vitals"}</Button>
+                    {b.fee_paid_at
+                      ? <span className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-md px-2 py-1">Paid {"\u20B9"}{b.fee_amount} ({b.fee_mode})</span>
+                      : <Button size="sm" variant="outline" onClick={() => startFee(b)}>Collect fee{b.doctor_fee != null ? " \u20B9" + b.doctor_fee : ""}</Button>}
+                    {b.fee_paid_at && <Button size="sm" variant="outline" onClick={() => printReceipt(b)}>Receipt</Button>}
                     <Button size="sm" variant="ghost" onClick={() => undo(b.id)}><Undo2 className="w-4 h-4" /></Button>
                   </div>
                 ) : (
@@ -142,6 +171,16 @@ function Outpatients() {
                     <Button size="sm" onClick={() => saveVitals(b.id)}>Save vitals</Button>
                     <Button size="sm" variant="ghost" onClick={() => setVitalsId(null)}>Cancel</Button>
                   </div>
+                </div>
+              )}
+              {feeId === b.id && (
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <Input className="w-28" placeholder="Amount" value={feeAmt} onChange={e => setFeeAmt(e.target.value)} />
+                  <select className="h-10 rounded-md border border-gray-200 bg-white px-2 text-sm" value={feeMode} onChange={e => setFeeMode(e.target.value)}>
+                    <option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option>
+                  </select>
+                  <Button size="sm" onClick={() => saveFee(b.id)}>Confirm payment</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setFeeId(null)}>Cancel</Button>
                 </div>
               )}
               {editId === b.id && (
