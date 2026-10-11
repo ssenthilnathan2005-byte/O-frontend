@@ -1048,7 +1048,7 @@ export default function DoctorDashboard() {
         className="w-full"
       >
 
-      <TabsList className="mb-6" data-ocid="doctor.tab">
+      <TabsList className="mb-6 flex w-full max-w-full justify-start overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>*]:shrink-0 [&>*]:whitespace-nowrap" data-ocid="doctor.tab">
 
       <TabsTrigger value="regulator" data-ocid="doctor.tab">
             <Activity className="w-4 h-4 mr-1.5 sm:mr-2" />
