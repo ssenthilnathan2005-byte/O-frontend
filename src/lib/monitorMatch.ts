@@ -18,7 +18,7 @@
 export type OcrWord = { text: string; conf: number; x0: number; y0: number; x1: number; y1: number };
 
 export type ScanField = "temperature" | "pulse" | "bpSystolic" | "bpDiastolic" | "spo2" | "respRate";
-type Target = ScanField | "map";
+type Target = ScanField | "map" | "nibp" | "invasive";
 
 export type Region = { x: number; y: number; w: number; h: number }; // fractions 0-1 of the cropped screen
 
@@ -33,18 +33,76 @@ export type MonitorTemplate = {
   name: string;
   labelAliases?: Record<string, ScanField | "map">;
   regions?: Partial<Record<ScanField, Region>>;
+  /**
+   * Labels (UPPERCASE letters/digits only) that identify this layout. A template with a signature is used
+   * automatically only when at least `minSignature` of them are found on the screen. A template WITHOUT a
+   * signature is used only when the nurse picks it by hand.
+   */
+  signature?: string[];
+  minSignature?: number;
+  /** Honest test status shown to the user. Nothing here is "validated" unless it was tested on live camera photos. */
+  status?: string;
 };
 
 export const MONITOR_TEMPLATES: MonitorTemplate[] = [
-  { id: "auto", name: "Auto-detect (use labels on screen)" },
-  // Example for later (coordinates are fractions of the cropped screen):
-  // {
-  //   id: "acme-m9",
-  //   name: "Acme M9 bedside monitor",
-  //   labelAliases: { ECG: "pulse" },
-  //   regions: { pulse: { x: 0.62, y: 0.18, w: 0.18, h: 0.2 }, spo2: { x: 0.62, y: 0.4, w: 0.18, h: 0.2 } },
-  // },
+  { id: "auto", name: "Auto-detect (labels on screen, generic mode)" },
+  // Region numbers are fractions of the CROPPED screen. They were measured on one stock photo of each layout
+  // (checked by drawing the boxes on the photo). They have NOT been tested on live camera photos.
+  {
+    id: "nk-vismo",
+    name: "Nihon Kohden Vismo (stock photo only, not field-tested)",
+    status: "stock photo only",
+    signature: ["NIBP", "ART", "TSKIN", "TRECT", "SPO2", "HR", "IMPRR"],
+    minSignature: 4,
+    labelAliases: { TREC: "temperature", IMPRR: "respRate" },
+    regions: {
+      pulse: { x: 0.095, y: 0.09, w: 0.193, h: 0.167 },
+      spo2: { x: 0.225, y: 0.771, w: 0.101, h: 0.101 },
+      respRate: { x: 0.228, y: 0.915, w: 0.099, h: 0.085 },
+    },
+  },
+  {
+    id: "contec-cms",
+    name: "Contec / CMS style, unlabeled big numbers (stock photo only, not field-tested)",
+    status: "stock photo only",
+    // No signature: its big numbers have no labels, so it can only be chosen by hand.
+    regions: {
+      pulse: { x: 0.706, y: 0.126, w: 0.138, h: 0.16 },
+      spo2: { x: 0.706, y: 0.372, w: 0.138, h: 0.145 },
+      respRate: { x: 0.674, y: 0.542, w: 0.135, h: 0.132 },
+    },
+  },
 ];
+
+const cleanLabel = (t: string) => t.toUpperCase().replace(/\u2082/g, "2").replace(/[^A-Z0-9]/g, "");
+
+/**
+ * Decide whether a fixed-position template may be used. Never forces a template onto a layout it does not match.
+ *  - "auto"            : a template is used only if its signature labels are really on the screen.
+ *  - a template picked : signature templates must still match; templates without a signature (unlabeled layouts)
+ *                        are trusted because the nurse identified the monitor.
+ */
+export function resolveTemplate(selectedId: string, words: OcrWord[], registry: MonitorTemplate[] = MONITOR_TEMPLATES): { template?: MonitorTemplate; note?: string } {
+  const present = new Set(words.map((w) => cleanLabel(w.text)).filter(Boolean));
+  const hits = (t: MonitorTemplate) => (t.signature || []).filter((l) => present.has(l)).length;
+  if (selectedId && selectedId !== "auto") {
+    const t = registry.find((x) => x.id === selectedId);
+    if (!t) return { note: "The chosen monitor layout is unknown, so generic label matching was used." };
+    if (t.signature && hits(t) < (t.minSignature || 1)) {
+      return { note: `This screen does not look like "${t.name}" (its labels were not found), so generic label matching was used instead of forcing that layout.` };
+    }
+    return { template: t, note: t.signature ? undefined : `Fixed-position layout "${t.name}" was used because you chose it. Check every value against the monitor.` };
+  }
+  let best: MonitorTemplate | undefined, bestHits = 0, tie = false;
+  for (const t of registry) {
+    if (!t.signature) continue;
+    const h = hits(t);
+    if (h < (t.minSignature || 1)) continue;
+    if (h > bestHits) { best = t; bestHits = h; tie = false; } else if (h === bestHits) tie = true;
+  }
+  if (best && !tie) return { template: best, note: `Layout recognised from its labels: ${best.name}.` };
+  return {};
+}
 
 export const MIN_CONF = 85; // OCR word confidence (0-100) needed before a value is auto-filled
 
@@ -73,15 +131,19 @@ export type MatchOutput = {
   values: Partial<Record<ScanField, FieldResult>>;
   suggestions: Partial<Record<ScanField, Suggestion>>;
   temp?: { raw: string; unit: "C" | "F"; f: string };
+  /** Several temperature channels were seen and none could be chosen. Shown as tap-to-use buttons; never auto-filled. */
+  tempChoices?: { raw: string; unit: "C" | "F"; f: string; label: string }[];
+  /** One line per decision (accepted / suggested / rejected) for the diagnostic panel. */
+  log: string[];
   notes: string[];
   missing: ScanField[];
 };
 
 type Box = { x0: number; y0: number; x1: number; y1: number };
-type Num = Box & { id: number; text: string; value: number; conf: number; dot: boolean };
+type Num = Box & { id: number; text: string; value: number; conf: number; dot: boolean; paren?: boolean };
 type Lbl = Box & { text: string; target: Target };
 type Cand = { num: Num; score: number; label: string; row: boolean };
-type Pick = { kind: "none" } | { kind: "amb"; texts: string[] } | { kind: "one"; cand: Cand };
+type Pick = { kind: "none" } | { kind: "amb"; texts: string[]; labels?: string[] } | { kind: "one"; cand: Cand };
 
 const MAX_SCORE = 3; // farther than this (in digit heights) is not "next to" the label
 const AMBIG = 1.3; // runner-up within this ratio of the winner => ambiguous => fill nothing
@@ -90,11 +152,22 @@ const LABEL_PATTERNS: [RegExp, Target][] = [
   [/^SYS(T|TOLIC)?$/, "bpSystolic"],
   [/^DIA(S|ST|STOLIC)?$/, "bpDiastolic"],
   [/^MAP$/, "map"],
+  // Cuff pressure anchors. Only these (plus SYS/DIA) may feed the ward BP fields.
+  [/^(NIBP|NBP|CUFF)$/, "nibp"],
+  // Invasive pressures are never ward BP. They are recognised only so they can be excluded.
+  [/^(ART|IBP|ABP|CVP|PAP|ICP|LAP|RAP)[0-9]?$/, "invasive"],
+  [/^ALINE$/, "invasive"],
   [/^(PR|HR|PULSE)$/, "pulse"],
   [/^SP[O0]2?$/, "spo2"],
-  [/^(RESP|RR|RESPIRATION)$/, "respRate"],
-  [/^(TEMP|TEMPERATURE|T1|T2)$/, "temperature"],
+  [/^(RESP|RR|RESPIRATION|RESPRATE|IMPRR|AWRR)$/, "respRate"],
+  [/^(TEMP|TEMPERATURE|T1|T2|TEMP1|TEMP2|TSKIN|TREC|TRECT|TCORE)$/, "temperature"],
 ];
+
+/** True for words the matcher treats as a label (SYS, SpO2, NIBP, ART ...). */
+export function isKnownLabel(text: string): boolean {
+  const up = cleanLabel(text);
+  return !!up && LABEL_PATTERNS.some(([re]) => re.test(up));
+}
 
 const hh = (b: Box) => Math.max(1, b.y1 - b.y0);
 const ww = (b: Box) => Math.max(1, b.x1 - b.x0);
@@ -157,8 +230,15 @@ function tokenize(words: OcrWord[], aliases: Record<string, ScanField | "map">) 
       nums.push(n);
       continue;
     }
+    if ((m = s.match(/^(\d{1,3})[.:]$/))) {
+      // trailing stray punctuation; the digits themselves are unchanged
+      nums.push({ ...box, id: id++, text: m[1], value: Number(m[1]), conf: w.conf, dot: false });
+      continue;
+    }
     if (/^\d{1,3}(\.\d)?$/.test(s)) {
-      nums.push({ ...box, id: id++, text: s, value: Number(s), conf: w.conf, dot: s.includes(".") });
+      // a number printed inside brackets, "(91)", is the mean pressure (MAP) on virtually every monitor
+      const paren = /^\s*[(\[]\s*\d{1,3}\s*[)\]]\s*$/.test(w.text);
+      nums.push({ ...box, id: id++, text: s, value: Number(s), conf: w.conf, dot: s.includes("."), paren });
       continue;
     }
     const up = s.toUpperCase().replace(/\u2082/g, "2").replace(/[^A-Z0-9]/g, "");
@@ -218,7 +298,7 @@ function pickFor(target: Target, labels: Lbl[], nums: Num[], excluded: Set<numbe
   if (!list.length) return { kind: "none" };
   const first = list[0];
   const rival = list.find((c, i) => i > 0 && c.num.text !== first.num.text && c.score < first.score * AMBIG + 1e-9);
-  if (rival) return { kind: "amb", texts: [...new Set([first.num.text, rival.num.text])] };
+  if (rival) return { kind: "amb", texts: [first.num.text, rival.num.text], labels: [first.label, rival.label] };
 
   // Label-above-value layouts: a second, similar-sized number stacked right under/over the winner with no
   // label of its own (e.g. two temperature channels under one TEMP label) cannot be told apart => ambiguous.
@@ -234,7 +314,7 @@ function pickFor(target: Target, labels: Lbl[], nums: Num[], excluded: Set<numbe
       if (gap < -2 || gap > 2 * h) return false;
       return !labels.some((l) => l.target !== target && proximity(l, n) <= 1.5); // it has its own label
     });
-    if (sib) return { kind: "amb", texts: [...new Set([w.text, sib.text])] };
+    if (sib) return { kind: "amb", texts: [w.text, sib.text], labels: [first.label, ""] };
   }
   return { kind: "one", cand: first };
 }
@@ -250,7 +330,7 @@ function pickFromRegion(region: Region, W: number, H: number, nums: Num[], exclu
   inside.sort((a, b) => hh(b) - hh(a));
   const first = inside[0];
   const rival = inside.find((n, i) => i > 0 && n.text !== first.text && hh(n) >= hh(first) * 0.75);
-  if (rival) return { kind: "amb", texts: [...new Set([first.text, rival.text])] };
+  if (rival) return { kind: "amb", texts: [first.text, rival.text], labels: ["", ""] };
   return { kind: "one", cand: { num: first, score: 0, label: "template region", row: true } };
 }
 
@@ -272,34 +352,96 @@ function interpret(field: ScanField, n: Num): Interp {
   return { ok: true, text: n.text };
 }
 
+type BpClass = "nibp" | "invasive" | "unknown";
+type BpPair = { sys: Num; dia: Num };
+
+/**
+ * Which kind of pressure is this pair? Decided by the nearest BP-related label:
+ * NIBP / SYS / DIA / CUFF => cuff, ART / IBP / A-LINE / CVP ... => invasive. If the two kinds are about equally
+ * close, or no label is near, the pair is "unknown" (never assumed to be cuff when invasive labels exist).
+ */
+function classifyPair(p: BpPair, labels: Lbl[]): BpClass {
+  const box: Box = { x0: Math.min(p.sys.x0, p.dia.x0), y0: Math.min(p.sys.y0, p.dia.y0), x1: Math.max(p.sys.x1, p.dia.x1), y1: Math.max(p.sys.y1, p.dia.y1) };
+  let nibp = Infinity, inv = Infinity;
+  for (const L of labels) {
+    const sc = proximity(L, box);
+    if (sc > MAX_SCORE) continue;
+    if (L.target === "nibp" || L.target === "bpSystolic" || L.target === "bpDiastolic") nibp = Math.min(nibp, sc);
+    else if (L.target === "invasive") inv = Math.min(inv, sc);
+  }
+  if (nibp === Infinity && inv === Infinity) return "unknown";
+  if (inv === Infinity) return "nibp";
+  if (nibp === Infinity) return "invasive";
+  if (nibp < inv / AMBIG) return "nibp";
+  if (inv < nibp / AMBIG) return "invasive";
+  return "unknown";
+}
+
+function tempFromText(text: string): { raw: string; unit: "C" | "F"; f: string } | null {
+  if (!/^\d{2,3}\.\d$/.test(text)) return null;
+  const v = Number(text);
+  if (v >= TEMP_C_RANGE[0] && v <= TEMP_C_RANGE[1]) return { raw: text, unit: "C", f: (v * 9 / 5 + 32).toFixed(1) };
+  if (v >= FIELD_RANGE.temperature[0] && v <= FIELD_RANGE.temperature[1]) return { raw: text, unit: "F", f: text };
+  return null;
+}
+
 export function matchMonitorReadings(
   words: OcrWord[],
   opts: { template?: MonitorTemplate; width?: number; height?: number } = {},
 ): MatchOutput {
   const tpl = opts.template;
   const { nums, labels, pairs } = tokenize(words, tpl?.labelAliases || {});
-  const out: MatchOutput = { values: {}, suggestions: {}, notes: [], missing: [] };
+  const out: MatchOutput = { values: {}, suggestions: {}, notes: [], missing: [], log: [] };
   const excluded = new Set<number>();
   const picks: Partial<Record<Target, Pick>> = {};
   const W = opts.width || 0, H = opts.height || 0;
 
-  // 1) Blood pressure written as "120/80" (strongest evidence)
-  let bpPair: { sys: Num; dia: Num } | null = null;
+  // Bracketed numbers are mean pressures, never one of the six fields.
+  for (const N of nums) if (N.paren) excluded.add(N.id);
+
+  // 0) Invasive pressure labels (ART, IBP, A-LINE, CVP ...): numbers that belong to them are never ward vitals.
+  const hasInvasiveLabel = labels.some((l) => l.target === "invasive");
+  if (hasInvasiveLabel) {
+    for (const N of nums) {
+      let nearest: Lbl | null = null, ns = Infinity;
+      for (const L of labels) {
+        const sc = proximity(L, N);
+        if (sc <= MAX_SCORE && sc < ns) { ns = sc; nearest = L; }
+      }
+      if (nearest && nearest.target === "invasive") excluded.add(N.id);
+    }
+  }
+
+  // 1) Blood pressure written as "120/80" (strongest evidence), cuff (NIBP) only
+  let bpPair: BpPair | null = null;
   const validPairs = pairs.filter((p) => p.sys.value > p.dia.value);
-  const distinct = new Map(validPairs.map((p) => [p.sys.text + "/" + p.dia.text, p]));
+  const classed = validPairs.map((p) => ({ p, cls: classifyPair(p, labels), key: p.sys.text + "/" + p.dia.text }));
+  for (const c of classed) {
+    if (c.cls === "invasive") out.notes.push(`Ignored ${c.key}: it is next to an ART/IBP (invasive) label, not the cuff BP.`);
+  }
+  // Every BP-looking pair stays out of the other fields (pulse, SpO2 ...), whatever happens to it.
+  for (const c of classed) { excluded.add(c.p.sys.id); excluded.add(c.p.dia.id); }
+
+  let cands = classed.filter((c) => c.cls === "nibp");
+  // With no invasive label on the screen, a single unlabeled pair is accepted as before. With one, it must be
+  // positively tied to NIBP/SYS/DIA/CUFF.
+  if (!cands.length && !hasInvasiveLabel) cands = classed.filter((c) => c.cls === "unknown");
+  const distinct = new Map(cands.map((c) => [c.key, c.p]));
   if (distinct.size === 1) {
     bpPair = [...distinct.values()][0];
-    excluded.add(bpPair.sys.id);
-    excluded.add(bpPair.dia.id);
+    out.log.push(`BP pair ${[...distinct.keys()][0]} taken as cuff (NIBP) pressure.`);
   } else if (distinct.size > 1) {
     out.notes.push(`Several BP readings were found (${[...distinct.keys()].join(", ")}). BP was not filled; type it or rescan.`);
+  } else if (hasInvasiveLabel && classed.length) {
+    out.notes.push("This monitor shows invasive (ART/IBP) pressure. The cuff (NIBP) reading could not be identified, so BP was not filled. Type it or rescan.");
   }
+  const bpLocked = !!bpPair || classed.length > 0; // a BP pair exists on screen: do not rebuild BP from loose SYS/DIA labels
 
   // 2) Everything else: template region first, else nearest label
   const order: Target[] = ["bpSystolic", "bpDiastolic", "pulse", "spo2", "respRate", "temperature", "map"];
   for (const t of order) {
-    if (bpPair && (t === "bpSystolic" || t === "bpDiastolic")) continue;
-    const region = t !== "map" ? tpl?.regions?.[t] : undefined;
+    if (bpLocked && (t === "bpSystolic" || t === "bpDiastolic")) continue;
+    const region = t !== "map" ? tpl?.regions?.[t as ScanField] : undefined;
     picks[t] = region && W && H ? pickFromRegion(region, W, H, nums, excluded) : pickFor(t, labels, nums, excluded);
   }
 
@@ -330,21 +472,22 @@ export function matchMonitorReadings(
 
   const accept = (field: ScanField, n: Num, source: string) => {
     const r = interpret(field, n);
-    if (!r.ok) { out.notes.push(`${FIELD_LABEL[field]}: ${r.reason}. Type it or rescan.`); return; }
+    if (!r.ok) { out.notes.push(`${FIELD_LABEL[field]}: ${r.reason}. Type it or rescan.`); out.log.push(`${FIELD_LABEL[field]}: rejected, ${r.reason}.`); return; }
     if (n.conf < MIN_CONF) {
       out.suggestions[field] = { text: r.text, conf: Math.round(n.conf) };
       out.notes.push(`${FIELD_LABEL[field]}: read ${n.text} but the text was unclear (confidence ${Math.round(n.conf)}%), so it was not filled.`);
+      out.log.push(`${FIELD_LABEL[field]}: ${n.text} offered as a suggestion only (confidence ${Math.round(n.conf)}%, needs ${MIN_CONF}%).`);
       if (field === "temperature" && r.temp) out.temp = undefined;
       return;
     }
     out.values[field] = { text: r.text, conf: Math.round(n.conf), source };
+    out.log.push(`${FIELD_LABEL[field]}: accepted ${n.text} from ${source} (confidence ${Math.round(n.conf)}%).`);
     if (field === "temperature" && r.temp) out.temp = r.temp;
   };
 
   if (bpPair) {
-    // sanity check against labelled values, if the monitor also shows SYS/DIA labels
-    accept("bpSystolic", bpPair.sys, "BP pair");
-    accept("bpDiastolic", bpPair.dia, "BP pair");
+    accept("bpSystolic", bpPair.sys, "BP pair (NIBP)");
+    accept("bpDiastolic", bpPair.dia, "BP pair (NIBP)");
     if (!out.values.bpSystolic || !out.values.bpDiastolic) {
       // never fill half of a BP
       delete out.values.bpSystolic;
@@ -356,7 +499,14 @@ export function matchMonitorReadings(
     const p = picks[t];
     if (!p || p.kind === "none") continue;
     if (p.kind === "amb") {
-      if (p.texts.length) out.notes.push(`${FIELD_LABEL[t as ScanField]}: several possible numbers (${p.texts.join(", ")}). Not filled; type it or rescan.`);
+      if (p.texts.length) {
+        out.notes.push(`${FIELD_LABEL[t as ScanField]}: several possible numbers (${p.texts.join(", ")}). Not filled; type it or rescan.`);
+        out.log.push(`${FIELD_LABEL[t as ScanField]}: ambiguous (${p.texts.join(" / ")}), left blank.`);
+        if (t === "temperature") {
+          const choices = p.texts.map((tx, i) => ({ c: tempFromText(tx), label: p.labels?.[i] || "" })).filter((x) => x.c);
+          if (choices.length >= 2) out.tempChoices = choices.map((x) => ({ ...x.c!, label: x.label }));
+        }
+      }
       continue;
     }
     accept(t as ScanField, p.cand.num, p.cand.label);

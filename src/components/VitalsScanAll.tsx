@@ -4,9 +4,9 @@ import { Camera, X, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { validateVitals } from "@/components/VitalsScanner";
 import type { ScannedVitals } from "@/components/VitalsScanner";
-import { matchMonitorReadings, MONITOR_TEMPLATES, FIELD_LABEL, FIELD_RANGE, MIN_CONF } from "@/lib/monitorMatch";
+import { matchMonitorReadings, resolveTemplate, isKnownLabel, MONITOR_TEMPLATES, FIELD_LABEL, FIELD_RANGE, MIN_CONF } from "@/lib/monitorMatch";
 import type { MatchOutput, OcrWord, ScanField } from "@/lib/monitorMatch";
-import { mergeVariants, finalize, pickRecheckTargets } from "@/lib/ocrConsensus";
+import { mergeVariants, finalize, pickRecheckTargets, uniqueKeys } from "@/lib/ocrConsensus";
 import type { Recheck, Trace } from "@/lib/ocrConsensus";
 
 /**
@@ -222,7 +222,8 @@ function checkValues(vals: Record<string, string>, shown: ScanField[]): string |
 }
 
 export default function VitalsScanAll({ onApply, include, label }: Props) {
-  const shown = include && include.length ? ALL_FIELDS.filter((f) => include.includes(f)) : ALL_FIELDS;
+  // Each vital appears exactly once in the review form, whatever `include` contains.
+  const shown = uniqueKeys(include && include.length ? ALL_FIELDS.filter((f) => include.includes(f)) : ALL_FIELDS);
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<"capture" | "crop" | "reading" | "review">("capture");
   const [imgUrl, setImgUrl] = useState<string | null>(null);
@@ -237,7 +238,8 @@ export default function VitalsScanAll({ onApply, include, label }: Props) {
   const [error, setError] = useState("");
   const [progress, setProgress] = useState(0);
   const [stage, setStage] = useState("");
-  const [seenInfo, setSeenInfo] = useState<{ thumbs: { label: string; url: string }[]; rows: Trace[] } | null>(null);
+  const [seenInfo, setSeenInfo] = useState<{ thumbs: { label: string; url: string }[]; rows: Trace[]; log: string[]; templateNote: string; exportJson: string } | null>(null);
+  const [copied, setCopied] = useState(false);
   const cameraRef = useRef<HTMLInputElement | null>(null);
   const galleryRef = useRef<HTMLInputElement | null>(null);
   const boxRef = useRef<HTMLDivElement | null>(null);
@@ -246,7 +248,7 @@ export default function VitalsScanAll({ onApply, include, label }: Props) {
   function resetAll() {
     if (imgUrl) URL.revokeObjectURL(imgUrl);
     setStep("capture"); setImgUrl(null); setImgEl(null); setCrop(null); setOut(null);
-    setVals({}); setTouched({}); setThumb(null); setVerified(false); setError(""); setProgress(0); setStage(""); setSeenInfo(null);
+    setVals({}); setTouched({}); setThumb(null); setVerified(false); setError(""); setProgress(0); setStage(""); setSeenInfo(null); setCopied(false);
   }
   function openScanner() { resetAll(); setOpen(true); }
   function closeScanner() { resetAll(); setOpen(false); }
@@ -333,14 +335,26 @@ export default function VitalsScanAll({ onApply, include, label }: Props) {
       }
 
       const fin = finalize(merged.items, rechecks, { singleCap: SINGLE_CAP });
-      const tpl = MONITOR_TEMPLATES.find((t) => t.id === tplId);
-      const matched = matchMonitorReadings(fin.words, { template: tpl, width: base.raw.width, height: base.raw.height });
-      const result: MatchOutput = { ...matched, notes: [...new Set([...merged.notes, ...fin.notes, ...matched.notes])] };
+      // A fixed-position template is used only when the layout is recognised (or the nurse chose an unlabeled one).
+      const resolved = resolveTemplate(tplId, fin.words);
+      const matched = matchMonitorReadings(fin.words, { template: resolved.template, width: base.raw.width, height: base.raw.height });
+      const result: MatchOutput = { ...matched, notes: [...new Set([...merged.notes, ...fin.notes, ...matched.notes, ...(resolved.note && tplId !== "auto" ? [resolved.note] : [])])] };
+      // Scan data for the benchmark script: only numbers and monitor labels, so no patient name or other text leaves the phone.
+      const exportJson = JSON.stringify({
+        version: 1, tplId, width: base.raw.width, height: base.raw.height,
+        words: fin.words.filter((w) => /\d/.test(w.text) || isKnownLabel(w.text)).map((w) => ({ text: w.text, conf: Math.round(w.conf), x0: Math.round(w.x0), y0: Math.round(w.y0), x1: Math.round(w.x1), y1: Math.round(w.y1) })),
+      });
 
       const next: Record<string, string> = {};
       for (const f of shown) next[f] = result.values[f]?.text || "";
       const rows = [...fin.traces, ...merged.dropped].sort((a, b) => a.y - b.y || a.x - b.x);
-      setSeenInfo({ thumbs: VARIANTS.map((v, i) => ({ label: v.short + " = " + v.label, url: thumbOf(canvases[i]) })), rows });
+      setSeenInfo({
+        thumbs: VARIANTS.map((v, i) => ({ label: v.short + " = " + v.label, url: thumbOf(canvases[i]) })),
+        rows,
+        log: result.log,
+        templateNote: resolved.template ? "Layout used: " + resolved.template.name + (resolved.template.status ? " [" + resolved.template.status + "]" : "") : "Layout: generic label matching (no fixed template)",
+        exportJson,
+      });
       setOut(result); setVals(next); setTouched({}); setVerified(false); setStep("review");
     } catch (e: any) {
       workerPromise = null;
@@ -478,6 +492,16 @@ export default function VitalsScanAll({ onApply, include, label }: Props) {
                           </button>
                         )}
                         {f === "temperature" && tempNote && <p className="mt-1 text-xs text-gray-600">{tempNote}</p>}
+                        {f === "temperature" && !v && out.tempChoices && out.tempChoices.length > 1 && (
+                          <div className="mt-1 space-y-1">
+                            <p className="text-xs text-gray-600">Several temperatures are on the monitor. Tap the one you want to record; nothing is chosen for you.</p>
+                            {out.tempChoices.map((c, i) => (
+                              <button key={i} type="button" onClick={() => setField("temperature", c.f)} className="block text-xs text-teal-700 underline">
+                                {c.label ? c.label + " " : ""}{c.raw} {c.unit === "C" ? DEG + "C = " + c.f + " " + DEG + "F" : DEG + "F"}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -494,6 +518,12 @@ export default function VitalsScanAll({ onApply, include, label }: Props) {
                     <summary className="text-sm text-gray-700 cursor-pointer">What the scanner saw</summary>
                     <div className="mt-2 space-y-2">
                       <p className="text-[11px] text-gray-600">These are the three images the OCR received, then every number or word it found. A number is only used when at least two images and the digit re-check agree.</p>
+                      <p className="text-[11px] text-gray-700">{seenInfo.templateNote}</p>
+                      {seenInfo.log.length > 0 && (
+                        <ul className="text-[11px] text-gray-700 list-disc list-inside space-y-0.5">
+                          {seenInfo.log.map((l, i) => <li key={i}>{l}</li>)}
+                        </ul>
+                      )}
                       <div className="grid grid-cols-3 gap-1">
                         {seenInfo.thumbs.map((t) => (
                           <figure key={t.label} className="m-0">
@@ -505,15 +535,17 @@ export default function VitalsScanAll({ onApply, include, label }: Props) {
                       <div className="overflow-x-auto">
                         <table className="w-full text-[11px] text-left">
                           <thead className="text-gray-500">
-                            <tr><th className="pr-2 font-medium">Read</th><th className="pr-2 font-medium">Sure</th><th className="pr-2 font-medium">Seen in</th><th className="pr-2 font-medium">Digit check</th><th className="font-medium">Result</th></tr>
+                            <tr><th className="pr-2 font-medium">Read</th><th className="pr-2 font-medium">Raw</th><th className="pr-2 font-medium">Sure</th><th className="pr-2 font-medium">Seen in</th><th className="pr-2 font-medium">Digit check</th><th className="pr-2 font-medium">Box x,y,w,h</th><th className="font-medium">Result</th></tr>
                           </thead>
                           <tbody className="text-gray-800">
                             {seenInfo.rows.slice(0, 80).map((r, i) => (
                               <tr key={i} className="border-t border-gray-200 align-top">
                                 <td className="pr-2 py-0.5 font-mono">{r.text}</td>
+                                <td className="pr-2 py-0.5 font-mono">{r.raw && r.raw !== r.text ? r.raw : "-"}</td>
                                 <td className="pr-2 py-0.5">{r.conf}%</td>
                                 <td className="pr-2 py-0.5 font-mono">{r.seen}</td>
-                                <td className="pr-2 py-0.5 font-mono">{r.recheck || "-"}</td>
+                                <td className="pr-2 py-0.5 font-mono">{r.recheck ? r.recheck + (r.recheckConf !== undefined ? " (" + r.recheckConf + "%)" : "") : "-"}</td>
+                                <td className="pr-2 py-0.5 font-mono">{Math.round(r.x)},{Math.round(r.y)},{Math.round(r.w || 0)},{Math.round(r.h || 0)}</td>
                                 <td className="py-0.5">{r.status}</td>
                               </tr>
                             ))}
@@ -521,6 +553,16 @@ export default function VitalsScanAll({ onApply, include, label }: Props) {
                         </table>
                         {seenInfo.rows.length === 0 && <p className="text-[11px] text-gray-500">No text was found in any image.</p>}
                       </div>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try { await navigator.clipboard.writeText(seenInfo.exportJson); setCopied(true); } catch { setCopied(false); window.prompt("Copy this scan data:", seenInfo.exportJson); }
+                        }}
+                        className="text-[11px] text-teal-700 underline"
+                      >
+                        {copied ? "Copied" : "Copy scan data for testing"}
+                      </button>
+                      <p className="text-[10px] text-gray-500">Contains only the numbers and monitor labels that were read: no photo and no other text.</p>
                     </div>
                   </details>
                 )}
