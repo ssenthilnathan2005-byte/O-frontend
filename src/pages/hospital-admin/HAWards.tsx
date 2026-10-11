@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { validateVitals } from "@/components/VitalsScanner";
+import VitalsScanner, { validateVitals } from "@/components/VitalsScanner";
 import VitalsScanAll from "@/components/VitalsScanAll";
 import { useStore } from "../../context/StoreContext";
 import { BedDouble, Plus, X, Trash2, ChevronDown, ChevronUp, Clock, Settings, Pencil } from "lucide-react";
@@ -949,9 +949,9 @@ export default function HAWards() {
             </div>
 
             <div className="px-6 pb-2 space-y-3 border-t pt-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-y-2">
                 <h3 className="text-sm font-semibold text-gray-700">Vitals</h3>
-                <VitalsScanAll onApply={v => { setShowVitalsAdd(true); setVitalsForm(f => ({ ...f, ...v })); }} />
+                <div className="order-last basis-full space-y-2"><VitalsScanAll onApply={v => { setShowVitalsAdd(true); setVitalsForm(f => ({ ...f, ...v })); }} /><VitalsScanner onApply={v => { setShowVitalsAdd(true); setVitalsForm(f => ({ ...f, ...v })); }} /></div>
                 <button onClick={() => setShowVitalsAdd(s => !s)} className="text-xs text-teal-600 font-medium hover:underline">
                   {showVitalsAdd ? "Cancel" : "+ Add"}
                 </button>
