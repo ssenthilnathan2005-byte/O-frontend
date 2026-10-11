@@ -1,3 +1,4 @@
+import VitalsScanAll from "@/components/VitalsScanAll";
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { LogOut, RefreshCw, UserCheck, BedDouble, Undo2, ClipboardList, Activity } from "lucide-react";
@@ -122,7 +123,8 @@ function Outpatients() {
               {vitalsId === b.id && (
                 <div className="mt-3 space-y-2">
                   <p className="text-xs text-gray-500">All fields are optional. Fill only what was measured.</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div className="mb-2"><VitalsScanAll include={["temperature", "bpSystolic", "bpDiastolic", "pulse", "spo2"]} onApply={v => setVf(f => ({ ...f, ...v }))} /></div>
+<div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     <div className="flex gap-1">
                       <Input placeholder="Temp" value={vf.temperature} onChange={e => setVf({ ...vf, temperature: e.target.value })} />
                       <select className="h-10 rounded-md border border-gray-200 bg-white px-1 text-sm" value={vf.tempUnit} onChange={e => setVf({ ...vf, tempUnit: e.target.value })}><option value="F">F</option><option value="C">C</option></select>
