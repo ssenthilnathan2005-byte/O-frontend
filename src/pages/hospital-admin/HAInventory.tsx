@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import DateInput from "@/components/DateInput";
 import { useStore } from "../../context/StoreContext";
 import { Package, Plus, X, Pencil, Trash2, ArrowUp, ArrowDown, History, Download } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -400,12 +401,12 @@ export default function HAInventory() {
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600 mb-1 block">From</label>
-                <input type="date" value={exportFrom} onChange={e => setExportFrom(e.target.value)}
+                <DateInput value={exportFrom} onChange={e => setExportFrom(e.target.value)}
                   className="w-full border rounded-md px-3 py-2 text-sm bg-white" />
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600 mb-1 block">To</label>
-                <input type="date" value={exportTo} onChange={e => setExportTo(e.target.value)}
+                <DateInput value={exportTo} onChange={e => setExportTo(e.target.value)}
                   className="w-full border rounded-md px-3 py-2 text-sm bg-white" />
               </div>
               <p className="text-xs text-gray-400">
