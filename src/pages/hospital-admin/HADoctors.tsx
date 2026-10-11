@@ -330,7 +330,7 @@ export default function HADoctors() {
             <TableRow className="bg-muted/40">
               <TableHead>Name</TableHead>
               <TableHead>Specialty</TableHead>
-              <TableHead>Phone</TableHead>
+              <TableHead>Password</TableHead>
               <TableHead>Code</TableHead>
               <TableHead>Consultation Fee</TableHead>
               <TableHead className="text-center">Available</TableHead>
