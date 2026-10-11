@@ -140,8 +140,8 @@ function Outpatients() {
                     <Button size="sm" variant="outline" onClick={() => startVitals(b)}><Activity className="w-4 h-4 mr-1" />{b.vitals ? "Edit vitals" : "Vitals"}</Button>
                     {b.fee_paid_at
                       ? <span className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-md px-2 py-1">Paid {"\u20B9"}{b.fee_amount} ({b.fee_mode})</span>
-                    {b.fee_paid_at && <Button size="sm" variant="outline" onClick={() => printReceipt(b)}>Receipt</Button>}
                       : <Button size="sm" variant="outline" onClick={() => startFee(b)}>Collect fee{b.doctor_fee != null ? " \u20B9" + b.doctor_fee : ""}</Button>}
+                    {b.fee_paid_at && <Button size="sm" variant="outline" onClick={() => printReceipt(b)}>Receipt</Button>}
                     <Button size="sm" variant="ghost" onClick={() => undo(b.id)}><Undo2 className="w-4 h-4" /></Button>
                   </div>
                 ) : (
