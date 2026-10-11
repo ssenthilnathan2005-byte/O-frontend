@@ -10,14 +10,16 @@ const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/
 type Staff = {
   id: string; name: string; role: string; department: string | null;
   phone: string | null; email: string | null; shift: string; shifts: string[] | null;
-  join_date: string | null; is_active: number; notes: string | null; salary?: number | null; employee_id?: string | null;
+  join_date: string | null; is_active: number; notes: string | null; salary?: number | null; employee_id?: string | null; login_type?: string | null; login_id?: string | null; login_code?: string | null;
 };
 
 const ROLES = ["nurse","lab_technician","pharmacist","receptionist","housekeeping","maintenance","security","accountant","other"];
 const SHIFTS = ["morning","afternoon","evening","night"];
+const FILTER_ROLES = ["doctor", ...ROLES];
 const EMPTY = { name:"", role:"nurse", department:"", phone:"", email:"", shifts:["morning"] as string[], joinDate:"", salary:"", notes:"", employeeId:"" };
 
 const ROLE_COLORS: Record<string,string> = {
+  doctor:"bg-indigo-50 text-indigo-700",
   nurse:"bg-pink-50 text-pink-700",
   lab_technician:"bg-purple-50 text-purple-700",
   pharmacist:"bg-blue-50 text-blue-700",
@@ -128,7 +130,7 @@ export default function HAHR() {
 
   async function handleDelete(id: string) {
     if (!confirm("Remove this staff member?")) return;
-    try { await apiFetch(`/hr/${id}`, "DELETE"); await load(); } catch {}
+    try { const r = await apiFetch(`/hr/${id}`, "DELETE"); if (r?.error) alert(r.error); await load(); } catch {}
   }
 
   async function toggleActive(s: Staff) {
@@ -168,11 +170,12 @@ export default function HAHR() {
      (s.department||"").toLowerCase().includes(search.toLowerCase()))
   );
 
-  const roleCounts = ROLES.reduce((acc, r) => {
+  const roleCounts = FILTER_ROLES.reduce((acc, r) => {
     acc[r] = staff.filter(s => s.role === r).length;
     return acc;
   }, {} as Record<string,number>);
 
+  const editing = editId ? staff.find(x => x.id === editId) : undefined;
   const currentMonthLabel = new Date().toLocaleString("default", { month: "long", year: "numeric" });
 
   return (
@@ -200,7 +203,7 @@ export default function HAHR() {
           className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${filter==="all" ? "bg-teal-600 text-white" : "bg-muted text-muted-foreground"}`}>
           All ({staff.length})
         </button>
-        {ROLES.filter(r => roleCounts[r] > 0).map(r => (
+        {FILTER_ROLES.filter(r => roleCounts[r] > 0).map(r => (
           <button key={r} onClick={() => setFilter(r)}
             className={`px-3 py-1 rounded-full text-xs font-medium capitalize transition-colors ${filter===r ? "bg-teal-600 text-white" : "bg-muted text-muted-foreground"}`}>
             {r.replace("_"," ")} ({roleCounts[r]})
@@ -222,7 +225,7 @@ export default function HAHR() {
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr>
-                {["Name","Role","Department","Phone","Shift","Today","Status","Salary",""].map(h => (
+                {["Name","Role","Login code","Department","Phone","Shift","Today","Status","Salary",""].map(h => (
                   <th key={h} className="text-left px-4 py-3 font-medium text-muted-foreground">{h}</th>
                 ))}
               </tr>
@@ -242,6 +245,7 @@ export default function HAHR() {
                         {s.role.replace("_"," ")}
                       </span>
                     </td>
+                    <td className="px-4 py-3 font-mono text-xs">{s.login_code || <span className="text-gray-300">-</span>}</td>
                     <td className="px-4 py-3 text-muted-foreground">{s.department||"—"}</td>
                     <td className="px-4 py-3 text-muted-foreground">{s.phone||"—"}</td>
                     <td className="px-4 py-3 capitalize text-muted-foreground">
@@ -305,15 +309,15 @@ export default function HAHR() {
               ].map(({ label, key, placeholder }) => (
                 <div key={key}>
                   <label className="text-sm font-medium text-gray-600 mb-1 block">{label}</label>
-                  <Input placeholder={placeholder} value={(form as any)[key]}
+                  <Input placeholder={placeholder} value={(form as any)[key]} disabled={!!editing?.login_id && (key==="name" || key==="phone")}
                     onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} />
                 </div>
               ))}
               <div>
                 <label className="text-sm font-medium text-gray-600 mb-1 block">Role *</label>
-                <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
+                <select value={form.role} disabled={!!editing?.login_id} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
                   className="w-full border rounded-md px-3 py-2 text-sm bg-white">
-                  {ROLES.map(r => <option key={r} value={r} className="capitalize">{r.replace("_"," ")}</option>)}
+                  {(editing?.login_id ? [form.role, ...ROLES.filter(r => r !== form.role)] : ROLES).map(r => <option key={r} value={r} className="capitalize">{r.replace("_"," ")}</option>)}
                 </select>
               </div>
               <div>
