@@ -1,4 +1,5 @@
 import VitalsScanAll from "@/components/VitalsScanAll";
+import DateInput from "@/components/DateInput";
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { LogOut, RefreshCw, UserCheck, BedDouble, Undo2, ClipboardList, Activity } from "lucide-react";
@@ -115,7 +116,7 @@ function Outpatients() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-3">
-        <div className="space-y-1"><Label>Date</Label><Input type="date" value={date} onChange={e => setDate(e.target.value)} /></div>
+        <div className="space-y-1"><Label>Date</Label><DateInput value={date} onChange={e => setDate(e.target.value)} /></div>
         <div className="space-y-1 flex-1 min-w-[160px]"><Label>Search</Label><Input placeholder="Name, phone or token" value={q} onChange={e => setQ(e.target.value)} /></div>
         <Button variant="outline" onClick={load} disabled={loading}><RefreshCw className={"w-4 h-4 " + (loading ? "animate-spin" : "")} /></Button>
       </div>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import DateInput from "@/components/DateInput";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { getToken } from "@/api";
 import { useStore } from "../../context/StoreContext";
@@ -87,9 +88,9 @@ function useRange() {
       ))}
       {preset === "custom" && (
         <>
-          <input type="date" value={cf} onChange={e => setCf(e.target.value)} className="border border-gray-200 rounded-md text-sm px-2 py-1.5 bg-white" />
+          <DateInput value={cf} onChange={e => setCf(e.target.value)} className="border border-gray-200 rounded-md text-sm px-2 py-1.5 bg-white" />
           <span className="text-gray-400 text-sm">to</span>
-          <input type="date" value={ct} onChange={e => setCt(e.target.value)} className="border border-gray-200 rounded-md text-sm px-2 py-1.5 bg-white" />
+          <DateInput value={ct} onChange={e => setCt(e.target.value)} className="border border-gray-200 rounded-md text-sm px-2 py-1.5 bg-white" />
         </>
       )}
     </div>

@@ -1,4 +1,5 @@
 import { useEffect, useState, Fragment } from "react";
+import DateInput from "@/components/DateInput";
 import * as api from "../../api";
 import { useStore } from "../../context/StoreContext";
 import { Badge } from "@/components/ui/badge";
@@ -145,10 +146,10 @@ export default function HAInward() {
           <h1 className="text-xl font-bold">Inward Patients</h1>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <input type="date" value={exportFrom} onChange={e => setExportFrom(e.target.value)}
+          <DateInput value={exportFrom} onChange={e => setExportFrom(e.target.value)}
             className="border rounded-lg px-2.5 py-2 text-sm bg-background" />
           <span className="text-sm text-muted-foreground">to</span>
-          <input type="date" value={exportTo} onChange={e => setExportTo(e.target.value)}
+          <DateInput value={exportTo} onChange={e => setExportTo(e.target.value)}
             className="border rounded-lg px-2.5 py-2 text-sm bg-background" />
           <button onClick={handleExport} disabled={exporting}
             className="flex items-center gap-2 border px-4 py-2 rounded-lg text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50">
@@ -301,7 +302,7 @@ export default function HAInward() {
               ))}
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">Admitted On</label>
-                <input type="date" value={form.admittedAt}
+                <DateInput value={form.admittedAt}
                   onChange={e => setForm(f => ({ ...f, admittedAt: e.target.value }))}
                   className="w-full border rounded-md px-3 py-2 text-sm bg-background" />
               </div>

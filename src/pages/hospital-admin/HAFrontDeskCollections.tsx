@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import DateInput from "@/components/DateInput";
 import { IndianRupee } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { getToken } from "../../api";
@@ -37,7 +38,7 @@ export default function HAFrontDeskCollections() {
     <div className="bg-white border rounded-xl p-4 space-y-3">
       <div className="flex items-center justify-between gap-2">
         <p className="font-medium text-sm flex items-center gap-1.5"><IndianRupee className="w-4 h-4" />Consultation fee collections</p>
-        <Input type="date" className="w-40" value={date} onChange={(e) => setDate(e.target.value)} />
+        <DateInput className="w-40" value={date} onChange={(e) => setDate(e.target.value)} />
       </div>
       {err && <p className="text-xs text-red-600">{err}</p>}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">

@@ -1,4 +1,5 @@
 ﻿import { type ReactNode, useEffect, useMemo, useState } from "react";
+import DateInput from "@/components/DateInput";
 import { toast } from "sonner";
 import { Download, FlaskConical, IndianRupee, TrendingUp, Users } from "lucide-react";
 import {
@@ -438,10 +439,10 @@ export default function HABilling() {
         ))}
         {period === "custom" && (
           <div className="flex items-center gap-2 text-sm">
-            <input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)}
+            <DateInput value={from} max={to} onChange={(e) => setFrom(e.target.value)}
               className="border border-border rounded-md px-2 py-1 bg-card" />
             <span className="text-muted-foreground">to</span>
-            <input type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)}
+            <DateInput value={to} min={from} onChange={(e) => setTo(e.target.value)}
               className="border border-border rounded-md px-2 py-1 bg-card" />
           </div>
         )}

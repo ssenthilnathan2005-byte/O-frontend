@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import DateInput from "@/components/DateInput";
 import { Fingerprint, Loader2, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { getToken } from "../../api";
@@ -79,9 +80,9 @@ export default function HAAttendance() {
 
       <div className="flex flex-wrap items-end gap-3">
         <div><p className="text-xs text-muted-foreground mb-1">From</p>
-          <Input type="date" value={from} onChange={e => setFrom(e.target.value)} /></div>
+          <DateInput value={from} onChange={e => setFrom(e.target.value)} /></div>
         <div><p className="text-xs text-muted-foreground mb-1">To</p>
-          <Input type="date" value={to} onChange={e => setTo(e.target.value)} /></div>
+          <DateInput value={to} onChange={e => setTo(e.target.value)} /></div>
         <button type="button" onClick={load} disabled={loading}
           className="h-10 px-4 rounded-md bg-teal-600 text-white text-sm font-medium flex items-center gap-2 disabled:opacity-60">
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Refresh
