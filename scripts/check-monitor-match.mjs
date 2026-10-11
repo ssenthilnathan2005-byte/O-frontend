@@ -1,6 +1,7 @@
 // Run:  node scripts/check-monitor-match.mjs
 // Checks the monitor matcher against SAMPLE data (see src/lib/monitorSamples.ts). No camera needed.
 import { matchMonitorReadings } from "../src/lib/monitorMatch.ts";
+import { mergeVariants, finalize, joinSlashWords, pickRecheckTargets } from "../src/lib/ocrConsensus.ts";
 import { SAMPLE_BEDSIDE_MONITOR, SAMPLE_SPOT_CHECK_MONITOR } from "../src/lib/monitorSamples.ts";
 
 let failed = 0;
@@ -76,6 +77,73 @@ run("Nothing recognised", [W("hello", 90, 0, 0, 40, 12)], {}, (o) => {
 run("Template region reads a fixed area", [W("72", 95, 600, 100, 660, 150), W("9", 60, 10, 10, 20, 20)],
   { width: 1000, height: 500, template: { id: "t", name: "t", regions: { pulse: { x: 0.55, y: 0.1, w: 0.2, h: 0.3 } } } },
   (o) => { expect("pulse from region", val(o, "pulse") === "72"); });
+
+
+// ---------------- consensus (image variants + digits-only re-check) ----------------
+const NAMES = ["N", "I", "C"];
+const jig = (w, d) => ({ ...w, x0: w.x0 + d, x1: w.x1 + d });
+function pipeline(perVariant, rechecks, template) {
+  const m = mergeVariants(perVariant, NAMES);
+  const f = finalize(m.items, rechecks, { singleCap: 60 });
+  const out = matchMonitorReadings(f.words, { template, width: 400, height: 300 });
+  return { m, f, out };
+}
+const lbl = (t, d = 0) => W(t, 90, 0 + d, 0, 40 + d, 12);
+const spo2 = [lbl("SPO2"), W("98", 92, 50, 0, 100, 40)];
+const idx98 = (m) => m.items.findIndex((i) => i.word.text === "98");
+
+console.log("\nConsensus: 3 variants agree and digit re-check agrees => filled");
+{
+  const { m, out } = pipeline([spo2, spo2.map((w) => jig(w, 1)), spo2.map((w) => jig(w, 2))], {});
+  const r = pipeline([spo2, spo2.map((w) => jig(w, 1)), spo2.map((w) => jig(w, 2))], { [idx98(m)]: { text: "98", conf: 95 } });
+  expect("SpO2 98 filled", r.out.values.spo2?.text === "98");
+}
+console.log("\nConsensus: only ONE variant saw it => never filled, suggestion only");
+{
+  const m = mergeVariants([spo2, [], []], NAMES);
+  const r = pipeline([spo2, [], []], { [idx98(m)]: { text: "98", conf: 95 } });
+  expect("not filled", !r.out.values.spo2);
+  expect("offered as suggestion", r.out.suggestions.spo2?.text === "98");
+}
+console.log("\nConsensus: variants disagree (36.5 vs 86.5) => dropped");
+{
+  const t = (x) => [lbl("TEMP"), W(x, 92, 50, 0, 110, 40)];
+  const r = pipeline([t("36.5"), t("86.5"), t("36.5")], {});
+  expect("temperature blank", !r.out.values.temperature && !r.out.suggestions.temperature);
+  expect("explained", r.m.notes.length > 0);
+}
+console.log("\nConsensus: digit re-check differs (98 vs 96) => dropped");
+{
+  const m = mergeVariants([spo2, spo2, spo2], NAMES);
+  const r = pipeline([spo2, spo2, spo2], { [idx98(m)]: { text: "96", conf: 99 } });
+  expect("SpO2 blank", !r.out.values.spo2 && !r.out.suggestions.spo2);
+  expect("explained", r.f.notes.length > 0);
+}
+console.log("\nConsensus: digit re-check reads nothing / not attempted => not filled");
+{
+  const m = mergeVariants([spo2, spo2, spo2], NAMES);
+  const a = pipeline([spo2, spo2, spo2], { [idx98(m)]: null });
+  const b = pipeline([spo2, spo2, spo2], {});
+  expect("nothing read: not filled", !a.out.values.spo2);
+  expect("not attempted: not filled", !b.out.values.spo2);
+}
+console.log("\nConsensus: BP split differently by each variant still agrees");
+{
+  const v0 = [W("120/", 92, 0, 0, 80, 40), W("80", 92, 90, 0, 140, 40)];
+  const v1 = [W("120/80", 92, 0, 0, 140, 40)];
+  const v2 = [W("120", 92, 0, 0, 60, 40), W("/", 90, 62, 0, 72, 40), W("80", 92, 80, 0, 140, 40)];
+  const m = mergeVariants([v0, v1, v2], NAMES);
+  expect("joined into one word per variant", m.items.length === 1 && m.items[0].word.text === "120/80", JSON.stringify(m.items.map((i) => i.word.text)));
+  const r = pipeline([v0, v1, v2], { 0: { text: "120/80", conf: 94 } });
+  expect("BP filled", r.out.values.bpSystolic?.text === "120" && r.out.values.bpDiastolic?.text === "80");
+}
+console.log("\nConsensus: labels from one variant are kept, tiny numbers are not re-checked");
+{
+  const m = mergeVariants([[lbl("SPO2"), W("7", 90, 0, 20, 4, 26)], [], []], NAMES);
+  expect("label kept", m.items.some((i) => !i.numeric && i.word.text === "SPO2"));
+  expect("tiny number skipped", pickRecheckTargets(m.items).length === 0);
+  expect("joinSlashWords leaves plain words alone", joinSlashWords([W("98", 90, 0, 0, 40, 30)]).length === 1);
+}
 
 console.log(failed ? "\n" + failed + " check(s) FAILED" : "\nAll checks passed");
 process.exit(failed ? 1 : 0);
