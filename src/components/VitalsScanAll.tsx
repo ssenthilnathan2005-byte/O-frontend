@@ -397,7 +397,7 @@ export default function VitalsScanAll({ onApply, include, label, captureAudit }:
 
       const fin = finalize(merged.items, rechecks, { singleCap: SINGLE_CAP });
       // A fixed-position template is used only when the layout is recognised (or the nurse chose an unlabeled one).
-      const combined = combineMatches(fin.words, base.raw.width, base.raw.height, MIN_CONF);
+      const combined = combineMatches(fin.words, base.raw.width, base.raw.height, MIN_CONF, [...fin.traces, ...merged.dropped]);
       const result: MatchOutput = { ...combined.output, notes: [...new Set([...merged.notes, ...fin.notes, ...(combined.output.notes || [])])] };
       // Scan data for the benchmark script: only numbers and monitor labels, so no patient name or other text leaves the phone.
       const exportJson = JSON.stringify({
