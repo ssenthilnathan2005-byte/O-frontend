@@ -530,6 +530,7 @@ export default function HAWards() {
         weight: vitalsForm.weight ? Number(vitalsForm.weight) : null,
         bloodGlucose: vitalsForm.bloodGlucose ? Number(vitalsForm.bloodGlucose) : null,
         recordedBy: vitalsForm.recordedBy || null,
+        ocrScan: (vitalsForm as any).ocr || null,
       });
       setVitalsForm({ ...EMPTY_VITALS }); setShowVitalsAdd(false);
       await loadHistory(bed);
@@ -951,7 +952,7 @@ export default function HAWards() {
             <div className="px-6 pb-2 space-y-3 border-t pt-3">
               <div className="flex flex-wrap items-center justify-between gap-y-2">
                 <h3 className="text-sm font-semibold text-gray-700">Vitals</h3>
-                <div className="order-last basis-full space-y-2"><VitalsScanAll onApply={v => { setShowVitalsAdd(true); setVitalsForm(f => ({ ...f, ...v })); }} /><VitalsScanner onApply={v => { setShowVitalsAdd(true); setVitalsForm(f => ({ ...f, ...v })); }} /></div>
+                <div className="order-last basis-full space-y-2"><VitalsScanAll captureAudit onApply={v => { setShowVitalsAdd(true); setVitalsForm(f => ({ ...f, ...v })); }} /><VitalsScanner onApply={v => { setShowVitalsAdd(true); setVitalsForm(f => ({ ...f, ...v })); }} /></div>
                 <button onClick={() => setShowVitalsAdd(s => !s)} className="text-xs text-teal-600 font-medium hover:underline">
                   {showVitalsAdd ? "Cancel" : "+ Add"}
                 </button>
