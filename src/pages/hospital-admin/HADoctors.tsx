@@ -330,7 +330,9 @@ export default function HADoctors() {
             <TableRow className="bg-muted/40">
               <TableHead>Name</TableHead>
               <TableHead>Specialty</TableHead>
-              <TableHead>Password</TableHead>
+              <TableHead>Phone</TableHead>
+                      <TableHead>Phone</TableHead>
+                      <TableHead>Password</TableHead>
               <TableHead>Code</TableHead>
               <TableHead>Consultation Fee</TableHead>
               <TableHead className="text-center">Available</TableHead>
@@ -361,6 +363,8 @@ export default function HADoctors() {
                 </TableCell>
                 <TableCell><Badge variant="outline">{doctor.specialty}</Badge></TableCell>
                 <TableCell className="text-muted-foreground text-sm">{doctor.phone ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground text-sm font-mono">{(doctor as any).password || "-"}</TableCell>
+                  <TableCell className="text-muted-foreground text-sm font-mono">{(doctor as any).password || "-"}</TableCell>
                 <TableCell>
                   <span className="font-mono text-xs bg-muted px-2 py-0.5 rounded">{doctor.code ?? "—"}</span>
                 </TableCell>
