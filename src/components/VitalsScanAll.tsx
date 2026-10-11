@@ -22,13 +22,26 @@ import type { Recheck, Trace } from "@/lib/ocrConsensus";
  *    A number is only filled when the variants AND the digit re-check agree (see lib/ocrConsensus.ts).
  */
 
-export type ScanAllApply = Partial<ScannedVitals> & { respRate?: string; tempUnit?: "F" };
+/** What the scanner originally read (including low-confidence reads) vs what the nurse approved in the scanner. */
+export type OcrAudit = {
+  version: number;
+  scannedAt: string;
+  template: string;
+  proposed: Partial<Record<ScanField, string>>;
+  conf: Partial<Record<ScanField, number>>;
+  flags: Partial<Record<ScanField, "confident" | "low-confidence">>;
+  reviewed: Partial<Record<ScanField, string>>;
+  words: { text: string; conf: number; seen: string; recheck: string; status: string }[];
+};
+export type ScanAllApply = Partial<ScannedVitals> & { respRate?: string; tempUnit?: "F"; ocr?: OcrAudit };
 
 type Props = {
   onApply: (v: ScanAllApply) => void;
   /** Fields this form has. Default: all six. */
   include?: ScanField[];
   label?: string;
+  /** Attach the original OCR values to the applied data (for accuracy measurement). */
+  captureAudit?: boolean;
 };
 
 type Frac = { x0: number; y0: number; x1: number; y1: number };
@@ -221,10 +234,11 @@ function checkValues(vals: Record<string, string>, shown: ScanField[]): string |
   return null;
 }
 
-export default function VitalsScanAll({ onApply, include, label }: Props) {
+export default function VitalsScanAll({ onApply, include, label, captureAudit }: Props) {
   // Each vital appears exactly once in the review form, whatever `include` contains.
   const shown = uniqueKeys(include && include.length ? ALL_FIELDS.filter((f) => include.includes(f)) : ALL_FIELDS);
   const [open, setOpen] = useState(false);
+  const [orig, setOrig] = useState<Pick<OcrAudit, "proposed" | "conf" | "flags" | "template"> | null>(null);
   const [step, setStep] = useState<"capture" | "crop" | "reading" | "review">("capture");
   const [imgUrl, setImgUrl] = useState<string | null>(null);
   const [imgEl, setImgEl] = useState<HTMLImageElement | null>(null);
@@ -248,7 +262,7 @@ export default function VitalsScanAll({ onApply, include, label }: Props) {
   function resetAll() {
     if (imgUrl) URL.revokeObjectURL(imgUrl);
     setStep("capture"); setImgUrl(null); setImgEl(null); setCrop(null); setOut(null);
-    setVals({}); setTouched({}); setThumb(null); setVerified(false); setError(""); setProgress(0); setStage(""); setSeenInfo(null); setCopied(false);
+    setVals({}); setTouched({}); setThumb(null); setVerified(false); setError(""); setProgress(0); setStage(""); setSeenInfo(null); setCopied(false); setOrig(null);
   }
   function openScanner() { resetAll(); setOpen(true); }
   function closeScanner() { resetAll(); setOpen(false); }
@@ -346,7 +360,23 @@ export default function VitalsScanAll({ onApply, include, label }: Props) {
       });
 
       const next: Record<string, string> = {};
-      for (const f of shown) next[f] = result.values[f]?.text || "";
+      // Low-confidence reads are kept (pre-filled and flagged amber), never silently dropped.
+      const proposed: OcrAudit["proposed"] = {};
+      const confs: OcrAudit["conf"] = {};
+      const flags: OcrAudit["flags"] = {};
+      const shownValues: any = { ...result.values };
+      for (const f of shown) {
+        const rd = result.values[f];
+        const sg: any = result.suggestions[f];
+        next[f] = rd?.text || sg?.text || "";
+        if (rd) { proposed[f] = rd.text; confs[f] = rd.conf; flags[f] = "confident"; }
+        else if (sg) {
+          proposed[f] = sg.text; confs[f] = Number(sg.conf) || 0; flags[f] = "low-confidence";
+          shownValues[f] = { text: sg.text, conf: Number(sg.conf) || 0, source: "low confidence" };
+        }
+      }
+      const shownResult = { ...result, values: shownValues };
+      setOrig({ proposed, conf: confs, flags, template: tplId });
       const rows = [...fin.traces, ...merged.dropped].sort((a, b) => a.y - b.y || a.x - b.x);
       setSeenInfo({
         thumbs: VARIANTS.map((v, i) => ({ label: v.short + " = " + v.label, url: thumbOf(canvases[i]) })),
@@ -355,7 +385,7 @@ export default function VitalsScanAll({ onApply, include, label }: Props) {
         templateNote: resolved.template ? "Layout used: " + resolved.template.name + (resolved.template.status ? " [" + resolved.template.status + "]" : "") : "Layout: generic label matching (no fixed template)",
         exportJson,
       });
-      setOut(result); setVals(next); setTouched({}); setVerified(false); setStep("review");
+      setOut(shownResult); setVals(next); setTouched({}); setVerified(false); setStep("review");
     } catch (e: any) {
       workerPromise = null;
       setError("Could not read the photo on this device. Check that the OCR files are installed (public/tesseract) or enter the values manually. " + (e?.message || ""));
@@ -381,6 +411,22 @@ export default function VitalsScanAll({ onApply, include, label }: Props) {
       if (v) (payload as any)[f] = v;
     }
     if (payload.temperature) payload.tempUnit = "F";
+    if (captureAudit && orig) {
+      const reviewed: OcrAudit["reviewed"] = {};
+      for (const f of shown) { const rv = (vals[f] || "").trim(); if (rv) reviewed[f] = rv; }
+      payload.ocr = {
+        version: 1,
+        scannedAt: new Date().toISOString(),
+        template: orig.template,
+        proposed: orig.proposed,
+        conf: orig.conf,
+        flags: orig.flags,
+        reviewed,
+        words: (seenInfo?.rows || []).slice(0, 60).map((r: any) => ({
+          text: String(r.text ?? ""), conf: Number(r.conf) || 0, seen: String(r.seen ?? ""), recheck: String(r.recheck ?? ""), status: String(r.status ?? ""),
+        })),
+      };
+    }
     onApply(payload);
     closeScanner();
   }
@@ -478,7 +524,7 @@ export default function VitalsScanAll({ onApply, include, label }: Props) {
                     const [lo, hi, unit] = FIELD_RANGE[f];
                     const unitText = f === "temperature" ? DEG + "F" : unit;
                     return (
-                      <div key={f} className={"rounded-lg border px-3 py-2 " + (v ? (edited ? "border-blue-200 bg-blue-50" : "border-emerald-200 bg-emerald-50") : "border-amber-300 bg-amber-50")}>
+                      <div key={f} className={"rounded-lg border px-3 py-2 " + (v ? (edited ? "border-blue-200 bg-blue-50" : orig?.flags[f] === "low-confidence" ? "border-amber-300 bg-amber-50" : "border-emerald-200 bg-emerald-50") : "border-amber-300 bg-amber-50")}>
                         <div className="flex items-center justify-between gap-2">
                           <label className="text-sm font-medium text-gray-800" htmlFor={"scan-" + f}>{FIELD_LABEL[f]} <span className="text-xs font-normal text-gray-500">({unitText}, {lo}-{hi})</span></label>
                           <span className="text-[11px] text-gray-600">
@@ -486,10 +532,8 @@ export default function VitalsScanAll({ onApply, include, label }: Props) {
                           </span>
                         </div>
                         <Input id={"scan-" + f} inputMode="decimal" value={v} placeholder="Type the value" onChange={(e) => setField(f, e.target.value)} className="mt-1" />
-                        {!v && sug && (
-                          <button type="button" onClick={() => setField(f, sug.text)} className="mt-1 text-xs text-teal-700 underline">
-                            Unclear read: {sug.text}. Tap to use it only if it matches the monitor
-                          </button>
+                        {v && !edited && !!sug && orig?.flags[f] === "low-confidence" && (
+                          <p className="mt-1 text-xs text-amber-800 font-medium">Low confidence read. Check this value against the monitor and correct it if it is wrong.</p>
                         )}
                         {f === "temperature" && tempNote && <p className="mt-1 text-xs text-gray-600">{tempNote}</p>}
                         {f === "temperature" && !v && out.tempChoices && out.tempChoices.length > 1 && (
