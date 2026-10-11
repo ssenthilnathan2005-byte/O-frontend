@@ -76,7 +76,7 @@ function Outpatients() {
     finally { setLoading(false); }
   }, [date]);
 
-  useEffect(() => { load(); const t = setInterval(load, 30000); return () => clearInterval(t); }, [load]);
+  useEffect(() => { load(); const t = setInterval(load, 4000); return () => clearInterval(t); }, [load]);
 
   function startEdit(b: OPBooking) {
     setEditId(b.id);

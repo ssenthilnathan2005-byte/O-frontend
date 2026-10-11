@@ -29,7 +29,7 @@ export default function HospitalLabPage({ id, onBack }: { id: string; onBack: ()
   }
   useEffect(() => {
     loadMine();
-    const t = setInterval(loadMine, 30000);
+    const t = setInterval(loadMine, 8000);
     return () => clearInterval(t);
   }, [id, user]);
   const STATUS: Record<string, { label: string; cls: string }> = {

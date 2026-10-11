@@ -25,7 +25,7 @@ export default function HAFrontDeskCollections() {
       } catch { if (!off) setErr("Failed to load"); }
     }
     load();
-    const t = setInterval(load, 30000);
+    const t = setInterval(load, 10000);
     return () => { off = true; clearInterval(t); };
   }, [date]);
 

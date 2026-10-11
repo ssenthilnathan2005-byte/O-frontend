@@ -49,7 +49,7 @@ export default function LabTokenPanel() {
 
   useEffect(() => {
     Promise.all([api.labs.myTests().then(setTests).catch(() => {}), loadBookings()]).finally(() => setLoading(false));
-    const t = setInterval(loadBookings, 15_000);
+    const t = setInterval(loadBookings, 5_000);
     return () => clearInterval(t);
   }, [loadBookings]);
 
