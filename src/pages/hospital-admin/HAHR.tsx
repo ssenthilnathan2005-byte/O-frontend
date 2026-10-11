@@ -4,7 +4,7 @@ import { ClipboardList, Plus, X, Pencil, Trash2, Download } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { getToken } from "../../api";
 import { downloadFile } from "../../lib/downloadFile";
-import DoctorActions from "./DoctorActions";
+import StaffActions from "./StaffActions";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
@@ -89,7 +89,7 @@ export default function HAHR() {
   useEffect(() => {
     if (hospitalId) {
       load();
-      setPaidSet(loadPaidSet(hospitalId));
+      loadPaid();
     }
   }, [hospitalId]);
 
@@ -100,14 +100,27 @@ export default function HAHR() {
     return <span className="text-green-700">In {new Date(e.first).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</span>;
   }
 
+  function monthKey() { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}`; }
+
+  async function loadPaid() {
+    try {
+      const month = monthKey();
+      const r = await apiFetch(`/hr/salary-paid/${month}`);
+      if (!Array.isArray(r)) return;
+      const local = loadPaidSet(hospitalId);
+      const missing = [...local].filter(id => !r.includes(id));
+      for (const id of missing) await apiFetch("/hr/salary-paid", "POST", { staffId: id, month, paid: true });
+      if (local.size) savePaidSet(hospitalId, new Set());
+      setPaidSet(new Set([...r, ...missing]));
+    } catch {}
+  }
+
   function togglePaid(staffId: string) {
-    setPaidSet(prev => {
-      const next = new Set(prev);
-      if (next.has(staffId)) next.delete(staffId);
-      else next.add(staffId);
-      savePaidSet(hospitalId, next);
-      return next;
-    });
+    const paid = !paidSet.has(staffId);
+    setPaidSet(prev => { const n = new Set(prev); if (paid) n.add(staffId); else n.delete(staffId); return n; });
+    apiFetch("/hr/salary-paid", "POST", { staffId, month: monthKey(), paid })
+      .then(r => { if (r?.error) { alert(r.error); loadPaid(); } })
+      .catch(() => loadPaid());
   }
 
   function openAdd() { setForm({ ...EMPTY }); setEditId(null); setShowForm(true); }
@@ -275,7 +288,7 @@ export default function HAHR() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
-                        <DoctorActions s={s} onDone={load} />
+                        <StaffActions s={s} onDone={load} />
 <button onClick={() => openEdit(s)} className="p-1.5 rounded hover:bg-muted transition-colors">
                           <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
                         </button>
