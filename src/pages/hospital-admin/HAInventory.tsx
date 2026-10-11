@@ -208,11 +208,11 @@ export default function HAInventory() {
                     </td>
                     <td className="px-4 py-3">
                       <span className={`font-semibold ${isLow ? "text-red-600" : "text-gray-800"}`}>
-                        {item.quantity} {item.unit}
+                        {(item.pack_size||1) > 1 ? <>{item.quantity * (item.pack_size||1)} tablets <span className="block text-xs font-normal text-muted-foreground">{item.quantity} packs</span></> : <>{(item.pack_size||1) > 1 ? <>{item.quantity * (item.pack_size||1)} tablets <span className="block text-xs font-normal text-muted-foreground">{item.quantity} packs</span></> : <>{item.quantity} {item.unit}</>}</>}
                       </span>
                       {isLow && <p className="text-xs text-red-400">Low stock</p>}
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">{item.min_quantity} {item.unit}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{(item.pack_size||1) > 1 ? <>{item.min_quantity * (item.pack_size||1)} tablets <span className="text-xs">({item.min_quantity} packs)</span></> : <>{(item.pack_size||1) > 1 ? <>{item.min_quantity * (item.pack_size||1)} tablets <span className="text-xs">({item.min_quantity} packs)</span></> : <>{item.min_quantity} {item.unit}</>}</>}</td>
                     <td className="px-4 py-3 text-muted-foreground">{item.supplier||"—"}</td>
                     <td className="px-4 py-3 text-muted-foreground">{item.location||"—"}</td>
                     <td className="px-4 py-3">
