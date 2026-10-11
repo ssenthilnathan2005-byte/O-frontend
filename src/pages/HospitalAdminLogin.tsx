@@ -63,7 +63,7 @@ export default function HospitalAdminLogin() {
             return;
           }
           login(normalizedUser, res.token);
-          toast.success("Welcome back");
+          
         }
       } else {
         if (password.length < 6) {
