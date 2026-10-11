@@ -591,6 +591,14 @@ export default function VitalsScanAll({ onApply, include, label, captureAudit }:
                           </span>
                         </div>
                         <Input id={"scan-" + f} inputMode="decimal" value={v} placeholder="Type the value" onChange={(e) => setField(f, e.target.value)} className="mt-1" />
+                        {!v && (((out as any).choices?.[f] as string[] | undefined) || []).length > 0 && (
+                          <p className="mt-1 text-xs text-gray-700">
+                            Could not read this reliably. Tap the one that matches the monitor:{" "}
+                            {(((out as any).choices?.[f] as string[]) || []).map((c) => (
+                              <button key={c} type="button" onClick={() => setField(f, c)} className="mr-3 text-teal-700 font-semibold underline">{c}</button>
+                            ))}
+                          </p>
+                        )}
                         {v && !edited && !!sug && orig?.flags[f] === "low-confidence" && (
                           <p className="mt-1 text-xs text-amber-800 font-medium">Low confidence read. Check this value against the monitor and correct it if it is wrong.</p>
                         )}
