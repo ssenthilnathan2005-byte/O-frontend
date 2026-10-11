@@ -331,7 +331,6 @@ export default function HADoctors() {
               <TableHead>Name</TableHead>
               <TableHead>Specialty</TableHead>
               <TableHead>Phone</TableHead>
-                      <TableHead>Phone</TableHead>
                       <TableHead>Password</TableHead>
               <TableHead>Code</TableHead>
               <TableHead>Consultation Fee</TableHead>
@@ -342,7 +341,7 @@ export default function HADoctors() {
           <TableBody>
             {myDoctors.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground py-10">
+                <TableCell colSpan={8} className="text-center text-muted-foreground py-10">
                   No doctors yet — add your first one above.
                 </TableCell>
               </TableRow>
@@ -363,7 +362,6 @@ export default function HADoctors() {
                 </TableCell>
                 <TableCell><Badge variant="outline">{doctor.specialty}</Badge></TableCell>
                 <TableCell className="text-muted-foreground text-sm">{doctor.phone ?? "—"}</TableCell>
-                  <TableCell className="text-muted-foreground text-sm font-mono">{(doctor as any).password || "-"}</TableCell>
                   <TableCell className="text-muted-foreground text-sm font-mono">{(doctor as any).password || "-"}</TableCell>
                 <TableCell>
                   <span className="font-mono text-xs bg-muted px-2 py-0.5 rounded">{doctor.code ?? "—"}</span>
