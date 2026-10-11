@@ -1048,25 +1048,25 @@ export default function DoctorDashboard() {
         className="w-full"
       >
 
-      <TabsList className="mb-6 flex w-full max-w-full justify-start overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>*]:shrink-0 [&>*]:whitespace-nowrap" data-ocid="doctor.tab">
+      <TabsList className="mb-6 grid h-auto w-full grid-cols-4 gap-1 p-1" data-ocid="doctor.tab">
 
-      <TabsTrigger value="regulator" data-ocid="doctor.tab">
-            <Activity className="w-4 h-4 mr-1.5 sm:mr-2" />
+      <TabsTrigger value="regulator" data-ocid="doctor.tab" className="flex h-auto min-w-0 flex-col items-center gap-1 px-1 py-2 text-[11px] leading-tight sm:flex-row sm:justify-center sm:gap-2 sm:px-3 sm:text-sm">
+            <Activity className="w-4 h-4" />
             Regulator
           </TabsTrigger>
 
-      <TabsTrigger value="livetokens" data-ocid="doctor.tab">
-            <Clock className="w-4 h-4 mr-1.5 sm:mr-2" />
-            Live Tokens
+      <TabsTrigger value="livetokens" data-ocid="doctor.tab" className="flex h-auto min-w-0 flex-col items-center gap-1 px-1 py-2 text-[11px] leading-tight sm:flex-row sm:justify-center sm:gap-2 sm:px-3 sm:text-sm">
+            <Clock className="w-4 h-4" />
+            Live
           </TabsTrigger>
 
-      <TabsTrigger value="profile" data-ocid="doctor.tab">
-            <User className="w-4 h-4 mr-1.5 sm:mr-2" />
+      <TabsTrigger value="profile" data-ocid="doctor.tab" className="flex h-auto min-w-0 flex-col items-center gap-1 px-1 py-2 text-[11px] leading-tight sm:flex-row sm:justify-center sm:gap-2 sm:px-3 sm:text-sm">
+            <User className="w-4 h-4" />
             Profile
           </TabsTrigger>
 
-      <TabsTrigger value="presets" data-ocid="doctor.tab">
-        <ClipboardList className="w-4 h-4 mr-1.5 sm:mr-2" />
+      <TabsTrigger value="presets" data-ocid="doctor.tab" className="flex h-auto min-w-0 flex-col items-center gap-1 px-1 py-2 text-[11px] leading-tight sm:flex-row sm:justify-center sm:gap-2 sm:px-3 sm:text-sm">
+        <ClipboardList className="w-4 h-4" />
         Presets
       </TabsTrigger>
         </TabsList>
