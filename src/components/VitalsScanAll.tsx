@@ -8,6 +8,8 @@ import { matchMonitorReadings, resolveTemplate, isKnownLabel, MONITOR_TEMPLATES,
 import type { MatchOutput, OcrWord, ScanField } from "@/lib/monitorMatch";
 import { mergeVariants, finalize, pickRecheckTargets, uniqueKeys } from "@/lib/ocrConsensus";
 import type { Recheck, Trace } from "@/lib/ocrConsensus";
+import { detectDisplay, assessQuality } from "@/lib/screenDetect";
+import type { QualityIssue } from "@/lib/screenDetect";
 
 /**
  * "Scan All Vitals" - one photo of a multiparameter monitor fills every reading it can read.
@@ -22,13 +24,26 @@ import type { Recheck, Trace } from "@/lib/ocrConsensus";
  *    A number is only filled when the variants AND the digit re-check agree (see lib/ocrConsensus.ts).
  */
 
-export type ScanAllApply = Partial<ScannedVitals> & { respRate?: string; tempUnit?: "F" };
+/** What the scanner originally read (including low-confidence reads) vs what the nurse approved in the scanner. */
+export type OcrAudit = {
+  version: number;
+  scannedAt: string;
+  template: string;
+  proposed: Partial<Record<ScanField, string>>;
+  conf: Partial<Record<ScanField, number>>;
+  flags: Partial<Record<ScanField, "confident" | "low-confidence">>;
+  reviewed: Partial<Record<ScanField, string>>;
+  words: { text: string; conf: number; seen: string; recheck: string; status: string }[];
+};
+export type ScanAllApply = Partial<ScannedVitals> & { respRate?: string; tempUnit?: "F"; ocr?: OcrAudit };
 
 type Props = {
   onApply: (v: ScanAllApply) => void;
   /** Fields this form has. Default: all six. */
   include?: ScanField[];
   label?: string;
+  /** Attach the original OCR values to the applied data (for accuracy measurement). */
+  captureAudit?: boolean;
 };
 
 type Frac = { x0: number; y0: number; x1: number; y1: number };
@@ -221,14 +236,20 @@ function checkValues(vals: Record<string, string>, shown: ScanField[]): string |
   return null;
 }
 
-export default function VitalsScanAll({ onApply, include, label }: Props) {
+export default function VitalsScanAll({ onApply, include, label, captureAudit }: Props) {
   // Each vital appears exactly once in the review form, whatever `include` contains.
   const shown = uniqueKeys(include && include.length ? ALL_FIELDS.filter((f) => include.includes(f)) : ALL_FIELDS);
   const [open, setOpen] = useState(false);
+  const [orig, setOrig] = useState<Pick<OcrAudit, "proposed" | "conf" | "flags" | "template"> | null>(null);
   const [step, setStep] = useState<"capture" | "crop" | "reading" | "review">("capture");
   const [imgUrl, setImgUrl] = useState<string | null>(null);
   const [imgEl, setImgEl] = useState<HTMLImageElement | null>(null);
   const [crop, setCrop] = useState<Frac | null>(null);
+  const [autoCrop, setAutoCrop] = useState(false);
+  const [issues, setIssues] = useState<QualityIssue[]>([]);
+  const [qMetrics, setQMetrics] = useState<Record<string, number> | null>(null);
+  const pixels = useRef<{ data: Uint8ClampedArray; width: number; height: number } | null>(null);
+  const cropRef = useRef<Frac | null>(null);
   const [tplId, setTplId] = useState(MONITOR_TEMPLATES[0].id);
   const [out, setOut] = useState<MatchOutput | null>(null);
   const [vals, setVals] = useState<Record<string, string>>({});
@@ -248,10 +269,38 @@ export default function VitalsScanAll({ onApply, include, label }: Props) {
   function resetAll() {
     if (imgUrl) URL.revokeObjectURL(imgUrl);
     setStep("capture"); setImgUrl(null); setImgEl(null); setCrop(null); setOut(null);
-    setVals({}); setTouched({}); setThumb(null); setVerified(false); setError(""); setProgress(0); setStage(""); setSeenInfo(null); setCopied(false);
+    setAutoCrop(false); setIssues([]); setQMetrics(null); pixels.current = null; cropRef.current = null;
+    setVals({}); setTouched({}); setThumb(null); setVerified(false); setError(""); setProgress(0); setStage(""); setSeenInfo(null); setCopied(false); setOrig(null);
   }
   function openScanner() { resetAll(); setOpen(true); }
   function closeScanner() { resetAll(); setOpen(false); }
+
+  /**
+   * Advisory only: proposes a crop and warns about photo quality. It never changes the pixels sent to the OCR,
+   * and any failure here simply leaves the manual crop workflow as it was.
+   */
+  function analysePhoto(img: HTMLImageElement, mode: "detect" | "recheck", area: Frac | null) {
+    try {
+      if (!pixels.current) {
+        const k = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+        const c = document.createElement("canvas");
+        c.width = Math.max(1, Math.round(img.naturalWidth * k)); c.height = Math.max(1, Math.round(img.naturalHeight * k));
+        const ctx = c.getContext("2d", { willReadFrequently: true })!;
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        const d = ctx.getImageData(0, 0, c.width, c.height);
+        pixels.current = { data: d.data, width: d.width, height: d.height };
+      }
+      const px = pixels.current;
+      const det = mode === "detect" ? detectDisplay(px) : undefined;
+      const fr: Frac = mode === "detect" ? (det ? det.frac : { x0: 0, y0: 0, x1: 1, y1: 1 }) : (area || { x0: 0, y0: 0, x1: 1, y1: 1 });
+      const q = assessQuality(px, mode === "detect" ? det : undefined, fr);
+      if (mode === "detect") { setCrop(det ? det.frac : null); cropRef.current = det ? det.frac : null; setAutoCrop(!!det); }
+      setIssues(q.issues); setQMetrics(q.metrics);
+    } catch {
+      if (mode === "detect") { setCrop(null); cropRef.current = null; setAutoCrop(false); }
+      setIssues([]); setQMetrics(null);
+    }
+  }
 
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -260,7 +309,7 @@ export default function VitalsScanAll({ onApply, include, label }: Props) {
     if (imgUrl) URL.revokeObjectURL(imgUrl);
     const url = URL.createObjectURL(file);
     const img = new Image();
-    img.onload = () => { setImgUrl(url); setImgEl(img); setCrop(null); setOut(null); setError(""); setStep("crop"); };
+    img.onload = () => { pixels.current = null; setImgUrl(url); setImgEl(img); setOut(null); setError(""); analysePhoto(img, "detect", null); setStep("crop"); };
     img.onerror = () => { URL.revokeObjectURL(url); setError("That photo could not be opened. Try again."); };
     img.src = url;
   }
@@ -273,17 +322,24 @@ export default function VitalsScanAll({ onApply, include, label }: Props) {
   function onDown(e: React.PointerEvent) {
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     dragStart.current = fracAt(e);
+    cropRef.current = null; setAutoCrop(false);
     setCrop(null);
   }
   function onMove(e: React.PointerEvent) {
     const s = dragStart.current;
     if (!s) return;
     const p = fracAt(e);
-    setCrop({ x0: Math.min(s.x, p.x), y0: Math.min(s.y, p.y), x1: Math.max(s.x, p.x), y1: Math.max(s.y, p.y) });
+    const next = { x0: Math.min(s.x, p.x), y0: Math.min(s.y, p.y), x1: Math.max(s.x, p.x), y1: Math.max(s.y, p.y) };
+    cropRef.current = next;
+    setCrop(next);
   }
   function onUp() {
     dragStart.current = null;
-    setCrop((c) => (c && (c.x1 - c.x0 < 0.08 || c.y1 - c.y0 < 0.08) ? null : c));
+    const c = cropRef.current;
+    const ok = c && c.x1 - c.x0 >= 0.08 && c.y1 - c.y0 >= 0.08 ? c : null;
+    cropRef.current = ok;
+    setCrop(ok);
+    if (imgEl) analysePhoto(imgEl, "recheck", ok);
   }
 
   async function readScreen() {
@@ -346,16 +402,32 @@ export default function VitalsScanAll({ onApply, include, label }: Props) {
       });
 
       const next: Record<string, string> = {};
-      for (const f of shown) next[f] = result.values[f]?.text || "";
+      // Low-confidence reads are kept (pre-filled and flagged amber), never silently dropped.
+      const proposed: OcrAudit["proposed"] = {};
+      const confs: OcrAudit["conf"] = {};
+      const flags: OcrAudit["flags"] = {};
+      const shownValues: any = { ...result.values };
+      for (const f of shown) {
+        const rd = result.values[f];
+        const sg: any = result.suggestions[f];
+        next[f] = rd?.text || sg?.text || "";
+        if (rd) { proposed[f] = rd.text; confs[f] = rd.conf; flags[f] = "confident"; }
+        else if (sg) {
+          proposed[f] = sg.text; confs[f] = Number(sg.conf) || 0; flags[f] = "low-confidence";
+          shownValues[f] = { text: sg.text, conf: Number(sg.conf) || 0, source: "low confidence" };
+        }
+      }
+      const shownResult = { ...result, values: shownValues };
+      setOrig({ proposed, conf: confs, flags, template: tplId });
       const rows = [...fin.traces, ...merged.dropped].sort((a, b) => a.y - b.y || a.x - b.x);
       setSeenInfo({
         thumbs: VARIANTS.map((v, i) => ({ label: v.short + " = " + v.label, url: thumbOf(canvases[i]) })),
         rows,
-        log: result.log,
+        log: [`Crop: ${autoCrop ? "auto-detected" : crop ? "manual" : "whole photo"}. Photo check: ${issues.map((i) => i.code).join(", ") || "no warnings"} ${qMetrics ? JSON.stringify(Object.fromEntries(Object.entries(qMetrics).map(([k, v]) => [k, Math.round(v * 1000) / 1000]))) : ""}`, ...result.log],
         templateNote: resolved.template ? "Layout used: " + resolved.template.name + (resolved.template.status ? " [" + resolved.template.status + "]" : "") : "Layout: generic label matching (no fixed template)",
         exportJson,
       });
-      setOut(result); setVals(next); setTouched({}); setVerified(false); setStep("review");
+      setOut(shownResult); setVals(next); setTouched({}); setVerified(false); setStep("review");
     } catch (e: any) {
       workerPromise = null;
       setError("Could not read the photo on this device. Check that the OCR files are installed (public/tesseract) or enter the values manually. " + (e?.message || ""));
@@ -381,6 +453,22 @@ export default function VitalsScanAll({ onApply, include, label }: Props) {
       if (v) (payload as any)[f] = v;
     }
     if (payload.temperature) payload.tempUnit = "F";
+    if (captureAudit && orig) {
+      const reviewed: OcrAudit["reviewed"] = {};
+      for (const f of shown) { const rv = (vals[f] || "").trim(); if (rv) reviewed[f] = rv; }
+      payload.ocr = {
+        version: 1,
+        scannedAt: new Date().toISOString(),
+        template: orig.template,
+        proposed: orig.proposed,
+        conf: orig.conf,
+        flags: orig.flags,
+        reviewed,
+        words: (seenInfo?.rows || []).slice(0, 60).map((r: any) => ({
+          text: String(r.text ?? ""), conf: Number(r.conf) || 0, seen: String(r.seen ?? ""), recheck: String(r.recheck ?? ""), status: String(r.status ?? ""),
+        })),
+      };
+    }
     onApply(payload);
     closeScanner();
   }
@@ -424,7 +512,18 @@ export default function VitalsScanAll({ onApply, include, label }: Props) {
 
             {step === "crop" && imgUrl && (
               <div className="space-y-3">
-                <p className="text-sm text-gray-600">Drag a box around the monitor screen so only the display is read. Skip this to read the whole photo.</p>
+                <p className="text-sm text-gray-600">
+                  {autoCrop
+                    ? "The screen was found automatically (the lit box). Check that it covers only the display. Drag a new box to adjust it."
+                    : crop ? "Check that the box covers only the display, or drag a new one."
+                    : "Drag a box around the monitor screen so only the display is read. Skip this to read the whole photo."}
+                </p>
+                {issues.length > 0 && (
+                  <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 space-y-1" role="status">
+                    {issues.map((i) => <p key={i.code} className="text-xs text-amber-900">{i.message}</p>)}
+                    <p className="text-xs text-amber-800">You can still tap Read screen if the digits look clear. Every value is checked by you before saving.</p>
+                  </div>
+                )}
                 <div
                   ref={boxRef}
                   className="relative select-none rounded-lg overflow-hidden bg-black"
@@ -438,7 +537,7 @@ export default function VitalsScanAll({ onApply, include, label }: Props) {
                   {crop && (
                     <div
                       className="absolute border-2 border-teal-400 bg-teal-400/10 pointer-events-none"
-                      style={{ left: crop.x0 * 100 + "%", top: crop.y0 * 100 + "%", width: (crop.x1 - crop.x0) * 100 + "%", height: (crop.y1 - crop.y0) * 100 + "%" }}
+                      style={{ left: crop.x0 * 100 + "%", top: crop.y0 * 100 + "%", width: (crop.x1 - crop.x0) * 100 + "%", height: (crop.y1 - crop.y0) * 100 + "%", boxShadow: "0 0 0 9999px rgba(0,0,0,0.5)" }}
                     />
                   )}
                 </div>
@@ -450,7 +549,8 @@ export default function VitalsScanAll({ onApply, include, label }: Props) {
                   </label>
                 )}
                 <div className="flex gap-2">
-                  <button type="button" onClick={() => setStep("capture")} className="flex-1 rounded-lg border border-gray-300 text-sm text-gray-700 py-2">Retake</button>
+                  <button type="button" onClick={() => setStep("capture")} className="flex-1 rounded-lg border border-gray-300 text-sm text-gray-700 py-2">Retake photo</button>
+                  <button type="button" onClick={() => { if (imgEl) analysePhoto(imgEl, "detect", null); }} className="flex-1 rounded-lg border border-gray-300 text-sm text-gray-700 py-2">Auto-detect</button>
                   <button type="button" onClick={readScreen} className="flex-1 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold py-2">Read screen</button>
                 </div>
               </div>
@@ -478,7 +578,7 @@ export default function VitalsScanAll({ onApply, include, label }: Props) {
                     const [lo, hi, unit] = FIELD_RANGE[f];
                     const unitText = f === "temperature" ? DEG + "F" : unit;
                     return (
-                      <div key={f} className={"rounded-lg border px-3 py-2 " + (v ? (edited ? "border-blue-200 bg-blue-50" : "border-emerald-200 bg-emerald-50") : "border-amber-300 bg-amber-50")}>
+                      <div key={f} className={"rounded-lg border px-3 py-2 " + (v ? (edited ? "border-blue-200 bg-blue-50" : orig?.flags[f] === "low-confidence" ? "border-amber-300 bg-amber-50" : "border-emerald-200 bg-emerald-50") : "border-amber-300 bg-amber-50")}>
                         <div className="flex items-center justify-between gap-2">
                           <label className="text-sm font-medium text-gray-800" htmlFor={"scan-" + f}>{FIELD_LABEL[f]} <span className="text-xs font-normal text-gray-500">({unitText}, {lo}-{hi})</span></label>
                           <span className="text-[11px] text-gray-600">
@@ -486,10 +586,8 @@ export default function VitalsScanAll({ onApply, include, label }: Props) {
                           </span>
                         </div>
                         <Input id={"scan-" + f} inputMode="decimal" value={v} placeholder="Type the value" onChange={(e) => setField(f, e.target.value)} className="mt-1" />
-                        {!v && sug && (
-                          <button type="button" onClick={() => setField(f, sug.text)} className="mt-1 text-xs text-teal-700 underline">
-                            Unclear read: {sug.text}. Tap to use it only if it matches the monitor
-                          </button>
+                        {v && !edited && !!sug && orig?.flags[f] === "low-confidence" && (
+                          <p className="mt-1 text-xs text-amber-800 font-medium">Low confidence read. Check this value against the monitor and correct it if it is wrong.</p>
                         )}
                         {f === "temperature" && tempNote && <p className="mt-1 text-xs text-gray-600">{tempNote}</p>}
                         {f === "temperature" && !v && out.tempChoices && out.tempChoices.length > 1 && (
