@@ -21,3 +21,5 @@ node_modules/
 .env*.local
 *.bak_*
 dist/
+
+*.bak*
