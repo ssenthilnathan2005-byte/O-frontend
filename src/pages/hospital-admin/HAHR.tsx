@@ -4,6 +4,7 @@ import { ClipboardList, Plus, X, Pencil, Trash2, Download } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { getToken } from "../../api";
 import { downloadFile } from "../../lib/downloadFile";
+import DoctorActions from "./DoctorActions";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
@@ -274,7 +275,8 @@ export default function HAHR() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
-                        <button onClick={() => openEdit(s)} className="p-1.5 rounded hover:bg-muted transition-colors">
+                        <DoctorActions s={s} onDone={load} />
+<button onClick={() => openEdit(s)} className="p-1.5 rounded hover:bg-muted transition-colors">
                           <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
                         </button>
                         <button onClick={() => handleDelete(s.id)} className="p-1.5 rounded hover:bg-red-50 transition-colors">
