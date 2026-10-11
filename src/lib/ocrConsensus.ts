@@ -16,7 +16,11 @@
  */
 import type { OcrWord } from "./monitorMatch";
 
-export type Trace = { text: string; conf: number; seen: string; recheck: string; status: string; x: number; y: number };
+export type Trace = {
+  text: string; conf: number; seen: string; recheck: string; status: string; x: number; y: number;
+  /** what the OCR originally printed (before edge punctuation was removed), one entry per distinct spelling */
+  raw?: string; w?: number; h?: number; recheckConf?: number;
+};
 export type Item = { word: OcrWord; numeric: boolean; agreed: boolean; rawConf: number; trace: Trace };
 export type Recheck = { text: string; conf: number } | null;
 
@@ -29,9 +33,24 @@ export function normNum(t: string): string {
     .replace(/,/g, ".")
     .replace(/\s+/g, "");
 }
-export function isNumericText(t: string): boolean {
+/**
+ * Punctuation-safe form used for comparing reads. Removes punctuation at the EDGES only (a stray "/" or "." or ":"
+ * or "," at the start or end). Digits, an internal decimal point ("37.7") and an internal slash ("120/80") are never
+ * touched, so "118" and "118/" or "76" and "76." compare equal while "4" and "105", or "37.7" and "377", do not.
+ * A leading decimal point (".5") is kept because dropping it would change the number.
+ */
+export function canonNum(t: string): string {
   const n = normNum(t);
-  return /^[\d./]+$/.test(n) && /\d/.test(n);
+  if (!/\d/.test(n)) return n;
+  return n.replace(/[\/.:]+$/, "").replace(/^[\/:]+/, "");
+}
+export function isNumericText(t: string): boolean {
+  const c = canonNum(t);
+  return /^\d[\d./]*$/.test(c);
+}
+/** Keep the first occurrence of each field key, so a field can never be shown twice in the review form. */
+export function uniqueKeys<T>(list: T[]): T[] {
+  return [...new Set(list)];
 }
 
 function iou(a: OcrWord, b: OcrWord): number {
@@ -58,14 +77,16 @@ export function joinSlashWords(words: OcrWord[]): OcrWord[] {
       if (b === a || used.has(j) || skip.has(j) || !rowOk(a, b)) continue;
       const gap = b.x0 - a.x1;
       if (gap < -hgt(a) * 0.3 || gap > hgt(a) * 2.5) continue;
-      if (!test(normNum(b.text))) continue;
+      if (!test(canonNum(b.text))) continue;
       if (best < 0 || b.x0 < words[best].x0) best = j;
     }
     return best;
   };
-  const merge = (a: OcrWord, b: OcrWord, text: string): OcrWord => ({
+  // Confidence of a joined BP reading: the lowest confidence among the DIGIT pieces only. A lone "/" is punctuation,
+  // not a digit, and its (often 0) confidence must not zero out a correctly read BP. Nothing is raised or invented.
+  const merge = (a: OcrWord, b: OcrWord, text: string, conf: number): OcrWord => ({
     text,
-    conf: Math.min(a.conf, b.conf),
+    conf,
     x0: Math.min(a.x0, b.x0),
     y0: Math.min(a.y0, b.y0),
     x1: Math.max(a.x1, b.x1),
@@ -75,21 +96,22 @@ export function joinSlashWords(words: OcrWord[]): OcrWord[] {
     if (used.has(i)) continue;
     const a = words[i];
     const na = normNum(a.text);
+    const ca = canonNum(a.text);
     let cur: OcrWord = a;
     if (/^\d{1,3}\/$/.test(na)) {
       const j = right(a, (n) => /^\d{1,3}$/.test(n), new Set([i]));
-      if (j >= 0) { cur = merge(a, words[j], na + normNum(words[j].text)); used.add(j); }
-    } else if (/^\d{1,3}$/.test(na)) {
+      if (j >= 0) { cur = merge(a, words[j], na + canonNum(words[j].text), Math.min(a.conf, words[j].conf)); used.add(j); }
+    } else if (/^\d{1,3}$/.test(ca)) {
       const j = right(a, (n) => n === "/", new Set([i]));
       if (j >= 0) {
         const k = right(words[j], (n) => /^\d{1,3}$/.test(n), new Set([i, j]));
         if (k >= 0) {
-          cur = merge(merge(a, words[j], na + "/"), words[k], na + "/" + normNum(words[k].text));
+          cur = merge(merge(a, words[j], ca + "/", a.conf), words[k], ca + "/" + canonNum(words[k].text), Math.min(a.conf, words[k].conf));
           used.add(j); used.add(k);
         }
       } else {
         const j2 = right(a, (n) => /^\/\d{1,3}$/.test(n), new Set([i]));
-        if (j2 >= 0) { cur = merge(a, words[j2], na + normNum(words[j2].text)); used.add(j2); }
+        if (j2 >= 0) { cur = merge(a, words[j2], ca + normNum(words[j2].text), Math.min(a.conf, words[j2].conf)); used.add(j2); }
       }
     }
     used.add(i);
@@ -132,16 +154,17 @@ export function mergeVariants(variants: OcrWord[][], names: string[]): { items: 
       const minConf = Math.min(...members.map((m) => m.w.conf));
 
       if (numeric.every(Boolean)) {
-        const texts = [...new Set(members.map((m) => normNum(m.w.text)))];
+        const texts = [...new Set(members.map((m) => canonNum(m.w.text)))];
+        const raws = [...new Set(members.map((m) => m.w.text))].join(" | ");
         if (texts.length > 1) {
-          dropped.push({ text: texts.join(" / "), conf: Math.round(minConf), seen, recheck: "", status: "image versions disagreed, not used", x: rect.x0, y: rect.y0 });
+          dropped.push({ text: texts.join(" / "), conf: Math.round(minConf), seen, recheck: "", status: "image versions disagreed, not used", x: rect.x0, y: rect.y0, raw: raws, w: rect.x1 - rect.x0, h: rect.y1 - rect.y0 });
           notes.push(`The image versions read one spot differently (${texts.join(" / ")}), so it was not used.`);
           continue;
         }
         const word: OcrWord = { text: texts[0], conf: minConf, ...rect };
-        items.push({ word, numeric: true, agreed: n >= 2, rawConf: minConf, trace: { text: texts[0], conf: Math.round(minConf), seen, recheck: "", status: "", x: rect.x0, y: rect.y0 } });
+        items.push({ word, numeric: true, agreed: n >= 2, rawConf: minConf, trace: { text: texts[0], conf: Math.round(minConf), seen, recheck: "", status: "", x: rect.x0, y: rect.y0, raw: raws, w: rect.x1 - rect.x0, h: rect.y1 - rect.y0 } });
       } else if (numeric.some(Boolean)) {
-        dropped.push({ text: members.map((m) => m.w.text).join(" / "), conf: Math.round(minConf), seen, recheck: "", status: "number and text mixed, not used", x: rect.x0, y: rect.y0 });
+        dropped.push({ text: members.map((m) => m.w.text).join(" / "), conf: Math.round(minConf), seen, recheck: "", status: "number and text mixed, not used", x: rect.x0, y: rect.y0, raw: members.map((m) => m.w.text).join(" | "), w: rect.x1 - rect.x0, h: rect.y1 - rect.y0 });
       } else {
         const best = members.reduce((p, m) => (m.w.conf > p.w.conf ? m : p));
         items.push({ word: best.w, numeric: false, agreed: n >= 2, rawConf: best.w.conf, trace: { text: best.w.text, conf: Math.round(best.w.conf), seen, recheck: "", status: "label", x: rect.x0, y: rect.y0 } });
@@ -187,18 +210,22 @@ export function finalize(
 
     if (r === undefined) {
       t.status = it.agreed ? "not re-checked (too small), unconfirmed" : "one image version only, unconfirmed";
-    } else if (r === null || !normNum(r.text)) {
+    } else if (r === null || !canonNum(r.text)) {
       t.recheck = "(nothing)";
       t.status = "digit re-check read nothing, unconfirmed";
-    } else if (normNum(r.text) !== normNum(it.word.text)) {
-      t.recheck = normNum(r.text);
+    } else if (canonNum(r.text) !== canonNum(it.word.text)) {
+      t.recheck = canonNum(r.text);
+      t.recheckConf = Number.isFinite(r.conf) ? Math.round(r.conf) : undefined;
       t.status = "digit re-check differed, not used";
-      notes.push(`Two reads of one number disagreed (${normNum(it.word.text)} vs ${normNum(r.text)}), so it was not used.`);
+      notes.push(`Two reads of one number disagreed (${canonNum(it.word.text)} vs ${canonNum(r.text)}), so it was not used.`);
       traces.push(t);
       return;
     } else {
-      t.recheck = normNum(r.text);
-      conf = Math.min(conf, r.conf);
+      t.recheck = canonNum(r.text);
+      t.recheckConf = Number.isFinite(r.conf) ? Math.round(r.conf) : undefined;
+      // Only a confidence the engine actually reported is used. A missing value is not treated as 0 and is not
+      // invented either: the fill threshold then rests on the confidence measured on the image variants.
+      if (Number.isFinite(r.conf)) conf = Math.min(conf, r.conf);
       if (it.agreed) { confirmed = true; t.status = "confirmed"; }
       else t.status = "re-check agrees, but only one image version saw it";
     }
