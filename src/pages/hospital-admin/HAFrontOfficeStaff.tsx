@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, Copy, KeyRound, Power, UserPlus } from "lucide-react";
+import { ChevronDown, Copy, KeyRound, Power, Trash2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { getToken } from "../../api";
@@ -45,6 +45,11 @@ export default function HAFrontOfficeStaff({ hospitalId }: { hospitalId?: string
     try { await call("/staff/" + s.id, "PATCH", { resetPassword: true }); toast.success("Password reset. Staff must set a new one at next login."); await load(); }
     catch (e: any) { toast.error(e.message || "Failed"); }
   }
+  async function remove(s: Staff) {
+    if (!confirm("Remove " + s.name + " permanently? They can no longer log in and will disappear from this list.")) return;
+    try { await call("/staff/" + s.id, "DELETE"); toast.success("Removed"); await load(); }
+    catch (e: any) { toast.error(e.message || "Failed"); }
+  }
   function copy(t: string) { navigator.clipboard.writeText(t); toast.success("Copied"); }
 
   return (
@@ -75,6 +80,7 @@ export default function HAFrontOfficeStaff({ hospitalId }: { hospitalId?: string
               <button onClick={() => copy(s.code)} className="flex items-center gap-1 text-xs font-mono bg-gray-100 rounded px-2 py-1"><Copy className="w-3 h-3" />{s.code}</button>
               <button title="Reset password" onClick={() => reset(s)} className="p-1.5 text-gray-500 hover:text-gray-800"><KeyRound className="w-4 h-4" /></button>
               <button title={s.is_active ? "Deactivate" : "Activate"} onClick={() => toggle(s)} className="p-1.5 text-gray-500 hover:text-gray-800"><Power className="w-4 h-4" /></button>
+              <button title="Remove" onClick={() => remove(s)} className="p-1.5 text-red-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
             </div>
           ))}
         </div>
