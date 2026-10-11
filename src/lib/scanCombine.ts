@@ -46,7 +46,59 @@ const seenCount = (t: AnyObj) => String(t.seen ?? "").split(/\s+/).filter((x) =>
 const inRange = (f: string, v: number) => { const r: AnyObj = (FIELD_RANGE as AnyObj)[f]; return !!r && v >= r[0] && v <= r[1]; };
 const inside = (a: AnyObj, b: AnyObj) => b.w > 0 && b.h > 0 && a.x >= b.x && a.x <= b.x + b.w && a.y >= b.y && a.y <= b.y + b.h;
 
-function rescue(traces: AnyObj[], haveVals: Record<string, string>): Record<string, string> {
+// ---- Alarm-limit guard ------------------------------------------------------------------------------
+// Monitors print alarm limits (e.g. 130 / 50) in small digits right next to the label, while the real reading
+// is printed much bigger. A value whose every on-screen copy is tiny compared with the main numbers is
+// treated as a probable alarm limit and is NEVER filled.
+const NUM = /^\d{2,3}(\.\d)?$/;
+const isNumTrace = (t: AnyObj) => variantsOf(t).some((v) => NUM.test(v) || /^\d{2,3}\/\d{2,3}$/.test(v));
+const LIMIT_RATIO = 0.25;
+
+/** Typical height of the big readings: median of the numeric boxes at least 60% as tall as the tallest. */
+function sizeRef(traces: AnyObj[]): number {
+  const hs = traces.filter((t) => t && t.h > 0 && isNumTrace(t)).map((t) => t.h as number);
+  if (!hs.length) return 0;
+  const max = Math.max(...hs);
+  const big = hs.filter((h) => h >= 0.6 * max).sort((a, b) => a - b);
+  return big[Math.floor(big.length / 2)];
+}
+const isSmall = (t: AnyObj, ref: number) => ref > 0 && t.h > 0 && t.h < LIMIT_RATIO * ref;
+
+function isLimitLike(value: string, traces: AnyObj[], ref: number): boolean {
+  if (!ref) return false;
+  const copies = traces.filter((t) => t && t.h > 0 && (variantsOf(t).some((v) => same(v, value)) || (t.recheck && same(String(t.recheck), value))));
+  return copies.length > 0 && copies.every((t) => isSmall(t, ref));
+}
+
+const FIELD_LABELS: Record<string, RegExp> = {
+  pulse: /^(hr|pr|pulse|heart|heartrate|bpm)$/i,
+  spo2: /^(spo2|sp02|spo|o2|sat|sao2)$/i,
+  respRate: /^(rr|awrr|resp|rpm|respiration)$/i,
+};
+const CORE_LABELS = /^(hr|pr|pulse|spo2|sp02|resp|rr|awrr|temp|nibp|nbp|etco2|sys|dia)$/i;
+
+/** Tap-to-pick candidates: numbers printed big, close to this field's label, that were not reliable enough to fill. */
+function choicesFor(f: string, traces: AnyObj[], ref: number): string[] {
+  const re = FIELD_LABELS[f];
+  if (!re) return [];
+  const labels = traces.filter((t) => t && /^[A-Za-z0-9]+$/.test(clean(String(t.text ?? ""))) && re.test(clean(String(t.text ?? ""))));
+  const reach = ref > 0 ? 1.5 * ref : 250;
+  const first: string[] = [], rest: string[] = [];
+  for (const c of traces) {
+    if (!c || typeof c.x !== "number" || isSmall(c, ref) || !isNumTrace(c)) continue;
+    const near = labels.some((l) => {
+      const dx = c.x - l.x, dy = c.y - l.y;
+      return dx > -60 && dy > -60 && Math.hypot(dx, dy) <= reach;
+    });
+    if (!near) continue;
+    const rc = c.recheck ? clean(String(c.recheck)) : "";
+    if (NUM.test(rc) && inRange(f, +rc)) first.push(rc);
+    for (const v of variantsOf(c)) if (NUM.test(v) && inRange(f, +v)) rest.push(v);
+  }
+  return [...new Set([...first, ...rest])].slice(0, 3);
+}
+
+function rescue(traces: AnyObj[], haveVals: Record<string, string>, ref: number): Record<string, string> {
   const have = new Set(Object.keys(haveVals));
   const out: Record<string, string> = {};
   const used = new Set<AnyObj>();
@@ -79,9 +131,10 @@ function rescue(traces: AnyObj[], haveVals: Record<string, string>): Record<stri
   }
 
   // 3) Remaining plain numbers seen in 2+ image variants, top to bottom: pulse, SpO2, resp rate (by range).
-  const order = ["pulse", "spo2", "respRate"].filter((f) => !have.has(f) && !out[f]);
+  const knownLabels = rows.filter((t) => CORE_LABELS.test(clean(String(t.text ?? "")))).length;
+  const order = knownLabels >= 2 ? [] : ["pulse", "spo2", "respRate"].filter((f) => !have.has(f) && !out[f]);
   const plain = rows
-    .filter((t) => !used.has(t) && !rows.some((u) => used.has(u) && inside(t, u)))
+    .filter((t) => !used.has(t) && !isSmall(t, ref) && !rows.some((u) => used.has(u) && inside(t, u)))
     .map((t) => ({ t, vs: variantsOf(t) }))
     .filter(({ t, vs }) => vs.length > 0 && vs.every((v) => /^\d{2,3}$/.test(v)) && new Set(vs).size === 1 && (seenCount(t) >= 2 || t.status === "confirmed"))
     .sort((a, b) => a.t.y - b.t.y);
@@ -114,6 +167,7 @@ export function combineMatches(words: AnyObj[], width: number, height: number, m
   const suggestions: Record<string, Read> = {};
   const notes: string[] = [];
   const log: string[] = [];
+  const conflictChoices: Record<string, string[]> = {};
 
   for (const f of FIELDS) {
     const name = (FIELD_LABEL as AnyObj)[f] ?? f;
@@ -136,6 +190,7 @@ export function combineMatches(words: AnyObj[], width: number, height: number, m
     }
     if (sg.length > 1) {
       notes.push(`${name}: two readings disagree (${sg.map((x) => x.text).join(" vs ")}), so it was left empty. Type the value from the monitor.`);
+      conflictChoices[f] = sg.map((x) => x.text);
       continue;
     }
 
@@ -155,11 +210,23 @@ export function combineMatches(words: AnyObj[], width: number, height: number, m
     }
   }
 
+  // Alarm-limit guard: drop anything that is only ever printed in tiny digits next to the real readings.
+  const ref = sizeRef(traces);
+  for (const f of ["pulse", "spo2", "respRate", "temperature"]) {
+    for (const store of [values, suggestions]) {
+      const r = store[f];
+      if (r && isLimitLike(r.text, traces, ref)) {
+        delete store[f];
+        notes.push(`${(FIELD_LABEL as AnyObj)[f] ?? f}: ${r.text} is printed much smaller than the main numbers on the screen, so it is probably an alarm limit and was not used.`);
+      }
+    }
+  }
+
   // Rescue: only for fields still empty. Always amber, never green.
   const haveVals: Record<string, string> = {};
   for (const [k, v] of Object.entries({ ...suggestions, ...values })) haveVals[k] = v.text;
   try {
-    const rescued = rescue(traces, haveVals);
+    const rescued = rescue(traces, haveVals, ref);
     const keys = Object.keys(rescued);
     for (const f of keys) suggestions[f] = { text: rescued[f], conf: Math.min(minConf - 1, 59), source: "rescued" };
     if (keys.length) {
@@ -167,12 +234,22 @@ export function combineMatches(words: AnyObj[], width: number, height: number, m
     }
   } catch { /* the rescue pass is optional */ }
 
+  // Tap-to-pick: fields that are still empty get the big, unreliable numbers printed next to their label.
+  const choices: Record<string, string[]> = {};
+  for (const f of ["pulse", "spo2", "respRate"]) {
+    if (values[f] || suggestions[f]) continue;
+    const list = [...new Set([...(conflictChoices[f] || []), ...choicesFor(f, traces, ref)])];
+    if (list.length) choices[f] = list;
+  }
+  if (Object.keys(choices).length) notes.push("Some numbers on the screen could not be read reliably. Tap the matching choice under the field, or type the value.");
+
   const used = runs.map((r) => r.name).join(", ");
   return {
     output: {
       ...primary.out,
       values,
       suggestions,
+      choices,
       notes: [...(primary.out.notes ?? []), ...notes],
       log: [...(primary.out.log ?? []), ...log],
     } as AnyObj,
