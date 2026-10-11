@@ -133,6 +133,7 @@ function Outpatients() {
                   <p className="font-medium text-gray-900 truncate">{b.patient_name}{b.patient_age != null ? ", " + b.patient_age : ""}</p>
                   <p className="text-xs text-gray-500 truncate">{b.phone || "No phone"}{b.complaint ? " | " + b.complaint : ""}</p>
                 </div>
+                {(b as any).stage && <span className={"text-xs font-medium rounded-md px-2 py-1 border " + ((b as any).stage === "collected" ? "bg-emerald-50 text-emerald-700 border-emerald-100" : (b as any).stage === "collect_tablets" ? "bg-amber-50 text-amber-700 border-amber-100" : (b as any).stage === "seen" ? "bg-blue-50 text-blue-700 border-blue-100" : "bg-gray-50 text-gray-600 border-gray-200")}>{({ waiting: "Waiting", seen: "Seen doctor", collect_tablets: "Collect tablets", collected: "Tablets collected" } as Record<string, string>)[(b as any).stage]}</span>}
                 {b.status !== "confirmed" ? (
                   <span className="text-xs text-gray-500">{cap(b.status)}</span>
                 ) : b.checked_in_at ? (
