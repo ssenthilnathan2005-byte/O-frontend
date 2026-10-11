@@ -59,7 +59,7 @@ function useHid() {
 function useLive(load: () => void | Promise<void>, deps: unknown[]) {
   useEffect(() => {
     load();
-    const t = setInterval(load, 10000);
+    const t = setInterval(load, 4000);
     const h = () => { load(); };
     window.addEventListener("pharmacy-updated", h);
     return () => { clearInterval(t); window.removeEventListener("pharmacy-updated", h); };

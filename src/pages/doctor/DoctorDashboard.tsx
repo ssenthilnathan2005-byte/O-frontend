@@ -420,7 +420,7 @@ export default function DoctorDashboard() {
       } catch {}
     }
     pull();
-    const t = setInterval(pull, 20000);
+    const t = setInterval(pull, 4000);
     return () => { off = true; clearInterval(t); };
   }, []);
   const allDoctorBookings = doctor

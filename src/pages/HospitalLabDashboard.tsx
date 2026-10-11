@@ -50,7 +50,7 @@ export default function HospitalLabDashboard() {
   async function load() {
     try { const d = await call("/orders"); if (Array.isArray(d)) setOrders(d); } catch {}
   }
-  useEffect(() => { load(); const t = setInterval(load, 30000); return () => clearInterval(t); }, []);
+  useEffect(() => { load(); const t = setInterval(load, 5000); return () => clearInterval(t); }, []);
 
   async function update(o: Order, status?: string, resultValue?: string) {
     setBusy(true);
