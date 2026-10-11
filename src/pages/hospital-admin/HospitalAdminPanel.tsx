@@ -1,6 +1,7 @@
 import { HeartPulse, Activity, BarChart3, ChevronDown, ShoppingCart, Fingerprint, BedDouble, Building2, ClipboardList, FlaskConical, LayoutDashboard, LogOut, Menu, Package, Pill, Receipt, Stethoscope, UserCog, Users2, Users, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useStore } from "../../context/StoreContext";
+import useAdminSession from "../../hooks/useAdminSession";
 import { useRouter } from "../../router/RouterContext";
 import HADashboard from "./HADashboard";
 import HADoctors from "./HADoctors";
@@ -78,6 +79,7 @@ function PharmacyMenu({ onNavigate }: { onNavigate?: () => void }) {
 
 export default function HospitalAdminPanel() {
   const { user, logout } = useStore();
+  useAdminSession(logout);
   const { route, navigate } = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
   usePharmacySocket(user && user.role === "hospital_admin" ? user.hospitalId : "");
