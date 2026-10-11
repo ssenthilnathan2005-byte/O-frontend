@@ -29,6 +29,7 @@ export default function HALabStaff({ hospitalId }: { hospitalId: string }) {
 
   async function add() {
     if (!name.trim()) return toast.error("Name is required");
+    if (!/^[0-9]{10}$/.test(phone.trim())) return toast.error("Enter a valid 10 digit phone number");
     if (password.length < 6) return toast.error("Password must be at least 6 characters");
     setSaving(true);
     try {
@@ -68,9 +69,9 @@ export default function HALabStaff({ hospitalId }: { hospitalId: string }) {
             <button onClick={() => copy(`${window.location.origin}/hospital-lab/login`)} className="ml-1 text-teal-600 underline">copy</button>
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <Input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
-            <Input placeholder="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
-            <Input type="password" placeholder="Temporary password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <div><label className="text-xs font-medium text-gray-600 mb-1 block">Name</label><Input name="lab-staff-name" autoComplete="off" placeholder="Full name" value={name} onChange={(e) => setName(e.target.value)} /></div>
+            <div><label className="text-xs font-medium text-gray-600 mb-1 block">Phone (10 digits)</label><Input name="lab-staff-phone" type="tel" inputMode="numeric" autoComplete="off" placeholder="Mobile number" value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
+            <div><label className="text-xs font-medium text-gray-600 mb-1 block">Password (min 6 characters)</label><Input name="lab-staff-password" type="password" autoComplete="new-password" placeholder="Login password" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
           </div>
           <button onClick={add} disabled={saving}
             className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50">
