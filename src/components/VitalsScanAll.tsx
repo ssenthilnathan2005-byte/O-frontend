@@ -62,13 +62,7 @@ function getWorker(): Promise<WorkerBundle> {
   if (!workerPromise) {
     workerPromise = (async () => {
       const { createWorker, PSM } = await import("tesseract.js");
-      const base = (((import.meta as any).env?.BASE_URL as string) || "/").replace(/\/?$/, "/");
-      const dir = base + "tesseract/";
       const w = await createWorker("eng", 1, {
-        workerPath: dir + "worker.min.js",
-        corePath: dir,
-        langPath: dir + "lang",
-        gzip: false,
         logger: (m: any) => {
           if (m && m.status === "recognizing text") progressCb(m.progress || 0);
         },
