@@ -11,7 +11,7 @@ import type { Recheck, Trace } from "@/lib/ocrConsensus";
 import { detectDisplay, assessQuality } from "@/lib/screenDetect";
 import type { QualityIssue } from "@/lib/screenDetect";
 import LiveCapture from "@/components/LiveCapture";
-import { combineMatches } from "@/lib/scanCombine";
+import { combineMatches, pickDeepTargets } from "@/lib/scanCombine";
 
 /**
  * "Scan All Vitals" - one photo of a multiparameter monitor fills every reading it can read.
@@ -176,13 +176,14 @@ function thumbOf(c: HTMLCanvasElement, width = 260): string {
  * Local clean-up of ONE number's area (original photo coordinates): padded crop, enlarged, brightest-channel,
  * contrast stretch and a local threshold, with the digits made black on white. Used for the digits-only re-check.
  */
-function localDigitCanvas(img: HTMLImageElement, x0: number, y0: number, x1: number, y1: number): HTMLCanvasElement {
+function localDigitCanvas(img: HTMLImageElement | HTMLCanvasElement, x0: number, y0: number, x1: number, y1: number, targetH = 90): HTMLCanvasElement {
   const h = Math.max(1, y1 - y0);
   const padX = Math.max(2, h * 0.2), padY = Math.max(2, h * 0.25);
   const sx = Math.max(0, x0 - padX), sy = Math.max(0, y0 - padY);
-  const ex = Math.min(img.naturalWidth, x1 + padX), ey = Math.min(img.naturalHeight, y1 + padY);
+  const iw = (img as any).naturalWidth || (img as any).width, ih = (img as any).naturalHeight || (img as any).height;
+  const ex = Math.min(iw, x1 + padX), ey = Math.min(ih, y1 + padY);
   const sw = Math.max(1, ex - sx), sh = Math.max(1, ey - sy);
-  const scale = Math.max(0.5, Math.min(8, 90 / sh));
+  const scale = Math.max(0.5, Math.min(8, targetH / sh));
   const tw = Math.max(1, Math.round(sw * scale)), th = Math.max(1, Math.round(sh * scale));
   const tmp = document.createElement("canvas");
   tmp.width = tw; tmp.height = th;
@@ -267,6 +268,7 @@ export default function VitalsScanAll({ onApply, include, label, captureAudit }:
   const galleryRef = useRef<HTMLInputElement | null>(null);
   const boxRef = useRef<HTMLDivElement | null>(null);
   const dragStart = useRef<{ x: number; y: number } | null>(null);
+  const framesRef = useRef<HTMLCanvasElement[]>([]); // extra frames from the live camera, used to vote on hard digits
 
   function resetAll() {
     if (imgUrl) URL.revokeObjectURL(imgUrl);
@@ -307,7 +309,7 @@ export default function VitalsScanAll({ onApply, include, label, captureAudit }:
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (file) loadPhoto(file);
+    if (file) { framesRef.current = []; loadPhoto(file); }
   }
 
   function loadPhoto(file: Blob) {
@@ -397,7 +399,35 @@ export default function VitalsScanAll({ onApply, include, label, captureAudit }:
 
       const fin = finalize(merged.items, rechecks, { singleCap: SINGLE_CAP });
       // A fixed-position template is used only when the layout is recognised (or the nurse chose an unlabeled one).
-      const combined = combineMatches(fin.words, base.raw.width, base.raw.height, MIN_CONF, [...fin.traces, ...merged.dropped]);
+            // Extra accuracy: re-read each unreliable BIG number on every captured frame at two zoom levels.
+      // The votes are counted in scanCombine.ts; a winner is only ever shown in amber.
+      const traceRows: any[] = [...fin.traces, ...merged.dropped];
+      try {
+        const deepTargets = pickDeepTargets(traceRows).slice(0, 4);
+        if (deepTargets.length) {
+          const sources: (HTMLImageElement | HTMLCanvasElement)[] = [imgEl, ...framesRef.current.slice(0, 3)];
+          await worker.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_LINE, tessedit_char_whitelist: "0123456789./" } as any);
+          try {
+            for (let k = 0; k < deepTargets.length; k++) {
+              const { trace, box } = deepTargets[k];
+              const reads: { text: string; conf: number }[] = [];
+              for (const src of sources) {
+                for (const zoom of [70, 110]) {
+                  setStage(`Checking big digits (${k + 1} of ${deepTargets.length})`); setProgress(0);
+                  const c = localDigitCanvas(src, base.sx + box.x0 / base.scale, base.sy + box.y0 / base.scale, base.sx + box.x1 / base.scale, base.sy + box.y1 / base.scale, zoom);
+                  const { data } = await worker.recognize(c);
+                  const text = String(data?.text || "").replace(/\s+/g, "");
+                  if (text) reads.push({ text, conf: Number(data?.confidence ?? 0) });
+                }
+              }
+              trace.deep = reads;
+            }
+          } finally {
+            await worker.setParameters({ tessedit_pageseg_mode: PSM.SPARSE_TEXT, tessedit_char_whitelist: "" } as any);
+          }
+        }
+      } catch { /* the extra check is optional: it must never block the scan */ }
+      const combined = combineMatches(fin.words, base.raw.width, base.raw.height, MIN_CONF, traceRows);
       const result: MatchOutput = { ...combined.output, notes: [...new Set([...merged.notes, ...fin.notes, ...(combined.output.notes || [])])] };
       // Scan data for the benchmark script: only numbers and monitor labels, so no patient name or other text leaves the phone.
       const exportJson = JSON.stringify({
@@ -517,7 +547,7 @@ export default function VitalsScanAll({ onApply, include, label, captureAudit }:
             {step === "live" && (
               <div className="space-y-3">
                 <p className="text-sm text-gray-600">Point the camera at the monitor and hold steady. The photo is taken automatically once the screen is in focus.</p>
-                <LiveCapture onCapture={(blob) => loadPhoto(blob)} onClose={() => setStep("capture")} />
+                <LiveCapture onCapture={(blob, _canvas, extra) => { framesRef.current = extra; loadPhoto(blob); }} onClose={() => setStep("capture")} />
                 <button type="button" onClick={() => cameraRef.current?.click()} className="w-full rounded-lg border border-gray-300 text-sm text-gray-700 py-2">Use the phone camera app instead</button>
               </div>
             )}
