@@ -11,6 +11,7 @@ type Row = {
 
 const s = (v: unknown) => (v === null || v === undefined ? "" : String(v));
 const today = () => new Date().toISOString().slice(0, 10);
+const perTab = (price: string, tabs: string) => { const p = Number(price), t = Number(tabs); return price !== "" && tabs !== "" && p >= 0 && t > 0 ? "\u20B9" + (p / t).toFixed(2) + "/tab" : ""; };
 
 async function call(path: string, init: RequestInit) {
   const res = await fetch(BASE + "/pharmacy-import" + path, {
@@ -121,12 +122,12 @@ export default function PharmImportButton() {
                   <input value={supplier} onChange={e => setSupplier(e.target.value)} placeholder="Supplier (for all rows)" className="border border-gray-200 rounded px-2 py-1.5 text-sm w-64" />
                   <input value={invoiceNo} onChange={e => setInvoiceNo(e.target.value)} placeholder="Invoice no." className="border border-gray-200 rounded px-2 py-1.5 text-sm w-44" />
                 </div>
-                <p className="text-xs text-gray-500">Qty = strips/units received. If "Tabs/strip" is filled, stock is added as strips x tablets per strip. Prices are per strip/unit. Medicines already in stock are restocked; new ones are created.</p>
+                <p className="text-xs text-gray-500">Qty = strips/units received, and stock stays in strips/units. Tabs/strip is only used to show the per-tablet price. Prices are per strip/unit. Medicines already in stock are restocked; new ones are created.</p>
                 <div className="overflow-x-auto">
                   <table className="min-w-full text-xs">
                     <thead>
                       <tr className="text-left text-gray-500">
-                        {["Medicine", "Category", "Qty", "Tabs/strip", "Batch", "Expiry", "Purchase", "MRP/Sell", "GST %", ""].map(h => <th key={h} className="px-1 py-1 font-medium">{h}</th>)}
+                        {["Medicine", "Category", "Qty (strips/units)", "Tabs/strip", "Batch", "Expiry", "Purchase / strip", "MRP / strip", "GST %", ""].map(h => <th key={h} className="px-1 py-1 font-medium">{h}</th>)}
                       </tr>
                     </thead>
                     <tbody>
@@ -150,8 +151,8 @@ export default function PharmImportButton() {
                             <td className="px-1 py-1 w-16"><input value={r.tabletsPerStrip} onChange={e => upd(i, "tabletsPerStrip", e.target.value)} className={inp} inputMode="numeric" /></td>
                             <td className="px-1 py-1 w-24"><input value={r.batchNo} onChange={e => upd(i, "batchNo", e.target.value)} className={inp + (r.batchNo ? "" : " border-amber-300")} /></td>
                             <td className="px-1 py-1 w-32"><input type="date" value={r.expiryDate} onChange={e => upd(i, "expiryDate", e.target.value)} className={inp + (r.expiryDate ? "" : " border-amber-300")} /></td>
-                            <td className="px-1 py-1 w-20"><input value={r.purchasePrice} onChange={e => upd(i, "purchasePrice", e.target.value)} className={inp} inputMode="decimal" /></td>
-                            <td className="px-1 py-1 w-20"><input value={r.sellingPrice} onChange={e => upd(i, "sellingPrice", e.target.value)} className={inp} inputMode="decimal" /></td>
+                            <td className="px-1 py-1 w-20"><input value={r.purchasePrice} onChange={e => upd(i, "purchasePrice", e.target.value)} className={inp} inputMode="decimal" /><p className="text-gray-500">{perTab(r.purchasePrice, r.tabletsPerStrip)}</p></td>
+                            <td className="px-1 py-1 w-20"><input value={r.sellingPrice} onChange={e => upd(i, "sellingPrice", e.target.value)} className={inp} inputMode="decimal" /><p className="text-gray-500">{perTab(r.sellingPrice, r.tabletsPerStrip)}</p></td>
                             <td className="px-1 py-1 w-14"><input value={r.gstPercent} onChange={e => upd(i, "gstPercent", e.target.value)} className={inp} inputMode="decimal" /></td>
                             <td className="px-1 py-1"><button type="button" onClick={() => setRows(p => p.filter((_, j) => j !== i))} className="text-red-600">Remove</button></td>
                           </tr>
