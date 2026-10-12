@@ -3,6 +3,7 @@ import DateInput from "@/components/DateInput";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { getToken } from "@/api";
 import { useStore } from "../../context/StoreContext";
+import PharmImportButton from "./PharmImportButton";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 const inr = (n: number | null | undefined) =>
@@ -442,6 +443,7 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
         {!readOnly && (
           <button type="button" onClick={() => { setNf(BLANK); setNErr(""); setAdding(true); }} className="px-3 py-2 rounded-md bg-teal-600 text-white text-sm">+ Add medicine</button>
         )}
+        {!readOnly && <PharmImportButton />}
         <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search medicine"
           className="border border-gray-200 rounded-md text-sm px-3 py-2 bg-white w-64" />
         <select value={flt} onChange={e => setFlt(e.target.value)} className="border border-gray-200 rounded-md text-sm px-2 py-2 bg-white">

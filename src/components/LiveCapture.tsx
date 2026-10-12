@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 
 type Props = {
-  onCapture: (blob: Blob, canvas: HTMLCanvasElement) => void;
+  /** `extraFrames` are the other frames grabbed just after focus lock, used to vote on hard-to-read digits. */
+  onCapture: (blob: Blob, canvas: HTMLCanvasElement, extraFrames: HTMLCanvasElement[]) => void;
   onClose?: () => void;
 };
 
 const W = 320, H = 240;          // analysis resolution (cheap)
+const FRAME_COUNT = 4;           // frames grabbed once focus is confirmed
+const FRAME_GAP_MS = 180;        // pause between those frames
 const STEADY_FRAMES = 5;         // ~0.75 s at 150 ms per check
 const MOTION_MAX = 4;            // mean pixel change between frames (0-255)
 const SHARP_MIN = 25;            // absolute floor for Laplacian variance
@@ -43,31 +46,44 @@ export default function LiveCapture({ onCapture, onClose }: Props) {
     probe.width = W; probe.height = H;
     const pctx = probe.getContext('2d', { willReadFrequently: true })!;
 
-    const capture = () => {
-      const v = videoRef.current;
-      if (!v || done) return;
-      done = true;
-      const c = document.createElement('canvas');
-      c.width = v.videoWidth; c.height = v.videoHeight;
-      c.getContext('2d')!.drawImage(v, 0, 0);
-      c.toBlob((b) => {
-        stop();
-        if (b) onCaptureRef.current(b, c);
-      }, 'image/jpeg', 0.92);
-    };
-
     const stop = () => {
       window.clearInterval(timer);
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
 
-    const tick = () => {
-      const v = videoRef.current;
-      if (!v || v.readyState < 2 || done) return;
+    const grayOf = (v: HTMLVideoElement) => {
       pctx.drawImage(v, 0, 0, W, H);
       const px = pctx.getImageData(0, 0, W, H).data;
       const g = new Uint8ClampedArray(W * H);
       for (let i = 0; i < g.length; i++) g[i] = (px[i * 4] * 0.299 + px[i * 4 + 1] * 0.587 + px[i * 4 + 2] * 0.114) | 0;
+      return g;
+    };
+
+    // Grab a few frames (the phone is steady now) and keep the sharpest as the main photo.
+    const capture = async () => {
+      const v = videoRef.current;
+      if (!v || done) return;
+      done = true;
+      window.clearInterval(timer);
+      setStatus('Captured – hold still for a moment…');
+      const frames: { c: HTMLCanvasElement; s: number }[] = [];
+      for (let i = 0; i < FRAME_COUNT; i++) {
+        const c = document.createElement('canvas');
+        c.width = v.videoWidth; c.height = v.videoHeight;
+        c.getContext('2d')!.drawImage(v, 0, 0);
+        frames.push({ c, s: sharpness(grayOf(v)) });
+        if (i < FRAME_COUNT - 1) await new Promise((r) => setTimeout(r, FRAME_GAP_MS));
+      }
+      stop();
+      frames.sort((a, b) => b.s - a.s);
+      const main = frames[0].c;
+      main.toBlob((b) => { if (b) onCaptureRef.current(b, main, frames.slice(1).map((f) => f.c)); }, 'image/jpeg', 0.92);
+    };
+
+    const tick = () => {
+      const v = videoRef.current;
+      if (!v || v.readyState < 2 || done) return;
+      const g = grayOf(v);
 
       const sharp = sharpness(g);
       best = Math.max(best, sharp);
@@ -84,8 +100,8 @@ export default function LiveCapture({ onCapture, onClose }: Props) {
       if (focused && still) steady++; else steady = 0;
 
       setProgress(Math.min(steady / STEADY_FRAMES, 1));
-      setStatus(!still ? 'Hold steady…' : !focused ? 'Focusing… move closer to the screen' : 'Focused – capturing…');
-      if (steady >= STEADY_FRAMES) capture();
+      setStatus(!still ? 'Hold steady…' : !focused ? 'Focusing… move closer to the screen' : 'Focused – hold still…');
+      if (steady >= STEADY_FRAMES) void capture();
     };
 
     (async () => {
