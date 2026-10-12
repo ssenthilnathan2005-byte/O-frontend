@@ -1,0 +1,170 @@
+// scripts/check-color-mask.mjs - regression checks for src/lib/colorMask.ts (synthetic images, no photos needed).
+// Run:  node scripts/check-color-mask.mjs      (Node 22.18+/24 can import .ts directly; otherwise: npx tsx scripts/check-color-mask.mjs)
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const cm = await import(pathToFileURL(path.join(here, "../src/lib/colorMask.ts")).href);
+const {
+  MASK_PROFILES, buildMask, buildAllMasks, cleanMask, maskStats, isUseful, toBinary, adaptiveMask,
+  maskCandidates, rankMasks, hexToRgb, withOverrides,
+} = cm;
+
+let pass = 0, fail = 0;
+const ok = (name, cond, extra = "") => { if (cond) { pass++; console.log("  PASS  " + name); } else { fail++; console.log("  FAIL  " + name + (extra ? "  -> " + extra : "")); } };
+
+// ---- tiny image toolkit ---------------------------------------------------------------------------------
+const img = (w, h, bg = [18, 18, 18]) => {
+  const data = new Uint8ClampedArray(w * h * 4);
+  for (let i = 0; i < w * h; i++) { data[i * 4] = bg[0]; data[i * 4 + 1] = bg[1]; data[i * 4 + 2] = bg[2]; data[i * 4 + 3] = 255; }
+  return { data, width: w, height: h };
+};
+const px = (im, x, y, c, a = 255) => { if (x < 0 || y < 0 || x >= im.width || y >= im.height) return; const i = (y * im.width + x) * 4; im.data[i] = c[0]; im.data[i + 1] = c[1]; im.data[i + 2] = c[2]; im.data[i + 3] = a; };
+const rect = (im, x, y, w, h, c) => { for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) px(im, xx, yy, c); };
+const ring = (im, x, y, w, h, t, c) => { rect(im, x, y, w, h, c); rect(im, x + t, y + t, w - 2 * t, h - 2 * t, [18, 18, 18]); };
+const line = (im, x0, y0, x1, y1, t, c) => { const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)); for (let i = 0; i <= n; i++) { const x = Math.round(x0 + ((x1 - x0) * i) / n), y = Math.round(y0 + ((y1 - y0) * i) / n); rect(im, x, y, t, t, c); } };
+const clone = (im) => ({ data: new Uint8ClampedArray(im.data), width: im.width, height: im.height });
+const GREEN = [40, 225, 70], CYAN = [10, 225, 230], YELLOW = [240, 220, 10], WHITE = [250, 250, 250], RED = [230, 30, 30];
+
+console.log("1) one mask per colour profile, independent of each other");
+{
+  const im = img(200, 40);
+  const cols = [GREEN, CYAN, YELLOW, WHITE, RED];
+  cols.forEach((c, i) => rect(im, 5 + i * 38, 8, 20, 20, c));
+  const masks = buildAllMasks(im);
+  const ids = ["green", "cyan", "yellow", "white", "red"];
+  ids.forEach((id) => ok(id + " mask has exactly its own 400 pixels", masks[id].count === 400, "count=" + masks[id].count));
+  let overlap = 0;
+  for (let p = 0; p < im.width * im.height; p++) { let n = 0; for (const id of ids) n += masks[id].data[p]; if (n > 1) overlap++; }
+  ok("no pixel belongs to two colour masks", overlap === 0, "overlap=" + overlap);
+  ok("dark background is in no mask", ids.every((id) => masks[id].data[1] === 0));
+  const lighter = img(40, 40); rect(lighter, 5, 5, 20, 20, [34, 204, 85]); // #22cc55, a slightly different green
+  ok("a different shade of green still matches (white balance tolerance)", buildMask(lighter, MASK_PROFILES[0]).count === 400);
+}
+
+console.log("2) configurable colours: HEX route, overrides");
+{
+  ok("hexToRgb #0f0", JSON.stringify(hexToRgb("#0f0")) === JSON.stringify({ r: 0, g: 255, b: 0 }));
+  ok("hexToRgb #FF8800", JSON.stringify(hexToRgb("#FF8800")) === JSON.stringify({ r: 255, g: 136, b: 0 }));
+  ok("hexToRgb rejects garbage", hexToRgb("nope") === null && hexToRgb("#12") === null);
+  const orange = { id: "orange", label: "Orange", role: "candidate", hex: "#ff8800", maxDistance: 40, minSat: 2 }; // hue route disabled (sat can never reach 2)
+  const im = img(30, 10); rect(im, 0, 0, 10, 10, [250, 140, 10]); rect(im, 20, 0, 10, 10, GREEN);
+  ok("HEX + distance matches only the near colour", buildMask(im, orange).count === 100);
+  const tuned = withOverrides(MASK_PROFILES, { green: { minSat: 0.99 } });
+  ok("override changes one profile only", tuned.find((p) => p.id === "green").minSat === 0.99 && tuned.find((p) => p.id === "cyan").minSat === 0.4);
+  ok("override does not modify the defaults", MASK_PROFILES[0].minSat === 0.4);
+}
+
+console.log("3) binary output: black foreground, white elsewhere, original image untouched");
+{
+  const im = img(40, 20); rect(im, 5, 5, 10, 10, GREEN);
+  const before = clone(im);
+  const m = buildMask(im, MASK_PROFILES[0]);
+  const bin = toBinary(m, 4);
+  const at = (x, y) => { const i = (y * bin.width + x) * 4; return [bin.data[i], bin.data[i + 1], bin.data[i + 2], bin.data[i + 3]].join(","); };
+  ok("foreground pixel is #000000 opaque", at(4 + 6, 4 + 6) === "0,0,0,255");
+  ok("background pixel is #FFFFFF opaque", at(4 + 30, 4 + 2) === "255,255,255,255");
+  ok("white margin was added", at(0, 0) === "255,255,255,255" && bin.width === 48 && bin.height === 28);
+  ok("original image data was not modified", Buffer.compare(Buffer.from(im.data), Buffer.from(before.data)) === 0);
+  let black = 0; for (let i = 0; i < bin.data.length; i += 4) if (bin.data[i] === 0) black++;
+  ok("black pixel count equals mask count", black === m.count, black + " vs " + m.count);
+}
+
+console.log("4) decimal points, slashes and segmented numerals survive; waveform and dust are removed");
+{
+  const im = img(200, 80);
+  ring(im, 10, 10, 14, 30, 4, GREEN);   // digit 3 (stand-in)
+  ring(im, 30, 10, 14, 30, 4, GREEN);   // digit 6
+  rect(im, 50, 36, 4, 4, GREEN);        // decimal point
+  ring(im, 60, 10, 14, 30, 4, GREEN);   // digit 8
+  line(im, 100, 40, 110, 10, 3, GREEN); // slash
+  // a segmented numeral: separate bars that touch nothing
+  rect(im, 130, 10, 14, 4, GREEN); rect(im, 130, 24, 14, 4, GREEN); rect(im, 130, 38, 14, 4, GREEN);
+  rect(im, 126, 14, 4, 10, GREEN); rect(im, 146, 14, 4, 10, GREEN);
+  // an ECG-like waveform across the whole width, same colour
+  for (let x = 0; x < 200; x++) rect(im, x, 60 + Math.round(5 * Math.sin(x / 6)), 1, 2, GREEN);
+  // dust far away from every digit
+  [[190, 5], [195, 20], [185, 50], [3, 75], [100, 75]].forEach(([x, y]) => px(im, x, y, GREEN));
+  const raw = buildMask(im, MASK_PROFILES[0]);
+  const { mask, stats } = cleanMask(raw);
+  const has = (x, y) => mask.data[y * mask.width + x] === 1;
+  ok("decimal point kept", has(51, 37));
+  ok("slash kept", has(105, 25));
+  ok("digit outlines kept", has(10, 10) && has(30, 10) && has(60, 10));
+  ok("all five bars of the segmented numeral kept", has(135, 11) && has(135, 25) && has(135, 39) && has(127, 18) && has(147, 18));
+  ok("waveform removed", !has(50, 60) && !has(150, 62) && stats.removedWide >= 1, JSON.stringify(stats));
+  ok("isolated dust removed", !has(190, 5) && !has(195, 20) && !has(185, 50) && !has(3, 75) && !has(100, 75) && stats.removedSpeckle >= 4, JSON.stringify(stats));
+  ok("cleaned mask still looks like digits", isUseful(mask) && maskStats(mask).digitLike >= 3);
+}
+
+console.log("5) poor images, empty masks and processing errors never throw");
+{
+  const black = img(60, 30, [0, 0, 0]);
+  ok("all-black image gives an empty mask", buildMask(black, MASK_PROFILES[0]).count === 0);
+  ok("empty mask is not useful", !isUseful(buildMask(black, MASK_PROFILES[0])));
+  ok("no useful candidates on a black image", maskCandidates(black).items.length === 0);
+  let threw = false;
+  try {
+    buildMask(null, MASK_PROFILES[0]); buildMask(undefined, MASK_PROFILES[0]);
+    buildMask({ data: new Uint8ClampedArray(3), width: 10, height: 10 }, MASK_PROFILES[0]);
+    buildMask({ data: new Uint8ClampedArray(0), width: 0, height: 0 }, MASK_PROFILES[0]);
+    cleanMask(null); maskStats(null); toBinary(null); adaptiveMask(null); rankMasks({ data: null, width: 5, height: 5 }); maskCandidates(null);
+  } catch (e) { threw = true; console.log("     threw: " + e); }
+  ok("null / truncated / zero-size input is handled", !threw);
+  const clear = img(20, 20); rect(clear, 0, 0, 20, 20, GREEN); for (let i = 3; i < clear.data.length; i += 4) clear.data[i] = 0;
+  ok("fully transparent pixels are ignored", buildMask(clear, MASK_PROFILES[0]).count === 0);
+  const huge = { data: new Uint8ClampedArray(1600 * 1400 * 4), width: 1600, height: 1400 };
+  ok("oversized regions are skipped (no UI freeze)", maskCandidates(huge).items.length === 0);
+}
+
+console.log("6) safe fallback when colour masking does not help");
+{
+  const grey = img(120, 50, [40, 40, 40]);
+  ring(grey, 10, 8, 20, 34, 5, [170, 170, 170]); ring(grey, 40, 8, 20, 34, 5, [170, 170, 170]); // pale, unsaturated digits
+  const cand = maskCandidates(grey);
+  ok("no colour mask is useful for grey digits", !cand.items.some((c) => c.method.startsWith("mask:")), cand.items.map((c) => c.method).join(","));
+  ok("adaptive threshold is offered instead", cand.items.some((c) => c.method === "adaptive"));
+  const ad = adaptiveMask(grey);
+  ok("adaptive mask finds the digit outlines", ad.count > 100 && maskStats(ad).digitLike >= 2, "count=" + ad.count);
+  const dark = img(120, 50, [235, 235, 235]); ring(dark, 10, 8, 20, 34, 5, [30, 30, 30]);
+  ok("adaptive threshold also handles dark digits on a light screen", adaptiveMask(dark).count > 100);
+}
+
+console.log("7) coloured digits get a colour mask; red stays out of the candidates");
+{
+  const im = img(120, 50);
+  ring(im, 10, 8, 20, 34, 5, GREEN); ring(im, 40, 8, 20, 34, 5, GREEN);
+  const c = maskCandidates(im);
+  ok("green digits -> green mask is the first candidate", c.items[0] && c.items[0].method === "mask:green", c.items.map((x) => x.method).join(","));
+  ok("adaptive fallback is still offered after the colour mask", c.items.some((x) => x.method === "adaptive"));
+  const red = img(120, 50); ring(red, 10, 8, 20, 34, 5, RED); ring(red, 40, 8, 20, 34, 5, RED);
+  const r = maskCandidates(red);
+  ok("red digits are never a candidate mask (ART / IBP clue only)", !r.items.some((x) => x.method === "mask:red"), r.items.map((x) => x.method).join(","));
+  ok("red is reported as generated-but-excluded", r.excluded.includes("red"));
+  ok("repeat calls reuse the cached masks (same object)", rankMasks(im) === rankMasks(im));
+}
+
+console.log("8) source checks on src/components/VitalsScanAll.tsx (human verification, no duplicate fields, original confidence)");
+{
+  const file = path.join(here, "../src/components/VitalsScanAll.tsx");
+  if (!fs.existsSync(file)) { fail++; console.log("  FAIL  component not found at " + file); }
+  else {
+    const s = fs.readFileSync(file, "utf8");
+    ok("mandatory checkbox text is present", s.includes("I checked these values against the monitor."));
+    ok("applying still requires the checkbox", /const canApply = step === "review" && verified && anyValue && !problem;/.test(s));
+    ok("the Fill button is disabled without it", /onClick=\{apply\} disabled=\{!canApply\}/.test(s));
+    ok("onApply is only called from apply()", (s.match(/onApply\(/g) || []).length === 1);
+    ok("review fields still come from the de-duplicated list", /const shown = uniqueKeys\(/.test(s));
+    ok("each field is rendered once (single shown.map)", (s.match(/shown\.map\(\(f\) =>/g) || []).length === 1);
+    ok("nothing is saved by the scanner (no fetch / save calls)", !/\bfetch\(|localStorage|sessionStorage/.test(s));
+    if (s.includes("maskCandidates")) {
+      ok("mask reads keep Tesseract's own confidence", /method: it\.method[^\n]*\n?/.test(s) && s.includes("conf: Number(data?.confidence ?? 0), method:"));
+      ok("confidence is never boosted by colour", !/conf\s*[*+]=|conf:\s*[^,\n]*\*\s*1\./.test(s));
+      ok("digits-only whitelist is set only for the digit re-check blocks, and each restores the label OCR setting", (s.match(/tessedit_char_whitelist: "0123456789\.\/"/g) || []).length === 2 && (s.match(/tessedit_char_whitelist: ""/g) || []).length >= 2);
+    } else console.log("  (mask integration not applied yet: skipping the 3 mask-specific source checks)");
+  }
+}
+
+console.log("\n" + pass + " passed, " + fail + " failed");
+process.exit(fail ? 1 : 0);

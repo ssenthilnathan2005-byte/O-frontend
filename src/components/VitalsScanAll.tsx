@@ -12,6 +12,7 @@ import { detectDisplay, assessQuality } from "@/lib/screenDetect";
 import type { QualityIssue } from "@/lib/screenDetect";
 import LiveCapture from "@/components/LiveCapture";
 import { combineMatches, pickDeepTargets } from "@/lib/scanCombine";
+import { colorCrop, canvasToPixels, pixelsToCanvas, maskCandidates } from "@/lib/colorMask";
 
 /**
  * "Scan All Vitals" - one photo of a multiparameter monitor fills every reading it can read.
@@ -410,16 +411,37 @@ export default function VitalsScanAll({ onApply, include, label, captureAudit }:
           try {
             for (let k = 0; k < deepTargets.length; k++) {
               const { trace, box } = deepTargets[k];
-              const reads: { text: string; conf: number }[] = [];
+              const reads: { text: string; conf: number; method?: string }[] = [];
               for (const src of sources) {
                 for (const zoom of [70, 110]) {
                   setStage(`Checking big digits (${k + 1} of ${deepTargets.length})`); setProgress(0);
                   const c = localDigitCanvas(src, base.sx + box.x0 / base.scale, base.sy + box.y0 / base.scale, base.sx + box.x1 / base.scale, base.sy + box.y1 / base.scale, zoom);
                   const { data } = await worker.recognize(c);
                   const text = String(data?.text || "").replace(/\s+/g, "");
-                  if (text) reads.push({ text, conf: Number(data?.confidence ?? 0) });
+                  if (text) reads.push({ text, conf: Number(data?.confidence ?? 0), method: "normal" });
                 }
               }
+              // Colour-mask and adaptive-threshold reads (sharpest frame only). The mask only cleans the picture before OCR:
+              // the confidence stored is exactly what Tesseract reported, and colour never decides which vital a number is.
+              try {
+                const crop = colorCrop(imgEl, base.sx + box.x0 / base.scale, base.sy + box.y0 / base.scale, base.sx + box.x1 / base.scale, base.sy + box.y1 / base.scale, 110);
+                const pixels = crop ? canvasToPixels(crop) : null;
+                const cands = pixels ? maskCandidates(pixels) : { items: [] as { method: string; image: any }[], excluded: [] as string[] };
+                let firstMask = true;
+                for (const it of cands.items) {
+                  const mc = pixelsToCanvas(it.image);
+                  if (!mc) continue;
+                  // PSM 7 (single line) for every mask, plus PSM 8 (single word) for the best one
+                  for (const psm of firstMask ? [PSM.SINGLE_LINE, PSM.SINGLE_WORD] : [PSM.SINGLE_LINE]) {
+                    await worker.setParameters({ tessedit_pageseg_mode: psm } as any);
+                    const { data } = await worker.recognize(mc);
+                    const text = String(data?.text || "").replace(/\s+/g, "");
+                    if (text) reads.push({ text, conf: Number(data?.confidence ?? 0), method: it.method + (psm === PSM.SINGLE_WORD ? "/psm8" : "/psm7") });
+                  }
+                  firstMask = false;
+                }
+                await worker.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_LINE } as any);
+              } catch { /* masks are optional: the normal reads above still count */ }
               trace.deep = reads;
             }
           } finally {
