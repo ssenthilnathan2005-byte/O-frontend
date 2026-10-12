@@ -11,16 +11,24 @@ const LABELS: Record<'pulse' | 'spo2' | 'rr' | 'temp', RegExp> = {
   pulse: /^(hr|pr|pulse|bpm|heart|heartrate)$/i,
   spo2: /^(spo2|sp02|spo₂|spo|o2|sat|sao2|oxygen)$/i,
   rr: /^(rr|resp|rpm|respiration|rrate|awrr)$/i,
-  temp: /^(temp|temperature|t1|temp1)$/i,
+  temp: /^(temp|temperature|t1|t2|temp1|temp2|tperi|tcore|tskin)$/i,
 };
 const UNITS: Record<'pulse' | 'spo2' | 'rr' | 'temp', RegExp> = {
-  pulse: /^(bpm|\/min)$/i, spo2: /^%$/, rr: /^(rpm|\/min|br\/min)$/i, temp: /^(°c|°f|c|f)$/i,
+  pulse: /^(bpm|\/min)$/i, spo2: /^%$/, rr: /^(rpm|\/min|br\/min)$/i, temp: /^[°º*']?[cf]$/i,
 };
 
-const num = (w: Word) => (/^\d{2,3}(\.\d)?$/.test(w.text) ? parseFloat(w.text) : null);
+const norm = (t: string) => t.replace(/^(\d{2}),(\d)$/, '$1.$2'); // "36,8" -> "36.8"
+const num = (w: Word) => { const t = norm(w.text); return /^\d{2,3}(\.\d)?$/.test(t) ? parseFloat(t) : null; };
 const cx = (w: Word) => (w.x0 + w.x1) / 2, cy = (w: Word) => (w.y0 + w.y1) / 2, h = (w: Word) => w.y1 - w.y0;
 const inRange = (f: Field, v: number) => v >= RANGE[f][0] && v <= RANGE[f][1];
-const fToC = (v: number) => (v > 50 ? Math.round(((v - 32) * 5) / 9 * 10) / 10 : v);
+/** Temperature near a Temp label / unit: degC (30-43) or degF (86-110), also "368" / "986" when the point was lost. Returns degC. */
+function tempC(v: number, hasPoint: boolean): number | null {
+  if (v >= 30 && v <= 43) return v;
+  if (v >= 86 && v <= 110) return ((v - 32) * 5) / 9;
+  if (!hasPoint && v >= 300 && v <= 430) return v / 10;
+  if (!hasPoint && v >= 860 && v <= 1100) return ((v / 10 - 32) * 5) / 9;
+  return null;
+}
 
 type Cand = { field: Field; value: number; source: string; strong: boolean };
 
@@ -40,17 +48,18 @@ export function mergeVitals(words: Word[], imgW: number): Record<Field, Result> 
 
   // 2) Label pass: pair each small label with the nearest number (right or below preferred)
   const used = new Set<Word>();
-  const pairs: { f: Field; n: Word; score: number; v: number }[] = [];
+  const pairs: { f: Field; n: Word; score: number; v: number; cv: number }[] = [];
   for (const [f, re] of Object.entries(LABELS) as ['pulse' | 'spo2' | 'rr' | 'temp', RegExp][]) {
     for (const l of words.filter((w) => re.test(w.text.replace(/[^\w₂°\/]/g, '')))) {
       for (const n of nums) {
         const v = num(n)!;
-        if (!inRange(f, v)) continue;
+        const cv = f === 'temp' ? tempC(v, /\./.test(norm(n.text))) : inRange(f, v) ? v : null;
+        if (cv === null) continue;
         const dx = cx(n) - cx(l), dy = cy(n) - cy(l);
         const dist = Math.hypot(dx, dy);
         if (dist > imgW * 0.35) continue;
         const behind = dx < -(l.x1 - l.x0) && dy < 0 ? 2 : 1; // number left of/above label: penalise
-        pairs.push({ f, n, v, score: (dist * behind) / Math.sqrt(Math.max(h(n), 1)) });
+        pairs.push({ f, n, v, cv, score: (dist * behind) / Math.sqrt(Math.max(h(n), 1)) });
       }
     }
   }
@@ -59,7 +68,7 @@ export function mergeVitals(words: Word[], imgW: number): Record<Field, Result> 
   for (const p of pairs) {
     if (used.has(p.n) || doneField.has(p.f)) continue;
     used.add(p.n); doneField.add(p.f);
-    cands.push({ field: p.f, value: p.f === 'temp' ? fToC(p.v) : p.v, source: 'label', strong: true });
+    cands.push({ field: p.f, value: p.cv, source: 'label', strong: true });
   }
 
   // 3) Unit pass: a number directly beside a unit token (%, bpm, /min, °C)
@@ -68,7 +77,11 @@ export function mergeVitals(words: Word[], imgW: number): Record<Field, Result> 
       if (u === n || Math.abs(cy(u) - cy(n)) > h(n) || u.x0 - n.x1 > h(n) * 2 || u.x0 < n.x0) continue;
       for (const f of Object.keys(UNITS) as (keyof typeof UNITS)[]) {
         const v = num(n)!;
-        if (UNITS[f].test(u.text) && inRange(f, v)) cands.push({ field: f, value: v, source: 'unit', strong: true });
+        if (!UNITS[f].test(u.text)) continue;
+        if (f === 'temp') {
+          const cv = /\./.test(norm(n.text)) ? tempC(v, true) : null;
+          if (cv !== null) cands.push({ field: f, value: cv, source: 'unit', strong: true });
+        } else if (inRange(f, v)) cands.push({ field: f, value: v, source: 'unit', strong: true });
       }
     }
   }
