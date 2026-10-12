@@ -5,7 +5,7 @@ const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/
 const CATS = ["Tablet", "Capsule", "Syrup/Tonic", "Injection", "Oil", "Ointment/Cream", "Drops", "Powder", "Others"];
 
 type Row = {
-  name: string; medCategory: string; quantity: string; tabletsPerStrip: string; batchNo: string;
+  name: string; medCategory: string; quantity: string; tabletsPerStrip: string; stripsPerBox: string; batchNo: string;
   expiryDate: string; purchasePrice: string; sellingPrice: string; gstPercent: string; supplier: string; warnings: string[];
 };
 
@@ -48,11 +48,11 @@ export default function PharmImportButton() {
       fd.append("file", file);
       const d = await call("/parse", { method: "POST", body: fd });
       setRows((d.rows || []).map((r: any): Row => ({
-        name: s(r.name), medCategory: s(r.medCategory), quantity: s(r.quantity), tabletsPerStrip: s(r.tabletsPerStrip),
+        name: s(r.name), medCategory: s(r.medCategory), quantity: s(r.quantity), tabletsPerStrip: s(r.tabletsPerStrip), stripsPerBox: s(r.stripsPerBox),
         batchNo: s(r.batchNo), expiryDate: s(r.expiryDate), purchasePrice: s(r.purchasePrice), sellingPrice: s(r.sellingPrice),
         gstPercent: s(r.gstPercent), supplier: s(r.supplier), warnings: r.warnings || [],
       })));
-      const sup = (d.rows || []).find((r: any) => r.supplier);
+      const sup = (d.rows || []).find((r: any) => r.supplier); if (d.invoiceNo) setInvoiceNo(s(d.invoiceNo));
       if (sup) setSupplier(s(sup.supplier));
     } catch (e: any) { setErr(e.message); }
     finally { setBusy(false); }
@@ -127,7 +127,7 @@ export default function PharmImportButton() {
                   <table className="min-w-full text-xs">
                     <thead>
                       <tr className="text-left text-gray-500">
-                        {["Medicine", "Category", "Qty (strips/units)", "Tabs/strip", "Batch", "Expiry", "Purchase / strip", "MRP / strip", "GST %", ""].map(h => <th key={h} className="px-1 py-1 font-medium">{h}</th>)}
+                        {["Medicine", "Category", "Qty (strips/units)", "Tabs/strip", "Strips/box", "Batch", "Expiry", "Purchase / strip", "MRP / strip", "GST %", ""].map(h => <th key={h} className="px-1 py-1 font-medium">{h}</th>)}
                       </tr>
                     </thead>
                     <tbody>
@@ -148,7 +148,7 @@ export default function PharmImportButton() {
                               </select>
                             </td>
                             <td className="px-1 py-1 w-16"><input value={r.quantity} onChange={e => upd(i, "quantity", e.target.value)} className={inp} inputMode="decimal" /></td>
-                            <td className="px-1 py-1 w-16"><input value={r.tabletsPerStrip} onChange={e => upd(i, "tabletsPerStrip", e.target.value)} className={inp} inputMode="numeric" /></td>
+                            <td className="px-1 py-1 w-16"><input value={r.tabletsPerStrip} onChange={e => upd(i, "tabletsPerStrip", e.target.value)} className={inp} inputMode="numeric" /></td><td className="px-1 py-1 w-16"><input value={r.stripsPerBox} onChange={e => upd(i, "stripsPerBox", e.target.value)} className={inp} inputMode="numeric" /></td>
                             <td className="px-1 py-1 w-24"><input value={r.batchNo} onChange={e => upd(i, "batchNo", e.target.value)} className={inp + (r.batchNo ? "" : " border-amber-300")} /></td>
                             <td className="px-1 py-1 w-32"><input type="date" value={r.expiryDate} onChange={e => upd(i, "expiryDate", e.target.value)} className={inp + (r.expiryDate ? "" : " border-amber-300")} /></td>
                             <td className="px-1 py-1 w-20"><input value={r.purchasePrice} onChange={e => upd(i, "purchasePrice", e.target.value)} className={inp} inputMode="decimal" /><p className="text-gray-500">{perTab(r.purchasePrice, r.tabletsPerStrip)}</p></td>
