@@ -160,10 +160,28 @@ export default function PharmacyDashboard() {
   useEffect(() => { fetchStock(); }, [fetchStock]);
   const [amounts, setAmounts] = useState<Record<string, string>>({});
   const [pStats, setPStats] = useState<{ patientsServed: number; tabletsSold: number; revenue: number } | null>(null);
+  const [soldSplit, setSoldSplit] = useState<{ tablets: number; bottles: number } | null>(null);
   const fetchStats = useCallback(async () => {
     try {
       const res = await fetch(`${BASE}/pharmacy-stats`, { headers });
       if (res.ok) setPStats(await res.json());
+      try {
+        const sr = await fetch(`${BASE}/pharmacy-module/medicines-sold`, { headers });
+        if (sr.ok) {
+          const rows = await sr.json();
+          if (Array.isArray(rows)) {
+            let tablets = 0, bottles = 0;
+            for (const r of rows) {
+              const units = Number(r.unitsToday) || 0;
+              const nm = String(r.name || "");
+              const ml = /(\d+(?:\.\d+)?)\s*ml\b/i.exec(nm);
+              const liquid = /bottle|vial|syrup|tonic|suspension|elixir|drops|liquid/i.test(nm) && ml && Number(ml[1]) > 1;
+              if (liquid) bottles += units / Number(ml![1]); else tablets += units;
+            }
+            setSoldSplit({ tablets: Math.round(tablets), bottles: Math.round(bottles * 100) / 100 });
+          }
+        }
+      } catch { /* split is optional */ }
     } catch { /* stats are optional */ }
   }, [hospitalId]);
   useEffect(() => { fetchStats(); }, [fetchStats]);
@@ -761,8 +779,8 @@ export default function PharmacyDashboard() {
               <p className="text-[11px] text-gray-500">Patients served today</p>
             </div>
             <div className="bg-white border border-gray-200 rounded-xl px-3 py-2">
-              <p className="text-xl font-bold leading-tight text-blue-700">{pStats.tabletsSold}</p>
-              <p className="text-[11px] text-gray-500">Tablets sold today</p>
+              <p className="text-xl font-bold leading-tight text-blue-700">{soldSplit ? soldSplit.tablets : pStats.tabletsSold}</p>
+              <p className="text-[11px] text-gray-500">Tablets sold today{soldSplit && soldSplit.bottles > 0 ? " + " + soldSplit.bottles + " bottle(s)" : ""}</p>
             </div>
             <div className="bg-white border border-gray-200 rounded-xl px-3 py-2">
               <p className="text-xl font-bold leading-tight text-emerald-700">{"\u20b9"}{Number(pStats.revenue).toLocaleString("en-IN")}</p>
