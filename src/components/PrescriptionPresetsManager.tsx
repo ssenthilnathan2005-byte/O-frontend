@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { getToken } from "@/api";
 import { getSymptomsForSpecialty } from "@/data/doctorSymptoms";
 import { PRESET_API, fetchPresets, splitAmountUnit, type Preset } from "@/components/PresetSuggestions";
-import { getFormConfig, detectFormFromText } from "@/lib/medicineTypes";
+import { FORM_CONFIG, getFormConfig, detectFormFromText } from "@/lib/medicineTypes";
 
 const DOSAGE_UNITS = ["mg", "g", "ml", "mcg", "tablet", "capsule", "drop", "puff"];
 const DURATION_UNITS = ["day", "week"];
@@ -17,16 +17,20 @@ const FOODS = ["After food", "Before food"];
 
 // Dropdown shows only mg / g / ml. An old preset that still has tablet / drop / puff keeps its value so nothing is silently changed.
 const STD_UNITS = ["mg", "g", "ml"];
-function unitOptions(name: string, current: string): string[] {
-  const f = detectFormFromText(name);
-  const base = f ? (getFormConfig(f).allowedUnits as string[]) : STD_UNITS;
+function withForm(m: FormMed, form: string): Partial<FormMed> {
+  const cfg = getFormConfig(form);
+  const keep = (cfg.allowedUnits as string[]).includes(m.dUnit);
+  return { form, dUnit: keep ? m.dUnit : cfg.defaultUnit, dAmt: keep ? m.dAmt : "" };
+}
+function unitOptions(form: string, current: string): string[] {
+  const base = getFormConfig(form).allowedUnits as string[];
   return base.includes(current) ? base : [...base, current];
 }
 
 interface FormMed {
-  name: string; dAmt: string; dUnit: string; uAmt: string; uUnit: string; times: string[]; food: string;
+  name: string; form: string; dAmt: string; dUnit: string; uAmt: string; uUnit: string; times: string[]; food: string;
 }
-const emptyMed = (): FormMed => ({ name: "", dAmt: "", dUnit: "mg", uAmt: "", uUnit: "day", times: [], food: "" });
+const emptyMed = (): FormMed => ({ name: "", form: "tablet", dAmt: "", dUnit: "mg", uAmt: "", uUnit: "day", times: [], food: "" });
 
 const plural = (u: string, a: string) => (parseFloat(a) === 1 ? u : `${u}s`);
 const fmtDose = (a: string, u: string) => !a.trim() ? "" : NO_SPACE.has(u) ? `${a}${u}` : `${a} ${plural(u, a)}`;
@@ -38,7 +42,8 @@ function fromPreset(p: Preset) {
     const u = splitAmountUnit(i.duration, "day", DURATION_UNITS);
     const parts = i.instructions.split(",").map(x => x.trim());
     return {
-      name: i.name, dAmt: d.amount, dUnit: d.unit, uAmt: u.amount, uUnit: u.unit,
+      name: i.name, dAmt: d.amount, dUnit: d.unit,
+      form: i.form || detectFormFromText(i.name) || (d.unit === "ml" ? "syrup" : d.unit === "drop" ? "drops" : d.unit === "puff" ? "spray" : "tablet"), uAmt: u.amount, uUnit: u.unit,
       times: TIMES.filter(t => parts.includes(t)), food: FOODS.find(f => parts.includes(f)) || "",
     };
   });
@@ -83,6 +88,7 @@ export default function PrescriptionPresetsManager({ doctor }: { doctor?: { spec
   async function save() {
     const items = meds.filter(m => m.name.trim()).map(m => ({
       name: m.name.trim(),
+      form: m.form,
       dosage: fmtDose(m.dAmt, m.dUnit),
       duration: fmtDur(m.uAmt, m.uUnit),
       instructions: [...TIMES.filter(t => m.times.includes(t)), m.food].filter(Boolean).join(", "),
@@ -170,7 +176,7 @@ export default function PrescriptionPresetsManager({ doctor }: { doctor?: { spec
               {meds.map((m, i) => (
                 <div key={i} className="space-y-2 rounded-xl border bg-gray-50 p-3">
                   <div className="flex items-center gap-2">
-                    <Input value={m.name} onChange={e => { const n = e.target.value; const fm = detectFormFromText(n); const ok = fm ? (getFormConfig(fm).allowedUnits as string[]).includes(m.dUnit) : true; setMed(i, fm && !ok && STD_UNITS.includes(m.dUnit) ? { name: n, dUnit: getFormConfig(fm).defaultUnit } : { name: n }); }} placeholder="Medicine name" />
+                    <Input value={m.name} onChange={e => { const n = e.target.value; const fm = detectFormFromText(n); setMed(i, fm && fm !== m.form ? { name: n, ...withForm(m, fm) } : { name: n }); }} placeholder="Medicine name" />
                     {meds.length > 1 && (
                       <button onClick={() => setMeds(prev => prev.filter((_, idx) => idx !== i))} className="text-red-400"><Trash2 className="h-4 w-4" /></button>
                     )}
@@ -179,7 +185,7 @@ export default function PrescriptionPresetsManager({ doctor }: { doctor?: { spec
                     <div className="flex gap-1">
                       <Input type="number" min="0" step="any" placeholder="Dose" value={m.dAmt} onChange={e => setMed(i, { dAmt: e.target.value })} />
                       <select value={m.dUnit} onChange={e => setMed(i, { dUnit: e.target.value })} className="rounded-md border bg-white px-1 text-sm">
-                        {unitOptions(m.name, m.dUnit).map(u => <option key={u}>{u}</option>)}
+                        {unitOptions(m.form, m.dUnit).map(u => <option key={u}>{u}</option>)}
                       </select>
                     </div>
                     <div className="flex gap-1">
@@ -189,6 +195,9 @@ export default function PrescriptionPresetsManager({ doctor }: { doctor?: { spec
                       </select>
                     </div>
                   </div>
+                  <select value={m.form} onChange={e => setMed(i, withForm(m, e.target.value))} className="w-full rounded-md border bg-white px-2 py-1.5 text-sm">
+                    {FORM_CONFIG.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
                     {TIMES.map(t => (
                       <label key={t} className="flex items-center gap-1.5">

@@ -273,7 +273,11 @@ export function parseSegment(seg: string): VoiceMed | null {
   const form: MedForm = spokenForm
     ?? (dq && qtyUnit === "ml" ? "syrup" : dq && qtyUnit === "drop" ? "drops" : dq && qtyUnit === "puff" ? "spray" : "tablet");
   const fixedUnit = voiceDoseUnit(form, qtyUnit);
-  if (fixedUnit !== qtyUnit) { qty = ""; qtyUnit = fixedUnit; }
+  if (fixedUnit !== qtyUnit) {
+    // drops / sprays: keep the spoken count ("2 drops") as an instruction; the dose unit stays ml
+    if ((qtyUnit === "drop" || qtyUnit === "puff") && qty) extraParts.push(`${qty} ${plural(qtyUnit, qty)}`);
+    qty = ""; qtyUnit = fixedUnit;
+  }
   // a bare number right after the name is the strength (mg assumed) — never guessed further
   if (!strengthAmount) {
     const bn = take(/\s(\d+(?:\.\d+)?)\s/);
@@ -453,7 +457,7 @@ export function durationText(m: VoiceMed): string {
 
 function doseText(m: VoiceMed): string {
   if (!m.qty) return strengthText(m).replace(" ", "");
-  if (m.qtyUnit === "ml") return `${m.qty}ml`;           // "5ml", never "5 mls"
+  if (m.qtyUnit === "ml" || m.qtyUnit === "g") return `${m.qty}${m.qtyUnit}`;           // "5ml", never "5 mls"
   return `${m.qty} ${plural(m.qtyUnit, m.qty)}`;
 }
 
@@ -478,7 +482,7 @@ export function blockingIssues(m: VoiceMed): string[] {
 export function softWarnings(m: VoiceMed): string[] {
   const w: string[] = [];
   if (m.strengthAssumed && m.strengthAmount) w.push(`${m.strengthAmount} ${m.strengthUnit} assumed`);
-  if (!m.qty) w.push("Dose per intake not stated");
+  if (!m.qty && !((m.form === "drops" || m.form === "spray") && m.extra.trim())) w.push("Dose per intake not stated");
   return w;
 }
 
