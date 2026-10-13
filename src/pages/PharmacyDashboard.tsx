@@ -30,7 +30,7 @@ const isBottle = (item?: RxItem, st?: StockItem): boolean => {
   const u = (item?.quantityUnit || "").trim();
   if (/bottle|vial/i.test(u)) return true;
   if (/^(ml|milli|tablet|capsule|strip|pack)/i.test(u)) return false;
-  return LIQUID_RE.test([item?.name, item?.form, st?.unit, st?.name].filter(Boolean).join(" "));
+  return LIQUID_RE.test([item?.name, item?.form].filter(Boolean).join(" "));
 };
 const packOf = (st?: StockItem) => Number(st?.pack_size) || 1;
 // For a dispensed line saved in ml: is it a whole number of bottles?
