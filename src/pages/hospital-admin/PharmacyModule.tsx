@@ -752,6 +752,18 @@ export function PharmSold() {
   const units = (r: Sold) => (per === "Today" ? r.unitsToday : per === "Week" ? r.unitsWeek : r.unitsMonth);
   const rev = (r: Sold) => (per === "Today" ? r.revenueToday : per === "Week" ? r.revenueWeek : r.revenueMonth);
   const shown = rows.filter(r => units(r) > 0);
+  const packMl = (r: Sold): number => {
+    const n = r.name || "";
+    if (!/bottle|vial|syrup|tonic|suspension|elixir|drops|liquid/i.test(n)) return 1;
+    const m = /(\d+(?:\.\d+)?)\s*ml\b/i.exec(n);
+    return m ? (Number(m[1]) || 1) : 1;
+  };
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  const qtyLabel = (r: Sold) => packMl(r) > 1 ? r2(units(r) / packMl(r)) + " bottle(s)" : String(units(r));
+  const priceLabel = (r: Sold) => packMl(r) > 1 ? inr(r2(r.unitPrice * packMl(r))) + " / bottle" : inr(r.unitPrice);
+  const totTabs = shown.filter(r => packMl(r) === 1).reduce((s, r) => s + units(r), 0);
+  const totBottles = r2(shown.filter(r => packMl(r) > 1).reduce((s, r) => s + units(r) / packMl(r), 0));
+  const totLabel = String(totTabs) + (totBottles > 0 ? (totTabs > 0 ? " + " : "") + totBottles + " bottle(s)" : "");
   const totU = shown.reduce((s, r) => s + units(r), 0);
   const totR = shown.reduce((s, r) => s + rev(r), 0);
   return (
@@ -772,8 +784,8 @@ export function PharmSold() {
             {shown.map(r => (
               <tr key={r.name} className="border-t border-gray-100">
                 <td className={TD + " font-medium"}>{r.name}</td>
-                <td className={TD}>{units(r)}</td>
-                <td className={TD}>{inr(r.unitPrice)}</td>
+                <td className={TD}>{qtyLabel(r)}</td>
+                <td className={TD}>{priceLabel(r)}</td>
                 <td className={TD}>{inr(rev(r))}</td>
               </tr>
             ))}
@@ -781,7 +793,7 @@ export function PharmSold() {
           </tbody>
           {shown.length > 0 && (
             <tfoot><tr className="border-t border-gray-200 bg-gray-50 font-semibold">
-              <td className={TD}>Total</td><td className={TD}>{totU}</td><td className={TD}></td><td className={TD}>{inr(totR)}</td>
+              <td className={TD}>Total</td><td className={TD}>{totLabel}</td><td className={TD}></td><td className={TD}>{inr(totR)}</td>
             </tr></tfoot>
           )}
         </table>
