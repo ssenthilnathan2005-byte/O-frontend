@@ -25,6 +25,7 @@ interface Plan { itemId: string; qty: string; reason: string; price?: string }
 
 const LIQUID_RE = /bottle|vial|syrup|tonic|suspension|elixir|drops|liquid/i;
 const isBottle = (item?: RxItem, st?: StockItem): boolean => {
+  if (st) return LIQUID_RE.test([st.unit, st.name].filter(Boolean).join(" "));
   const u = (item?.quantityUnit || "").trim();
   if (/bottle|vial/i.test(u)) return true;
   if (/^(ml|milli|tablet|capsule|strip|pack)/i.test(u)) return false;
@@ -81,6 +82,23 @@ const exactLabel = (iso: string) => {
 const splitList = (s: string) => (s || "").split(",").map(x => x.trim()).filter(Boolean);
 const TIMES = ["morning", "afternoon", "evening", "night"];
 const isTime = (t: string) => TIMES.includes(t.toLowerCase());
+
+const PATIENT_TONES = [
+  { bar: "bg-sky-400", head: "bg-sky-50", avatar: "bg-sky-500" },
+  { bar: "bg-violet-400", head: "bg-violet-50", avatar: "bg-violet-500" },
+  { bar: "bg-rose-400", head: "bg-rose-50", avatar: "bg-rose-500" },
+  { bar: "bg-amber-400", head: "bg-amber-50", avatar: "bg-amber-500" },
+  { bar: "bg-emerald-400", head: "bg-emerald-50", avatar: "bg-emerald-500" },
+  { bar: "bg-indigo-400", head: "bg-indigo-50", avatar: "bg-indigo-500" },
+  { bar: "bg-fuchsia-400", head: "bg-fuchsia-50", avatar: "bg-fuchsia-500" },
+  { bar: "bg-orange-400", head: "bg-orange-50", avatar: "bg-orange-500" },
+];
+const patientTone = (name: string) => {
+  const s = (name || "").trim().toLowerCase();
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return PATIENT_TONES[h % PATIENT_TONES.length];
+};
 
 function Pillbox({ text, tone }: { text: string; tone: "time" | "food" }) {
   const cls = tone === "time"
@@ -559,6 +577,7 @@ export default function PharmacyDashboard() {
     let dispensed: any[] = [];
     try { dispensed = p.dispensed_items ? JSON.parse(p.dispensed_items) : []; } catch {}
     const open = detailId === p.id;
+    const tone = patientTone(p.patient_name);
     const billAmt: number | null = (() => {
       if (!dispensed.length || dispensed.some((d: any) => d.unitPrice == null)) return null;
       return round2(dispensed.reduce((s: number, d: any) => {
@@ -567,10 +586,11 @@ export default function PharmacyDashboard() {
       }, 0));
     })();
     return (
-      <div key={p.id} className="bg-white border border-gray-200 rounded-xl shadow-sm">
+      <div key={p.id} className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+        <div className={"h-1 " + tone.bar} />
         <div role="button" tabIndex={0} onClick={() => setDetailId(p.id)}
           className="flex items-center gap-3 px-3 py-3 cursor-pointer active:bg-gray-50">
-          <div className="w-10 h-10 rounded-full bg-teal-600 text-white flex items-center justify-center font-semibold text-sm shrink-0">
+          <div className={"w-10 h-10 rounded-full text-white flex items-center justify-center font-semibold text-sm shrink-0 " + tone.avatar}>
             {(p.patient_name || "?").trim().charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
@@ -629,11 +649,13 @@ export default function PharmacyDashboard() {
   function renderPatient(list: Prescription[]) {
     if (list[0].status === "handed_over") return renderGivenCard(list[0]);
     const first = list[0];
+    const tone = patientTone(first.patient_name);
     const multi = list.length > 1;
     return (
       <div key={first.id} className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-        <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 border-b border-gray-100">
-          <div className="w-9 h-9 rounded-full bg-teal-600 text-white flex items-center justify-center font-semibold text-sm shrink-0">
+        <div className={"h-1 " + tone.bar} />
+        <div className={"flex items-center gap-3 px-4 py-3 border-b border-gray-100 " + tone.head}>
+          <div className={"w-9 h-9 rounded-full text-white flex items-center justify-center font-semibold text-sm shrink-0 " + tone.avatar}>
             {(first.patient_name || "?").trim().charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0">
