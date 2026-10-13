@@ -23,9 +23,37 @@ interface Prescription {
 interface StockItem { id: string; name: string; unit: string; quantity: number; pack_size: number; selling_price?: number | null }
 interface Plan { itemId: string; qty: string; reason: string; price?: string }
 
+const LIQUID_RE = /bottle|vial|syrup|tonic|suspension|elixir|drops|liquid/i;
+const isBottle = (item?: RxItem, st?: StockItem): boolean => {
+  const u = (item?.quantityUnit || "").trim();
+  if (/bottle|vial/i.test(u)) return true;
+  if (/^(ml|milli|tablet|capsule|strip|pack)/i.test(u)) return false;
+  return LIQUID_RE.test([item?.name, item?.form, st?.unit, st?.name].filter(Boolean).join(" "));
+};
+const packOf = (st?: StockItem) => Number(st?.pack_size) || 1;
+// For a dispensed line saved in ml: is it a whole number of bottles?
+const lineBottles = (d: any, stock: StockItem[]): { pack: number } | null => {
+  const st = stock.find(s => s.id === d?.inventoryItemId) || stock.find(s => s.name === d?.inventoryName);
+  const pack = packOf(st);
+  const n = Number(d?.tablets) || 0;
+  return st && isBottle(undefined, st) && pack > 1 && n >= pack && n % pack === 0 ? { pack } : null;
+};
+const fmtQty = (d: any, stock: StockItem[]) => {
+  const b = lineBottles(d, stock);
+  return b ? `${Math.round((Number(d.tablets) / b.pack) * 100) / 100} bottle(s)` : String(d.tablets);
+};
+const toLineUnits = (d: any, stock: StockItem[], v: string) => {
+  const b = lineBottles(d, stock);
+  return b && v !== "" ? String(Math.round(Number(v) * b.pack)) : v;
+};
+const fromLineUnits = (d: any, stock: StockItem[], v: string) => {
+  const b = lineBottles(d, stock);
+  return b && v !== "" ? String(Math.round((Number(v) / b.pack) * 100) / 100) : v;
+};
+
 // tablets = tablets per dose x doses per day x days
 function calcTablets(item: RxItem): number {
-  if (Number(item.quantity) > 0) return Math.round(Number(item.quantity)); // doctor's quantity wins
+  if (Number(item.quantity) > 0) return Math.round(Number(item.quantity)); if (isBottle(item)) return 1; // doctor's quantity wins
   const dm = /([\d.]+)\s*(tablet|capsule)/i.exec(item.dosage || "");
   const perDose = dm ? parseFloat(dm[1]) : 1;
   const times = ["Morning", "Afternoon", "Evening", "Night"].filter(t => (item.instructions || "").includes(t)).length || 1;
@@ -149,12 +177,12 @@ export default function PharmacyDashboard() {
 
   const round2 = (n: number) => Math.round((n || 0) * 100) / 100;
   const round4 = (n: number) => Math.round((n || 0) * 10000) / 10000;
-  const defaultUnitPrice = (st?: StockItem) =>
-    st && Number(st.selling_price) > 0 ? round4(Number(st.selling_price) / (Number(st.pack_size) || 1)) : 0;
+  const defaultUnitPrice = (st?: StockItem, bottle = false) =>
+    st && Number(st.selling_price) > 0 ? (bottle ? round2(Number(st.selling_price)) : round4(Number(st.selling_price) / (Number(st.pack_size) || 1))) : 0;
   function unitPriceFor(p: Prescription, i: number): number {
     const pl = getPlan(p, i);
     const st = stock.find(s => s.id === pl.itemId);
-    return pl.price === undefined ? defaultUnitPrice(st) : round4(Number(pl.price) || 0);
+    return pl.price === undefined ? defaultUnitPrice(st, isBottle(p.items[i], st)) : round4(Number(pl.price) || 0);
   }
   function lineTotal(p: Prescription, i: number): number {
     const pl = getPlan(p, i);
@@ -203,8 +231,8 @@ export default function PharmacyDashboard() {
         const st = stock.find(s => s.id === pl.itemId);
         const qty = Number(pl.qty);
         if (!(qty > 0)) return toast.error(`Enter a quantity for ${p.items[i].name}`);
-        if (st && qty > tabletsAvailable(st)) return toast.error(`Only ${tabletsAvailable(st)} available for ${st.name}`);
-        dispense.push({ index: i, inventoryItemId: pl.itemId, quantity: qty, reason: pl.reason, unitPrice: unitPriceFor(p, i) });
+        if (st && qty * (isBottle(p.items[i], st) ? packOf(st) : 1) > tabletsAvailable(st)) return toast.error(`Only ${isBottle(p.items[i], st) ? Math.floor(tabletsAvailable(st) / packOf(st)) + " bottle(s)" : tabletsAvailable(st)} available for ${st.name}`);
+        const pk = isBottle(p.items[i], st) ? packOf(st) : 1; dispense.push({ index: i, inventoryItemId: pl.itemId, quantity: pk === 1 ? qty : Math.round(qty * pk), reason: pl.reason, unitPrice: pk === 1 ? unitPriceFor(p, i) : Math.round(unitPriceFor(p, i) / pk * 1e6) / 1e6 });
       }
       handoverPayload = dispense.map((d, line) => ({ line, quantity: d.quantity, reason: "" }));
     } else {
@@ -309,7 +337,7 @@ export default function PharmacyDashboard() {
     const pl = getPlan(p, i);
     const st = stock.find(s => s.id === pl.itemId);
     const qty = Number(pl.qty);
-    const short = st && qty > tabletsAvailable(st);
+    const bottle = isBottle(item, st); const short = st && qty * (bottle ? packOf(st) : 1) > tabletsAvailable(st);
     const reduced = qty > 0 && qty < suggested;
     const key = `${p.id}-${i}`;
     const deduct = !!pl.itemId || !!manualDeduct[key];
@@ -322,7 +350,7 @@ export default function PharmacyDashboard() {
           <p className="text-sm font-semibold text-gray-900">{item.name}</p>
           {!isGiven && (
             <span className="text-xs font-semibold text-teal-700 bg-teal-50 rounded-md px-2 py-0.5 whitespace-nowrap">
-              Prescribed: {suggested} {item.quantityUnit || "tablets"}
+              Prescribed: {suggested} {bottle ? "bottle(s)" : (item.quantityUnit || "tablets")}
             </span>
           )}
         </div>
@@ -358,7 +386,7 @@ export default function PharmacyDashboard() {
                 <select value={pl.itemId} onChange={e => setPlan(p, i, { itemId: e.target.value })}
                   className="w-full border border-gray-200 rounded-md text-xs px-2 py-1.5 bg-white">
                   <option value="">Select stock item...</option>
-                  {stock.map(s => <option key={s.id} value={s.id}>{s.name} ({tabletsAvailable(s)} in stock)</option>)}
+                  {stock.map(s => <option key={s.id} value={s.id}>{s.name} ({isBottle(undefined, s) ? (Math.round(tabletsAvailable(s) / packOf(s) * 10) / 10) + " bottles" : tabletsAvailable(s)} in stock)</option>)}
                 </select>
                 {pl.itemId && (
                   <div className="flex items-center gap-2">
@@ -366,13 +394,13 @@ export default function PharmacyDashboard() {
                     <input type="number" min={1} value={pl.qty}
                       onChange={e => setPlan(p, i, { qty: e.target.value })}
                       className="w-20 border border-gray-200 rounded-md text-sm px-2 py-1 bg-white" />
-                    <span className="text-xs text-gray-500">{item.quantityUnit || "tablets"}</span>
+                    <span className="text-xs text-gray-500">{bottle ? "bottle(s)" : (item.quantityUnit || "tablets")}</span>
                   </div>
                 )}
                 {pl.itemId && st && (
                   <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <span className="text-gray-500">Price per {(item.quantityUnit || "tablets").replace(/\(s\)$|s$/, "")} {"\u20b9"}</span>
-                    <input type="number" min={0} step="any" value={pl.price ?? String(defaultUnitPrice(st))}
+                    <span className="text-gray-500">Price per {bottle ? "bottle" : (item.quantityUnit || "tablets").replace(/\(s\)$|s$/, "")} {"\u20b9"}</span>
+                    <input type="number" min={0} step="any" value={pl.price ?? String(defaultUnitPrice(st, bottle))}
                       onChange={e => setPlan(p, i, { price: e.target.value })}
                       className="w-24 border border-gray-200 rounded-md text-sm px-2 py-1 bg-white" />
                     <span className="text-gray-500">{"\u00d7"} {qty > 0 ? qty : 0} =</span>
@@ -384,7 +412,7 @@ export default function PharmacyDashboard() {
                     onChange={e => setPlan(p, i, { reason: e.target.value })}
                     className="w-full border border-gray-200 rounded-md text-xs px-2 py-1.5 bg-white" />
                 )}
-                {short && <p className="text-xs text-red-600">Not enough stock: only {tabletsAvailable(st!)} available.</p>}
+                {short && <p className="text-xs text-red-600">Not enough stock: only {bottle ? Math.floor(tabletsAvailable(st!) / packOf(st)) + " bottle(s)" : tabletsAvailable(st!)} available.</p>}
               </div>
             )}
           </div>
@@ -447,7 +475,7 @@ export default function PharmacyDashboard() {
           <p className="text-xs text-gray-500 flex items-start gap-1.5">
             <Package className="w-3.5 h-3.5 mt-0.5 shrink-0" />
             <span>
-              Handed over: {dispensed.map(d => `${d.inventoryName} \u00d7${d.tablets}`).join(", ")}
+              Handed over: {dispensed.map(d => `${d.inventoryName} \u00d7${fmtQty(d, stock)}`).join(", ")}
               {dispensed.some(d => d.returned) ? " (some returned to stock)" : ""}
             </span>
           </p>
@@ -457,22 +485,22 @@ export default function PharmacyDashboard() {
           <div className="text-xs text-gray-500 space-y-2">
             {dispensed.map((d, i) => (
               <div key={i} className="space-y-1">
-                <p>Dispensed <b>{d.tablets}</b> {"\u00d7"} {d.inventoryName}{d.reduced ? ` (reduced from ${d.suggested})` : ""}</p>
+                <p>Dispensed <b>{fmtQty(d, stock)}</b> {"\u00d7"} {d.inventoryName}{d.reduced ? ` (reduced from ${d.suggested})` : ""}</p>
                 {p.status === "ready" && (
                   <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 space-y-1.5">
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-600">Patient takes</span>
-                      <input type="number" min={0} max={d.tablets} value={getHo(p.id, i, d.tablets).qty}
-                        onChange={e => setHo(p.id, i, d.tablets, { qty: e.target.value })}
+                      <input type="number" min={0} max={fromLineUnits(d, stock, String(d.tablets))} value={fromLineUnits(d, stock, getHo(p.id, i, d.tablets).qty)}
+                        onChange={e => setHo(p.id, i, d.tablets, { qty: toLineUnits(d, stock, e.target.value) })}
                         className="w-20 border border-gray-200 rounded-md text-sm px-2 py-1 bg-white" />
-                      <span className="text-xs text-gray-600">of {d.tablets} tablets</span>
+                      <span className="text-xs text-gray-600">of {fmtQty(d, stock)}{lineBottles(d, stock) ? "" : " tablets"}</span>
                     </div>
                     {Number(getHo(p.id, i, d.tablets).qty) < d.tablets && (
                       <>
                         <input placeholder="Reason (e.g. patient needs fewer)" value={getHo(p.id, i, d.tablets).reason}
                           onChange={e => setHo(p.id, i, d.tablets, { reason: e.target.value })}
                           className="w-full border border-gray-200 rounded-md text-xs px-2 py-1.5 bg-white" />
-                        <p className="text-xs text-amber-700">{d.tablets - Number(getHo(p.id, i, d.tablets).qty || 0)} tablets will be returned to stock.</p>
+                        <p className="text-xs text-amber-700">{fromLineUnits(d, stock, String(d.tablets - Number(getHo(p.id, i, d.tablets).qty || 0)))} {lineBottles(d, stock) ? "bottle(s)" : "tablets"} will be returned to stock.</p>
                       </>
                     )}
                   </div>
@@ -577,7 +605,7 @@ export default function PharmacyDashboard() {
                   <p className="text-xs text-gray-500 flex items-start gap-1.5">
                     <Package className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                     <span>
-                      Handed over: {dispensed.map(d => `${d.inventoryName} \u00d7${d.tablets}`).join(", ")}
+                      Handed over: {dispensed.map(d => `${d.inventoryName} \u00d7${fmtQty(d, stock)}`).join(", ")}
                       {dispensed.some(d => d.returned) ? " (some returned to stock)" : ""}
                     </span>
                   </p>
