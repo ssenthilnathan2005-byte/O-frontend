@@ -241,6 +241,21 @@ export default function PharmacyDashboard() {
       const res = await fetch(`${BASE}/pharmacy-module/invoice/${encodeURIComponent(id)}`, { headers });
       const inv = await res.json();
       if (!res.ok) return toast.error(inv.error || "Could not load invoice");
+      try {
+        const rx = prescriptions.find(x => String(x.id) === String(id));
+        if (rx && Array.isArray(inv.lines)) {
+          const noteOf = (it: RxItem) => [it.dosage, (it.instructions || "").trim(), it.duration].filter(Boolean).join(" \u00b7 ");
+          const sameLen = inv.lines.length === rx.items.length;
+          inv.lines = inv.lines.map((l: any, i: number) => {
+            let it: RxItem | undefined = sameLen ? rx.items[i] : undefined;
+            if (!it) {
+              const ln = String(l.name || "").toLowerCase();
+              it = rx.items.find(x => { const b = String(x.name || "").toLowerCase().replace(/\s*\(.*$/, "").trim(); return b.length > 2 && ln.includes(b); });
+            }
+            return it ? { ...l, note: noteOf(it) } : l;
+          });
+        }
+      } catch {}
       if (!printInvoice(inv)) toast.error("Allow pop-ups to print the invoice");
     } catch { toast.error("Could not load invoice"); }
   }
