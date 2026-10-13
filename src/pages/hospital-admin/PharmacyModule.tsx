@@ -807,6 +807,30 @@ type PendLine = { rxId: string; patient: string; index: number; name: string; ta
 type PendMed = { name: string; soldTablets: number; deductedTablets: number; pendingTablets: number; pendingLines: number };
 type PendData = { date: string; medicines: PendMed[]; pending: PendLine[] };
 
+// ---- bottle helpers (Stock Update) ----
+const SU_LIQ = /bottle|vial|syrup|tonic|suspension|elixir|drops|liquid/i;
+const suRound = (n: number) => Math.round(n * 100) / 100;
+function suPack(name: string, inv: Inv[], itemId?: string): number {
+  const item = itemId ? inv.find(i => String(i.id) === itemId) : matchInv(name, inv);
+  const names = [item?.name || "", name || ""];
+  if (!names.some(n => SU_LIQ.test(n))) return 1;
+  for (const n of names) {
+    const m = /(\d+(?:\.\d+)?)\s*ml\b/i.exec(n);
+    if (m && Number(m[1]) > 1) return Number(m[1]);
+  }
+  return 1;
+}
+function suShow(name: string, units: number, inv: Inv[]): string {
+  const pk = suPack(name, inv);
+  return pk > 1 ? suRound(units / pk) + " bottle(s)" : String(units);
+}
+function suMix(rows: { name: string; v: number }[], inv: Inv[]): string {
+  let tabs = 0, bt = 0;
+  for (const r of rows) { const pk = suPack(r.name, inv); if (pk > 1) bt += r.v / pk; else tabs += r.v; }
+  bt = suRound(bt);
+  if (bt <= 0) return String(tabs);
+  return (tabs > 0 ? tabs + " + " : "") + bt + " bottle(s)";
+}
 function matchInv(name: string, inv: Inv[]): Inv | undefined {
   const n = name.toLowerCase().replace(/\s+/g, " ").trim();
   const base = n.replace(/\s*\d+(\.\d+)?\s*(mg|ml|g|mcg)\b.*$/, "").trim();
@@ -836,17 +860,19 @@ export function PharmStockUpdate() {
 
   const keyOf = (l: PendLine) => l.rxId + ":" + l.index;
   const itemOf = (l: PendLine) => pick[keyOf(l)] ?? matchInv(l.name, inv)?.id ?? "";
-  const qtyOf = (l: PendLine) => qty[keyOf(l)] ?? String(l.tablets);
+  const packOfLine = (l: PendLine) => suPack(l.name, inv, itemOf(l));
+  const qtyOf = (l: PendLine) => qty[keyOf(l)] ?? String(packOfLine(l) > 1 ? suRound(l.tablets / packOfLine(l)) : l.tablets);
 
   async function deduct(l: PendLine): Promise<string | null> {
     const itemId = itemOf(l);
     const n = Number(qtyOf(l));
+    const sendQty = packOfLine(l) > 1 ? Math.round(n * packOfLine(l)) : n;
     if (!itemId) return "Select a stock item for " + l.name;
     if (!(n > 0)) return "Enter a valid quantity for " + l.name;
     try {
       await pm("/stock-deduct", {
         method: "POST",
-        body: JSON.stringify({ rxId: l.rxId, index: l.index, inventoryItemId: itemId, tablets: n }),
+        body: JSON.stringify({ rxId: l.rxId, index: l.index, inventoryItemId: itemId, tablets: sendQty }),
       });
       return null;
     } catch (e: any) { return l.name + ": " + e.message; }
@@ -879,9 +905,9 @@ export function PharmStockUpdate() {
       {d && (
         <>
           <div className="grid grid-cols-3 gap-3">
-            <Stat label="Tablets sold" value={String(sum(m => m.soldTablets))} />
-            <Stat label="Already deducted" value={String(sum(m => m.deductedTablets))} color="text-teal-700" />
-            <Stat label="Pending" value={String(sum(m => m.pendingTablets))} color={sum(m => m.pendingTablets) > 0 ? "text-amber-600" : "text-gray-900"} />
+            <Stat label="Sold" value={suMix(d.medicines.map(m => ({ name: m.name, v: m.soldTablets })), inv)} />
+            <Stat label="Already deducted" value={suMix(d.medicines.map(m => ({ name: m.name, v: m.deductedTablets })), inv)} color="text-teal-700" />
+            <Stat label="Pending" value={suMix(d.medicines.map(m => ({ name: m.name, v: m.pendingTablets })), inv)} color={sum(m => m.pendingTablets) > 0 ? "text-amber-600" : "text-gray-900"} />
           </div>
 
           <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
@@ -897,9 +923,9 @@ export function PharmStockUpdate() {
                   {d.medicines.map(m => (
                     <tr key={m.name}>
                       <td className={TD}>{m.name}</td>
-                      <td className={TD}>{m.soldTablets}</td>
-                      <td className={TD}>{m.deductedTablets}</td>
-                      <td className={TD + (m.pendingTablets > 0 ? " text-amber-700 font-semibold" : "")}>{m.pendingTablets}</td>
+                      <td className={TD}>{suShow(m.name, m.soldTablets, inv)}</td>
+                      <td className={TD}>{suShow(m.name, m.deductedTablets, inv)}</td>
+                      <td className={TD + (m.pendingTablets > 0 ? " text-amber-700 font-semibold" : "")}>{suShow(m.name, m.pendingTablets, inv)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -922,7 +948,7 @@ export function PharmStockUpdate() {
               </div>
               <table className="w-full mt-2">
                 <thead className="bg-gray-50"><tr>
-                  <th className={TH}>Medicine</th><th className={TH}>Patient</th><th className={TH}>Tablets</th>
+                  <th className={TH}>Medicine</th><th className={TH}>Patient</th><th className={TH}>Qty</th>
                   <th className={TH}>Stock item</th><th className={TH}></th>
                 </tr></thead>
                 <tbody className="divide-y divide-gray-100">
@@ -933,8 +959,9 @@ export function PharmStockUpdate() {
                         <td className={TD}>{l.name}</td>
                         <td className={TD}>{l.patient}</td>
                         <td className={TD}>
-                          <input type="number" min={1} value={qtyOf(l)} onChange={e => setQty(prev => ({ ...prev, [k]: e.target.value }))}
+                          <input type="number" min={0} step={packOfLine(l) > 1 ? "0.01" : "1"} value={qtyOf(l)} onChange={e => setQty(prev => ({ ...prev, [k]: e.target.value }))}
                             className="w-20 border border-gray-200 rounded-md text-sm px-2 py-1 bg-white" />
+                          {packOfLine(l) > 1 && <span className="ml-1 text-xs text-gray-500">bottle(s)</span>}
                         </td>
                         <td className={TD}>
                           <select value={itemOf(l)} onChange={e => setPick(prev => ({ ...prev, [k]: e.target.value }))}
