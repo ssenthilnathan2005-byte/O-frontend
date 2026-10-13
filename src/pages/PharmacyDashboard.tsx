@@ -104,10 +104,8 @@ const PATIENT_TONES = [
   { bar: "bg-orange-400", head: "bg-orange-50", avatar: "bg-orange-500" },
 ];
 const patientTone = (name: string) => {
-  const s = (name || "").trim().toLowerCase();
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return PATIENT_TONES[h % PATIENT_TONES.length];
+  void name;
+  return { bar: "bg-teal-500", head: "bg-teal-50", avatar: "bg-teal-600" };
 };
 
 function Pillbox({ text, tone }: { text: string; tone: "time" | "food" }) {
