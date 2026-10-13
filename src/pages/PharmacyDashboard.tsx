@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useStore } from "../context/StoreContext";
 import { getToken } from "@/api";
 import { printInvoice } from "@/lib/printInvoice";
@@ -86,6 +86,7 @@ export default function PharmacyDashboard() {
   const [newestFirst, setNewestFirst] = useState(true);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [openRx, setOpenRx] = useState<Record<string, boolean>>({});
+  const [detailId, setDetailId] = useState<string | null>(null);
   const [tab, setTab] = useState<"rx" | "revenue" | "inventory" | "patients" | "sold" | "stock">("rx");
   usePharmacySocket(hospitalId);
   const headers = { Authorization: `Bearer ${getToken()}` };
@@ -244,6 +245,22 @@ export default function PharmacyDashboard() {
     }
   }
 
+  const seenRx = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const pending = prescriptions.filter(p => p.status === "pending").map(p => p.id);
+    if (seenRx.current === null) { if (!loading) seenRx.current = new Set(pending); return; }
+    const fresh = pending.filter(id => !seenRx.current!.has(id));
+    fresh.forEach(id => seenRx.current!.add(id));
+    if (fresh.length > 0) {
+      toast.success(fresh.length === 1 ? "New prescription received" : fresh.length + " new prescriptions received");
+      try {
+        const ctx = new ((window as any).AudioContext || (window as any).webkitAudioContext)();
+        const o = ctx.createOscillator();
+        o.connect(ctx.destination); o.frequency.value = 880; o.start();
+        setTimeout(() => { o.stop(); ctx.close(); }, 300);
+      } catch { /* sound is optional */ }
+    }
+  }, [prescriptions, loading]);
   const receivedList = prescriptions.filter(p => p.status !== "handed_over");
   const givenList = prescriptions.filter(p => p.status === "handed_over");
   const givenToday = givenList.filter(p => isToday(p.created_at)).length;
@@ -252,15 +269,31 @@ export default function PharmacyDashboard() {
   const shown = (filter === "given" ? givenList : receivedList)
     .filter(p => !q || (p.patient_name || "").toLowerCase().includes(q))
     .sort((a, b) => dir * (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
+  const dayLabel = (iso: string) => {
+    const d = new Date(iso);
+    const y = new Date(); y.setDate(y.getDate() - 1);
+    if (isToday(iso)) return "Today";
+    if (d.toDateString() === y.toDateString()) return "Yesterday";
+    return d.toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" });
+  };
+  const dayGroups = (list: Prescription[]) => {
+    const map = new Map<string, Prescription[]>();
+    for (const p of list) {
+      const k = new Date(p.created_at).toDateString();
+      map.set(k, [...(map.get(k) ?? []), p]);
+    }
+    return Array.from(map.values()).map(items => ({ label: dayLabel(items[0].created_at) + " (" + items.length + ")", items }));
+  };
   const sections: { label: string; items: Prescription[] }[] = filter === "given"
     ? [
-        { label: "Today", items: shown.filter(p => isToday(p.created_at)) },
-        { label: "Earlier", items: shown.filter(p => !isToday(p.created_at)) },
+        ...dayGroups(shown),
+        
       ].filter(g => g.items.length > 0)
     : [{ label: "", items: shown }];
 
   // group prescriptions of the same patient together (keeps sorted order of first appearance)
   function byPatient(list: Prescription[]) {
+    if (filter === "given") return list.map(p => [p]);
     const map = new Map<string, Prescription[]>();
     for (const p of list) {
       const k = (p.patient_name || "").trim().toLowerCase();
@@ -494,7 +527,79 @@ export default function PharmacyDashboard() {
     );
   }
 
+  function renderGivenCard(p: Prescription) {
+    let dispensed: any[] = [];
+    try { dispensed = p.dispensed_items ? JSON.parse(p.dispensed_items) : []; } catch {}
+    const open = detailId === p.id;
+    const billAmt: number | null = (() => {
+      if (!dispensed.length || dispensed.some((d: any) => d.unitPrice == null)) return null;
+      return round2(dispensed.reduce((s: number, d: any) => {
+        const kept = Math.max(0, (Number(d.tablets) || 0) - (typeof d.returned === "number" ? d.returned : 0));
+        return s + round2(kept * Number(d.unitPrice));
+      }, 0));
+    })();
+    return (
+      <div key={p.id} className="bg-white border border-gray-200 rounded-xl shadow-sm">
+        <div role="button" tabIndex={0} onClick={() => setDetailId(p.id)}
+          className="flex items-center gap-3 px-3 py-3 cursor-pointer active:bg-gray-50">
+          <div className="w-10 h-10 rounded-full bg-teal-600 text-white flex items-center justify-center font-semibold text-sm shrink-0">
+            {(p.patient_name || "?").trim().charAt(0).toUpperCase()}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-sm truncate">{p.patient_name}</p>
+            <p className="text-xs text-gray-500 truncate">
+              {exactLabel(p.created_at)} {"\u00b7"} {p.items.length} medicine{p.items.length === 1 ? "" : "s"}{billAmt != null && <>{" "}{"\u00b7"}{" "}<b className="text-gray-800">{"\u20b9"}{billAmt.toFixed(2)}</b></>}
+            </p>
+          </div>
+          <Button variant="outline" className="h-9 px-3 text-xs shrink-0"
+            onClick={e => { e.stopPropagation(); printInvoiceFor(p.id); }}>
+            Print invoice
+          </Button>
+        </div>
+        {open && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40" onClick={() => setDetailId(null)}>
+            <div className="bg-white w-full sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl" onClick={e => e.stopPropagation()}>
+              <div className="sticky top-0 bg-white border-b border-gray-100 px-4 py-3 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-semibold text-sm truncate">{p.patient_name}</p>
+                  <p className="text-xs text-gray-500">
+                    Dr. {p.doctor_name} {"\u00b7"} {exactLabel(p.created_at)}
+                  </p>
+                </div>
+                <button type="button" onClick={() => setDetailId(null)}
+                  className="text-gray-400 hover:text-gray-700 text-lg leading-none px-1">{"\u2715"}</button>
+              </div>
+              <div className="px-4 py-3 space-y-3">
+                <div className="rounded-xl border border-gray-100 bg-gray-50/70 divide-y divide-gray-100">
+                  {p.items.map((item, i) => renderMedicine(p, item, i))}
+                </div>
+                {dispensed.length > 0 && (
+                  <p className="text-xs text-gray-500 flex items-start gap-1.5">
+                    <Package className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                    <span>
+                      Handed over: {dispensed.map(d => `${d.inventoryName} \u00d7${d.tablets}`).join(", ")}
+                      {dispensed.some(d => d.returned) ? " (some returned to stock)" : ""}
+                    </span>
+                  </p>
+                )}
+                {p.notes && (
+                  <p className="text-xs text-gray-600 bg-yellow-50 border border-yellow-100 rounded-lg px-3 py-2 italic">
+                    Note: {p.notes}
+                  </p>
+                )}
+                <Button variant="outline" className="w-full h-10 text-sm" onClick={() => printInvoiceFor(p.id)}>
+                  Print invoice
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   function renderPatient(list: Prescription[]) {
+    if (list[0].status === "handed_over") return renderGivenCard(list[0]);
     const first = list[0];
     const multi = list.length > 1;
     return (
