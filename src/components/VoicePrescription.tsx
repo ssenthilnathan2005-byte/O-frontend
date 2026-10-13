@@ -12,7 +12,13 @@ import {
   toPrescriptionItem, defaultTimes, TIME_ORDER, normalise, parseSegment,
 } from "@/lib/voicePrescription";
 
-export type VoiceItem = { name: string; dosage: string; duration: string; instructions: string };
+import { getFormConfig, detectFormFromText, FORM_CONFIG, type MedForm } from "@/lib/medicineTypes";
+import { setVoiceForm } from "@/lib/voicePrescription";
+
+export type VoiceItem = {
+  name: string; dosage: string; duration: string; instructions: string;
+  form?: string; quantity?: number; quantityUnit?: string;
+};
 
 interface Props {
   saving: boolean;
@@ -129,8 +135,8 @@ function applyAnswer(m: VoiceMed, field: Ask["field"], text: string): { med: Voi
   return { med: out, ok };
 }
 
-const STRENGTH_UNITS = ["mg", "mcg", "g", "unit"];
-const DOSE_FORMS = ["tablet", "capsule", "ml", "drop", "puff"];
+const STRENGTH_UNITS = ["mg", "ml", "g"];
+
 const DURATION_CHIPS = [3, 5, 7, 10, 14];
 
 const chip = (on: boolean) =>
@@ -776,7 +782,7 @@ export default function VoicePrescription({ saving, notes, onNotesChange, onSkip
       {error && <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg p-2">{error}</div>}
 
       {meds.map((m, i) => (
-        <MedCard key={m.id} med={m} index={i} onPatch={p => patchMed(m.id, p)} onRemove={() => removeMed(m.id)} />
+        <MedCard key={m.id} med={m} index={i} onPatch={p => { const f = p.name ? detectFormFromText(p.name) : null; patchMed(m.id, f && f !== m.form ? setVoiceForm({ ...m, ...p }, f) : p); }} onRemove={() => removeMed(m.id)} />
       ))}
 
       <button
@@ -894,13 +900,21 @@ function MedCard({ med: m, index, onPatch, onRemove }: {
             <NameSearch value={m.name} onPick={n => onPatch({ name: n, nameState: "matched", candidates: [] })} onType={n => onPatch({ name: n, nameState: "manual" })} />
           </div>
 
+          <div>
+            <Label className="text-xs text-gray-500">Medicine type</Label>
+            <select value={m.form} onChange={e => onPatch(setVoiceForm(m, e.target.value as MedForm))}
+              className="w-full border rounded-md text-sm px-2 py-2 bg-white">
+              {FORM_CONFIG.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label className="text-xs text-gray-500">Strength</Label>
               <div className="flex gap-1">
                 <Input type="number" min="0" step="any" inputMode="decimal" placeholder="650" value={m.strengthAmount}
                   onChange={e => onPatch({ strengthAmount: e.target.value, strengthAssumed: false })} className="flex-1 min-w-0" />
-                <select value={m.strengthUnit} onChange={e => onPatch({ strengthUnit: e.target.value, strengthAssumed: false })}
+                <select value={STRENGTH_UNITS.includes(m.strengthUnit) ? m.strengthUnit : "mg"} onChange={e => onPatch({ strengthUnit: e.target.value, strengthAssumed: false })}
                   className="border rounded-md text-sm px-2 bg-white shrink-0">
                   {STRENGTH_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
                 </select>
@@ -911,10 +925,7 @@ function MedCard({ med: m, index, onPatch, onRemove }: {
               <div className="flex gap-1">
                 <Input type="number" min="0" step="any" inputMode="decimal" placeholder="1" value={m.qty}
                   onChange={e => onPatch({ qty: e.target.value })} className="flex-1 min-w-0" />
-                <select value={m.qtyUnit} onChange={e => onPatch({ qtyUnit: e.target.value })}
-                  className="border rounded-md text-sm px-2 bg-white shrink-0">
-                  {DOSE_FORMS.map(u => <option key={u} value={u}>{u}</option>)}
-                </select>
+                <span className="border rounded-md text-sm px-2 bg-gray-50 text-gray-600 shrink-0 flex items-center">{m.qtyUnit}</span>
               </div>
             </div>
           </div>
