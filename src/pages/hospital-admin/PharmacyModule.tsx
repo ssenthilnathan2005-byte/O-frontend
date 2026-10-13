@@ -178,7 +178,7 @@ export function PharmRevenue() {
 // ── 2. Inventory ─────────────────────────────────────────────────────────────
 type InvStatus = "ok" | "low_stock" | "out_of_stock" | "expiring_soon" | "expired";
 type Inv = {
-  id: string; name: string; quantity: number; packSize: number; tabletsAvailable: number; reorderLevel: number;
+  id: string; name: string; quantity: number; packSize: number; packUnit?: string | null; tabletsAvailable: number; reorderLevel: number;
   purchasePrice: number | null; sellingPrice: number | null; supplier: string | null; batchNo: string | null; batches?: { batchNo: string | null; expiryDate: string | null; tablets: number; supplier: string | null }[]; medCategory: string | null;
   expiryDate: string | null; location: string | null; status: InvStatus;
   stripsPerBox?: number | null; tabletsPerBox?: number | null; schedule?: string; gstPercent?: number | null;
@@ -218,7 +218,7 @@ const STATUS_UI: Record<InvStatus, [string, string]> = {
 const nOrNaN = (s: string) => (String(s ?? "").trim() === "" ? NaN : Number(s));
 const rs = (n: number) => "\u20B9" + n.toFixed(2);
 const fmtQty = (n: number) => String(Math.round((Number(n) || 0) * 100) / 100);
-const unitWord = (r: Inv, n: number) => { const L = packLabels(r.medCategory); return n === 1 ? L.s : L.ss; };
+const unitWord = (r: Inv, n: number) => { if (r.packUnit) return n === 1 ? r.packUnit : r.packUnit + "s"; const L = packLabels(r.medCategory); return n === 1 ? L.s : L.ss; };
 function availText(r: Inv): string {
   if (r.stripsPerBox && r.breakdown) return stockText(r);
   const c = String(r.medCategory || "Tablet");
