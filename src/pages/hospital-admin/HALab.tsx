@@ -38,7 +38,7 @@ const EMPTY_ORDER = { patientName:"", doctorName:"", testId:"", priority:"normal
 
 export default function HALab() {
   const { user } = useStore();
-  const hospitalId = user?.role === "hospital_admin" ? (user as any).hospitalId : "";
+  const hospitalId = (user as any)?.hospitalId || "";
 
   const [tab, setTab] = useState<"orders"|"tests">("orders");
   const [orders, setOrders] = useState<LabOrder[]>([]);

@@ -55,7 +55,7 @@ export default function HAInward() {
   const [exportTo, setExportTo] = useState(todayStr());
   const [exporting, setExporting] = useState(false);
 
-  const hospitalId = user?.role === "hospital_admin" ? (user as any).hospitalId : "";
+  const hospitalId = (user as any)?.hospitalId || "";
   const myDoctors = doctors.filter((d: any) => d.hospitalId === hospitalId);
 
   async function load() {

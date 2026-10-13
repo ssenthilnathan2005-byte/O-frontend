@@ -6,6 +6,7 @@ import { detectFormFromText } from "@/lib/medicineTypes";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
+import { useExtraNav, ExtraPanel } from "@/components/StaffExtras";
 import { PharmRevenue, PharmInventory, PharmPatients, PharmSold, PharmStockUpdate, usePharmacySocket } from "./hospital-admin/PharmacyModule";
 import {
   Pill, LogOut, RefreshCw, HandMetal, Search, Inbox, ArrowUpDown, Clock, CheckCircle2, Package, BarChart3, ShoppingCart, Users,
@@ -141,7 +142,8 @@ export default function PharmacyDashboard() {
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [openRx, setOpenRx] = useState<Record<string, boolean>>({});
   const [detailId, setDetailId] = useState<string | null>(null);
-  const [tab, setTab] = useState<"rx" | "revenue" | "inventory" | "patients" | "sold" | "stock">("rx");
+  const [tab, setTab] = useState<string>("rx");
+  const { nav: extraNav } = useExtraNav(["pharmacy", "inventory"]);
   usePharmacySocket(hospitalId);
   const headers = { Authorization: `Bearer ${getToken()}` };
 
@@ -719,6 +721,7 @@ export default function PharmacyDashboard() {
     { key: "sold", label: "Sales History", icon: ShoppingCart },
     { key: "stock", label: "Stock Update", icon: RefreshCw },
   ] as const;
+  const ALL_NAV: { key: string; label: string; icon: any }[] = [...NAV_ITEMS, ...extraNav];
   const sidebar = (
     <aside className="hidden md:flex w-60 shrink-0 flex-col bg-admin-sidebar text-admin-sidebar-fg sticky top-0 h-screen">
       <div className="px-5 py-5 border-b border-white/10 flex items-center gap-3">
@@ -731,7 +734,7 @@ export default function PharmacyDashboard() {
         </div>
       </div>
       <nav className="flex-1 px-3 py-4 space-y-1">
-        {NAV_ITEMS.map(({ key, label, icon: Icon }) => (
+        {ALL_NAV.map(({ key, label, icon: Icon }) => (
           <button key={key} type="button" onClick={() => setTab(key)}
             className={"w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors " + (tab === key ? "bg-white/15 text-white border-l-2 border-teal-400" : "text-white/60 hover:bg-white/8 hover:text-white/90")}>
             <Icon className="w-4 h-4 shrink-0" />
@@ -750,7 +753,7 @@ export default function PharmacyDashboard() {
   );
   const mobileTabs = (
     <div className="md:hidden flex gap-2 overflow-x-auto bg-admin-sidebar px-3 py-2">
-      {NAV_ITEMS.map(({ key, label }) => (
+      {ALL_NAV.map(({ key, label }) => (
         <button key={key} type="button" onClick={() => setTab(key)}
           className={"whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium " + (tab === key ? "bg-white/20 text-white" : "text-white/60")}>
           {label}
@@ -764,7 +767,7 @@ export default function PharmacyDashboard() {
         {sidebar}
         <div className="flex-1 min-w-0">
           {mobileTabs}
-          {tab === "revenue" ? <PharmRevenue /> : tab === "inventory" ? <PharmInventory /> : tab === "patients" ? <PharmPatients /> : tab === "stock" ? <PharmStockUpdate /> : <PharmSold />}
+          {tab.startsWith("x:") ? <ExtraPanel moduleKey={tab.slice(2)} /> : tab === "revenue" ? <PharmRevenue /> : tab === "inventory" ? <PharmInventory /> : tab === "patients" ? <PharmPatients /> : tab === "stock" ? <PharmStockUpdate /> : <PharmSold />}
         </div>
       </div>
     );

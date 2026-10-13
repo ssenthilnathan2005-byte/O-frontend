@@ -26,7 +26,7 @@ const CAT_COLORS: Record<string,string> = {
 
 export default function HAInventory() {
   const { user } = useStore();
-  const hospitalId = user?.role === "hospital_admin" ? (user as any).hospitalId : "";
+  const hospitalId = (user as any)?.hospitalId || "";
 
   const [items, setItems] = useState<Item[]>([]);
   const [filter, setFilter] = useState("all");

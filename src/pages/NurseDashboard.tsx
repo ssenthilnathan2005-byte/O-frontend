@@ -2,8 +2,9 @@ import { useState } from "react";
 import { HeartPulse, LogOut, Building2, User, LayoutDashboard, Stethoscope, Menu, X } from "lucide-react";
 import { useStore } from "../context/StoreContext";
 import NurseWards from "./nurse/NurseWards";
+import { useExtraNav, ExtraPanel } from "../components/StaffExtras";
 
-type Tab = "dashboard" | "wards";
+type Tab = string;
 
 const NAV: { key: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -15,6 +16,7 @@ export default function NurseDashboard() {
   const u = user as any;
   const [tab, setTab] = useState<Tab>("dashboard");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { nav: extraNav, can, loading: permLoading } = useExtraNav(["beds_wards", "vitals"]);
   const hospitalName = u?.hospitalName || "Hospital";
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
@@ -24,7 +26,7 @@ export default function NurseDashboard() {
     setDrawerOpen(false);
   }
 
-  const navButtons = NAV.map(({ key, label, icon: Icon }) => (
+  const navButtons = [...NAV.filter(n => n.key !== "wards" || permLoading || can("beds_wards")), ...extraNav].map(({ key, label, icon: Icon }) => (
     <button
       key={key}
       type="button"
@@ -105,7 +107,7 @@ export default function NurseDashboard() {
       )}
 
       <main className="flex-1 min-w-0 md:pt-0 pt-14">
-        {tab === "wards" ? (
+        {tab.startsWith("x:") ? <ExtraPanel moduleKey={tab.slice(2)} /> : tab === "wards" ? (
           <NurseWards />
         ) : (
           <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-4">

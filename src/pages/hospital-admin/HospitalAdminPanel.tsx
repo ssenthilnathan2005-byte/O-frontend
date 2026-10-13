@@ -1,4 +1,4 @@
-import { HeartPulse, Activity, BarChart3, ChevronDown, ShoppingCart, Fingerprint, BedDouble, Building2, ClipboardList, FlaskConical, LayoutDashboard, LogOut, Menu, Package, Pill, Receipt, Stethoscope, UserCog, Users2, Users, X } from "lucide-react";
+import { ShieldCheck, HeartPulse, Activity, BarChart3, ChevronDown, ShoppingCart, Fingerprint, BedDouble, Building2, ClipboardList, FlaskConical, LayoutDashboard, LogOut, Menu, Package, Pill, Receipt, Stethoscope, UserCog, Users2, Users, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useStore } from "../../context/StoreContext";
 import useAdminSession from "../../hooks/useAdminSession";
@@ -18,6 +18,7 @@ import HAInventory from "./HAInventory";
 import HALab from "./HALab";
 import HAAttendance from "./HAAttendance";
 import HABilling from "./HABilling";
+import HAPermissions from "./HAPermissions";
 import { PharmRevenue, PharmInventory, PharmPatients, PharmSold, PharmStockUpdate, usePharmacySocket } from "./PharmacyModule";
 
 const NAV_ITEMS = [
@@ -34,6 +35,7 @@ const NAV_ITEMS = [
   { path: "/hospital-admin/patients", label: "Live Patients", icon: Users2 },
   { path: "/hospital-admin/nurses", label: "Nurses", icon: HeartPulse },
   { path: "/hospital-admin/front-desk", label: "Front Desk", icon: ClipboardList },
+  { path: "/hospital-admin/permissions", label: "Permissions", icon: ShieldCheck },
   { path: "/hospital-admin/pharmacy", label: "Pharmacy", icon: Pill },
 ] as const;
 
@@ -105,6 +107,7 @@ export default function HospitalAdminPanel() {
     if (route.path === "/hospital-admin/front-desk") return <div className="p-4 max-w-3xl space-y-4"><HAFrontDeskCollections /><HAFrontOfficeStaff /></div>;
     if (route.path === "/hospital-admin/attendance") return <HAAttendance />;
     if (route.path === "/hospital-admin/billing") return <HABilling />;
+    if (route.path === "/hospital-admin/permissions") return <HAPermissions />;
     return <HADashboard />;
   }
 

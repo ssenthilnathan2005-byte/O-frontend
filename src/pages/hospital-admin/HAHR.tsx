@@ -54,7 +54,7 @@ function savePaidSet(hospitalId: string, set: Set<string>) {
 
 export default function HAHR() {
   const { user } = useStore();
-  const hospitalId = user?.role === "hospital_admin" ? (user as any).hospitalId : "";
+  const hospitalId = (user as any)?.hospitalId || "";
 
   const [staff, setStaff] = useState<Staff[]>([]);
   const [filter, setFilter] = useState("all");

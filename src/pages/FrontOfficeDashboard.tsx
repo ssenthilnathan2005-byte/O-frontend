@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { getToken } from "@/api";
 import { useStore } from "../context/StoreContext";
 import { Vitals, vitalsText } from "@/lib/vitals";
+import { useExtraNav, ExtraPanel } from "@/components/StaffExtras";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
@@ -290,7 +291,8 @@ function Admit() {
 
 export default function FrontOfficeDashboard() {
   const { user, logout } = useStore() as any;
-  const [tab, setTab] = useState<"op" | "admit">("op");
+  const [tab, setTab] = useState<string>("op");
+  const { nav: extraNav } = useExtraNav(["live_patients", "ipd", "beds_wards"]);
   const tabCls = (on: boolean) => "flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium " + (on ? "bg-teal-500 text-white" : "bg-white border border-gray-200 text-gray-600");
   return (
     <div className="min-h-screen bg-gray-50">
@@ -306,8 +308,9 @@ export default function FrontOfficeDashboard() {
         <div className="flex gap-2">
           <button className={tabCls(tab === "op")} onClick={() => setTab("op")}><UserCheck className="w-4 h-4" />Today's outpatients</button>
           <button className={tabCls(tab === "admit")} onClick={() => setTab("admit")}><BedDouble className="w-4 h-4" />Admit inpatient</button>
+        {extraNav.map(n => (<button key={n.key} className={tabCls(tab === n.key)} onClick={() => setTab(n.key)}><n.icon className="w-4 h-4" />{n.label}</button>))}
         </div>
-        {tab === "op" ? <Outpatients /> : <Admit />}
+        {tab.startsWith("x:") ? <ExtraPanel moduleKey={tab.slice(2)} /> : tab === "op" ? <Outpatients /> : <Admit />}
       </main>
     </div>
   );

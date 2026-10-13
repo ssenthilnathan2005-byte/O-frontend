@@ -172,7 +172,7 @@ function CleaningTimePicker({ value, onChange, presets = CLEANING_PRESETS, inher
 
 export default function HAWards() {
   const { user, doctors } = useStore();
-  const hospitalId = user?.role === "hospital_admin" ? (user as any).hospitalId : "";
+  const hospitalId = (user as any)?.hospitalId || "";
   const availableDoctors = ((doctors as any[]) || []).filter((d: any) => d.hospitalId === hospitalId && (d.isAvailable ?? true));
 
   const [wards, setWards] = useState<Ward[]>([]);
