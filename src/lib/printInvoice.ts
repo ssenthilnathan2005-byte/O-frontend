@@ -13,6 +13,25 @@ const packMl = (name: string): number => {
 };
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
+const SLOTS = ["Morning", "Afternoon", "Evening", "Night"];
+function intakeHtml(note: string | undefined): string {
+  if (!note) return "";
+  const parts = note.split(/\s*(?:\u00b7|,|;|\|)\s*/).map(s => s.trim()).filter(Boolean);
+  const slots = new Set<string>();
+  let food = "", duration = "";
+  const dose: string[] = [];
+  for (const part of parts) {
+    const slot = SLOTS.find(s => s.toLowerCase() === part.toLowerCase());
+    if (slot) { slots.add(slot); continue; }
+    if (/(before|after|with|without)\s+(food|meals?)|empty stomach/i.test(part)) { food = part; continue; }
+    if (/^\d+(\.\d+)?\s*(day|week|month)s?$/i.test(part)) { duration = part; continue; }
+    dose.push(part);
+  }
+  const head = SLOTS.map(s => `<th class="c">${s}</th>`).join("");
+  const body = SLOTS.map(s => slots.has(s) ? '<td class="c"><b>\u2713</b></td>' : '<td class="c"><span class="off">\u2013</span></td>').join("");
+  return `<table class="ik"><colgroup><col style="width:17%"><col style="width:11%"><col style="width:11%"><col style="width:11%"><col style="width:11%"><col style="width:21%"><col style="width:18%"></colgroup><tr><th class="l">Dose</th>${head}<th class="l">Food</th><th class="l">Duration</th></tr><tr><td class="l">${esc(dose.join(" ") || "-")}</td>${body}<td class="l">${esc(food || "-")}</td><td class="l">${esc(duration || "-")}</td></tr></table>`;
+}
+
 export function printInvoice(inv: InvoiceData): boolean {
   const w = window.open("", "_blank", "width=760,height=900");
   if (!w) return false;
@@ -20,8 +39,9 @@ export function printInvoice(inv: InvoiceData): boolean {
       const pk = packMl(l.name);
       const qty = pk > 1 ? r2(l.tablets / pk) + " bottle(s)" : String(l.tablets);
       const price = pk > 1 ? inr(l.unitPrice * pk) + " / bottle" : inr(l.unitPrice);
-      const note = l.note ? `<div class="note">${esc(l.note)}</div>` : "";
-      return `<tr><td>${esc(l.name)}${note}</td><td class="r">${esc(qty)}</td><td class="r">${price}</td><td class="r">${inr(l.amount)}</td></tr>`;
+      const detail = intakeHtml(l.note);
+      const cls = detail ? ' class="m"' : "";
+      return `<tr${cls}><td>${esc(l.name)}</td><td class="r">${esc(qty)}</td><td class="r">${price}</td><td class="r">${inr(l.amount)}</td></tr>` + (detail ? `<tr class="d"><td colspan="4">${detail}</td></tr>` : "");
     }).join("");
   const when = inv.issuedAt ? new Date(inv.issuedAt).toLocaleString() : "";
   const billLabel = inv.billNo != null ? String(inv.billNo) : "-";
@@ -32,6 +52,14 @@ h1{font-size:20px;margin:0}.muted{color:#666;font-size:12px}.billno{font-size:20
 table{width:100%;border-collapse:collapse;margin-top:14px;font-size:14px}
 th{text-align:left;border-bottom:2px solid #111;padding:6px 4px;font-size:12px}
 td{border-bottom:1px solid #ddd;padding:6px 4px}.r{text-align:right}.note{color:#555;font-size:12px;margin-top:2px}
+tr.m td{border-bottom:none;padding-bottom:2px}
+tr.d td{padding:0 0 8px 0}
+table.ik{width:100%;margin:0;table-layout:fixed;border-collapse:collapse;font-size:12px;border:1px solid #bbb}
+table.ik th{font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:#444;background:#f1f1f1;border:1px solid #ccc;padding:3px 6px;text-align:center;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+table.ik td{border:1px solid #ccc;padding:4px 6px;text-align:center}
+table.ik .l{text-align:left}
+table.ik .off{color:#aaa}
+table.ik b{font-size:14px}
 .total{display:flex;justify-content:space-between;font-size:16px;font-weight:bold;border-top:2px solid #111;margin-top:10px;padding-top:8px}
 </style></head><body>
 <h1>${esc(inv.hospitalName)} - Pharmacy Invoice</h1>
