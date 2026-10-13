@@ -49,9 +49,12 @@ export function voiceDoseUnit(form: MedForm, current: string): string {
   switch (form) {
     case "tablet": return current === "capsule" ? "capsule" : "tablet";
     case "syrup":
-    case "injection": return "ml";
-    case "drops": return "drop";
-    case "spray": return "puff";
+    case "injection":
+    case "drops":
+    case "spray": return "ml";
+    case "ointment": return "g";
+    
+    
     default: return current;
   }
 }

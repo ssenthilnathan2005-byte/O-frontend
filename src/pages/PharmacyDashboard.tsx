@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useStore } from "../context/StoreContext";
 import { getToken } from "@/api";
 import { printInvoice } from "@/lib/printInvoice";
+import { detectFormFromText } from "@/lib/medicineTypes";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -52,9 +53,18 @@ const fromLineUnits = (d: any, stock: StockItem[], v: string) => {
   return b && v !== "" ? String(Math.round((Number(v) / b.pack) * 100) / 100) : v;
 };
 
+// Anything that is not a tablet is dispensed as 1 pack (bottle / vial / tube / inhaler), never multiplied by dose x days.
+const isPackaged = (item: RxItem): boolean => {
+  const f = (item.form || "").toLowerCase();
+  if (f) return f !== "tablet" && f !== "other";
+  const d = detectFormFromText(item.name);
+  if (d) return d !== "tablet";
+  return /\d\s*mls?\b/i.test(item.dosage || "") && !/tablet|capsule/i.test(item.dosage || "");
+};
+
 // tablets = tablets per dose x doses per day x days
 function calcTablets(item: RxItem): number {
-  if (Number(item.quantity) > 0) return Math.round(Number(item.quantity)); if (isBottle(item)) return 1; // doctor's quantity wins
+  if (Number(item.quantity) > 0) return Math.round(Number(item.quantity)); if (isBottle(item) || isPackaged(item)) return 1; // doctor's quantity wins
   const dm = /([\d.]+)\s*(tablet|capsule)/i.exec(item.dosage || "");
   const perDose = dm ? parseFloat(dm[1]) : 1;
   const times = ["Morning", "Afternoon", "Evening", "Night"].filter(t => (item.instructions || "").includes(t)).length || 1;
