@@ -217,6 +217,14 @@ const STATUS_UI: Record<InvStatus, [string, string]> = {
 };
 const nOrNaN = (s: string) => (String(s ?? "").trim() === "" ? NaN : Number(s));
 const rs = (n: number) => "\u20B9" + n.toFixed(2);
+const fmtQty = (n: number) => String(Math.round((Number(n) || 0) * 100) / 100);
+const unitWord = (r: Inv, n: number) => { const L = packLabels(r.medCategory); return n === 1 ? L.s : L.ss; };
+function availText(r: Inv): string {
+  if (r.stripsPerBox && r.breakdown) return stockText(r);
+  const c = String(r.medCategory || "Tablet");
+  if ((c === "Tablet" || c === "Capsule") && r.packSize > 1) return r.tabletsAvailable + " " + packLabels(r.medCategory).u;
+  return "";
+}
 const SCHEDULE_OPTS: [string, string][] = [["none", "Normal (no schedule)"], ["H", "Schedule H"], ["H1", "Schedule H1"], ["X", "Schedule X"]];
 function stockText(r: Inv): string {
   if (!r.stripsPerBox || !r.breakdown) return "packing not set";
@@ -462,12 +470,12 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
               <tr key={r.id} className="border-t border-gray-100">
                 <td className={TD + " font-medium"}>{r.name}{r.schedule && r.schedule !== "none" && <span className="ml-2 px-1.5 py-0.5 rounded bg-red-50 text-red-700 text-xs">{r.schedule}</span>}</td>
                 <td className={TD}>{r.medCategory || "-"}</td>
-                <td className={TD}>{r.tabletsAvailable} <span className="text-xs text-gray-400">({stockText(r)})</span></td>
-                <td className={TD}>{r.batches && r.batches.length > 0 ? (<div className="space-y-0.5">{r.batches.map((b, i) => (<div key={i} className="text-xs whitespace-nowrap">{b.batchNo ? "Batch " + b.batchNo : "No batch recorded"} - {b.expiryDate || "no expiry"} - {b.tablets} tab</div>))}</div>) : (r.expiryDate || "-")}</td>
+                <td className={TD}>{fmtQty(r.quantity)} {unitWord(r, r.quantity)}{availText(r) && <span className="text-xs text-gray-400"> ({availText(r)})</span>}</td>
+                <td className={TD}>{r.batches && r.batches.length > 0 ? (<div className="space-y-0.5">{r.batches.map((b, i) => (<div key={i} className="text-xs whitespace-nowrap">{b.batchNo ? "Batch " + b.batchNo : "No batch recorded"} - {b.expiryDate || "no expiry"} - {fmtQty(b.tablets / (r.packSize || 1))} {unitWord(r, b.tablets / (r.packSize || 1))}</div>))}</div>) : (r.expiryDate || "-")}</td>
                 <td className={TD}>{r.supplier || "-"}</td>
                 <td className={TD}>{r.location || "-"}</td>
-                <td className={TD}>{r.reorderLevel} <span className="text-xs text-gray-400">({Math.round(r.reorderLevel * (r.packSize || 1))} {packLabels(r.medCategory).us})</span></td>
-                <td className={TD}>{inr(r.sellingPrice)}{r.sellingPrice != null && <span className="text-xs text-gray-400"> ({rs(r.sellingPrice / (r.packSize || 1))}/{packLabels(r.medCategory).us})</span>}</td>
+                <td className={TD}>{r.reorderLevel}{r.packSize > 1 && <span className="text-xs text-gray-400"> ({Math.round(r.reorderLevel * r.packSize)} {packLabels(r.medCategory).us})</span>}</td>
+                <td className={TD}>{inr(r.sellingPrice)}{r.sellingPrice != null && r.packSize > 1 && <span className="text-xs text-gray-400"> ({rs(r.sellingPrice / r.packSize)}/{packLabels(r.medCategory).us})</span>}</td>
                 <td className={TD}><span className={"px-2 py-0.5 rounded-full text-xs font-medium " + STATUS_UI[r.status][1]}>{STATUS_UI[r.status][0]}</span></td>
                 <td className={TD + " whitespace-nowrap"}>{!readOnly && (
                   <>
