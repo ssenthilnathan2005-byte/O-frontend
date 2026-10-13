@@ -90,13 +90,14 @@ export default function PharmacyDashboard() {
   usePharmacySocket(hospitalId);
   const headers = { Authorization: `Bearer ${getToken()}` };
 
-  const fetchPrescriptions = useCallback(async () => {
+  const fetchPrescriptions = useCallback(async (silent = false) => {
     try {
       const url = `${BASE}/pharmacy/prescriptions?hospitalId=${hospitalId}`;
       const res = await fetch(url, { headers });
       const data = await res.json();
-      setPrescriptions(Array.isArray(data) ? data : []);
-    } catch { toast.error("Failed to load prescriptions"); }
+      if (Array.isArray(data)) setPrescriptions(data);
+      else if (!silent) setPrescriptions([]);
+    } catch { if (!silent) toast.error("Failed to load prescriptions"); }
     finally { setLoading(false); }
   }, [hospitalId]);
 
@@ -119,6 +120,19 @@ export default function PharmacyDashboard() {
     } catch { /* stats are optional */ }
   }, [hospitalId]);
   useEffect(() => { fetchStats(); }, [fetchStats]);
+
+  // Auto-refresh every 3s so new prescriptions appear without a manual refresh
+  useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState !== "visible") return;
+      fetchPrescriptions(true);
+      fetchStats();
+    };
+    const t = setInterval(tick, 3000);
+    const onVisible = () => { if (document.visibilityState === "visible") tick(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { clearInterval(t); document.removeEventListener("visibilitychange", onVisible); };
+  }, [fetchPrescriptions, fetchStats]);
 
   function getPlan(p: Prescription, idx: number): Plan {
     return plans[p.id]?.[idx] ?? {
