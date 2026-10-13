@@ -660,9 +660,16 @@ type Log = {
 };
 type Invoice = {
   invoiceNo?: string; billNo?: number | null; hospitalName: string; patientId: string; patientName: string; doctorName: string; issuedAt: string | null;
-  paymentMode: string | null; lines: { name: string; tablets: number; unitPrice: number; amount: number }[]; total: number | null; status: string;
+  paymentMode: string | null; lines: { name: string; tablets: number; unitPrice: number; amount: number; note?: string }[]; total: number | null; status: string;
 };
 import { printInvoice } from "@/lib/printInvoice";
+const pbPack = (name: string): number => {
+  if (!/bottle|vial|syrup|tonic|suspension|elixir|drops|liquid/i.test(name || "")) return 1;
+  const m = /(\d+(?:\.\d+)?)\s*ml\b/i.exec(name || "");
+  return m ? (Number(m[1]) || 1) : 1;
+};
+const pbQty = (name: string, n: number): string => { const pk = pbPack(name); return pk > 1 ? String(Math.round((n / pk) * 100) / 100) + " bottle(s)" : String(n); };
+const pbRate = (name: string, price: number): string => { const pk = pbPack(name); return pk > 1 ? inr(price * pk) + " / bottle" : inr(price); };
 export function PharmPatients() {
   const hid = useHid();
   const { range, ui } = useRange();
@@ -675,7 +682,27 @@ export function PharmPatients() {
     catch (e: any) { setErr(e.message); }
   }, [hid, range.from, range.to, q]);
   async function openInvoice(id: string) {
-    try { setInv(await pm<Invoice>("/invoice/" + encodeURIComponent(id))); } catch (e: any) { setErr(e.message); }
+    try {
+      const invData = await pm<Invoice>("/invoice/" + encodeURIComponent(id));
+      try {
+        const res = await fetch(BASE + "/pharmacy/prescriptions?hospitalId=" + encodeURIComponent(String(hid)), { headers: { Authorization: "Bearer " + getToken() } });
+        const list = await res.json();
+        const rx: any = Array.isArray(list) ? list.find((x: any) => String(x.id) === String(id)) : null;
+        if (rx && Array.isArray(rx.items) && Array.isArray(invData.lines)) {
+          const noteOf = (it: any) => [it.dosage, String(it.instructions || "").trim(), it.duration].filter(Boolean).join(" \u00b7 ");
+          const sameLen = invData.lines.length === rx.items.length;
+          invData.lines = invData.lines.map((l, i) => {
+            let it: any = sameLen ? rx.items[i] : undefined;
+            if (!it) {
+              const ln = String(l.name || "").toLowerCase();
+              it = rx.items.find((x: any) => { const b = String(x.name || "").toLowerCase().replace(/\s*\(.*$/, "").trim(); return b.length > 2 && ln.includes(b); });
+            }
+            return it ? { ...l, note: noteOf(it) } : l;
+          });
+        }
+      } catch {}
+      setInv(invData);
+    } catch (e: any) { setErr(e.message); }
   }
   return (
     <Shell title="Patient Purchases" subtitle="Patient-wise dispensing log with bill status. Open an invoice for the itemized pharmacy bill.">
@@ -696,7 +723,7 @@ export function PharmPatients() {
                 <td className={TD}>{r.doctorName}</td>
                 <td className={TD}>
                   {r.medicines.map((m, i) => (
-                    <div key={i}>{m.name}{m.tablets != null ? " x " + m.tablets : ""}{m.dosage ? <span className="text-xs text-gray-400"> ({m.dosage})</span> : null}</div>
+                    <div key={i}>{m.name}{m.tablets != null ? " x " + pbQty(m.name, m.tablets) : ""}{m.dosage ? <span className="text-xs text-gray-400"> ({m.dosage})</span> : null}</div>
                   ))}
                 </td>
                 <td className={TD}>
@@ -723,7 +750,7 @@ export function PharmPatients() {
             <table className="w-full text-sm">
               <thead><tr className="text-left text-xs text-gray-500"><th className="py-1">Medicine</th><th>Qty</th><th>Rate</th><th className="text-right">Amount</th></tr></thead>
               <tbody>{inv.lines.map((l, i) => (
-                <tr key={i} className="border-t border-gray-100"><td className="py-1.5">{l.name}</td><td>{l.tablets}</td><td>{inr(l.unitPrice)}</td><td className="text-right">{inr(l.amount)}</td></tr>
+                <tr key={i} className="border-t border-gray-100"><td className="py-1.5">{l.name}{l.note ? <div className="text-xs text-gray-500">{l.note}</div> : null}</td><td>{pbQty(l.name, l.tablets)}</td><td>{pbRate(l.name, l.unitPrice)}</td><td className="text-right">{inr(l.amount)}</td></tr>
               ))}</tbody>
             </table>
             <div className="flex justify-between border-t border-gray-200 pt-2 font-semibold"><span>Total ({inv.paymentMode || "cash"})</span><span>{inr(inv.total)}</span></div>
