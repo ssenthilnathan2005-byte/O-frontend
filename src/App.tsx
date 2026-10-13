@@ -49,6 +49,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import ChatbotWidget from "./components/ChatbotWidget";
 import LocationAlwaysPrompt from "./components/LocationAlwaysPrompt";
 import { RouterProvider, useRouter } from "./router/RouterContext";
+import PrescriptionAlert from "./components/PrescriptionAlert";
 
 function resolvePhotoUrl(url: string | null | undefined): string | null {
   if (!url) return null;
@@ -572,6 +573,7 @@ function AppRoutes() {
       <Toaster position="top-right" />
       <ChatbotWidget />
       <LocationAlwaysPrompt enabled={user?.role === "patient"} />
+      <PrescriptionAlert enabled={user?.role === "patient"} />
     </div>
   );
 }
