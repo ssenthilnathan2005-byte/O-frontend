@@ -140,6 +140,7 @@ export default function PrescriptionDialog({
   const [otherOpen, setOtherOpen] = useState<Set<number>>(new Set());
   const [mode, setMode] = useState<"manual" | "voice">("voice");
   const [voiceItems, setVoiceItems] = useState<VoiceItem[]>([]);
+  const [voicePending, setVoicePending] = useState<string[]>([]);
 
   // always start in Speak mode when the dialog is opened again
   useEffect(() => { if (!open) setMode("voice"); }, [open]);
@@ -303,6 +304,11 @@ export default function PrescriptionDialog({
 
   async function handleSave() {
     // voice medicines first, then manual ones
+    if (voicePending.length) {
+      toast.error(`Finish the voice medicine details first: ${voicePending.join(", ")}`);
+      setMode("voice");
+      return;
+    }
     await submitPrescription([...voiceItems, ...buildManualItems()], true);
   }
 
@@ -342,6 +348,7 @@ export default function PrescriptionDialog({
     if (keepOpenOnError && !ok) return;
     setMedicines([{ ...EMPTY_MED }]);
     setVoiceItems([]);
+    setVoicePending([]);
     setNotes("");
     setCollapsed(new Set());
     setOtherOpen(new Set());
@@ -352,6 +359,7 @@ export default function PrescriptionDialog({
   function handleSkip() {
     setMedicines([{ ...EMPTY_MED }]);
     setVoiceItems([]);
+    setVoicePending([]);
     setNotes("");
     setCollapsed(new Set());
     setOtherOpen(new Set());
@@ -399,19 +407,66 @@ export default function PrescriptionDialog({
           onApply={applyPreset}
         />
 
+        {mode === "voice" && medicines.some(m => m.name.trim()) && (
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-gray-700 flex items-center gap-1">
+                <Pencil className="w-3.5 h-3.5" /> Added manually ({medicines.filter(m => m.name.trim()).length})
+              </span>
+              <button onClick={() => setMode("manual")} className="text-xs text-blue-700 underline">Edit in Manual</button>
+            </div>
+            {medicines.filter(m => m.name.trim()).map((m, i) => (
+              <div key={"ms" + i} className="flex items-start gap-2 text-sm bg-white border rounded-lg px-3 py-2">
+                <Check className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+                <div className="min-w-0">
+                  <div className="font-medium">{m.name}</div>
+                  <div className="text-xs text-gray-500">{[dosageText(m), formatDuration(m.durationAmount, m.durationUnit), m.instructions].filter(Boolean).join(", ")}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
         <div className={mode === "voice" ? "" : "hidden"}>
           <VoicePrescription
             saving={saving}
             notes={notes}
             onNotesChange={setNotes}
             onSkip={handleSkip}
-            onItemsChange={setVoiceItems}
+            onItemsChange={(items, pending) => { setVoiceItems(items); setVoicePending(pending ?? []); }}
             onConfirm={items => submitPrescription([...items, ...buildManualItems()], true)}
           />
         </div>
 
         {mode === "manual" && (<>
         <div className="space-y-4">
+          {(voiceItems.length > 0 || voicePending.length > 0) && (
+            <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-blue-700 flex items-center gap-1">
+                  <Mic className="w-3.5 h-3.5" /> Added by voice ({voiceItems.length + voicePending.length})
+                </span>
+                <button onClick={() => setMode("voice")} className="text-xs text-blue-700 underline">Edit in Speak</button>
+              </div>
+              {voiceItems.map((v, i) => (
+                <div key={"vs" + i} className="flex items-start gap-2 text-sm bg-white border rounded-lg px-3 py-2">
+                  <Check className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <div className="font-medium">{v.name}</div>
+                    <div className="text-xs text-gray-500">{[v.dosage, v.duration, v.instructions].filter(Boolean).join(", ")}</div>
+                  </div>
+                </div>
+              ))}
+              {voicePending.map((n, i) => (
+                <div key={"vp" + i} className="flex items-start gap-2 text-sm bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  <Mic className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <div className="font-medium">{n}</div>
+                    <div className="text-xs text-amber-700">Needs details. Tap "Edit in Speak" to finish it.</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           {medicines.map((med, idx) => {
             const isCollapsed = collapsed.has(idx) && isMedFilled(med);
             const parts = getParts(med.instructions);

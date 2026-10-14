@@ -21,7 +21,7 @@ export type VoiceItem = {
 };
 
 interface Props {
-  onItemsChange?: (items: VoiceItem[]) => void;
+  onItemsChange?: (items: VoiceItem[], pending?: string[]) => void;
   saving: boolean;
   notes: string;
   onNotesChange: (v: string) => void;
@@ -154,7 +154,10 @@ export default function VoicePrescription({ saving, notes, onNotesChange, onSkip
   const medsRef = useRef<VoiceMed[]>([]);
   medsRef.current = meds;
   useEffect(() => {
-    onItemsChange?.(meds.filter(m => blockingIssues(m).length === 0).map(toPrescriptionItem));
+    onItemsChange?.(
+      meds.filter(m => blockingIssues(m).length === 0).map(toPrescriptionItem),
+      meds.filter(m => blockingIssues(m).length > 0).map(m => m.name || "Unnamed medicine"),
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meds]);
   const phaseRef = useRef<Phase>("ready");
