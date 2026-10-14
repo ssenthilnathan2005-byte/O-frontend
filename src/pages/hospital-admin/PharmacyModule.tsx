@@ -504,12 +504,12 @@ export function PharmInventory({ readOnly = false, iconActions = false }: { read
                 <td className={TD}>{inr(r.sellingPrice)}{r.sellingPrice != null && r.packSize > 1 && <span className="text-xs text-gray-400"> ({rs(r.sellingPrice / r.packSize)}/{packLabels(r.medCategory).us})</span>}</td>
                 <td className={TD}><span className={"px-2 py-0.5 rounded-full text-xs font-medium " + STATUS_UI[r.status][1]}>{STATUS_UI[r.status][0]}</span></td>
                 <td className={TD + " whitespace-nowrap"}>{!readOnly && (iconActions ? (
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <button type="button" title="Stock In" onClick={() => openReceive(r)} className="text-sm text-green-700 hover:underline whitespace-nowrap">Stock In</button>
-                    <button type="button" title="Stock Out" onClick={() => { setSo(r); setSoQty(""); setSoReason(""); setSoErr(""); }} className="text-sm text-orange-600 hover:underline whitespace-nowrap">Stock Out</button>
-                    <button type="button" title="History" onClick={() => openHistory(r)} className="text-sm text-blue-600 hover:underline whitespace-nowrap">History</button>
-                    <button type="button" title="Edit" onClick={() => openEdit(r)} className="text-sm text-teal-700 hover:underline whitespace-nowrap">Edit</button>
-                    <button type="button" title="Delete" onClick={() => { setRm(r); setRmReason(""); setRmErr(""); }} className="text-sm text-red-600 hover:underline whitespace-nowrap">Remove</button>
+                  <div className="grid grid-cols-3 gap-1.5 w-max">
+                    <button type="button" title="Stock In" onClick={() => openReceive(r)} className="px-2.5 py-1 rounded-md border text-xs font-medium text-center whitespace-nowrap transition-colors border-green-200 bg-green-50 text-green-700 hover:bg-green-100">Stock In</button>
+                    <button type="button" title="Stock Out" onClick={() => { setSo(r); setSoQty(""); setSoReason(""); setSoErr(""); }} className="px-2.5 py-1 rounded-md border text-xs font-medium text-center whitespace-nowrap transition-colors border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100">Stock Out</button>
+                    <button type="button" title="History" onClick={() => openHistory(r)} className="px-2.5 py-1 rounded-md border text-xs font-medium text-center whitespace-nowrap transition-colors border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100">History</button>
+                    <button type="button" title="Edit" onClick={() => openEdit(r)} className="px-2.5 py-1 rounded-md border text-xs font-medium text-center whitespace-nowrap transition-colors border-gray-200 bg-white text-gray-700 hover:bg-gray-50">Edit</button>
+                    <button type="button" title="Delete" onClick={() => { setRm(r); setRmReason(""); setRmErr(""); }} className="px-2.5 py-1 rounded-md border text-xs font-medium text-center whitespace-nowrap transition-colors border-red-200 bg-white text-red-600 hover:bg-red-50">Remove</button>
                   </div>
                 ) : (
 
