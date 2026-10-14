@@ -504,12 +504,12 @@ export function PharmInventory({ readOnly = false, iconActions = false }: { read
                 <td className={TD}>{inr(r.sellingPrice)}{r.sellingPrice != null && r.packSize > 1 && <span className="text-xs text-gray-400"> ({rs(r.sellingPrice / r.packSize)}/{packLabels(r.medCategory).us})</span>}</td>
                 <td className={TD}><span className={"px-2 py-0.5 rounded-full text-xs font-medium " + STATUS_UI[r.status][1]}>{STATUS_UI[r.status][0]}</span></td>
                 <td className={TD + " whitespace-nowrap"}>{!readOnly && (iconActions ? (
-                  <div className="flex items-center gap-1">
-                    <button type="button" title="Stock In" onClick={() => openReceive(r)} className="p-1.5 rounded hover:bg-green-50 transition-colors"><IcDown className="w-3.5 h-3.5 text-green-600" /></button>
-                    <button type="button" title="Stock Out" onClick={() => { setSo(r); setSoQty(""); setSoReason(""); setSoErr(""); }} className="p-1.5 rounded hover:bg-orange-50 transition-colors"><IcUp className="w-3.5 h-3.5 text-orange-500" /></button>
-                    <button type="button" title="History" onClick={() => openHistory(r)} className="p-1.5 rounded hover:bg-blue-50 transition-colors"><IcHistory className="w-3.5 h-3.5 text-blue-500" /></button>
-                    <button type="button" title="Edit" onClick={() => openEdit(r)} className="p-1.5 rounded hover:bg-gray-100 transition-colors"><IcEdit className="w-3.5 h-3.5 text-muted-foreground" /></button>
-                    <button type="button" title="Delete" onClick={() => { setRm(r); setRmReason(""); setRmErr(""); }} className="p-1.5 rounded hover:bg-red-50 transition-colors"><IcDelete className="w-3.5 h-3.5 text-red-400" /></button>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <button type="button" title="Stock In" onClick={() => openReceive(r)} className="text-sm text-green-700 hover:underline whitespace-nowrap">Stock In</button>
+                    <button type="button" title="Stock Out" onClick={() => { setSo(r); setSoQty(""); setSoReason(""); setSoErr(""); }} className="text-sm text-orange-600 hover:underline whitespace-nowrap">Stock Out</button>
+                    <button type="button" title="History" onClick={() => openHistory(r)} className="text-sm text-blue-600 hover:underline whitespace-nowrap">History</button>
+                    <button type="button" title="Edit" onClick={() => openEdit(r)} className="text-sm text-teal-700 hover:underline whitespace-nowrap">Edit</button>
+                    <button type="button" title="Delete" onClick={() => { setRm(r); setRmReason(""); setRmErr(""); }} className="text-sm text-red-600 hover:underline whitespace-nowrap">Remove</button>
                   </div>
                 ) : (
 
