@@ -9,6 +9,8 @@ const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/
 
 // Given prescriptions older than this many days move into the "Past" view
 const PAST_DAYS = 20;
+// Text shown on the button at the top right (change it here if you want different wording)
+const PAST_LABEL = "Past";
 
 const TIMELINE = [
   { status: "pending", label: "Prescribed", icon: Pill, color: "text-blue-500 bg-blue-50 border-blue-200" },
@@ -139,7 +141,7 @@ export default function MyPrescriptionsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pt-0">
-      <div className="bg-white border-b px-4 py-2 flex items-center gap-3">
+      <div className="bg-white border-b shadow-sm px-4 py-4 flex items-center gap-3">
         <button
           onClick={() => { if (showPast) setShowPast(false); else navigate({ path: "/patient/tokens" }); }}
           className="text-gray-400 hover:text-gray-600"
@@ -153,15 +155,21 @@ export default function MyPrescriptionsPage() {
         <button
           onClick={() => setShowPast(v => !v)}
           aria-label="Past prescriptions"
-          className={"ml-auto flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-medium " +
+          className={"ml-auto flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium " +
             (showPast ? "bg-teal-600 text-white border-teal-600" : "bg-white text-gray-600 border-gray-200")}
         >
           <HistoryIcon className="w-4 h-4" />
-          {pastList.length > 0 && <span>{pastList.length}</span>}
+          <span>{PAST_LABEL}</span>
+          {pastList.length > 0 && (
+            <span className={"min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-semibold flex items-center justify-center " +
+              (showPast ? "bg-white/25 text-white" : "bg-teal-600 text-white")}>
+              {pastList.length}
+            </span>
+          )}
         </button>
       </div>
 
-      <div className="max-w-lg mx-auto px-4 py-4 space-y-3">
+      <div className="max-w-lg mx-auto px-4 py-5 space-y-3">
         {showPast && !loading && pastList.length > 0 && (
           <p className="text-[11px] text-gray-400">Given prescriptions older than {PAST_DAYS} days</p>
         )}
