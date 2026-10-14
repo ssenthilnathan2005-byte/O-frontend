@@ -4,6 +4,12 @@ import usePermissions from "../hooks/usePermissions";
 import { getToken } from "../api";
 import { useStore } from "../context/StoreContext";
 import ErrorBoundary from "./ErrorBoundary";
+import { Users, Receipt, Fingerprint, Pill } from "lucide-react";
+import HAAllPatients from "../pages/hospital-admin/HAAllPatients";
+import HAPatients from "../pages/hospital-admin/HAPatients";
+import HABilling from "../pages/hospital-admin/HABilling";
+import HAAttendance from "../pages/hospital-admin/HAAttendance";
+import { PharmRevenue, PharmInventory, PharmPatients, PharmSold, PharmStockUpdate } from "../pages/hospital-admin/PharmacyModule";
 import HAInward from "../pages/hospital-admin/HAInward";
 import HAInventory from "../pages/hospital-admin/HAInventory";
 import HALab from "../pages/hospital-admin/HALab";
@@ -85,6 +91,22 @@ function RevenuePanel() {
   );
 }
 
+function PharmacyPanel() {
+  const [t, setT] = useState("revenue");
+  const tabs: [string, string][] = [["revenue", "Revenue"], ["inventory", "Inventory"], ["patients", "Purchases"], ["sold", "Sales"], ["stock", "Stock Update"]];
+  return (
+    <div>
+      <div className="flex flex-wrap gap-2 px-4 pt-4 md:px-6">
+        {tabs.map(([k, l]) => (
+          <button key={k} type="button" onClick={() => setT(k)}
+            className={"px-3 py-1.5 rounded-full text-xs font-medium " + (t === k ? "bg-teal-600 text-white" : "bg-gray-100 text-gray-600")}>{l}</button>
+        ))}
+      </div>
+      {t === "revenue" ? <PharmRevenue /> : t === "inventory" ? <PharmInventory /> : t === "patients" ? <PharmPatients /> : t === "sold" ? <PharmSold /> : <PharmStockUpdate />}
+    </div>
+  );
+}
+
 type Extra = { label: string; icon: LucideIcon; render: () => ReactNode };
 const EXTRAS: Record<string, Extra> = {
   revenue: { label: "Revenue", icon: IndianRupee, render: () => <RevenuePanel /> },
@@ -93,6 +115,11 @@ const EXTRAS: Record<string, Extra> = {
   lab: { label: "Laboratory", icon: FlaskConical, render: () => <HALab /> },
   hr: { label: "HR / Staff", icon: ClipboardList, render: () => <HAHR /> },
   beds_wards: { label: "Beds & Wards", icon: Stethoscope, render: () => <HAWards /> },
+  all_patients: { label: "All Patients", icon: Users, render: () => <HAAllPatients /> },
+  live_patients: { label: "Live Patients", icon: Users, render: () => <HAPatients /> },
+  billing: { label: "Billing", icon: Receipt, render: () => <HABilling /> },
+  attendance: { label: "Attendance", icon: Fingerprint, render: () => <HAAttendance /> },
+  pharmacy: { label: "Pharmacy", icon: Pill, render: () => <PharmacyPanel /> },
 };
 const EXTRA_KEYS = Object.keys(EXTRAS);
 

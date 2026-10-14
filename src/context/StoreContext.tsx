@@ -76,6 +76,7 @@ export function useStore(): Store {
 }
 
 const REFRESH_MS = 10_000; // 10 seconds
+let _bkDeniedAt = 0;
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const { navigate, resetToLogin } = useRouter();
@@ -151,6 +152,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           api.doctors.list(),
         ]);
         setHospitals(h);
+        if ((u as any)?.role === "doctor" && !(u as any).hospitalId) {
+          const me = (d as any[]).find((x) => x.id === (u as any).doctorId);
+          if (me?.hospitalId) {
+            const nu = { ...(u as any), hospitalId: me.hospitalId };
+            try { localStorage.setItem("db_user", JSON.stringify(nu)); } catch {}
+            setUser(nu);
+          }
+        }
         setDoctors(d);
       } catch (err) {
         // On initial load, keep whatever data we already have
@@ -164,7 +173,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     if (!u) return;
 
-    if (u.role === "nurse") return; // nurses do not need hospital-wide bookings
+    if (["nurse", "front_office", "pharmacy", "hospital_lab"].includes((u as any).role)) {
+      const hid = (u as any).hospitalId;
+      if (hid && Date.now() - _bkDeniedAt > 60000) {
+        try { setBookings(await api.bookings.forHospital(hid)); _bkDeniedAt = 0; }
+        catch { _bkDeniedAt = Date.now(); }
+      }
+      return;
+    }
     try {
       const b = await api.bookings.list(u.role === "hospital_admin" ? u.hospitalId : undefined);
       setBookings(b);

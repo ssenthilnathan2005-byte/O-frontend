@@ -41,7 +41,7 @@ export default function HAAttendance() {
       const t = new Date(`${to}T23:59:59`).toISOString();
       const [p, d] = await Promise.all([
         get(`/attendance?from=${encodeURIComponent(f)}&to=${encodeURIComponent(t)}`),
-        get(""),
+        get("").catch(() => []),
       ]);
       setPunches(p); setDevices(d);
     } catch (e: any) { setError(e.message); }

@@ -149,7 +149,7 @@ async function getJson(path: string) {
 export default function HABilling() {
   const { doctors, user } = useStore();
   const { navigate } = useRouter();
-  const hospitalId = user && user.role === "hospital_admin" ? user.hospitalId : "";
+  const hospitalId = (user as any)?.hospitalId || "";
   const myDoctors = useMemo(() => doctors.filter((d) => d.hospitalId === hospitalId), [doctors, hospitalId]);
 
   const [period, setPeriod] = useState<Period>("month");

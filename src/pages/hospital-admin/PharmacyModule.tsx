@@ -53,7 +53,7 @@ export function usePharmacySocket(hospitalId: string) {
 
 function useHid() {
   const { user } = useStore();
-  return user?.role === "hospital_admin" || user?.role === "pharmacy" ? user.hospitalId : "";
+  return (user as any)?.hospitalId || "";
 }
 
 // Loads now, every 10s, and whenever a pharmacy update arrives.
