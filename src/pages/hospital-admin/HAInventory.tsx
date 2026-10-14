@@ -11,7 +11,7 @@ const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/
 type Item = {
   id: string; name: string; category: string; unit: string;
   quantity: number; min_quantity: number; purchase_price: number | null;
-  supplier: string | null; location: string | null; notes: string | null; pack_size?: number;
+  supplier: string | null; location: string | null; notes: string | null; pack_size?: number; med_category?: string | null; pack_unit?: string | null;
 };
 
 const CATEGORIES = ["supplies","equipment","consumables","medicines","linen","cleaning","other"];
@@ -23,6 +23,23 @@ const CAT_COLORS: Record<string,string> = {
   linen:"bg-pink-50 text-pink-700", cleaning:"bg-yellow-50 text-yellow-700",
   other:"bg-gray-100 text-gray-500",
 };
+
+// Medicine stock is kept in packs (strips / bottles / tubes). pack_size = tablets, ml or g per pack.
+const BASE_BY_CAT: Record<string, { pack: string; base: string }> = {
+  "Tablet": { pack: "strip", base: "tablets" }, "Capsule": { pack: "strip", base: "capsules" },
+  "Syrup/Tonic": { pack: "bottle", base: "ml" }, "Oil": { pack: "bottle", base: "ml" }, "Drops": { pack: "bottle", base: "ml" },
+  "Injection": { pack: "vial", base: "ml" }, "Ointment/Cream": { pack: "tube", base: "g" },
+  "Powder": { pack: "sachet", base: "g" }, "Others": { pack: "pack", base: "units" },
+};
+function stockText(item: Item, packs: number): { main: string; sub: string } {
+  const n = (x: number) => String(Math.round(x * 1000) / 1000);
+  if (item.category !== "medicines") return { main: n(packs) + " " + item.unit, sub: "" };
+  const L = BASE_BY_CAT[item.med_category || "Tablet"] || BASE_BY_CAT["Tablet"];
+  const pack = item.pack_unit || L.pack;
+  const ps = item.pack_size || 1;
+  const packsLabel = n(packs) + " " + pack + (Math.abs(packs - 1) < 1e-9 ? "" : "s");
+  return ps > 1 ? { main: n(packs * ps) + " " + L.base, sub: packsLabel } : { main: packsLabel, sub: "" };
+}
 
 export default function HAInventory() {
   const { user } = useStore();
@@ -195,11 +212,12 @@ export default function HAInventory() {
             <tbody>
               {filtered.map(item => {
                 const isLow = item.quantity <= item.min_quantity;
+                const hideMed = item.category === "medicines" ? " hidden" : "";
                 return (
                   <tr key={item.id} className="border-t hover:bg-muted/20 transition-colors">
                     <td className="px-4 py-3">
                       <p className="font-medium">{item.name}</p>
-                      {item.purchase_price && <p className="text-xs text-muted-foreground">₹{item.purchase_price}/{item.unit}</p>}
+                      {item.purchase_price && <p className="text-xs text-muted-foreground">₹{Math.round(Number(item.purchase_price) * 100) / 100}/{item.category === "medicines" ? (item.pack_unit || (BASE_BY_CAT[item.med_category || "Tablet"] || BASE_BY_CAT["Tablet"]).pack) : item.unit}</p>}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${CAT_COLORS[item.category]||"bg-gray-100 text-gray-500"}`}>
@@ -208,31 +226,31 @@ export default function HAInventory() {
                     </td>
                     <td className="px-4 py-3">
                       <span className={`font-semibold ${isLow ? "text-red-600" : "text-gray-800"}`}>
-                        {(item.pack_size||1) > 1 ? <>{item.quantity * (item.pack_size||1)} tablets <span className="block text-xs font-normal text-muted-foreground">{item.quantity} packs</span></> : <>{(item.pack_size||1) > 1 ? <>{item.quantity * (item.pack_size||1)} tablets <span className="block text-xs font-normal text-muted-foreground">{item.quantity} packs</span></> : <>{item.quantity} {item.unit}</>}</>}
+                        {(() => { const s = stockText(item, item.quantity); return <>{s.main}{s.sub && <span className="block text-xs font-normal text-muted-foreground">{s.sub}</span>}</>; })()}
                       </span>
                       {isLow && <p className="text-xs text-red-400">Low stock</p>}
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">{(item.pack_size||1) > 1 ? <>{item.min_quantity * (item.pack_size||1)} tablets <span className="text-xs">({item.min_quantity} packs)</span></> : <>{(item.pack_size||1) > 1 ? <>{item.min_quantity * (item.pack_size||1)} tablets <span className="text-xs">({item.min_quantity} packs)</span></> : <>{item.min_quantity} {item.unit}</>}</>}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{(() => { const s = stockText(item, item.min_quantity); return <>{s.main}{s.sub && <> <span className="text-xs">({s.sub})</span></>}</>; })()}</td>
                     <td className="px-4 py-3 text-muted-foreground">{item.supplier||"—"}</td>
                     <td className="px-4 py-3 text-muted-foreground">{item.location||"—"}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-1">
                         <button onClick={() => { setTxModal({ item, type:"in" }); setTxQty(""); setTxReason(""); }}
-                          className="p-1.5 rounded hover:bg-green-50 transition-colors" title="Stock In">
+                          className={"p-1.5 rounded hover:bg-green-50 transition-colors" + hideMed} title="Stock In">
                           <ArrowDown className="w-3.5 h-3.5 text-green-600" />
                         </button>
                         <button onClick={() => { setTxModal({ item, type:"out" }); setTxQty(""); setTxReason(""); }}
-                          className="p-1.5 rounded hover:bg-orange-50 transition-colors" title="Stock Out">
+                          className={"p-1.5 rounded hover:bg-orange-50 transition-colors" + hideMed} title="Stock Out">
                           <ArrowUp className="w-3.5 h-3.5 text-orange-500" />
                         </button>
                         <button onClick={() => openHistory(item)}
                           className="p-1.5 rounded hover:bg-blue-50 transition-colors" title="History">
                           <History className="w-3.5 h-3.5 text-blue-500" />
                         </button>
-                        <button onClick={() => openEdit(item)} className="p-1.5 rounded hover:bg-muted transition-colors">
+                        <button onClick={() => openEdit(item)} className={"p-1.5 rounded hover:bg-muted transition-colors" + hideMed}>
                           <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
                         </button>
-                        <button onClick={() => handleDelete(item.id)} className="p-1.5 rounded hover:bg-red-50 transition-colors">
+                        <button onClick={() => handleDelete(item.id)} className={"p-1.5 rounded hover:bg-red-50 transition-colors" + hideMed}>
                           <Trash2 className="w-3.5 h-3.5 text-red-400" />
                         </button>
                       </div>
@@ -274,7 +292,7 @@ export default function HAInventory() {
                 <label className="text-sm font-medium text-gray-600 mb-1 block">Category</label>
                 <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
                   className="w-full border rounded-md px-3 py-2 text-sm bg-white">
-                  {CATEGORIES.map(c => <option key={c} value={c} className="capitalize">{c}</option>)}
+                  {CATEGORIES.filter(c => c !== "medicines").map(c => <option key={c} value={c} className="capitalize">{c}</option>)}
                 </select>
               </div>
               <div>
