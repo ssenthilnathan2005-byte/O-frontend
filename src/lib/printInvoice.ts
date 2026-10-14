@@ -7,11 +7,12 @@ const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, c => ESC[c]);
 const inr = (n: number | null | undefined) => "\u20b9" + (Number(n) || 0).toFixed(2);
 
 const packMl = (name: string): number => {
-  if (!/bottle|vial|syrup|tonic|suspension|elixir|drops|liquid/i.test(name || "")) return 1;
-  const m = /(\d+(?:\.\d+)?)\s*ml\b/i.exec(name || "");
+  if (!/bottle|vial|syrup|tonic|suspension|elixir|drops|liquid|\b(ointment|cream|gel|lotion)\b/i.test(name || "")) return 1;
+  const m = /(\d+(?:\.\d+)?)\s*(?:ml|gm|g)\b/i.exec(name || "");
   return m ? (Number(m[1]) || 1) : 1;
 };
 const r2 = (n: number) => Math.round(n * 100) / 100;
+const packWordOf = (name: string): string => /\b(ointment|cream|gel|lotion)\b/i.test(name || "") ? "tube" : /\b(vial|injection)\b/i.test(name || "") ? "vial" : "bottle";
 
 const SLOTS = ["Morning", "Afternoon", "Evening", "Night"];
 function intakeHtml(note: string | undefined): string {
@@ -37,8 +38,8 @@ export function printInvoice(inv: InvoiceData): boolean {
   if (!w) return false;
   const rows = inv.lines.map(l => {
       const pk = packMl(l.name);
-      const qty = pk > 1 ? r2(l.tablets / pk) + " bottle(s)" : String(l.tablets);
-      const price = pk > 1 ? inr(l.unitPrice * pk) + " / bottle" : inr(l.unitPrice);
+      const qty = pk > 1 ? r2(l.tablets / pk) + " " + packWordOf(l.name) + "(s)" : String(l.tablets);
+      const price = pk > 1 ? inr(l.unitPrice * pk) + " / " + packWordOf(l.name) : inr(l.unitPrice);
       const detail = intakeHtml(l.note);
       const cls = detail ? ' class="m"' : "";
       return `<tr${cls}><td>${esc(l.name)}</td><td class="r">${esc(qty)}</td><td class="r">${price}</td><td class="r">${inr(l.amount)}</td></tr>` + (detail ? `<tr class="d"><td colspan="4">${detail}</td></tr>` : "");
@@ -83,8 +84,8 @@ export function showInvoicePopup(inv: InvoiceData): void {
   if (old) old.remove();
   const rows = inv.lines.map(l => {
     const pk = packMl(l.name);
-    const qty = pk > 1 ? r2(l.tablets / pk) + " bottle(s)" : String(l.tablets);
-    const price = pk > 1 ? inr(l.unitPrice * pk) + " / bottle" : inr(l.unitPrice);
+    const qty = pk > 1 ? r2(l.tablets / pk) + " " + packWordOf(l.name) + "(s)" : String(l.tablets);
+    const price = pk > 1 ? inr(l.unitPrice * pk) + " / " + packWordOf(l.name) : inr(l.unitPrice);
     return `<tr><td style="padding:6px 4px;border-bottom:1px solid #eee">${esc(l.name)}</td><td style="padding:6px 4px;border-bottom:1px solid #eee;text-align:right">${esc(qty)}</td><td style="padding:6px 4px;border-bottom:1px solid #eee;text-align:right">${price}</td><td style="padding:6px 4px;border-bottom:1px solid #eee;text-align:right">${inr(l.amount)}</td></tr>`;
   }).join("");
   const when = inv.issuedAt ? new Date(inv.issuedAt).toLocaleString() : "";

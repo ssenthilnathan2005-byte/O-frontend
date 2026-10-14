@@ -22,28 +22,31 @@ interface Prescription {
   id: string; patient_name: string; doctor_name: string; items: RxItem[];
   notes: string; status: PrescStatus; created_at: string; dispensed_items?: string | null;
 }
-interface StockItem { id: string; name: string; unit: string; quantity: number; pack_size: number; selling_price?: number | null }
+interface StockItem { id: string; name: string; unit: string; quantity: number; pack_size: number; selling_price?: number | null; med_category?: string | null; pack_unit?: string | null }
 interface Plan { itemId: string; qty: string; reason: string; price?: string }
 
-const LIQUID_RE = /bottle|vial|syrup|tonic|suspension|elixir|drops|liquid/i;
+const LIQUID_RE = /bottle|vial|syrup|tonic|suspension|elixir|drops|liquid|ointment|cream|lotion/i;
 const isBottle = (item?: RxItem, st?: StockItem): boolean => {
+  if (st && st.med_category) return st.med_category !== 'Tablet' && st.med_category !== 'Capsule';
   if (st) return LIQUID_RE.test([st.unit, st.name].filter(Boolean).join(" "));
   const u = (item?.quantityUnit || "").trim();
-  if (/bottle|vial/i.test(u)) return true;
+  if (/bottle|vial|tube|sachet/i.test(u)) return true;
   if (/^(ml|milli|tablet|capsule|strip|pack)/i.test(u)) return false;
   return LIQUID_RE.test([item?.name, item?.form].filter(Boolean).join(" "));
 };
 const packOf = (st?: StockItem) => Number(st?.pack_size) || 1;
+const PACK_BY_CAT: Record<string, string> = { 'Ointment/Cream': 'tube', 'Injection': 'vial', 'Powder': 'sachet', 'Others': 'pack' };
+const packName = (st?: StockItem): string => st?.pack_unit || (st?.med_category ? PACK_BY_CAT[st.med_category] : '') || 'bottle';
 // For a dispensed line saved in ml: is it a whole number of bottles?
-const lineBottles = (d: any, stock: StockItem[]): { pack: number } | null => {
+const lineBottles = (d: any, stock: StockItem[]): { pack: number; st: StockItem } | null => {
   const st = stock.find(s => s.id === d?.inventoryItemId) || stock.find(s => s.name === d?.inventoryName);
   const pack = packOf(st);
   const n = Number(d?.tablets) || 0;
-  return st && isBottle(undefined, st) && pack > 1 && n >= pack && n % pack === 0 ? { pack } : null;
+  return st && isBottle(undefined, st) && pack > 1 && n >= pack && n % pack === 0 ? { pack, st } : null;
 };
 const fmtQty = (d: any, stock: StockItem[]) => {
   const b = lineBottles(d, stock);
-  return b ? `${Math.round((Number(d.tablets) / b.pack) * 100) / 100} bottle(s)` : String(d.tablets);
+  return b ? `${Math.round((Number(d.tablets) / b.pack) * 100) / 100} ${packName(b.st)}(s)` : String(d.tablets);
 };
 const toLineUnits = (d: any, stock: StockItem[], v: string) => {
   const b = lineBottles(d, stock);
@@ -292,7 +295,8 @@ export default function PharmacyDashboard() {
         const st = stock.find(s => s.id === pl.itemId);
         const qty = Number(pl.qty);
         if (!(qty > 0)) return toast.error(`Enter a quantity for ${p.items[i].name}`);
-        if (st && qty * (isBottle(p.items[i], st) ? packOf(st) : 1) > tabletsAvailable(st)) return toast.error(`Only ${isBottle(p.items[i], st) ? Math.floor(tabletsAvailable(st) / packOf(st)) + " bottle(s)" : tabletsAvailable(st)} available for ${st.name}`);
+        if (!Number.isInteger(qty)) return toast.error(isBottle(p.items[i], st) ? `${p.items[i].name} is dispensed in whole ${packName(st)}s only` : `Enter a whole number for ${p.items[i].name}`);
+        if (st && qty * (isBottle(p.items[i], st) ? packOf(st) : 1) > tabletsAvailable(st)) return toast.error(`Only ${isBottle(p.items[i], st) ? Math.floor(tabletsAvailable(st) / packOf(st)) + " " + packName(st) + "(s)" : tabletsAvailable(st)} available for ${st.name}`);
         const pk = isBottle(p.items[i], st) ? packOf(st) : 1; dispense.push({ index: i, inventoryItemId: pl.itemId, quantity: pk === 1 ? qty : Math.round(qty * pk), reason: pl.reason, unitPrice: pk === 1 ? unitPriceFor(p, i) : Math.round(unitPriceFor(p, i) / pk * 1e6) / 1e6 });
       }
       handoverPayload = dispense.map((d, line) => ({ line, quantity: d.quantity, reason: "" }));
@@ -412,7 +416,7 @@ export default function PharmacyDashboard() {
           <p className="text-sm font-semibold text-gray-900">{item.name}</p>
           {!isGiven && (
             <span className="text-xs font-semibold text-teal-700 bg-teal-50 rounded-md px-2 py-0.5 whitespace-nowrap">
-              Prescribed: {suggested} {bottle ? "bottle(s)" : (item.quantityUnit || "tablets")}
+              Prescribed: {suggested} {bottle ? packName(st) + "(s)" : (item.quantityUnit || "tablets")}
             </span>
           )}
         </div>
@@ -448,20 +452,20 @@ export default function PharmacyDashboard() {
                 <select value={pl.itemId} onChange={e => setPlan(p, i, { itemId: e.target.value })}
                   className="w-full border border-gray-200 rounded-md text-xs px-2 py-1.5 bg-white">
                   <option value="">Select stock item...</option>
-                  {stock.map(s => <option key={s.id} value={s.id}>{s.name} ({isBottle(undefined, s) ? (Math.round(tabletsAvailable(s) / packOf(s) * 10) / 10) + " bottles" : tabletsAvailable(s)} in stock)</option>)}
+                  {stock.map(s => <option key={s.id} value={s.id}>{s.name} ({isBottle(undefined, s) ? (Math.round(tabletsAvailable(s) / packOf(s) * 10) / 10) + " " + packName(s) + "s" : tabletsAvailable(s)} in stock)</option>)}
                 </select>
                 {pl.itemId && (
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-gray-500">Dispensed</span>
-                    <input type="number" min={1} value={pl.qty}
+                    <input type="number" min={1} step={1} value={pl.qty}
                       onChange={e => setPlan(p, i, { qty: e.target.value })}
                       className="w-20 border border-gray-200 rounded-md text-sm px-2 py-1 bg-white" />
-                    <span className="text-xs text-gray-500">{bottle ? "bottle(s)" : (item.quantityUnit || "tablets")}</span>
+                    <span className="text-xs text-gray-500">{bottle ? packName(st) + "(s)" : (item.quantityUnit || "tablets")}</span>
                   </div>
                 )}
                 {pl.itemId && st && (
                   <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <span className="text-gray-500">Price per {bottle ? "bottle" : (item.quantityUnit || "tablets").replace(/\(s\)$|s$/, "")} {"\u20b9"}</span>
+                    <span className="text-gray-500">Price per {bottle ? packName(st) : (item.quantityUnit || "tablets").replace(/\(s\)$|s$/, "")} {"\u20b9"}</span>
                     <input type="number" min={0} step="any" value={pl.price ?? String(defaultUnitPrice(st, bottle))}
                       onChange={e => setPlan(p, i, { price: e.target.value })}
                       className="w-24 border border-gray-200 rounded-md text-sm px-2 py-1 bg-white" />

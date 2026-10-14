@@ -840,6 +840,9 @@ const suRound = (n: number) => Math.round(n * 100) / 100;
 function suPack(name: string, inv: Inv[], itemId?: string): number {
   const item = itemId ? inv.find(i => String(i.id) === itemId) : matchInv(name, inv);
   const names = [item?.name || "", name || ""];
+  const mc = (item as any)?.medCategory;
+  if (mc === "Tablet" || mc === "Capsule") return 1;
+  if (mc) { const ps = Number((item as any).packSize); return ps > 1 ? ps : 1; }
   if (!names.some(n => SU_LIQ.test(n))) return 1;
   for (const n of names) {
     const m = /(\d+(?:\.\d+)?)\s*ml\b/i.exec(n);
@@ -847,16 +850,21 @@ function suPack(name: string, inv: Inv[], itemId?: string): number {
   }
   return 1;
 }
+function suUnit(name: string, inv: Inv[], itemId?: string): string {
+  const item: any = itemId ? inv.find(i => String(i.id) === itemId) : matchInv(name, inv);
+  const byCat: Record<string, string> = { "Ointment/Cream": "tube", Injection: "vial", Powder: "sachet", Others: "pack" };
+  return (item && (item.packUnit || byCat[item.medCategory])) || "bottle";
+}
 function suShow(name: string, units: number, inv: Inv[]): string {
   const pk = suPack(name, inv);
-  return pk > 1 ? suRound(units / pk) + " bottle(s)" : String(units);
+  return pk > 1 ? suRound(units / pk) + " " + suUnit(name, inv) + "(s)" : String(units);
 }
 function suMix(rows: { name: string; v: number }[], inv: Inv[]): string {
-  let tabs = 0, bt = 0;
-  for (const r of rows) { const pk = suPack(r.name, inv); if (pk > 1) bt += r.v / pk; else tabs += r.v; }
+  let tabs = 0, bt = 0; const us = new Set<string>();
+  for (const r of rows) { const pk = suPack(r.name, inv); if (pk > 1) { bt += r.v / pk; us.add(suUnit(r.name, inv)); } else tabs += r.v; }
   bt = suRound(bt);
   if (bt <= 0) return String(tabs);
-  return (tabs > 0 ? tabs + " + " : "") + bt + " bottle(s)";
+  return (tabs > 0 ? tabs + " + " : "") + bt + " " + (us.size === 1 ? Array.from(us)[0] : "pack") + "(s)";
 }
 function matchInv(name: string, inv: Inv[]): Inv | undefined {
   const n = name.toLowerCase().replace(/\s+/g, " ").trim();
@@ -896,6 +904,7 @@ export function PharmStockUpdate() {
     const sendQty = packOfLine(l) > 1 ? Math.round(n * packOfLine(l)) : n;
     if (!itemId) return "Select a stock item for " + l.name;
     if (!(n > 0)) return "Enter a valid quantity for " + l.name;
+    if (packOfLine(l) > 1 && !Number.isInteger(n)) return l.name + ": enter whole " + suUnit(l.name, inv, itemOf(l)) + "s only";
     try {
       await pm("/stock-deduct", {
         method: "POST",
