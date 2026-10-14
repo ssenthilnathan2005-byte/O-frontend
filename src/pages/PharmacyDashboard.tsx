@@ -138,7 +138,7 @@ export default function PharmacyDashboard() {
   const [filter, setFilter] = useState<"received" | "given">("received");
   const [manualDeduct, setManualDeduct] = useState<Record<string, boolean>>({});
   const [query, setQuery] = useState("");
-  const [newestFirst, setNewestFirst] = useState(true);
+  const [newestFirst, setNewestFirst] = useState(false); // oldest first: patients are served in order
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [openRx, setOpenRx] = useState<Record<string, boolean>>({});
   const [detailId, setDetailId] = useState<string | null>(null);
