@@ -2,10 +2,13 @@ import { useState, useEffect, useCallback } from "react";
 import { useStore } from "../../context/StoreContext";
 import { getToken } from "@/api";
 import { toast } from "sonner";
-import { Pill, HandMetal, ArrowLeft, ChevronDown } from "lucide-react";
+import { Pill, HandMetal, ArrowLeft, ChevronDown, History as HistoryIcon } from "lucide-react";
 import { useRouter } from "../../router/RouterContext";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
+
+// Given prescriptions older than this many days move into the "Past" view
+const PAST_DAYS = 20;
 
 const TIMELINE = [
   { status: "pending", label: "Prescribed", icon: Pill, color: "text-blue-500 bg-blue-50 border-blue-200" },
@@ -87,6 +90,7 @@ export default function MyPrescriptionsPage() {
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [loading, setLoading] = useState(true);
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
+  const [showPast, setShowPast] = useState(false);
 
   function toggleOpen(id: string) {
     setOpenIds(prev => {
@@ -127,19 +131,40 @@ export default function MyPrescriptionsPage() {
     return () => ws.close();
   }, [user, fetchPrescriptions]);
 
+  // Past = already given AND older than PAST_DAYS. Anything still pending stays in the live list.
+  const isPast = (p: Prescription) =>
+    p.status === "handed_over" && Date.now() - new Date(p.created_at).getTime() > PAST_DAYS * 86400000;
+  const pastList = prescriptions.filter(isPast);
+  const visible = showPast ? pastList : prescriptions.filter(p => !isPast(p));
+
   return (
     <div className="min-h-screen bg-gray-50 pt-0">
       <div className="bg-white border-b px-4 py-2 flex items-center gap-3">
-        <button onClick={() => navigate({ path: "/patient/tokens" })} className="text-gray-400 hover:text-gray-600">
+        <button
+          onClick={() => { if (showPast) setShowPast(false); else navigate({ path: "/patient/tokens" }); }}
+          className="text-gray-400 hover:text-gray-600"
+        >
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div className="flex items-center gap-2">
           <Pill className="w-5 h-5 text-teal-600" />
-          <h1 className="font-bold text-lg">My Prescriptions</h1>
+          <h1 className="font-bold text-lg">{showPast ? "Past Prescriptions" : "My Prescriptions"}</h1>
         </div>
+        <button
+          onClick={() => setShowPast(v => !v)}
+          aria-label="Past prescriptions"
+          className={"ml-auto flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-medium " +
+            (showPast ? "bg-teal-600 text-white border-teal-600" : "bg-white text-gray-600 border-gray-200")}
+        >
+          <HistoryIcon className="w-4 h-4" />
+          {pastList.length > 0 && <span>{pastList.length}</span>}
+        </button>
       </div>
 
       <div className="max-w-lg mx-auto px-4 py-4 space-y-3">
+        {showPast && !loading && pastList.length > 0 && (
+          <p className="text-[11px] text-gray-400">Given prescriptions older than {PAST_DAYS} days</p>
+        )}
         {loading ? (
           <p className="text-center text-gray-400 py-12">Loading...</p>
         ) : prescriptions.length === 0 ? (
@@ -148,7 +173,17 @@ export default function MyPrescriptionsPage() {
             <p className="text-gray-400 text-sm">No prescriptions yet.</p>
             <p className="text-gray-300 text-xs mt-1">Prescriptions from your doctor will appear here.</p>
           </div>
-        ) : prescriptions.map(p => {
+        ) : visible.length === 0 ? (
+          <div className="text-center py-14">
+            <Pill className="w-9 h-9 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-400 text-sm">{showPast ? "No past prescriptions." : "No recent prescriptions."}</p>
+            {!showPast && pastList.length > 0 && (
+              <button onClick={() => setShowPast(true)} className="mt-2 text-xs text-teal-600 underline">
+                View {pastList.length} past prescription{pastList.length === 1 ? "" : "s"}
+              </button>
+            )}
+          </div>
+        ) : visible.map(p => {
           const given = p.status === "handed_over";
 
           // ---------- GIVEN: small row, tap the date to open the details ----------
@@ -170,7 +205,7 @@ export default function MyPrescriptionsPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-800 truncate">Dr. {p.doctor_name}</p>
                     <p className="text-[11px] text-gray-400 truncate">
-                      {n} medicine{n === 1 ? "" : "s"} {"\u00b7"} {p.hospital_name}
+                      {n} medicine{n === 1 ? "" : "s"}{p.hospital_name ? " \u00b7 " + p.hospital_name : ""}
                     </p>
                   </div>
                   <span className="text-[10px] bg-green-50 text-green-600 border border-green-100 px-2 py-0.5 rounded-full font-medium shrink-0">Given</span>
