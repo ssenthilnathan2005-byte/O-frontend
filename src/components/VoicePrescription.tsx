@@ -21,6 +21,7 @@ export type VoiceItem = {
 };
 
 interface Props {
+  onItemsChange?: (items: VoiceItem[]) => void;
   saving: boolean;
   notes: string;
   onNotesChange: (v: string) => void;
@@ -142,7 +143,7 @@ const DURATION_CHIPS = [3, 5, 7, 10, 14];
 const chip = (on: boolean) =>
   `px-3 py-1.5 rounded-full border text-sm transition-colors ${on ? "bg-blue-600 border-blue-600 text-white" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"}`;
 
-export default function VoicePrescription({ saving, notes, onNotesChange, onSkip, onConfirm }: Props) {
+export default function VoicePrescription({ saving, notes, onNotesChange, onSkip, onConfirm, onItemsChange }: Props) {
   const [phase, setPhase] = useState<Phase>("ready");
   const [error, setError] = useState("");
   const [live, setLive] = useState("");
@@ -152,6 +153,10 @@ export default function VoicePrescription({ saving, notes, onNotesChange, onSkip
 
   const medsRef = useRef<VoiceMed[]>([]);
   medsRef.current = meds;
+  useEffect(() => {
+    onItemsChange?.(meds.filter(m => blockingIssues(m).length === 0).map(toPrescriptionItem));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meds]);
   const phaseRef = useRef<Phase>("ready");
   phaseRef.current = phase;
   const recRef = useRef<any>(null);

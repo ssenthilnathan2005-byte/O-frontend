@@ -139,6 +139,7 @@ export default function PrescriptionDialog({
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
   const [otherOpen, setOtherOpen] = useState<Set<number>>(new Set());
   const [mode, setMode] = useState<"manual" | "voice">("voice");
+  const [voiceItems, setVoiceItems] = useState<VoiceItem[]>([]);
 
   // always start in Speak mode when the dialog is opened again
   useEffect(() => { if (!open) setMode("voice"); }, [open]);
@@ -286,8 +287,8 @@ export default function PrescriptionDialog({
     setMode("manual");
   }
 
-  async function handleSave() {
-    const validMeds = medicines
+  function buildManualItems(): VoiceItem[] {
+    return medicines
       .filter(m => m.name.trim())
       .map(m => ({
         name: m.name,
@@ -298,7 +299,11 @@ export default function PrescriptionDialog({
         quantity: finalQuantity(m),
         quantityUnit: FORM_OPTIONS.find(o => o.value === guessForm(m))?.unit ?? "units",
       }));
-    await submitPrescription(validMeds);
+  }
+
+  async function handleSave() {
+    // voice medicines first, then manual ones
+    await submitPrescription([...voiceItems, ...buildManualItems()], true);
   }
 
   // Shared by the manual form and voice mode. keepOpenOnError is used by voice so a failed
@@ -336,6 +341,7 @@ export default function PrescriptionDialog({
     setSaving(false);
     if (keepOpenOnError && !ok) return;
     setMedicines([{ ...EMPTY_MED }]);
+    setVoiceItems([]);
     setNotes("");
     setCollapsed(new Set());
     setOtherOpen(new Set());
@@ -345,6 +351,7 @@ export default function PrescriptionDialog({
 
   function handleSkip() {
     setMedicines([{ ...EMPTY_MED }]);
+    setVoiceItems([]);
     setNotes("");
     setCollapsed(new Set());
     setOtherOpen(new Set());
@@ -392,15 +399,16 @@ export default function PrescriptionDialog({
           onApply={applyPreset}
         />
 
-        {mode === "voice" && (
+        <div className={mode === "voice" ? "" : "hidden"}>
           <VoicePrescription
             saving={saving}
             notes={notes}
             onNotesChange={setNotes}
             onSkip={handleSkip}
-            onConfirm={items => submitPrescription(items, true)}
+            onItemsChange={setVoiceItems}
+            onConfirm={items => submitPrescription([...items, ...buildManualItems()], true)}
           />
-        )}
+        </div>
 
         {mode === "manual" && (<>
         <div className="space-y-4">
