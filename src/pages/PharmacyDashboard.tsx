@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useStore } from "../context/StoreContext";
 import { getToken } from "@/api";
-import { printInvoice } from "@/lib/printInvoice";
+import { printInvoice, showInvoicePopup } from "@/lib/printInvoice";
 import { detectFormFromText } from "@/lib/medicineTypes";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -238,7 +238,7 @@ export default function PharmacyDashboard() {
   function grandTotal(p: Prescription): number {
     return round2(p.items.reduce((s, _it, i) => s + lineTotal(p, i), 0));
   }
-  async function printInvoiceFor(id: string) {
+  async function printInvoiceFor(id: string, preview = false) {
     try {
       const res = await fetch(`${BASE}/pharmacy-module/invoice/${encodeURIComponent(id)}`, { headers });
       const inv = await res.json();
@@ -258,7 +258,7 @@ export default function PharmacyDashboard() {
           });
         }
       } catch {}
-      if (!printInvoice(inv)) toast.error("Allow pop-ups to print the invoice");
+      if (preview) showInvoicePopup(inv); else if (!printInvoice(inv)) toast.error("Allow pop-ups to print the invoice");
     } catch { toast.error("Could not load invoice"); }
   }
 
@@ -323,7 +323,8 @@ export default function PharmacyDashboard() {
       if (p.status === "pending") await send("packed", { dispense });
       if (p.status === "pending" || p.status === "packed") await send("ready", {});
       await send("handed_over", { handover: handoverPayload, billAmount: billTotal, paymentMode: payModes[p.id] || "cash" });
-      toast.success("Marked as packed. Patient notified");
+      toast.success("Marked as given. Patient notified");
+      await printInvoiceFor(p.id, true);
     } catch (err: any) {
       toast.error(err?.message || "Network error");
     } finally {
@@ -601,14 +602,14 @@ export default function PharmacyDashboard() {
               <Button className="flex-[2] h-10 text-sm bg-teal-600 hover:bg-teal-700" disabled={busy === p.id}
                 onClick={async () => { await markGiven(p); setConfirmId(null); }}>
                 <CheckCircle2 className="w-4 h-4 mr-2" />
-                {busy === p.id ? "Please wait..." : "Yes, mark as packed"}
+                {busy === p.id ? "Please wait..." : "Yes, mark as given"}
               </Button>
             </div>
           ) : (
             <Button className="w-full h-10 text-sm bg-teal-600 hover:bg-teal-700" disabled={busy === p.id}
               onClick={() => setConfirmId(p.id)}>
               <HandMetal className="w-4 h-4 mr-2" />
-              Mark as Packed
+              Mark as Given
             </Button>
           )
         )}

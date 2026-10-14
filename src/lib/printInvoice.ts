@@ -75,3 +75,48 @@ table.ik b{font-size:14px}
   setTimeout(() => w.print(), 300);
   return true;
 }
+
+
+// Popup shown right after medicines are marked as given: invoice preview + Print button
+export function showInvoicePopup(inv: InvoiceData): void {
+  const old = document.getElementById("invoice-popup-root");
+  if (old) old.remove();
+  const rows = inv.lines.map(l => {
+    const pk = packMl(l.name);
+    const qty = pk > 1 ? r2(l.tablets / pk) + " bottle(s)" : String(l.tablets);
+    const price = pk > 1 ? inr(l.unitPrice * pk) + " / bottle" : inr(l.unitPrice);
+    return `<tr><td style="padding:6px 4px;border-bottom:1px solid #eee">${esc(l.name)}</td><td style="padding:6px 4px;border-bottom:1px solid #eee;text-align:right">${esc(qty)}</td><td style="padding:6px 4px;border-bottom:1px solid #eee;text-align:right">${price}</td><td style="padding:6px 4px;border-bottom:1px solid #eee;text-align:right">${inr(l.amount)}</td></tr>`;
+  }).join("");
+  const when = inv.issuedAt ? new Date(inv.issuedAt).toLocaleString() : "";
+  const billLabel = inv.billNo != null ? String(inv.billNo) : "-";
+  const root = document.createElement("div");
+  root.id = "invoice-popup-root";
+  root.style.cssText = "position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:12px;font-family:Arial,Helvetica,sans-serif";
+  root.innerHTML = `<div style="background:#fff;color:#111;border-radius:14px;width:100%;max-width:460px;max-height:92vh;overflow:auto;padding:18px;box-shadow:0 10px 40px rgba(0,0,0,.3)">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+<div><div style="font-size:12px;color:#0d9488;font-weight:bold">Marked as given</div>
+<div style="font-size:17px;font-weight:bold">${esc(inv.hospitalName)} - Pharmacy Invoice</div></div>
+<button id="inv-x" style="border:none;background:none;font-size:22px;cursor:pointer;color:#666;line-height:1">&times;</button></div>
+<div style="margin-top:10px;font-size:13px;line-height:1.6">
+<div><b>Bill No:</b> ${esc(billLabel)}</div>
+<div><b>Date:</b> ${esc(when)}</div>
+<div><b>Patient:</b> ${esc(inv.patientName)}</div>
+<div><b>Prescribed by:</b> Dr. ${esc(inv.doctorName)}</div>
+<div><b>Payment:</b> ${esc((inv.paymentMode || "cash").toUpperCase())}</div></div>
+<table style="width:100%;border-collapse:collapse;margin-top:12px;font-size:13px">
+<thead><tr style="border-bottom:2px solid #111"><th style="text-align:left;padding:6px 4px;font-size:11px">Medicine</th><th style="text-align:right;padding:6px 4px;font-size:11px">Qty</th><th style="text-align:right;padding:6px 4px;font-size:11px">Unit price</th><th style="text-align:right;padding:6px 4px;font-size:11px">Amount</th></tr></thead>
+<tbody>${rows}</tbody></table>
+<div style="display:flex;justify-content:space-between;font-size:16px;font-weight:bold;border-top:2px solid #111;margin-top:10px;padding-top:8px"><span>Total</span><span>${inr(inv.total)}</span></div>
+<div style="display:flex;gap:8px;margin-top:16px">
+<button id="inv-close" style="flex:1;padding:10px;border:1px solid #ddd;background:#fff;border-radius:8px;cursor:pointer;font-size:14px">Close</button>
+<button id="inv-print" style="flex:2;padding:10px;border:none;background:#0d9488;color:#fff;border-radius:8px;cursor:pointer;font-size:14px;font-weight:bold">Print Invoice</button></div>
+</div>`;
+  document.body.appendChild(root);
+  const close = () => root.remove();
+  root.addEventListener("click", e => { if (e.target === root) close(); });
+  root.querySelector("#inv-x")?.addEventListener("click", close);
+  root.querySelector("#inv-close")?.addEventListener("click", close);
+  root.querySelector("#inv-print")?.addEventListener("click", () => {
+    if (!printInvoice(inv)) alert("Allow pop-ups to print the invoice");
+  });
+}
