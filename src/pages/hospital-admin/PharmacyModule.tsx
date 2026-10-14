@@ -504,7 +504,7 @@ export function PharmInventory({ readOnly = false, iconActions = false }: { read
                 <td className={TD}>{inr(r.sellingPrice)}{r.sellingPrice != null && r.packSize > 1 && <span className="text-xs text-gray-400"> ({rs(r.sellingPrice / r.packSize)}/{packLabels(r.medCategory).us})</span>}</td>
                 <td className={TD}><span className={"px-2 py-0.5 rounded-full text-xs font-medium " + STATUS_UI[r.status][1]}>{STATUS_UI[r.status][0]}</span></td>
                 <td className={TD + " whitespace-nowrap"}>{!readOnly && (iconActions ? (
-                  <div className="grid grid-cols-3 gap-1.5 w-max">
+                  <div className="flex flex-nowrap items-center gap-1.5">
                     <button type="button" title="Stock In" onClick={() => openReceive(r)} className="px-2.5 py-1 rounded-md border text-xs font-medium text-center whitespace-nowrap transition-colors border-green-200 bg-green-50 text-green-700 hover:bg-green-100">Stock In</button>
                     <button type="button" title="Stock Out" onClick={() => { setSo(r); setSoQty(""); setSoReason(""); setSoErr(""); }} className="px-2.5 py-1 rounded-md border text-xs font-medium text-center whitespace-nowrap transition-colors border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100">Stock Out</button>
                     <button type="button" title="History" onClick={() => openHistory(r)} className="px-2.5 py-1 rounded-md border text-xs font-medium text-center whitespace-nowrap transition-colors border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100">History</button>
