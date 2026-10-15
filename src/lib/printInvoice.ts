@@ -92,7 +92,7 @@ ${invoiceSummary(inv).map(r => `<div class="sum"><span>${esc(r.label)}</span><sp
 
 
 // Popup shown right after medicines are marked as given: invoice preview + Print button
-export function showInvoicePopup(inv: InvoiceData): void {
+export function showInvoicePopup(inv: InvoiceData, opts?: { heading?: string }): void {
   const old = document.getElementById("invoice-popup-root");
   if (old) old.remove();
   const rows = inv.lines.map(l => {
@@ -108,7 +108,7 @@ export function showInvoicePopup(inv: InvoiceData): void {
   root.style.cssText = "position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:12px;font-family:Arial,Helvetica,sans-serif";
   root.innerHTML = `<div style="background:#fff;color:#111;border-radius:14px;width:100%;max-width:460px;max-height:92vh;overflow:auto;padding:18px;box-shadow:0 10px 40px rgba(0,0,0,.3)">
 <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-<div><div style="font-size:12px;color:#0d9488;font-weight:bold">Marked as given</div>
+<div><div style="font-size:12px;color:#0d9488;font-weight:bold">${esc(opts?.heading ?? "Marked as given")}</div>
 <div style="font-size:17px;font-weight:bold">${esc(inv.hospitalName)} - Pharmacy Invoice</div></div>
 <button id="inv-x" style="border:none;background:none;font-size:22px;cursor:pointer;color:#666;line-height:1">&times;</button></div>
 <div style="margin-top:10px;font-size:13px;line-height:1.6">

@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback } from "react";
 import { useStore } from "../../context/StoreContext";
 import { getToken } from "@/api";
 import { toast } from "sonner";
-import { Pill, HandMetal, ArrowLeft, ChevronDown, History as HistoryIcon } from "lucide-react";
+import { Pill, HandMetal, ArrowLeft, ChevronDown, History as HistoryIcon, Receipt, Loader2 } from "lucide-react";
 import { useRouter } from "../../router/RouterContext";
+import { showInvoicePopup } from "../../lib/printInvoice";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
@@ -100,6 +101,20 @@ export default function MyPrescriptionsPage() {
       if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
+  }
+
+  const [billBusy, setBillBusy] = useState<string | null>(null);
+  async function openBill(id: string) {
+    setBillBusy(id);
+    try {
+      const res = await fetch(`${BASE}/pharmacy-module/my-invoice/${id}`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { toast.error((data as any)?.error || "Bill not available yet"); return; }
+      showInvoicePopup(data, { heading: "Pharmacy bill" });
+    } catch { toast.error("Could not load the bill"); }
+    finally { setBillBusy(null); }
   }
 
   const fetchPrescriptions = useCallback(async () => {
@@ -238,6 +253,14 @@ export default function MyPrescriptionsPage() {
                         );
                       })}
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => openBill(p.id)}
+                      disabled={billBusy === p.id}
+                      className="flex w-full items-center justify-center gap-2 rounded-lg border border-teal-600 bg-white px-3 py-2 text-sm font-semibold text-teal-700 active:bg-teal-50 disabled:opacity-60"
+                    >
+                      {billBusy === p.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />} View bill
+                    </button>
                   </div>
                 )}
               </div>
