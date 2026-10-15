@@ -19,7 +19,7 @@ async function pm<T>(path: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 
-type Row = { name: string; batchNo: string | null; expiryDate: string | null; unit: string; qty: number; mrp: number; gross: number; discount: number; taxable: number };
+type Row = { billNos: number[]; supplier: string | null; purchasedOn: string | null; purchaseRate: number; name: string; batchNo: string | null; expiryDate: string | null; unit: string; qty: number; mrp: number; gross: number; discount: number; taxable: number };
 type CalcRow = Row & { cgAmt: number; sgAmt: number; total: number };
 type Profile = { name: string; address: string; phone: string; gstin: string; drugLicence: string; defaultHsn: string };
 type Report = { from: string; to: string; bills: number; billNoFrom: number | null; billNoTo: number | null; profile: Profile; rows: Row[] };
@@ -89,6 +89,9 @@ export default function GstInvoice() {
     return false;
   }
 
+  const detailHead = ["#", "Medicine", "Batch", "Sold in Bill No", "Qty sold", "Supplier", "Purchased on", "Last purchase rate (Rs./unit)", "MRP (Rs./unit)"];
+  const billsText = (a: number[]) => (a.length > 8 ? a.slice(0, 8).join(", ") + " +" + (a.length - 8) + " more" : a.join(", "));
+  const detailBody = () => calc.rows.map((r, i) => [String(i + 1), r.name, r.batchNo || "-", billsText(r.billNos || []) || "-", r.qty + " " + r.unit, r.supplier || "-", fmtDate(r.purchasedOn), r.purchaseRate > 0 ? plain(r.purchaseRate) : "-", plain(r.mrp)]);
   const heads = ["#", "Medicine", "HSN", "Batch", "Expiry", "Qty", "MRP", "Discount", "Taxable value", "CGST " + cg + "%", "SGST " + sg + "%", "Total"];
 
   async function downloadPdf() {
@@ -136,6 +139,9 @@ export default function GstInvoice() {
       line("Invoice total", "Rs. " + plain(calc.total), true);
       doc.setFont("helvetica", "normal"); doc.setFontSize(8);
       doc.text("Prices are exclusive of GST. CGST and SGST are added on the taxable value (amount after discount).", 14, fy + 4);
+      doc.addPage();
+      doc.setFontSize(12); doc.text("Sales and purchase detail (from pharmacy inventory)", 14, 14);
+      autoTable(doc, { startY: 18, head: [detailHead], body: detailBody(), styles: { fontSize: 8 }, headStyles: { fillColor: [13, 148, 136] }, columnStyles: { 7: { halign: "right" }, 8: { halign: "right" } } });
       doc.save(invNo + ".pdf");
     } catch (e: any) { toast.error("Could not create the PDF: " + (e?.message || "error")); } finally { setBusy(""); }
   }
@@ -167,6 +173,11 @@ export default function GstInvoice() {
       ws.addRow(["", "Invoice total", "", "", "", "", "", "", "", calc.total]).font = { bold: true };
       [8, 9, 10, 11, 12, 13].forEach(c => { ws.getColumn(c).numFmt = "#,##0.00"; });
       ws.getColumn(2).width = 34; [4, 5, 7].forEach(c => { ws.getColumn(c).width = 14; }); [8, 9, 10, 11, 12, 13].forEach(c => { ws.getColumn(c).width = 15; });
+      const ws2 = wb.addWorksheet("Sales and Purchase");
+      ws2.addRow(detailHead).font = { bold: true };
+      detailBody().forEach(r => ws2.addRow(r));
+      for (let c = 1; c <= 9; c++) ws2.getColumn(c).width = 18;
+      ws2.getColumn(2).width = 34;
       const buf = await wb.xlsx.writeBuffer();
       const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
       const a = document.createElement("a");
@@ -262,6 +273,18 @@ export default function GstInvoice() {
               <button type="button" onClick={downloadExcel} disabled={busy !== ""} className="px-3 py-1.5 text-sm rounded-md border border-teal-600 text-teal-700 disabled:opacity-60">{busy === "xlsx" ? "Preparing..." : "Download Excel"}</button>
             </div>
           )}
+        </div>
+      )}
+      {report && calc.rows.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-2">
+          <p className="font-semibold text-gray-900 text-sm">Sales and purchase detail</p>
+          <p className="text-xs text-gray-500">Purchase details come from stock received in pharmacy inventory. The rate is the last purchase rate per unit, not per batch.</p>
+          <div className="overflow-x-auto border border-gray-100 rounded-lg">
+            <table className="w-full">
+              <thead className="bg-gray-50"><tr>{detailHead.map(h => <th key={h} className={th}>{h}</th>)}</tr></thead>
+              <tbody>{detailBody().map((r, i) => (<tr key={i} className="border-t border-gray-100">{r.map((c, j) => <td key={j} className={td}>{c}</td>)}</tr>))}</tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
