@@ -3,6 +3,7 @@ import { ArrowLeft, BedDouble, Loader2, Stethoscope, Calendar, Building2 } from 
 import { bedBookings } from "../../api";
 import { useRouter } from "../../router/RouterContext";
 import PatientBill from "./PatientBill";
+import PatientInvoice from "./PatientInvoice";
 
 const rupee = (n: number) => "₹" + Number(n || 0).toLocaleString("en-IN");
 const fmt = (s?: string | null) => (s ? new Date(s).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "-");
@@ -95,6 +96,7 @@ export default function MyAdmissionPage() {
                 <p className="text-xs text-gray-600">{s.ward || "-"}{s.bed_number ? " · Bed " + s.bed_number : ""}</p>
                 <p className="text-xs text-gray-500">{fmt(s.admitted_at)} to {fmt(s.discharged_at)} ({daysBetween(s.admitted_at, s.discharged_at)} days)</p>
                 <PatientBill inwardId={s.id} />
+                <PatientInvoice inwardId={s.id} />
               </div>
             ))}
           </div>
