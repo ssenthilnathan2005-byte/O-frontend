@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FileText, Printer, X, Loader2 } from "lucide-react";
+import { FileText, X, Loader2 } from "lucide-react";
 import { ipdBilling } from "../../api";
 
 const RS = "\u20B9";
@@ -65,13 +65,6 @@ export default function PatientInvoice({ inwardId }: { inwardId: string }) {
           <div className="no-print sticky top-0 z-10 flex items-center justify-between gap-2 border-b bg-white px-4 py-3 shadow-sm">
             <button type="button" onClick={() => setOpen(false)} className="flex items-center gap-1.5 text-sm font-medium text-gray-600">
               <X className="w-5 h-5" /> Close
-            </button>
-            <button
-              type="button"
-              onClick={() => { try { window.print(); } catch { /* ignore */ } }}
-              className="flex items-center gap-2 rounded-lg bg-teal-600 px-3 py-2 text-sm font-semibold text-white active:scale-95"
-            >
-              <Printer className="w-4 h-4" /> Print / Save PDF
             </button>
           </div>
 

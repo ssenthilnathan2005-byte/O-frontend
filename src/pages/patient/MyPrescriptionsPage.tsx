@@ -113,6 +113,13 @@ export default function MyPrescriptionsPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { toast.error((data as any)?.error || "Bill not available yet"); return; }
       showInvoicePopup(data, { heading: "Pharmacy bill" });
+      // patient view: no printing - remove the Print button from the popup
+      const dropPrint = () =>
+        document.querySelectorAll("#invoice-popup-root button").forEach((b) => {
+          if (/print/i.test(b.textContent || "")) b.remove();
+        });
+      dropPrint();
+      setTimeout(dropPrint, 50);
     } catch { toast.error("Could not load the bill"); }
     finally { setBillBusy(null); }
   }
