@@ -7,9 +7,10 @@ import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { useExtraNav, ExtraPanel } from "@/components/StaffExtras";
+import GstInvoice from "./hospital-admin/GstInvoice";
 import { PharmRevenue, PharmInventory, PharmPatients, PharmSold, PharmStockUpdate, usePharmacySocket } from "./hospital-admin/PharmacyModule";
 import {
-  Pill, LogOut, RefreshCw, HandMetal, Search, Inbox, ArrowUpDown, Clock, CheckCircle2, Package, BarChart3, ShoppingCart, Users,
+  Pill, LogOut, RefreshCw, HandMetal, Search, Inbox, ArrowUpDown, Clock, CheckCircle2, Package, BarChart3, ShoppingCart, Users, FileText,
 } from "lucide-react";
 
 // pharmacy-layout-v3
@@ -748,6 +749,7 @@ export default function PharmacyDashboard() {
     { key: "inventory", label: "Inventory Management", icon: Package },
     { key: "patients", label: "Patient Purchases", icon: Users },
     { key: "sold", label: "Sales History", icon: ShoppingCart },
+    { key: "gst", label: "GST Invoice", icon: FileText },
     { key: "stock", label: "Stock Update", icon: RefreshCw },
   ] as const;
   const ALL_NAV: { key: string; label: string; icon: any }[] = [...NAV_ITEMS, ...extraNav];
@@ -796,7 +798,7 @@ export default function PharmacyDashboard() {
         {sidebar}
         <div className="flex-1 min-w-0">
           {mobileTabs}
-          {tab.startsWith("x:") ? <ExtraPanel moduleKey={tab.slice(2)} /> : tab === "revenue" ? <PharmRevenue /> : tab === "inventory" ? <PharmInventory iconActions /> : tab === "patients" ? <PharmPatients /> : tab === "stock" ? <PharmStockUpdate /> : <PharmSold />}
+          {tab.startsWith("x:") ? <ExtraPanel moduleKey={tab.slice(2)} /> : tab === "revenue" ? <PharmRevenue /> : tab === "inventory" ? <PharmInventory iconActions /> : tab === "patients" ? <PharmPatients /> : tab === "stock" ? <PharmStockUpdate /> : tab === "gst" ? <GstInvoice /> : <PharmSold />}
         </div>
       </div>
     );
