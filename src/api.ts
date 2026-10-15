@@ -665,6 +665,7 @@ export const labs = {
 
 // ── IPD bed booking ───────────────────────────────────────────────────────────
 export const bedBookings = {
+  myStays:      ()                               => get<any[]>("/bed-bookings/my-stays"),
   availability: (hospitalId: string)            => get<any[]>(`/bed-bookings/availability/${hospitalId}`),
   create:       (data: any)                      => post<any>("/bed-bookings", data),
   mine:         ()                               => get<any[]>("/bed-bookings/mine"),

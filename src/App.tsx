@@ -28,6 +28,7 @@ import HospitalDoctorsPage from "./pages/patient/HospitalDoctorsPage";
 import HospitalsPage from "./pages/patient/HospitalsPage";
 import MyTokensPage from "./pages/patient/MyTokensPage";
 import MyPrescriptionsPage from "./pages/patient/MyPrescriptionsPage";
+import MyAdmissionPage from "./pages/patient/MyAdmissionPage";
 import TokenTrackerPage from "./pages/patient/TokenTrackerPage";
 import PharmaciesPage from "./pages/patient/PharmaciesPage"; // eslint-disable-line -- kept for quick revert, see ComingSoonPage swap below
 import LabsPage from "./pages/patient/LabsPage";
@@ -520,6 +521,7 @@ function AppRoutes() {
     if (route.path === "/ambulance") return <ComingSoonPage title="Ambulance" />; // was: <AmbulancePage />
     if (route.path === "/patient/profile") return <ProfilePage />;
     if (route.path === "/patient/tokens") return <MyTokensPage />;
+    if (route.path === "/patient/admission") return <MyAdmissionPage />;
     if (route.path === "/patient/prescriptions") return <MyPrescriptionsPage />;
     if (route.path === "/patient/track") {
       const r = route as { sessionId: string; tokenNumber: number };

@@ -19,6 +19,7 @@ type Route =
   | { path: "/patient/hospitals"; city?: string }
   | { path: "/patient/hospital"; id: string }
   | { path: "/patient/tokens" }
+  | { path: "/patient/admission" }
   | { path: "/patient/prescriptions" }
   | { path: "/patient/profile" }
   | { path: "/patient/track"; sessionId: string; tokenNumber: number }
@@ -112,6 +113,7 @@ function getInitialRoute(): Route {
   if (pathname === "/patient/hospitals") return { path: "/patient/hospitals", city };
   if (pathname === "/patient/hospital") return { path: "/patient/hospital", id: hospitalId };
   if (pathname === "/patient/tokens") return { path: "/patient/tokens" };
+  if (pathname === "/patient/admission") return { path: "/patient/admission" };
   if (pathname === "/patient/prescriptions") return { path: "/patient/prescriptions" };
   if (pathname === "/patient/track") {
     return {
