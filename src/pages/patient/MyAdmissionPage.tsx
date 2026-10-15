@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, BedDouble, Loader2, Stethoscope, Calendar, Building2 } from "lucide-react";
 import { bedBookings } from "../../api";
 import { useRouter } from "../../router/RouterContext";
+import PatientBill from "./PatientBill";
 
 const rupee = (n: number) => "₹" + Number(n || 0).toLocaleString("en-IN");
 const fmt = (s?: string | null) => (s ? new Date(s).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "-");
@@ -63,6 +64,7 @@ export default function MyAdmissionPage() {
             </div>
             {s.diagnosis && <p className="text-xs text-gray-600 border-t pt-2">Reason: {s.diagnosis}</p>}
             {s.daily_rate > 0 && <p className="text-xs text-gray-500 border-t pt-2">Bed charge: {rupee(s.daily_rate)} per day</p>}
+            <PatientBill inwardId={s.id} />
           </div>
         ))}
 
@@ -92,6 +94,7 @@ export default function MyAdmissionPage() {
                 <p className="text-sm font-semibold text-gray-900">{s.hospital_name || "Hospital"}</p>
                 <p className="text-xs text-gray-600">{s.ward || "-"}{s.bed_number ? " · Bed " + s.bed_number : ""}</p>
                 <p className="text-xs text-gray-500">{fmt(s.admitted_at)} to {fmt(s.discharged_at)} ({daysBetween(s.admitted_at, s.discharged_at)} days)</p>
+                <PatientBill inwardId={s.id} />
               </div>
             ))}
           </div>

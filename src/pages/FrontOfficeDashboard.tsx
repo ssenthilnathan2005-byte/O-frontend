@@ -213,6 +213,7 @@ function Outpatients() {
 }
 
 function Admit() {
+  const [billId, setBillId] = useState<string | null>(null);
   const [doctors, setDoctors] = useState<{ id: string; name: string; specialty: string }[]>([]);
   const [beds, setBeds] = useState<Bed[]>([]);
   const [inward, setInward] = useState<Admitted[]>([]);
@@ -280,13 +281,17 @@ function Admit() {
         <div className="space-y-2">
           {inward.map(p => (
             <div key={p.id} className="border border-gray-100 rounded-lg px-3 py-2">
-              <p className="font-medium text-gray-900">{p.patient_name}{p.age != null ? ", " + p.age : ""}</p>
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-medium text-gray-900">{p.patient_name}{p.age != null ? ", " + p.age : ""}</p>
+                <button type="button" onClick={() => setBillId(p.id)} className="flex items-center gap-1 text-xs text-teal-700 border border-teal-200 rounded-md px-2 py-0.5 hover:bg-teal-50"><Receipt className="w-3 h-3" />Bill</button>
+              </div>
               <p className="text-xs text-gray-500">{p.ward} / {p.bed_number}{p.admitting_doctor_name ? " | " + p.admitting_doctor_name : ""}</p>
               {p.diagnosis && <p className="text-xs text-gray-400">{p.diagnosis}</p>}
             </div>
           ))}
         </div>
       </div>
+      {billId && <IPDBillModal inwardId={billId} onClose={() => setBillId(null)} />}
     </div>
   );
 }

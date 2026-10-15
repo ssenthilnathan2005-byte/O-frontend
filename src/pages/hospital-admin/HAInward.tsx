@@ -56,6 +56,7 @@ export default function HAInward() {
   const [exportFrom, setExportFrom] = useState(monthAgoStr());
   const [exportTo, setExportTo] = useState(todayStr());
   const [exporting, setExporting] = useState(false);
+  const [billId, setBillId] = useState<string | null>(null);
 
   const hospitalId = (user as any)?.hospitalId || "";
   const myDoctors = doctors.filter((d: any) => d.hospitalId === hospitalId);
@@ -116,8 +117,13 @@ export default function HAInward() {
   }
 
   async function handleDischarge(id: string) {
-    if (!confirm("Mark this patient as discharged?")) return;
-    try { await api.inward.discharge(id); await load(); } catch (_) {}
+    let note = "";
+    try {
+      const b = await api.ipdBilling.get(id);
+      note = b.balance > 0 ? "\n\nBalance due: ₹" + Number(b.balance).toLocaleString("en-IN") + ". Collect payment before discharge." : "";
+    } catch (_) {}
+    if (!confirm("Mark this patient as discharged?" + note)) return;
+    try { await api.inward.discharge(id); await load(); setBillId(id); } catch (_) {}
   }
 
   async function handleExport() {
@@ -282,6 +288,7 @@ export default function HAInward() {
         </table>
       </div>
 
+      {billId && <IPDBillModal inwardId={billId} onClose={() => setBillId(null)} />}
       {showForm && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-background rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
