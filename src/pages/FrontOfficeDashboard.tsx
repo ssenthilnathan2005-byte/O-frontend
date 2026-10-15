@@ -2,7 +2,7 @@ import VitalsScanAll from "@/components/VitalsScanAll";
 import DateInput from "@/components/DateInput";
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { LogOut, RefreshCw, UserCheck, BedDouble, Undo2, ClipboardList, Activity } from "lucide-react";
+import { LogOut, RefreshCw, UserCheck, BedDouble, Undo2, ClipboardList, Activity, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import { useStore } from "../context/StoreContext";
 import { Vitals, vitalsText } from "@/lib/vitals";
 import { useExtraNav, ExtraPanel } from "@/components/StaffExtras";
 import HABedRequests from "./hospital-admin/HABedRequests";
+import IPDBillModal from "./hospital-admin/IPDBillModal";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 

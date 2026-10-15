@@ -315,6 +315,16 @@ export const inward = {
   discharge: (id: string)            => patch<any>(`/inward/${id}/discharge`, {}),
 };
 
+export const ipdBilling = {
+  list:          (status = "admitted")                       => get<any[]>(`/ipd-billing?status=${status}`),
+  get:           (id: string)                                => get<any>(`/ipd-billing/${id}`),
+  settings:      (id: string, data: any)                     => patch<any>(`/ipd-billing/${id}/settings`, data),
+  addItem:       (id: string, data: any)                     => post<any>(`/ipd-billing/${id}/items`, data),
+  removeItem:    (id: string, itemId: string)                => del<any>(`/ipd-billing/${id}/items/${itemId}`),
+  addPayment:    (id: string, data: any)                     => post<any>(`/ipd-billing/${id}/payments`, data),
+  removePayment: (id: string, paymentId: string)             => del<any>(`/ipd-billing/${id}/payments/${paymentId}`),
+};
+
 export const nursing = {
   listVitals:   (patientId: string) => get<any[]>(`/nursing/vitals?patientId=${patientId}`),
   addVitals:    (data: any)         => post<any>(`/nursing/vitals`, data),
