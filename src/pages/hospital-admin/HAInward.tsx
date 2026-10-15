@@ -8,6 +8,7 @@ import { BedDouble, Plus, X, Pencil, LogOut, ChevronDown, ChevronUp, Thermometer
 import { getToken } from "../../api";
 import HABedRequests from "./HABedRequests";
 import IPDBillModal from "./IPDBillModal";
+import IPDCollections from "./IPDCollections";
 import { downloadFile } from "../../lib/downloadFile";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
@@ -149,6 +150,7 @@ export default function HAInward() {
   return (
     <div className="p-4 md:p-6 space-y-4">
       <HABedRequests />
+      <IPDCollections onOpen={setBillId} refreshKey={billId} />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <BedDouble className="w-5 h-5 text-teal-600" />

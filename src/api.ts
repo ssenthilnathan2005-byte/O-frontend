@@ -318,6 +318,7 @@ export const inward = {
 export const ipdBilling = {
   list:          (status = "admitted")                       => get<any[]>(`/ipd-billing?status=${status}`),
   get:           (id: string)                                => get<any>(`/ipd-billing/${id}`),
+  summary:       ()                                          => get<any>(`/ipd-billing/summary`),
   mine:          (id: string)                                => get<any>(`/ipd-billing/my/${id}`),
   settings:      (id: string, data: any)                     => patch<any>(`/ipd-billing/${id}/settings`, data),
   addItem:       (id: string, data: any)                     => post<any>(`/ipd-billing/${id}/items`, data),
