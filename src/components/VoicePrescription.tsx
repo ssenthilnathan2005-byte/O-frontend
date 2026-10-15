@@ -36,6 +36,16 @@ type ServerRec = { stop: () => void; abort: () => void };
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
 
+// search box only: keeps the stock flag. Voice matching keeps using searchDb below.
+async function searchDbRich(q: string): Promise<{ name: string; inStock: boolean }[]> {
+  const res = await fetch(API + "/pharmacy/medicines?q=" + encodeURIComponent(q), {
+    headers: { Authorization: "Bearer " + getToken() },
+  });
+  if (!res.ok) throw new Error("medicine search failed");
+  const data = await res.json();
+  return Array.isArray(data) ? data.filter((m: any) => m && m.name).map((m: any) => ({ name: m.name, inStock: m.in_stock === true })) : [];
+}
+
 async function searchDb(q: string): Promise<string[]> {
   const res = await fetch(`${API}/pharmacy/medicines?q=${encodeURIComponent(q)}`, {
     headers: { Authorization: `Bearer ${getToken()}` },
@@ -994,7 +1004,7 @@ function MedCard({ med: m, index, onPatch, onRemove }: {
 // medicine search box backed by the existing medicine list
 function NameSearch({ value, onPick, onType }: { value: string; onPick: (n: string) => void; onType?: (n: string) => void }) {
   const [q, setQ] = useState(value);
-  const [list, setList] = useState<string[]>([]);
+  const [list, setList] = useState<{ name: string; inStock: boolean }[]>([]);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
@@ -1005,7 +1015,7 @@ function NameSearch({ value, onPick, onType }: { value: string; onPick: (n: stri
     if (timer.current) clearTimeout(timer.current);
     if (v.trim().length < 2) { setList([]); return; }
     timer.current = setTimeout(async () => {
-      try { setList((await searchDb(v.trim())).slice(0, 8)); } catch { setList([]); }
+      try { setList((await searchDbRich(v.trim())).slice(0, 8)); } catch { setList([]); }
     }, 250);
   }
 
@@ -1015,8 +1025,11 @@ function NameSearch({ value, onPick, onType }: { value: string; onPick: (n: stri
       {list.length > 0 && (
         <div className="absolute z-20 bg-white border rounded-lg shadow-lg mt-1 w-full max-h-48 overflow-y-auto">
           {list.map(s => (
-            <button key={s} className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50"
-              onClick={() => { setQ(s); setList([]); onPick(s); }}>{s}</button>
+            <button key={s.name} className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 flex items-center justify-between gap-2"
+              onClick={() => { setQ(s.name); setList([]); onPick(s.name); }}>
+              <span>{s.name}</span>
+              {s.inStock && <span className="text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded px-1.5 py-0.5">In Stock</span>}
+            </button>
           ))}
         </div>
       )}
