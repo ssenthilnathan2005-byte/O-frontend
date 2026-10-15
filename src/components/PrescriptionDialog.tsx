@@ -134,7 +134,7 @@ export default function PrescriptionDialog({
   const [medicines, setMedicines] = useState<Medicine[]>([{ ...EMPTY_MED }]);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<{ name: string; inStock: boolean }[]>([]);
   const [activeMedIdx, setActiveMedIdx] = useState<number | null>(null);
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
   const [otherOpen, setOtherOpen] = useState<Set<number>>(new Set());
@@ -194,7 +194,7 @@ export default function PrescriptionDialog({
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000/api"}/pharmacy/medicines?q=${encodeURIComponent(q)}`, { headers: { Authorization: `Bearer ${getToken()}` } });
       const data = await res.json();
-      setSuggestions(data.map((m: any) => m.name));
+      setSuggestions(Array.isArray(data) ? data.filter((m: any) => m && m.name).map((m: any) => ({ name: m.name, inStock: m.in_stock === true })) : []);
     } catch { setSuggestions([]); }
   }
 
@@ -521,11 +521,12 @@ export default function PrescriptionDialog({
                     <div className="absolute z-10 bg-white border rounded-lg shadow-lg mt-1 w-full">
                       {suggestions.map(s => (
                         <button
-                          key={s}
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50"
-                          onClick={() => pickSuggestion(idx, s)}
+                          key={s.name}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 flex items-center justify-between gap-2"
+                          onClick={() => pickSuggestion(idx, s.name)}
                         >
-                          {s}
+                          <span>{s.name}</span>
+                          {s.inStock && <span className="text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded px-1.5 py-0.5">In Stock</span>}
                         </button>
                       ))}
                     </div>

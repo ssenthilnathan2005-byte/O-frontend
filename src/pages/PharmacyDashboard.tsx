@@ -772,7 +772,7 @@ export default function PharmacyDashboard() {
         {sidebar}
         <div className="flex-1 min-w-0">
           {mobileTabs}
-          {tab.startsWith("x:") ? <ExtraPanel moduleKey={tab.slice(2)} /> : tab === "revenue" ? <PharmRevenue /> : tab === "inventory" ? <PharmInventory /> : tab === "patients" ? <PharmPatients /> : tab === "stock" ? <PharmStockUpdate /> : <PharmSold />}
+          {tab.startsWith("x:") ? <ExtraPanel moduleKey={tab.slice(2)} /> : tab === "revenue" ? <PharmRevenue /> : tab === "inventory" ? <PharmInventory iconActions /> : tab === "patients" ? <PharmPatients /> : tab === "stock" ? <PharmStockUpdate /> : <PharmSold />}
         </div>
       </div>
     );

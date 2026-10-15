@@ -1,3 +1,4 @@
+import { ArrowDown as IcDown, ArrowUp as IcUp, History as IcHistory, Pencil as IcEdit, Trash2 as IcDelete } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import DateInput from "@/components/DateInput";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -278,7 +279,7 @@ function PackPreview({ cat, tps, spb, mrp, pbox, boxes = "", strips = "", tablet
     </div>
   );
 }
-export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
+export function PharmInventory({ readOnly = false, iconActions = false }: { readOnly?: boolean; iconActions?: boolean }) {
   const hid = useHid();
   const [rows, setRows] = useState<Inv[]>([]);
   const [cats, setCats] = useState<string[]>(MED_CATEGORIES);
@@ -305,6 +306,31 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
   const [rm, setRm] = useState<Inv | null>(null);
   const [rmReason, setRmReason] = useState("");
   const [rmErr, setRmErr] = useState("");
+  const [so, setSo] = useState<Inv | null>(null);
+  const [soQty, setSoQty] = useState("");
+  const [soReason, setSoReason] = useState("");
+  const [soErr, setSoErr] = useState("");
+  const [hist, setHist] = useState<Inv | null>(null);
+  const [histRows, setHistRows] = useState<Array<{ id: string; type: string; quantity: number; reason: string | null; created_at: string }>>([]);
+  const [histLoading, setHistLoading] = useState(false);
+  async function openHistory(r: Inv) {
+    setHist(r); setHistLoading(true);
+    try { setHistRows(await pm<any[]>("/inventory/" + r.id + "/history")); } catch (_) { setHistRows([]); }
+    setHistLoading(false);
+  }
+  async function saveStockOut() {
+    if (!so) return;
+    const n = Number(soQty);
+    if (!(n > 0) || n > so.tabletsAvailable) { setSoErr("Enter a number between 1 and " + so.tabletsAvailable); return; }
+    if (!soReason.trim()) { setSoErr("Reason is required"); return; }
+    setSaving(true); setSoErr("");
+    try {
+      await pm("/inventory/" + so.id + "/stock", { method: "POST", body: JSON.stringify({ mode: "set", tablets: so.tabletsAvailable - n, reason: soReason.trim() }) });
+      setSo(null);
+      setRows(await pm<Inv[]>("/inventory"));
+    } catch (e: any) { setSoErr(e.message); }
+    setSaving(false);
+  }
   useLive(async () => {
     try { setRows(await pm<Inv[]>("/inventory")); setErr(""); } catch (e: any) { setErr(e.message); }
     try { setCats(await pm<string[]>("/inventory-categories")); } catch (_) { /* keep current list */ }
@@ -477,14 +503,23 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
                 <td className={TD}>{r.reorderLevel}{r.packSize > 1 && <span className="text-xs text-gray-400"> ({Math.round(r.reorderLevel * r.packSize)} {packLabels(r.medCategory).us})</span>}</td>
                 <td className={TD}>{inr(r.sellingPrice)}{r.sellingPrice != null && r.packSize > 1 && <span className="text-xs text-gray-400"> ({rs(r.sellingPrice / r.packSize)}/{packLabels(r.medCategory).us})</span>}</td>
                 <td className={TD}><span className={"px-2 py-0.5 rounded-full text-xs font-medium " + STATUS_UI[r.status][1]}>{STATUS_UI[r.status][0]}</span></td>
-                <td className={TD + " whitespace-nowrap"}>{!readOnly && (
+                <td className={TD + " whitespace-nowrap"}>{!readOnly && (iconActions ? (
+                  <div className="flex flex-nowrap items-center gap-1.5">
+                    <button type="button" title="Stock In" onClick={() => openReceive(r)} className="px-2.5 py-1 rounded-md border text-xs font-medium text-center whitespace-nowrap transition-colors border-green-200 bg-green-50 text-green-700 hover:bg-green-100">Stock In</button>
+                    <button type="button" title="Stock Out" onClick={() => { setSo(r); setSoQty(""); setSoReason(""); setSoErr(""); }} className="px-2.5 py-1 rounded-md border text-xs font-medium text-center whitespace-nowrap transition-colors border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100">Stock Out</button>
+                    <button type="button" title="History" onClick={() => openHistory(r)} className="px-2.5 py-1 rounded-md border text-xs font-medium text-center whitespace-nowrap transition-colors border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100">History</button>
+                    <button type="button" title="Edit" onClick={() => openEdit(r)} className="px-2.5 py-1 rounded-md border text-xs font-medium text-center whitespace-nowrap transition-colors border-gray-200 bg-white text-gray-700 hover:bg-gray-50">Edit</button>
+                    <button type="button" title="Delete" onClick={() => { setRm(r); setRmReason(""); setRmErr(""); }} className="px-2.5 py-1 rounded-md border text-xs font-medium text-center whitespace-nowrap transition-colors border-red-200 bg-white text-red-600 hover:bg-red-50">Remove</button>
+                  </div>
+                ) : (
+
                   <>
                     <button type="button" onClick={() => openReceive(r)} className="text-teal-700 text-sm hover:underline mr-3">Receive stock</button>
                     <button type="button" onClick={() => { setStock(r); setSMode("add"); setSQty(""); setSReason(""); setSErr(""); }} className="text-teal-700 text-sm hover:underline mr-3">Correct count</button>
                     <button type="button" onClick={() => openEdit(r)} className="text-teal-700 text-sm hover:underline mr-3">Edit</button>
                     <button type="button" onClick={() => { setRm(r); setRmReason(""); setRmErr(""); }} className="text-red-600 text-sm hover:underline">Remove</button>
                   </>
-                )}</td>
+                ))}</td>
               </tr>
             ))}
             {shown.length === 0 && <tr><td colSpan={10} className="px-3 py-8 text-center text-sm text-gray-400">No medicines found</td></tr>}
@@ -610,6 +645,41 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
               <button type="button" onClick={() => setRm(null)} className="px-3 py-1.5 text-sm rounded-md border border-gray-200">Cancel</button>
               <button type="button" disabled={saving} onClick={removeMed} className="px-3 py-1.5 text-sm rounded-md bg-red-600 text-white">{saving ? "Removing..." : "Remove"}</button>
             </div>
+          </div>
+        </div>
+      )}
+      {so && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setSo(null)}>
+          <div className="bg-white rounded-xl p-5 w-full max-w-md space-y-3" onClick={e => e.stopPropagation()}>
+            <p className="font-semibold text-gray-900">Stock out: {so.name}</p>
+            <p className="text-sm text-gray-500">Currently {so.tabletsAvailable} {packLabels(so.medCategory).u} in stock</p>
+            <Fld label={"Quantity to remove (" + packLabels(so.medCategory).u + ")"} type="number" value={soQty} onChange={setSoQty} />
+            <Fld label="Reason *" value={soReason} onChange={setSoReason} />
+            {soErr && <p className="text-sm text-red-600">{soErr}</p>}
+            <div className="flex justify-end gap-2 pt-1">
+              <button type="button" onClick={() => setSo(null)} className="px-3 py-1.5 text-sm rounded-md border border-gray-200">Cancel</button>
+              <button type="button" disabled={saving} onClick={saveStockOut} className="px-3 py-1.5 text-sm rounded-md bg-orange-500 text-white">{saving ? "Saving..." : "Remove stock"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {hist && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setHist(null)}>
+          <div className="bg-white rounded-xl p-5 w-full max-w-lg space-y-3" onClick={e => e.stopPropagation()}>
+            <p className="font-semibold text-gray-900">Stock History: {hist.name}</p>
+            {histLoading ? <p className="text-sm text-gray-400">Loading...</p> : histRows.length === 0 ? <p className="text-sm text-gray-400">No transactions yet</p> : (
+              <div className="max-h-80 overflow-y-auto">
+                <table className="w-full"><thead className="bg-gray-50"><tr>{["Date", "Type", "Qty", "Reason"].map(x => <th key={x} className={TH}>{x}</th>)}</tr></thead>
+                  <tbody>{histRows.map(t => (
+                    <tr key={t.id} className="border-t border-gray-100">
+                      <td className={TD}>{fmtTime(t.created_at)}</td>
+                      <td className={TD}><span className={t.type === "in" ? "text-green-600" : "text-orange-500"}>{t.type === "in" ? "In" : "Out"}</span></td>
+                      <td className={TD}>{fmtQty(t.quantity)}</td>
+                      <td className={TD}>{t.reason || "-"}</td>
+                    </tr>))}</tbody></table>
+              </div>
+            )}
+            <div className="flex justify-end"><button type="button" onClick={() => setHist(null)} className="px-3 py-1.5 text-sm rounded-md border border-gray-200">Close</button></div>
           </div>
         </div>
       )}
