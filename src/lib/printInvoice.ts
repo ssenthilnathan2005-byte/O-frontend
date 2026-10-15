@@ -1,5 +1,5 @@
 export type InvoiceData = {
-  invoiceNo?: string; billNo?: number | null; hospitalName: string; patientId: string; patientName: string; doctorName: string; issuedAt: string | null;
+  subtotal?: number | null; discountPct?: number; discountAmount?: number; cgstPct?: number; sgstPct?: number; cgstAmount?: number; sgstAmount?: number; invoiceNo?: string; billNo?: number | null; hospitalName: string; patientId: string; patientName: string; doctorName: string; issuedAt: string | null;
   paymentMode: string | null; lines: { name: string; tablets: number; unitPrice: number; amount: number; note?: string }[]; total: number | null; status: string;
 };
 const ESC: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
@@ -33,6 +33,18 @@ function intakeHtml(note: string | undefined): string {
   return `<table class="ik"><colgroup><col style="width:17%"><col style="width:11%"><col style="width:11%"><col style="width:11%"><col style="width:11%"><col style="width:21%"><col style="width:18%"></colgroup><tr><th class="l">Dose</th>${head}<th class="l">Food</th><th class="l">Duration</th></tr><tr><td class="l">${esc(dose.join(" ") || "-")}</td>${body}<td class="l">${esc(food || "-")}</td><td class="l">${esc(duration || "-")}</td></tr></table>`;
 }
 
+export function invoiceSummary(inv: Partial<InvoiceData>): { label: string; amount: string }[] {
+  const out: { label: string; amount: string }[] = [];
+  const disc = Number(inv.discountPct) || 0;
+  const cg = Number(inv.cgstPct) || 0, sg = Number(inv.sgstPct) || 0;
+  if (!(disc > 0 || cg > 0 || sg > 0)) return out;
+  out.push({ label: "Subtotal", amount: inr(inv.subtotal) });
+  if (disc > 0) out.push({ label: "Discount (" + disc + "%)", amount: "-" + inr(inv.discountAmount) });
+  if (cg > 0) out.push({ label: "CGST (" + cg + "%)", amount: inr(inv.cgstAmount) });
+  if (sg > 0) out.push({ label: "SGST (" + sg + "%)", amount: inr(inv.sgstAmount) });
+  return out;
+}
+
 export function printInvoice(inv: InvoiceData): boolean {
   const w = window.open("", "_blank", "width=760,height=900");
   if (!w) return false;
@@ -61,6 +73,7 @@ table.ik td{border:1px solid #ccc;padding:4px 6px;text-align:center}
 table.ik .l{text-align:left}
 table.ik .off{color:#aaa}
 table.ik b{font-size:14px}
+.sum{display:flex;justify-content:space-between;font-size:14px;margin-top:6px}
 .total{display:flex;justify-content:space-between;font-size:16px;font-weight:bold;border-top:2px solid #111;margin-top:10px;padding-top:8px}
 </style></head><body>
 <h1>${esc(inv.hospitalName)} - Pharmacy Invoice</h1>
@@ -68,7 +81,7 @@ table.ik b{font-size:14px}
 <p class="muted">${esc(when)}</p>
 <p>Patient: <b>${esc(inv.patientName)}</b><br>Prescribed by: Dr. ${esc(inv.doctorName)}</p>
 <table><thead><tr><th>Medicine</th><th class="r">Qty</th><th class="r">Unit price</th><th class="r">Amount</th></tr></thead><tbody>${rows}</tbody></table>
-<div class="total"><span>Amount payable (${esc(inv.paymentMode || "cash")})</span><span>${inr(inv.total)}</span></div>
+${invoiceSummary(inv).map(r => `<div class="sum"><span>${esc(r.label)}</span><span>${r.amount}</span></div>`).join("")}<div class="total"><span>Amount payable (${esc(inv.paymentMode || "cash")})</span><span>${inr(inv.total)}</span></div>
 <p class="muted">Only the quantity purchased is billed. Thank you.</p>
 </body></html>`);
   w.document.close();
@@ -107,7 +120,7 @@ export function showInvoicePopup(inv: InvoiceData): void {
 <table style="width:100%;border-collapse:collapse;margin-top:12px;font-size:13px">
 <thead><tr style="border-bottom:2px solid #111"><th style="text-align:left;padding:6px 4px;font-size:11px">Medicine</th><th style="text-align:right;padding:6px 4px;font-size:11px">Qty</th><th style="text-align:right;padding:6px 4px;font-size:11px">Unit price</th><th style="text-align:right;padding:6px 4px;font-size:11px">Amount</th></tr></thead>
 <tbody>${rows}</tbody></table>
-<div style="display:flex;justify-content:space-between;font-size:16px;font-weight:bold;border-top:2px solid #111;margin-top:10px;padding-top:8px"><span>Total</span><span>${inr(inv.total)}</span></div>
+${invoiceSummary(inv).map(r => `<div style="display:flex;justify-content:space-between;font-size:13px;margin-top:6px"><span>${esc(r.label)}</span><span>${r.amount}</span></div>`).join("")}<div style="display:flex;justify-content:space-between;font-size:16px;font-weight:bold;border-top:2px solid #111;margin-top:10px;padding-top:8px"><span>Total</span><span>${inr(inv.total)}</span></div>
 <div style="display:flex;gap:8px;margin-top:16px">
 <button id="inv-close" style="flex:1;padding:10px;border:1px solid #ddd;background:#fff;border-radius:8px;cursor:pointer;font-size:14px">Close</button>
 <button id="inv-print" style="flex:2;padding:10px;border:none;background:#0d9488;color:#fff;border-radius:8px;cursor:pointer;font-size:14px;font-weight:bold">Print Invoice</button></div>

@@ -138,6 +138,7 @@ export default function PharmacyDashboard() {
   const [busy, setBusy] = useState<string | null>(null);
   const [handover, setHandover] = useState<Record<string, Record<number, { qty: string; reason: string }>>>({});
   const [payModes, setPayModes] = useState<Record<string, string>>({});
+  const [taxes, setTaxes] = useState<Record<string, { cgst: string; sgst: string; disc: string }>>({});
   const [filter, setFilter] = useState<"received" | "given">("received");
   const [manualDeduct, setManualDeduct] = useState<Record<string, boolean>>({});
   const [query, setQuery] = useState("");
@@ -284,6 +285,7 @@ export default function PharmacyDashboard() {
         ? Number(amounts[p.id])
         : round2(rxLines.reduce((s, l, idx) => s + round2((Number(getHo(p.id, idx, l.tablets).qty) || 0) * Number(l.unitPrice)), 0));
     const amt = String(billTotal);
+    for (const v of [taxes[p.id]?.disc, taxes[p.id]?.cgst, taxes[p.id]?.sgst]) { const n = Number(v || 0); if (!(n >= 0 && n <= 100)) return toast.error("Discount and GST must be between 0 and 100"); }
     if (amt === undefined || String(amt).trim() === "" || !(Number(amt) >= 0))
       return toast.error("Enter the bill amount first (enter 0 if free)");
     const dispense: any[] = [];
@@ -326,7 +328,7 @@ export default function PharmacyDashboard() {
     try {
       if (p.status === "pending") await send("packed", { dispense });
       if (p.status === "pending" || p.status === "packed") await send("ready", {});
-      await send("handed_over", { handover: handoverPayload, billAmount: billTotal, paymentMode: payModes[p.id] || "cash" });
+      await send("handed_over", { handover: handoverPayload, billAmount: billTotal, paymentMode: payModes[p.id] || "cash", discountPct: Number(taxes[p.id]?.disc) || 0, cgstPct: Number(taxes[p.id]?.cgst) || 0, sgstPct: Number(taxes[p.id]?.sgst) || 0 });
       toast.success("Marked as given. Patient notified");
       await printInvoiceFor(p.id, true);
     } catch (err: any) {
@@ -596,6 +598,28 @@ export default function PharmacyDashboard() {
             </select>
           </div>
         )}
+        {!isGiven && (() => {
+          const t = taxes[p.id] ?? { cgst: "", sgst: "", disc: "" };
+          const setT = (patch: Partial<{ cgst: string; sgst: string; disc: string }>) => setTaxes(prev => ({ ...prev, [p.id]: { ...t, ...patch } }));
+          const sub = autoBill ? billShown : Number(amounts[p.id]);
+          const d = Number(t.disc) || 0, c = Number(t.cgst) || 0, sg = Number(t.sgst) || 0;
+          const show = Number.isFinite(sub) && (d > 0 || c > 0 || sg > 0);
+          const discAmt = round2(sub * d / 100), taxable = round2(sub - discAmt);
+          const cgAmt = round2(taxable * c / 100), sgAmt = round2(taxable * sg / 100);
+          const field = (label: string, key: "disc" | "cgst" | "sgst") => (
+            <label className="flex-1 text-xs text-gray-600">{label}
+              <input type="number" min={0} max={100} step="0.01" inputMode="decimal" placeholder="0" value={t[key]}
+                onChange={e => setT({ [key]: e.target.value })}
+                className="mt-0.5 w-full border border-gray-200 rounded-md text-sm px-2 py-1.5 bg-white" />
+            </label>
+          );
+          return (
+            <div className="space-y-1">
+              <div className="flex gap-2">{field("Discount %", "disc")}{field("CGST %", "cgst")}{field("SGST %", "sgst")}</div>
+              {show && <p className="text-xs text-gray-700 text-right">Amount payable: <b>{"\u20b9"}{round2(taxable + cgAmt + sgAmt).toFixed(2)}</b></p>}
+            </div>
+          );
+        })()}
         {!isGiven && (
           confirming ? (
             <div className="flex gap-2">

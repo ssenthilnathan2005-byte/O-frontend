@@ -729,10 +729,10 @@ type Log = {
   billAmount: number | null; paymentMode: string | null; billStatus: "Billed" | "Pending"; timestamp: string;
 };
 type Invoice = {
-  invoiceNo?: string; billNo?: number | null; hospitalName: string; patientId: string; patientName: string; doctorName: string; issuedAt: string | null;
+  subtotal?: number | null; discountPct?: number; discountAmount?: number; cgstPct?: number; sgstPct?: number; cgstAmount?: number; sgstAmount?: number; invoiceNo?: string; billNo?: number | null; hospitalName: string; patientId: string; patientName: string; doctorName: string; issuedAt: string | null;
   paymentMode: string | null; lines: { name: string; tablets: number; unitPrice: number; amount: number; note?: string }[]; total: number | null; status: string;
 };
-import { printInvoice } from "@/lib/printInvoice";
+import { printInvoice, invoiceSummary } from "@/lib/printInvoice";
 const pbPack = (name: string): number => {
   if (!/bottle|vial|syrup|tonic|suspension|elixir|drops|liquid/i.test(name || "")) return 1;
   const m = /(\d+(?:\.\d+)?)\s*ml\b/i.exec(name || "");
@@ -823,6 +823,7 @@ export function PharmPatients() {
                 <tr key={i} className="border-t border-gray-100"><td className="py-1.5">{l.name}{l.note ? <div className="text-xs text-gray-500">{l.note}</div> : null}</td><td>{pbQty(l.name, l.tablets)}</td><td>{pbRate(l.name, l.unitPrice)}</td><td className="text-right">{inr(l.amount)}</td></tr>
               ))}</tbody>
             </table>
+            {invoiceSummary(inv).length > 0 && (<div className="space-y-1 border-t border-gray-200 pt-2 text-sm text-gray-700">{invoiceSummary(inv).map(r => (<div key={r.label} className="flex justify-between"><span>{r.label}</span><span>{r.amount}</span></div>))}</div>)}
             <div className="flex justify-between border-t border-gray-200 pt-2 font-semibold"><span>Total ({inv.paymentMode || "cash"})</span><span>{inr(inv.total)}</span></div>
             <p className="text-xs text-gray-400">{fmtTime(inv.issuedAt)}</p>
             <div className="flex justify-end gap-2"><button type="button" onClick={() => { if (!printInvoice(inv)) alert("Allow pop-ups to print the invoice"); }} className="px-3 py-1.5 text-sm rounded-md bg-teal-600 text-white">Print</button><button type="button" onClick={() => setInv(null)} className="px-3 py-1.5 text-sm rounded-md border border-gray-200">Close</button></div>
