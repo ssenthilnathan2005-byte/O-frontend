@@ -29,6 +29,18 @@ export default function FloatingLoginButton() {
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const [open, setOpen] = useState(false);
 
+  // phone view only: hidden on tablet / laptop widths (Tailwind md breakpoint = 768px)
+  const [isPhone, setIsPhone] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const on = () => { setIsPhone(mq.matches); if (!mq.matches) setOpen(false); };
+    on();
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+
   const clamp = useCallback((x: number, y: number) => ({
     x: Math.min(Math.max(MARGIN, x), Math.max(MARGIN, window.innerWidth - SIZE - MARGIN)),
     y: Math.min(Math.max(MARGIN, y), Math.max(MARGIN, window.innerHeight - SIZE - BOTTOM_SAFE)),
@@ -65,6 +77,7 @@ export default function FloatingLoginButton() {
   }, [open]);
 
   const visible =
+    isPhone &&
     (!user || user.role === "patient") &&
     route.path !== "/login" && !String(route.path).endsWith("/login");
   if (!visible) return null;
