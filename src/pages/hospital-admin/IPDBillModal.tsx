@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { X, Trash2, Plus } from "lucide-react";
+import { X, Trash2, Plus, Printer } from "lucide-react";
+import { printIpdInvoice } from "../../lib/ipdInvoice";
 import { ipdBilling } from "../../api";
 import { useStore } from "../../context/StoreContext";
 
@@ -44,7 +45,10 @@ export default function IPDBillModal({ inwardId, onClose }: { inwardId: string; 
             <h2 className="font-semibold text-gray-900">IPD Bill{bill ? " · " + bill.patientName : ""}</h2>
             {bill && <p className="text-xs text-gray-500">{bill.ward || "-"}{bill.bedNumber ? " / Bed " + bill.bedNumber : ""} · Admitted {fmt(bill.admittedAt)}{bill.dischargedAt ? " · Discharged " + fmt(bill.dischargedAt) : ""}</p>}
           </div>
-          <button onClick={onClose} className="p-1.5 rounded hover:bg-gray-100"><X className="w-4 h-4" /></button>
+          <div className="flex items-center gap-1">
+            {bill && <button onClick={() => printIpdInvoice(bill)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs border hover:bg-gray-50"><Printer className="w-3.5 h-3.5" />{bill.status === "discharged" ? "Invoice" : "Print bill"}</button>}
+            <button onClick={onClose} className="p-1.5 rounded hover:bg-gray-100"><X className="w-4 h-4" /></button>
+          </div>
         </div>
 
         {err && <p className="p-4 text-sm text-red-600">{err}</p>}
