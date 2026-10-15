@@ -1,10 +1,11 @@
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Calendar, ChevronRight, ExternalLink, FlaskConical, Globe, LogIn, Phone, User } from "lucide-react";
+import { ArrowLeft, BedDouble, Calendar, ChevronRight, ExternalLink, FlaskConical, Globe, LogIn, Phone, User } from "lucide-react";
 import { motion } from "motion/react";
 import { type KeyboardEvent, type MouseEvent, useEffect, useState } from "react";
 import BookingDialog from "../../components/booking/BookingDialog";
 import { useStore } from "../../context/StoreContext";
 import HospitalLabPage from "./HospitalLabPage";
+import BedBookingDialog from "../../components/booking/BedBookingDialog";
 
 function resolvePhotoUrl(url: string | null | undefined): string | null {
   if (!url) return null;
@@ -38,6 +39,7 @@ export default function HospitalDoctorsPage({ id }: Props) {
   const { goBack, navigate } = useRouter();
   const { hospitals, doctors, user, tokenStates, isSessionCancelled } = useStore();
   const [bookingDoctor, setBookingDoctor] = useState<Doctor | null>(null);
+  const [bedOpen, setBedOpen] = useState(false);
   const [loginGateDoctor, setLoginGateDoctor] = useState<Doctor | null>(null);
   const [showLab, setShowLab] = useState(false);
   const [lab, setLab] = useState<{ enabled: boolean; tests: unknown[] } | null>(null);
@@ -207,6 +209,22 @@ export default function HospitalDoctorsPage({ id }: Props) {
         </div>
       )}
 
+      {/* IPD bed booking */}
+      <button
+        type="button"
+        onClick={() => { if (!user) navigate({ path: "/login", tab: "patient", patientMode: "login" }); else setBedOpen(true); }}
+        className="w-full mb-5 flex items-center justify-between gap-3 rounded-xl border border-teal-200 bg-teal-50 hover:bg-teal-100 px-4 py-3 text-left transition-colors"
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center shrink-0"><BedDouble className="w-4 h-4 text-teal-600" /></div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-gray-800">Book a bed (inpatient)</p>
+            <p className="text-xs text-gray-500 mt-0.5">See free beds and reserve one before you arrive</p>
+          </div>
+        </div>
+        <ChevronRight className="w-4 h-4 text-teal-600 shrink-0" />
+      </button>
+
       {/* Doctors header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
@@ -353,6 +371,10 @@ export default function HospitalDoctorsPage({ id }: Props) {
             </div>
           </div>
         </div>
+      )}
+
+      {bedOpen && (
+        <BedBookingDialog hospitalId={id} hospitalName={(hospital as any)?.name} open={bedOpen} onClose={() => setBedOpen(false)} />
       )}
 
       {/* ── Booking Dialog ── */}

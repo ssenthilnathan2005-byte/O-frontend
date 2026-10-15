@@ -10,6 +10,7 @@ import { getToken } from "@/api";
 import { useStore } from "../context/StoreContext";
 import { Vitals, vitalsText } from "@/lib/vitals";
 import { useExtraNav, ExtraPanel } from "@/components/StaffExtras";
+import HABedRequests from "./hospital-admin/HABedRequests";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
@@ -308,9 +309,10 @@ export default function FrontOfficeDashboard() {
         <div className="flex gap-2">
           <button className={tabCls(tab === "op")} onClick={() => setTab("op")}><UserCheck className="w-4 h-4" />Today's outpatients</button>
           <button className={tabCls(tab === "admit")} onClick={() => setTab("admit")}><BedDouble className="w-4 h-4" />Admit inpatient</button>
+          <button className={tabCls(tab === "beds")} onClick={() => setTab("beds")}><BedDouble className="w-4 h-4" />Bed requests</button>
         {extraNav.map(n => (<button key={n.key} className={tabCls(tab === n.key)} onClick={() => setTab(n.key)}><n.icon className="w-4 h-4" />{n.label}</button>))}
         </div>
-        {tab.startsWith("x:") ? <ExtraPanel moduleKey={tab.slice(2)} /> : tab === "op" ? <Outpatients /> : <Admit />}
+        {tab.startsWith("x:") ? <ExtraPanel moduleKey={tab.slice(2)} /> : tab === "op" ? <Outpatients /> : tab === "beds" ? <HABedRequests /> : <Admit />}
       </main>
     </div>
   );
