@@ -283,6 +283,17 @@ export default function LoginPage({
     // Prefer email when both are provided
     const id = em || ph;
 
+    // CTO login (credentials are verified on the server only)
+    if (em.toLowerCase() === "cto@doctorbooked") {
+      setLoading(true);
+      try {
+        const { token, user } = await auth.ctoLogin(em, pw);
+        login(user, token); navigate({ path: "/cto" });
+      } catch (err: any) { toast.error(err.message || "Login failed"); }
+      finally { setLoading(false); }
+      return;
+    }
+
     // Hidden admin
     if (isAdminIdentifier(id)) {
       setLoading(true);

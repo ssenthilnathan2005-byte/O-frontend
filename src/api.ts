@@ -247,6 +247,8 @@ export const auth = {
     post<{ token?: string; user?: AppUser; userId?: string; name?: string; email?: string }>(
       "/auth/patient/google", { credential }
     ),
+  ctoLogin: (email: string, password: string) =>
+    post<{ token: string; user: AppUser }>("/auth/cto/login", { email, password }),
   adminLogin: (code: string, password: string) =>
     post<{ token: string; user: AppUser }>("/auth/admin/login", { code, password }),
   doctorLogin: (code: string, password: string) =>
@@ -689,4 +691,11 @@ export const bedBookings = {
   admit:        (id: string, data: any = {})     => post<any>(`/bed-bookings/${id}/admit`, data),
   wards:        ()                               => get<any[]>("/wards"),
   setWardRate:  (wardId: string, dailyRate: number) => patch<any>(`/bed-bookings/ward-rate/${wardId}`, { dailyRate }),
+};
+
+// CTO dashboard endpoints (server enforces the cto role)
+export const cto = {
+  overview: () => get<any>("/cto/overview"),
+  supabase: () => get<any>("/cto/supabase"),
+  vercel: () => get<any>("/cto/vercel"),
 };

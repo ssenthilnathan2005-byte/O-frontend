@@ -24,7 +24,7 @@ type Route =
   | { path: "/patient/profile" }
   | { path: "/patient/track"; sessionId: string; tokenNumber: number }
   | { path: "/doctor" }
-  | { path: "/admin" }
+  | { path: "/admin" } | { path: "/cto" }
   | { path: "/admin/hospitals" }
   | { path: "/admin/doctors" }
   | { path: "/admin/patients" }
@@ -123,7 +123,7 @@ function getInitialRoute(): Route {
     };
   }
   if (pathname === "/doctor") return { path: "/doctor" };
-  if (pathname === "/admin") return { path: "/admin" };
+  if (pathname === "/admin") return { path: "/admin" }; if (pathname === "/cto") return { path: "/cto" };
   if (pathname === "/admin/hospitals") return { path: "/admin/hospitals" };
   if (pathname === "/admin/doctors") return { path: "/admin/doctors" };
   if (pathname === "/admin/patients") return { path: "/admin/patients" };
@@ -188,7 +188,7 @@ function isProtectedRoute(r: Route): boolean {
   return (
     p.startsWith("/patient/") ||
     p === "/doctor" ||
-    p === "/nurse" ||
+    p === "/nurse" || p === "/cto" ||
     p.startsWith("/admin") ||
     p.startsWith("/hospital-admin") ||
     p === "/pharmacy-owner/dashboard"
