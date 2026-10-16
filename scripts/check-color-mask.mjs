@@ -161,7 +161,8 @@ console.log("8) source checks on src/components/VitalsScanAll.tsx (human verific
     if (s.includes("maskCandidates")) {
       ok("mask reads keep Tesseract's own confidence", /method: it\.method[^\n]*\n?/.test(s) && s.includes("conf: Number(data?.confidence ?? 0), method:"));
       ok("confidence is never boosted by colour", !/conf\s*[*+]=|conf:\s*[^,\n]*\*\s*1\./.test(s));
-      ok("digits-only whitelist is set only for the digit re-check blocks, and each restores the label OCR setting", (s.match(/tessedit_char_whitelist: "0123456789\.\/"/g) || []).length === 2 && (s.match(/tessedit_char_whitelist: ""/g) || []).length >= 2);
+      const sets = (s.match(/tessedit_char_whitelist: "0123456789\.\/"/g) || []).length, restores = (s.match(/tessedit_char_whitelist: ""/g) || []).length;
+      ok("every time the digits-only whitelist is set, the label OCR setting is restored afterwards", sets >= 2 && sets === restores, "set " + sets + " times, restored " + restores + " times");
     } else console.log("  (mask integration not applied yet: skipping the 3 mask-specific source checks)");
   }
 }

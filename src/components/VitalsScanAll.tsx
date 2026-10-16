@@ -13,6 +13,9 @@ import type { QualityIssue } from "@/lib/screenDetect";
 import LiveCapture from "@/components/LiveCapture";
 import { combineMatches, pickDeepTargets } from "@/lib/scanCombine";
 import { colorCrop, canvasToPixels, pixelsToCanvas, maskCandidates } from "@/lib/colorMask";
+import ScanRegionEditor from "@/components/ScanRegionEditor";
+import { loadLayouts, saveLayout, deleteLayout, regionToBox, REGION_FIELDS } from "@/lib/scanRegions";
+import type { Layout } from "@/lib/scanRegions";
 
 /**
  * "Scan All Vitals" - one photo of a multiparameter monitor fills every reading it can read.
@@ -240,6 +243,50 @@ function checkValues(vals: Record<string, string>, shown: ScanField[]): string |
   return null;
 }
 
+/**
+ * Digit reads of one saved box (original-photo coordinates): every frame at two zoom levels, then colour-mask and
+ * adaptive-threshold reads on the sharpest frame. Each read keeps exactly the confidence Tesseract reported.
+ */
+async function readRegionDigits(
+  worker: any,
+  PSM: any,
+  sources: (HTMLImageElement | HTMLCanvasElement)[],
+  box: { x0: number; y0: number; x1: number; y1: number },
+) {
+  const reads: { text: string; conf: number; method?: string }[] = [];
+  await worker.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_LINE, tessedit_char_whitelist: "0123456789./" } as any);
+  try {
+    for (const src of sources) {
+      for (const zoom of [70, 110]) {
+        const c = localDigitCanvas(src, box.x0, box.y0, box.x1, box.y1, zoom);
+        const { data } = await worker.recognize(c);
+        const text = String(data?.text || "").replace(/\s+/g, "");
+        if (text) reads.push({ text, conf: Number(data?.confidence ?? 0), method: "normal" });
+      }
+    }
+    try {
+      const crop = colorCrop(sources[0], box.x0, box.y0, box.x1, box.y1, 110);
+      const pixels = crop ? canvasToPixels(crop) : null;
+      const cands = pixels ? maskCandidates(pixels) : { items: [] as { method: string; image: any }[], excluded: [] as string[] };
+      let first = true;
+      for (const it of cands.items) {
+        const mc = pixelsToCanvas(it.image);
+        if (!mc) continue;
+        for (const psm of first ? [PSM.SINGLE_LINE, PSM.SINGLE_WORD] : [PSM.SINGLE_LINE]) {
+          await worker.setParameters({ tessedit_pageseg_mode: psm } as any);
+          const { data } = await worker.recognize(mc);
+          const text = String(data?.text || "").replace(/\s+/g, "");
+          if (text) reads.push({ text, conf: Number(data?.confidence ?? 0), method: it.method + (psm === PSM.SINGLE_WORD ? "/psm8" : "/psm7") });
+        }
+        first = false;
+      }
+    } catch { /* masks are optional: the normal reads above still count */ }
+  } finally {
+    await worker.setParameters({ tessedit_pageseg_mode: PSM.SPARSE_TEXT, tessedit_char_whitelist: "" } as any);
+  }
+  return reads;
+}
+
 export default function VitalsScanAll({ onApply, include, label, captureAudit }: Props) {
   // Each vital appears exactly once in the review form, whatever `include` contains.
   const shown = uniqueKeys(include && include.length ? ALL_FIELDS.filter((f) => include.includes(f)) : ALL_FIELDS);
@@ -269,7 +316,10 @@ export default function VitalsScanAll({ onApply, include, label, captureAudit }:
   const galleryRef = useRef<HTMLInputElement | null>(null);
   const boxRef = useRef<HTMLDivElement | null>(null);
   const dragStart = useRef<{ x: number; y: number } | null>(null);
-  const framesRef = useRef<HTMLCanvasElement[]>([]); // extra frames from the live camera, used to vote on hard digits
+  const framesRef = useRef<HTMLCanvasElement[]>([]);
+  const [layouts, setLayouts] = useState<Layout[]>(() => loadLayouts()); // saved screen layouts (this device only)
+  const [layoutId, setLayoutId] = useState("");
+  const [editing, setEditing] = useState(false); // extra frames from the live camera, used to vote on hard digits
 
   function resetAll() {
     if (imgUrl) URL.revokeObjectURL(imgUrl);
@@ -449,6 +499,21 @@ export default function VitalsScanAll({ onApply, include, label, captureAudit }:
           }
         }
       } catch { /* the extra check is optional: it must never block the scan */ }
+      // Saved screen layout: read only the boxes the nurse drew for this monitor model (amber at most, see scanCombine.ts).
+      try {
+        const lay = layouts.find((l) => l.id === layoutId);
+        if (lay) {
+          const sources: (HTMLImageElement | HTMLCanvasElement)[] = [imgEl, ...framesRef.current.slice(0, 3)];
+          const fields = REGION_FIELDS.map((r) => r.id).filter((id) => lay.regions[id]);
+          for (let k = 0; k < fields.length; k++) {
+            const f = fields[k];
+            const bx = regionToBox(lay.regions[f]!, base.raw.width, base.raw.height);
+            setStage(`Reading the saved boxes (${k + 1} of ${fields.length})`); setProgress(0);
+            const reads = await readRegionDigits(worker, PSM, sources, { x0: base.sx + bx.x0 / base.scale, y0: base.sy + bx.y0 / base.scale, x1: base.sx + bx.x1 / base.scale, y1: base.sy + bx.y1 / base.scale });
+            traceRows.push({ regionField: f, text: "", raw: "", conf: 0, seen: "", x: bx.x0, y: bx.y0, w: bx.x1 - bx.x0, h: bx.y1 - bx.y0, status: "saved region", deep: reads });
+          }
+        }
+      } catch { /* saved boxes are optional: the normal result stands */ }
       const combined = combineMatches(fin.words, base.raw.width, base.raw.height, MIN_CONF, traceRows);
       const result: MatchOutput = { ...combined.output, notes: [...new Set([...merged.notes, ...fin.notes, ...(combined.output.notes || [])])] };
       // Scan data for the benchmark script: only numbers and monitor labels, so no patient name or other text leaves the phone.
@@ -602,6 +667,34 @@ export default function VitalsScanAll({ onApply, include, label, captureAudit }:
                     <div
                       className="absolute border-2 border-teal-400 bg-teal-400/10 pointer-events-none"
                       style={{ left: crop.x0 * 100 + "%", top: crop.y0 * 100 + "%", width: (crop.x1 - crop.x0) * 100 + "%", height: (crop.y1 - crop.y0) * 100 + "%", boxShadow: "0 0 0 9999px rgba(0,0,0,0.5)" }}
+                    />
+                  )}
+                </div>
+                <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 space-y-2">
+                  <label className="block text-xs text-gray-600">Saved screen layout
+                    <select value={layoutId} onChange={(e) => setLayoutId(e.target.value)} className="mt-1 w-full h-10 rounded-md border border-gray-200 bg-white px-2 text-sm">
+                      <option value="">None: read the whole screen</option>
+                      {layouts.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                    </select>
+                  </label>
+                  {layoutId && <p className="text-[11px] text-gray-500">Only the saved boxes are read for the vitals they cover. The screen box above should frame the screen the same way as when the layout was saved.</p>}
+                  <button type="button" onClick={() => setEditing((v) => !v)} className="text-xs text-teal-700 underline">{editing ? "Close the layout editor" : layoutId ? "Edit this layout" : "Set up a layout for this monitor model"}</button>
+                  {editing && imgUrl && imgEl && (
+                    <ScanRegionEditor
+                      key={layoutId || "new"}
+                      imgUrl={imgUrl}
+                      natW={imgEl.naturalWidth}
+                      natH={imgEl.naturalHeight}
+                      crop={crop}
+                      initial={layouts.find((l) => l.id === layoutId)}
+                      onSave={(name, regs) => {
+                        const saved = saveLayout(name, regs);
+                        setLayouts(loadLayouts());
+                        if (saved) { setLayoutId(saved.id); setEditing(false); }
+                        else setError("The layout could not be saved on this device (storage may be full or blocked).");
+                      }}
+                      onDelete={(id) => { deleteLayout(id); setLayouts(loadLayouts()); setLayoutId(""); setEditing(false); }}
+                      onCancel={() => setEditing(false)}
                     />
                   )}
                 </div>

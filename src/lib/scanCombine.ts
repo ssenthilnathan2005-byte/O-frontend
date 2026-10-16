@@ -308,6 +308,36 @@ function invasiveCopies(sys: string, dia: string, traces: AnyObj[], ref: number)
   return { invasive, ambiguous };
 }
 
+// ---- Saved screen layout (regions) ----------------------------------------------------------------------------
+// A region pseudo-trace is { regionField, x, y, w, h, deep: [{text, conf, method}] }. The nurse said where this vital
+// is printed, so only that box was read (digits only, several frames and zoom levels, plus colour masks).
+const summarizeReads = (t: AnyObj) => {
+  const byValue = new Map<string, Map<string, number>>();
+  for (const r of (t.deep ?? []) as AnyObj[]) {
+    const v = String(r.text ?? "").replace(/[^0-9./]/g, "") || "?";
+    const m = String(r.method ?? "normal");
+    const inner = byValue.get(v) ?? new Map<string, number>();
+    inner.set(m, (inner.get(m) || 0) + 1);
+    byValue.set(v, inner);
+  }
+  return [...byValue.entries()].map(([v, ms]) => `${v}\u00D7${[...ms.values()].reduce((a, b) => a + b, 0)} (${[...ms.entries()].map(([m, n]) => `${m}\u00D7${n}`).join(", ")})`).join("; ") || "none";
+};
+
+/** Winning "120/80" among a BP region's reads (2+ reads, twice the runner-up, systolic > diastolic, plausible ranges). */
+function voteBp(t: AnyObj): { sys: string; dia: string } | null {
+  const counts = new Map<string, number>();
+  for (const r of (t.deep ?? []) as AnyObj[]) {
+    if (String(r.method ?? "").startsWith("mask:red") || (Number(r.conf) || 0) < 50) continue;
+    const v = String(r.text ?? "").replace(/[^0-9/]/g, "");
+    if (/^\d{2,3}\/\d{2,3}$/.test(v)) counts.set(v, (counts.get(v) || 0) + 1);
+  }
+  const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  if (!ranked.length || ranked[0][1] < 2) return null;
+  if (ranked.length > 1 && ranked[0][1] < 2 * ranked[1][1]) return null;
+  const [s, d] = ranked[0][0].split("/").map(Number);
+  return inRange("bpSystolic", s) && inRange("bpDiastolic", d) && s > d ? { sys: String(s), dia: String(d) } : null;
+}
+
 function rescue(traces: AnyObj[], haveVals: Record<string, string>, ref: number): Record<string, string> {
   const have = new Set(Object.keys(haveVals));
   const out: Record<string, string> = {};
@@ -470,10 +500,51 @@ export function combineMatches(words: AnyObj[], width: number, height: number, m
     }
   }
 
+  // Digits are tiny in this photo: say so (the single most useful fix is a closer photo).
+  if (ref > 0 && height > 0 && ref < 0.035 * height) {
+    notes.push("The digits on the screen are small in this photo, so readings may be wrong. Move closer so the screen fills the frame.");
+  }
+
+  // Saved screen layout: the nurse told us where each vital is printed. A voted value is amber at most.
+  // If it disagrees with a value the label / layout reading produced, the field is left empty and both are offered.
+  const regionHandled = new Set<string>();
+  const regionChoices: Record<string, string[]> = {};
+  try {
+    for (const t of traces.filter((x) => x && x.regionField && Array.isArray(x.deep))) {
+      const rf = String(t.regionField);
+      const label = rf === "bp" ? "BP" : (FIELD_LABEL as AnyObj)[rf] ?? rf;
+      const box = `x=${Math.round(t.x)}, y=${Math.round(t.y)}, w=${Math.round(t.w || 0)}, h=${Math.round(t.h || 0)}`;
+      const pairs: [string, string][] = [];
+      if (rf === "bp") { const b = voteBp(t); if (b) pairs.push(["bpSystolic", b.sys], ["bpDiastolic", b.dia]); }
+      else if (rf === "temperature") { const v = deepVoteTemp(t); if (v) pairs.push([rf, v]); }
+      else { const v = deepVote(t); if (v && inRange(rf, +v)) pairs.push([rf, v]); }
+
+      if (!pairs.length) {
+        log.push(`Saved region for ${label} [${box}]: extra reads ${summarizeReads(t)}; REJECTED: no value had 2+ reads and twice the runner-up, so this box was not used`);
+        continue;
+      }
+      for (const [f, v] of pairs) {
+        regionHandled.add(f);
+        const cur = values[f];
+        if (cur && !same(cur.text, v)) {
+          delete values[f]; delete suggestions[f];
+          regionChoices[f] = [v, cur.text];
+          notes.push(`${(FIELD_LABEL as AnyObj)[f] ?? f}: the saved box reads ${v} but the label/layout reading was ${cur.text}, so it was left empty. Check the monitor.`);
+          log.push(`Saved region for ${label} [${box}]: extra reads ${summarizeReads(t)}; CONFLICT with ${cur.text}, field left blank`);
+        } else if (cur) {
+          log.push(`Saved region for ${label} [${box}]: extra reads ${summarizeReads(t)}; AGREES with the existing ${cur.text}`);
+        } else {
+          suggestions[f] = { text: v, conf: Math.min(minConf - 1, 65), source: "saved region" };
+          log.push(`Saved region for ${label} [${box}]: extra reads ${summarizeReads(t)}; ACCEPTED ${v} as an amber suggestion (never green)`);
+        }
+      }
+    }
+  } catch { /* regions are optional: the normal result stands */ }
+
   // Big-digit vote across frames and zoom levels (amber only, never green).
   const deepChoices: Record<string, string[]> = {};
   try {
-    const skip = new Set<string>([...Object.keys(values), ...Object.keys(suggestions)]);
+    const skip = new Set<string>([...Object.keys(values), ...Object.keys(suggestions), ...regionHandled]);
     const d = deepFill(traces, skip, ref);
     for (const f of Object.keys(d.fills)) suggestions[f] = { text: d.fills[f], conf: Math.min(minConf - 1, 65), source: "multi-frame" };
     Object.assign(deepChoices, d.choices);
@@ -485,6 +556,7 @@ export function combineMatches(words: AnyObj[], width: number, height: number, m
   // Rescue: only for fields still empty. Always amber, never green.
   const haveVals: Record<string, string> = {};
   for (const [k, v] of Object.entries({ ...suggestions, ...values })) haveVals[k] = v.text;
+  for (const k of regionHandled) if (!(k in haveVals)) haveVals[k] = "";
   try {
     const rescued = rescue(traces, haveVals, ref);
     const keys = Object.keys(rescued);
@@ -503,9 +575,9 @@ export function combineMatches(words: AnyObj[], width: number, height: number, m
 
   // Tap-to-pick: fields that are still empty get the big, unreliable numbers printed next to their label.
   const choices: Record<string, string[]> = {};
-  for (const f of ["pulse", "spo2", "respRate", "temperature"]) {
+  for (const f of ["pulse", "spo2", "respRate", "temperature", "bpSystolic", "bpDiastolic"]) {
     if (values[f] || suggestions[f]) continue;
-    const list = [...new Set([...(conflictChoices[f] || []), ...(deepChoices[f] || []), ...(f === "temperature" ? [] : choicesFor(f, traces, ref))])];
+    const list = [...new Set([...(regionChoices[f] || []), ...(conflictChoices[f] || []), ...(deepChoices[f] || []), ...(f === "temperature" ? [] : choicesFor(f, traces, ref))])];
     if (list.length) choices[f] = list;
   }
   if (Object.keys(choices).length) notes.push("Some numbers on the screen could not be read reliably. Tap the matching choice under the field, or type the value.");
