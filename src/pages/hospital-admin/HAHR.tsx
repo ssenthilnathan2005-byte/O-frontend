@@ -231,12 +231,12 @@ export default function HAHR() {
       {filtered.length === 0 ? (
         <div className="text-center py-16 text-gray-400">No staff found.</div>
       ) : (
-        <div className="rounded-xl border overflow-x-auto bg-white">
+        <div className="rounded-xl border overflow-hidden bg-white">
           {/* Month label */}
           <div className="px-4 py-2 border-b bg-muted/30 text-xs text-muted-foreground font-medium">
             Salary Status — {currentMonthLabel} (resets automatically each month)
           </div>
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto"><table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr>
                 {["Name","Role","Login code","Department","Phone","Shift","Today","Status","Salary",""].map(h => (
@@ -301,7 +301,7 @@ export default function HAHR() {
                 );
               })}
             </tbody>
-          </table>
+          </table></div>
         </div>
       )}
 

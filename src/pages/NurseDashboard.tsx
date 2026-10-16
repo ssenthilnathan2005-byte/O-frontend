@@ -1,3 +1,4 @@
+import { useBodyScrollLock } from "../lib/useBodyScrollLock";
 import { useState } from "react";
 import { HeartPulse, LogOut, Building2, User, LayoutDashboard, Stethoscope, Menu, X } from "lucide-react";
 import { useStore } from "../context/StoreContext";
@@ -16,6 +17,7 @@ export default function NurseDashboard() {
   const u = user as any;
   const [tab, setTab] = useState<Tab>("dashboard");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  useBodyScrollLock(drawerOpen);
   const { nav: extraNav, can, loading: permLoading } = useExtraNav(["beds_wards", "vitals"]);
   const hospitalName = u?.hospitalName || "Hospital";
   const hour = new Date().getHours();
@@ -90,7 +92,7 @@ export default function NurseDashboard() {
             className="md:hidden fixed inset-0 z-50 bg-black/50 cursor-default"
             onClick={() => setDrawerOpen(false)}
           />
-          <div className="md:hidden fixed left-0 top-0 bottom-0 w-72 z-50 bg-admin-sidebar flex flex-col">
+          <div className="md:hidden fixed left-0 top-0 bottom-0 w-72 z-50 bg-admin-sidebar flex flex-col overflow-hidden" style={{ height: "100dvh" }}>
             <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between">
               <div className="flex items-center gap-3 min-w-0">
                 <HeartPulse className="w-6 h-6 text-white shrink-0" />
@@ -100,7 +102,7 @@ export default function NurseDashboard() {
                 <X className="w-5 h-5 text-white" />
               </button>
             </div>
-            <nav className="flex-1 px-3 py-4 space-y-1">{navButtons}</nav>
+            <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y px-3 py-4 space-y-1">{navButtons}</nav>
             <div className="px-3 py-4 border-t border-white/10">{logoutButton}</div>
           </div>
         </>
