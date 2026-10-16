@@ -200,7 +200,7 @@ export default function HAInventory() {
       {filtered.length === 0 ? (
         <div className="text-center py-16 text-gray-400">No items found.</div>
       ) : (
-        <div className="rounded-xl border overflow-hidden bg-white">
+        <div className="rounded-xl border overflow-x-auto bg-white">
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr>
