@@ -851,8 +851,8 @@ export default function PharmacyDashboard() {
           <Stat label="Total given" value={givenList.length} tone="text-gray-700" />
         </div>
 
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap gap-2">
             {(["received", "given"] as const).map(f => (
               <button key={f} onClick={() => setFilter(f)}
                 className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap border transition-colors ${

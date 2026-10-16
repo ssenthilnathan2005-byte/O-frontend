@@ -130,9 +130,9 @@ function Outpatients() {
           <div className="px-4 py-2 bg-gray-50 text-sm font-semibold text-gray-700">{k}</div>
           {list.map(b => (
             <div key={b.id} className="px-4 py-3 border-t border-gray-100">
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <div className="w-9 h-9 rounded-lg bg-teal-50 text-teal-700 font-bold flex items-center justify-center">{b.token_number}</div>
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-[140px]">
                   <p className="font-medium text-gray-900 truncate">{b.patient_name}{b.patient_age != null ? ", " + b.patient_age : ""}</p>
                   <p className="text-xs text-gray-500 truncate">{b.phone || "No phone"}{b.complaint ? " | " + b.complaint : ""}</p>
                 </div>
@@ -145,7 +145,7 @@ function Outpatients() {
                 {b.status !== "confirmed" ? (
                   <span className="text-xs text-gray-500">{cap(b.status)}</span>
                 ) : b.checked_in_at ? (
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-md px-2 py-1">Checked in</span>
                     <Button size="sm" variant="outline" onClick={() => startVitals(b)}><Activity className="w-4 h-4 mr-1" />{b.vitals ? "Edit vitals" : "Vitals"}</Button>
                     {b.fee_paid_at
@@ -164,13 +164,13 @@ function Outpatients() {
                   <p className="text-xs text-gray-500">All fields are optional. Fill only what was measured.</p>
                   <div className="mb-2"><VitalsScanAll include={["temperature", "bpSystolic", "bpDiastolic", "pulse", "spo2"]} onApply={v => setVf(f => ({ ...f, ...v }))} /></div>
 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    <div className="flex gap-1">
-                      <Input placeholder="Temp" value={vf.temperature} onChange={e => setVf({ ...vf, temperature: e.target.value })} />
+                    <div className="flex gap-1 min-w-0">
+                      <Input className="min-w-0" placeholder="Temp" value={vf.temperature} onChange={e => setVf({ ...vf, temperature: e.target.value })} />
                       <select className="h-10 rounded-md border border-gray-200 bg-white px-1 text-sm" value={vf.tempUnit} onChange={e => setVf({ ...vf, tempUnit: e.target.value })}><option value="F">F</option><option value="C">C</option></select>
                     </div>
-                    <div className="flex gap-1">
-                      <Input placeholder="BP high" value={vf.bpSystolic} onChange={e => setVf({ ...vf, bpSystolic: e.target.value })} />
-                      <Input placeholder="BP low" value={vf.bpDiastolic} onChange={e => setVf({ ...vf, bpDiastolic: e.target.value })} />
+                    <div className="flex gap-1 min-w-0">
+                      <Input className="min-w-0" placeholder="BP high" value={vf.bpSystolic} onChange={e => setVf({ ...vf, bpSystolic: e.target.value })} />
+                      <Input className="min-w-0" placeholder="BP low" value={vf.bpDiastolic} onChange={e => setVf({ ...vf, bpDiastolic: e.target.value })} />
                     </div>
                     <Input placeholder="Pulse" value={vf.pulse} onChange={e => setVf({ ...vf, pulse: e.target.value })} />
                     <Input placeholder="SpO2 %" value={vf.spo2} onChange={e => setVf({ ...vf, spo2: e.target.value })} />
@@ -305,14 +305,14 @@ export default function FrontOfficeDashboard() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
         <div className="w-9 h-9 rounded-xl bg-teal-500 flex items-center justify-center"><ClipboardList className="w-5 h-5 text-white" /></div>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <p className="font-bold text-gray-900 leading-tight">Front Office</p>
           <p className="text-xs text-gray-500">{user?.hospitalName}</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => logout()}><LogOut className="w-4 h-4 mr-1" />Sign out</Button>
       </header>
       <main className="max-w-5xl mx-auto p-4 space-y-4">
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button className={tabCls(tab === "op")} onClick={() => setTab("op")}><UserCheck className="w-4 h-4" />Today's outpatients</button>
           <button className={tabCls(tab === "admit")} onClick={() => setTab("admit")}><BedDouble className="w-4 h-4" />Admit inpatient</button>
           <button className={tabCls(tab === "beds")} onClick={() => setTab("beds")}><BedDouble className="w-4 h-4" />Bed requests</button>

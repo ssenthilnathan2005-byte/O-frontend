@@ -27,11 +27,11 @@ export default function LabDashboard() {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           <div className="w-10 h-10 rounded-xl bg-teal-500 flex items-center justify-center">
             <FlaskConical className="w-5 h-5 text-white" />
           </div>
-          <div>
+          <div className="min-w-0">
             <h1 className="font-bold text-gray-900 text-sm">{labName}</h1>
             <p className="text-xs text-gray-400">Lab Staff Dashboard</p>
           </div>
@@ -42,7 +42,7 @@ export default function LabDashboard() {
       </header>
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-        <div className="flex gap-2 mb-6">
+        <div className="flex flex-wrap gap-2 mb-6">
           <button
             type="button"
             onClick={() => setTab("tokens")}

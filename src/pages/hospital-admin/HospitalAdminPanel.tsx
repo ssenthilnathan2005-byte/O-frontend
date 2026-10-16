@@ -219,7 +219,7 @@ export default function HospitalAdminPanel() {
         </>
       )}
 
-      <main className="flex-1 md:pt-0 pt-14">{renderContent()}</main>
+      <main className="flex-1 min-w-0 md:pt-0 pt-14">{renderContent()}</main>
     </div>
   );
 }
