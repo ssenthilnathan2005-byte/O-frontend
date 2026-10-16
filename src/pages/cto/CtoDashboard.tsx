@@ -1,7 +1,7 @@
-import { Cloud, Database, LogOut, RefreshCw, Rocket, Server } from "lucide-react";
+import { Cloud, Database, RefreshCw, Rocket, Server } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { cto } from "../../api";
-import { useStore } from "../../context/StoreContext";
+
 
 function fmtBytes(n: number) {
   if (!Number.isFinite(n)) return "-";
@@ -33,7 +33,7 @@ function Section({ icon, title, children }: { icon: React.ReactNode; title: stri
 }
 
 export default function CtoDashboard() {
-  const { logout } = useStore();
+
   const [ov, setOv] = useState<any>(null);
   const [sb, setSb] = useState<any>(null);
   const [vc, setVc] = useState<any>(null);
@@ -73,9 +73,6 @@ export default function CtoDashboard() {
         <div className="flex gap-2">
           <button onClick={load} disabled={loading} className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-sm hover:bg-gray-50">
             <RefreshCw className={"h-4 w-4 " + (loading ? "animate-spin" : "")} /> Refresh
-          </button>
-          <button onClick={logout} className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-sm hover:bg-gray-50">
-            <LogOut className="h-4 w-4" /> Logout
           </button>
         </div>
       </header>
