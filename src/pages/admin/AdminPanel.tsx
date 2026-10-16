@@ -190,7 +190,7 @@ export default function AdminPanel() {
               </button>
             </div>
 
-            <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 py-4 space-y-1" data-ocid="admin.panel">
+            <nav className="flex-1 px-3 py-4 space-y-1" data-ocid="admin.panel">
               {NAV_ITEMS.map(({ path, label, icon: Icon }) => {
                 const isActive = route.path === path;
                 return (

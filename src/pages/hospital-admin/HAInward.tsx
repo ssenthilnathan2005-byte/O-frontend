@@ -181,7 +181,7 @@ export default function HAInward() {
       <Input placeholder="Search by name, ward, bed..." value={search}
         onChange={e => setSearch(e.target.value)} className="max-w-sm" />
 
-      <div className="rounded-xl border overflow-x-auto">
+      <div className="rounded-xl border overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-muted/50">
             <tr>

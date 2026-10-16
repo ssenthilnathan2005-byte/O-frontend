@@ -285,7 +285,7 @@ export default function HALab() {
       )}
 
       {tab === "tests" && (
-        <div className="rounded-xl border overflow-x-auto bg-white">
+        <div className="rounded-xl border overflow-hidden bg-white">
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr>

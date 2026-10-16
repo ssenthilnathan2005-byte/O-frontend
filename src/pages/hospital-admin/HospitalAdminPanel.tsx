@@ -191,7 +191,7 @@ export default function HospitalAdminPanel() {
                 <X className="w-5 h-5 text-white" />
               </button>
             </div>
-            <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 py-4 space-y-1">
+            <nav className="flex-1 px-3 py-4 space-y-1">
               {NAV_ITEMS.filter(n => n.path !== "/hospital-admin/pharmacy").map(({ path, label, icon: Icon }) => (
                 <button
                   key={path}
