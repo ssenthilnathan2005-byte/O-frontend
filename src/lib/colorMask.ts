@@ -31,13 +31,19 @@ export type ColorProfile = {
 /**
  * Default profiles. These are tuning starting points, NOT a claim that a colour means a vital sign:
  * monitors differ (HR is green on most, but SpO2 can be cyan or green, resp can be yellow or white).
+ * Which vital a number is comes from labels, saved boxes and position, never from its colour.
  */
 export const MASK_PROFILES: ColorProfile[] = [
-  { id: "green", label: "Green", role: "candidate", hue: [80, 165], minSat: 0.4, minVal: 0.4 },
-  { id: "cyan", label: "Cyan", role: "candidate", hue: [166, 205], minSat: 0.4, minVal: 0.4 },
-  { id: "yellow", label: "Yellow", role: "candidate", hue: [48, 72], minSat: 0.45, minVal: 0.5 },
+  // Brightness first. Measured on a real monitor photo: the digits are washed-out pale colours (HR pale green with
+  // saturation 0.24, SpO2 pale blue 0.29), so narrow hue + high-saturation rules matched almost nothing (0 of 9
+  // correct reads), while "the brightest pixels on a dark screen" read 9 of 9. Hue profiles stay as extra clues.
+  { id: "bright85", label: "Bright (strict)", role: "candidate", minVal: 0.85 },
+  { id: "bright", label: "Bright", role: "candidate", minVal: 0.72 },
+  { id: "green", label: "Green", role: "candidate", hue: [75, 175], minSat: 0.12, minVal: 0.6 },
+  { id: "cyan", label: "Cyan / light blue", role: "candidate", hue: [175, 235], minSat: 0.2, minVal: 0.6 },
+  { id: "yellow", label: "Yellow", role: "candidate", hue: [48, 72], minSat: 0.3, minVal: 0.6 },
   { id: "white", label: "High-luminance white", role: "candidate", maxSat: 0.2, minVal: 0.8 },
-  { id: "red", label: "Red (ART / IBP clue)", role: "excluded", hue: [345, 15], minSat: 0.55, minVal: 0.45 },
+  { id: "red", label: "Red (ART / IBP clue)", role: "excluded", hue: [345, 15], minSat: 0.4, minVal: 0.45 },
 ];
 
 /** Override any profile field by id, e.g. withOverrides(MASK_PROFILES, { green: { minSat: 0.3 } }). Adds unknown ids as new profiles. */
@@ -342,6 +348,46 @@ export function maskCandidates(img: PixelBuf, profiles: ColorProfile[] = MASK_PR
     if (isUseful(ad)) items.push({ method: "adaptive", image: toBinary(ad) });
   } catch { /* fall through with whatever was built */ }
   return { items, excluded };
+}
+
+// ---- Finding number boxes without labels ----------------------------------------------------------------------
+
+export type NumberBox = { x0: number; y0: number; x1: number; y1: number; blobs: number };
+
+/**
+ * Groups of bright, digit-sized blobs that sit on one line: candidate numbers, found by brightness alone (no OCR,
+ * no labels). On a real photo where the text finder returned nothing useful, this located all three big numbers
+ * (154, 97, 48) plus a few noise boxes, which the OCR re-read then sorted out. Sizes are fractions of the image
+ * height, so it works at any resolution. Returns [] for empty or oversized images.
+ */
+export function findNumberBlobs(img: PixelBuf | null | undefined, o: { minVal?: number; minHFrac?: number; maxHFrac?: number } = {}): NumberBox[] {
+  try {
+    if (!validBuf(img) || img.width * img.height > 4_000_000) return [];
+    const H = img.height;
+    const minH = (o.minHFrac ?? 0.04) * H, maxH = (o.maxHFrac ?? 0.27) * H;
+    for (const minVal of [o.minVal ?? 0.85, 0.72]) { // strict first; relaxed only if nothing was found
+      const { mask } = cleanMask(buildMask(img, { id: "bright", label: "Bright", role: "candidate", minVal }));
+      const { comps } = components(mask);
+      const digit = comps.filter((c) => bh(c) >= minH && bh(c) <= maxH && bw(c) <= 1.4 * bh(c)).sort((a, b) => a.x0 - b.x0);
+      const groups: Comp[][] = [];
+      for (const c of digit) {
+        const h = bh(c);
+        const hit = groups.find((g) => {
+          const l = g[g.length - 1], lh = bh(l);
+          const dyc = Math.abs((c.y0 + c.y1) / 2 - (l.y0 + l.y1) / 2), gap = c.x0 - l.x1, ratio = h / lh;
+          return dyc < 0.45 * Math.max(h, lh) && gap <= 0.9 * Math.max(h, lh) && gap >= -4 && ratio > 0.6 && ratio < 1.7;
+        });
+        if (hit) hit.push(c); else groups.push([c]);
+      }
+      const boxes: NumberBox[] = groups
+        .map((g) => ({ x0: Math.min(...g.map((c) => c.x0)), y0: Math.min(...g.map((c) => c.y0)), x1: Math.max(...g.map((c) => c.x1)) + 1, y1: Math.max(...g.map((c) => c.y1)) + 1, blobs: g.length }))
+        .filter((b) => b.y1 - b.y0 >= minH);
+      if (boxes.length) return boxes.sort((a, b) => a.y0 - b.y0 || a.x0 - b.x0);
+    }
+    return [];
+  } catch {
+    return [];
+  }
 }
 
 // ---- canvas helpers (the only DOM code) ---------------------------------------------------------------------

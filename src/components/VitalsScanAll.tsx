@@ -11,8 +11,8 @@ import type { Recheck, Trace } from "@/lib/ocrConsensus";
 import { detectDisplay, assessQuality } from "@/lib/screenDetect";
 import type { QualityIssue } from "@/lib/screenDetect";
 import LiveCapture from "@/components/LiveCapture";
-import { combineMatches, pickDeepTargets } from "@/lib/scanCombine";
-import { colorCrop, canvasToPixels, pixelsToCanvas, maskCandidates } from "@/lib/colorMask";
+import { combineMatches, pickDeepTargets, pickBlobTargets } from "@/lib/scanCombine";
+import { colorCrop, canvasToPixels, pixelsToCanvas, maskCandidates, findNumberBlobs } from "@/lib/colorMask";
 import ScanRegionEditor from "@/components/ScanRegionEditor";
 import { loadLayouts, saveLayout, deleteLayout, regionToBox, REGION_FIELDS } from "@/lib/scanRegions";
 import type { Layout } from "@/lib/scanRegions";
@@ -454,7 +454,15 @@ export default function VitalsScanAll({ onApply, include, label, captureAudit }:
       // The votes are counted in scanCombine.ts; a winner is only ever shown in amber.
       const traceRows: any[] = [...fin.traces, ...merged.dropped];
       try {
-        const deepTargets = pickDeepTargets(traceRows).slice(0, 4);
+        // Big bright numbers the text finder missed or never saw: find them as brightness blobs, then re-read them like the
+        // other targets. Their reads are voted in scanCombine.ts and can only ever fill amber.
+        let blobTargets: { trace: any; box: { x0: number; y0: number; x1: number; y1: number } }[] = [];
+        try {
+          const bp = canvasToPixels(base.raw);
+          if (bp) blobTargets = pickBlobTargets(traceRows, findNumberBlobs(bp));
+        } catch { /* the blob finder is optional */ }
+        for (const b of blobTargets) traceRows.push(b.trace);
+        const deepTargets = [...pickDeepTargets(traceRows), ...blobTargets].slice(0, 6);
         if (deepTargets.length) {
           const sources: (HTMLImageElement | HTMLCanvasElement)[] = [imgEl, ...framesRef.current.slice(0, 3)];
           await worker.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_LINE, tessedit_char_whitelist: "0123456789./" } as any);

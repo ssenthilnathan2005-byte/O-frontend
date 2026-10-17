@@ -150,35 +150,71 @@ export function pickDeepTargets(traces: AnyObj[]) {
   return out.sort((a, b) => a.pri - b.pri || a.trace.y - b.trace.y).map(({ trace, box }) => ({ trace, box }));
 }
 
+/** Vote bookkeeping: each read counts for its value and remembers which preprocessing method produced it. */
+type Tally = Map<string, { n: number; groups: Set<string> }>;
+const addVote = (m: Tally, v: string, group: string) => { const e = m.get(v) ?? { n: 0, groups: new Set<string>() }; e.n++; e.groups.add(group); m.set(v, e); };
+const groupOf = (r: AnyObj) => String(r.method ?? "normal").split("/")[0]; // "mask:green/psm7" and "mask:green/psm8" are one method
+/**
+ * A winner needs 2+ agreeing reads, at least twice the runner-up, and agreement from 2+ DIFFERENT preprocessing
+ * methods (or 4+ reads, e.g. many frames). Tesseract's confidence is deliberately not used: with a digits-only
+ * whitelist it reports 0% for many correct reads and for wrong ones alike, so it cannot tell them apart. On a real
+ * monitor photo the correct 154 came back at 0% three times, while the wrong 14 and 248 also scored 0%.
+ */
+function decide(m: Tally): string | null {
+  const ranked = [...m.entries()].sort((a, b) => b[1].n - a[1].n);
+  if (!ranked.length || ranked[0][1].n < 2) return null;
+  if (ranked.length > 1 && ranked[0][1].n < 2 * ranked[1][1].n) return null;
+  if (ranked[0][1].groups.size < 2 && ranked[0][1].n < 4) return null; // one method agreeing with itself is not enough
+  return ranked[0][0];
+}
+
 /** Winning value of the votes for one box (needs 2+ agreeing reads and at least twice the runner-up), else null. */
 function deepVote(t: AnyObj): string | null {
-  const reads: string[] = [];
+  const m: Tally = new Map();
   for (const r of (t.deep ?? []) as AnyObj[]) {
     if (String(r.method ?? "").startsWith("mask:red")) continue; // red = ART / IBP clue, never a vote
     const v = String(r.text ?? "").replace(/[^0-9]/g, "");
-    if (/^\d{2,3}$/.test(v) && (Number(r.conf) || 0) >= 50) reads.push(v);
+    if (/^\d{2,3}$/.test(v)) addVote(m, v, groupOf(r));
   }
-  if (t.recheck) { const v = clean(String(t.recheck)); if (/^\d{2,3}$/.test(v)) reads.push(v); }
-  const counts = new Map<string, number>();
-  for (const v of reads) counts.set(v, (counts.get(v) || 0) + 1);
-  const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1]);
-  if (!ranked.length || ranked[0][1] < 2) return null;
-  if (ranked.length > 1 && ranked[0][1] < 2 * ranked[1][1]) return null; // needs a clear lead, not a narrow majority
-  return ranked[0][0];
+  if (t.recheck) { const v = clean(String(t.recheck)); if (/^\d{2,3}$/.test(v)) addVote(m, v, "recheck"); }
+  return decide(m);
+}
+
+/**
+ * Boxes found by brightness blobs (colorMask.findNumberBlobs) that the OCR text finder did not already confirm.
+ * Each becomes a pseudo-trace to re-read; its reads are voted like any other target and can only ever fill amber.
+ * Thin single blobs (grid / bezel lines), boxes on top of an already-confirmed number, and near-duplicates are dropped.
+ */
+export function pickBlobTargets(traces: AnyObj[], blobs: { x0: number; y0: number; x1: number; y1: number; blobs: number }[], max = 4) {
+  type B = { x0: number; y0: number; x1: number; y1: number };
+  const area = (b: B) => Math.max(0, b.x1 - b.x0) * Math.max(0, b.y1 - b.y0);
+  const inter = (a: B, b: B) => Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0));
+  const confirmed: B[] = (traces ?? []).filter((t) => t && String(t.status ?? "") === "confirmed" && t.w > 0 && t.h > 0).map((t) => ({ x0: t.x, y0: t.y, x1: t.x + t.w, y1: t.y + t.h }));
+  const kept: (B & { blobs: number })[] = [];
+  for (const b of [...(blobs ?? [])].sort((a, c) => area(c) - area(a))) {
+    const w = b.x1 - b.x0, h = b.y1 - b.y0;
+    if (!(w > 0 && h > 0)) continue;
+    if (b.blobs === 1 && w < 0.2 * h) continue;
+    if (confirmed.some((c) => inter(b, c) / area(b) > 0.3)) continue;
+    if (kept.some((k) => inter(b, k) / Math.min(area(b), area(k)) > 0.5)) continue;
+    kept.push(b);
+    if (kept.length >= max) break;
+  }
+  return kept.sort((a, c) => a.y0 - c.y0).map((b) => ({
+    trace: { blobBox: true, text: "", raw: "", conf: 0, seen: "", x: b.x0, y: b.y0, w: b.x1 - b.x0, h: b.y1 - b.y0, status: "found by brightness", deep: [] as AnyObj[] } as AnyObj,
+    box: { x0: b.x0, y0: b.y0, x1: b.x1, y1: b.y1 },
+  }));
 }
 
 /** Winning temperature (degF text) among a box's reads, with the same "2+ reads and twice the runner-up" rule. */
 function deepVoteTemp(t: AnyObj): string | null {
-  const counts = new Map<string, number>();
+  const m: Tally = new Map();
   for (const r of (t.deep ?? []) as AnyObj[]) {
-    if (String(r.method ?? "").startsWith("mask:red") || (Number(r.conf) || 0) < 50) continue;
+    if (String(r.method ?? "").startsWith("mask:red")) continue;
     const f = tempDecimal(String(r.text ?? "").replace(/[^0-9.,]/g, ""));
-    if (f !== null) counts.set(f.toFixed(1), (counts.get(f.toFixed(1)) || 0) + 1);
+    if (f !== null) addVote(m, f.toFixed(1), groupOf(r));
   }
-  const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1]);
-  if (!ranked.length || ranked[0][1] < 2) return null;
-  if (ranked.length > 1 && ranked[0][1] < 2 * ranked[1][1]) return null;
-  return ranked[0][0];
+  return decide(m);
 }
 
 /** One readable line per re-checked number: original read, every extra read and the method that made it, and why it was accepted or not. */
@@ -196,7 +232,8 @@ function describeDeep(f: string, t: AnyObj, decision: string): string {
     .join("; ");
   const box = `x=${Math.round(t.x)}, y=${Math.round(t.y)}, w=${Math.round(t.w || 0)}, h=${Math.round(t.h || 0)}`;
   const rc = t.recheck ? `, digit check ${t.recheck}${t.recheckConf !== undefined ? ` (${t.recheckConf}%)` : ""}` : "";
-  return `Big digits for ${(FIELD_LABEL as AnyObj)[f] ?? f} [${box}]: original read "${String(t.text ?? "")}" (${Math.round(Number(t.conf) || 0)}%${rc}); extra reads ${reads || "none"}; ${decision}`;
+  const orig = t.blobBox ? "none (box found by brightness blobs, not by the text finder)" : `"${String(t.text ?? "")}" (${Math.round(Number(t.conf) || 0)}%${rc})`;
+  return `Big digits for ${(FIELD_LABEL as AnyObj)[f] ?? f} [${box}]: original read ${orig}; extra reads ${reads || "none"}; ${decision}`;
 }
 
 function deepFill(traces: AnyObj[], skip: Set<string>, ref: number) {
@@ -219,7 +256,7 @@ function deepFill(traces: AnyObj[], skip: Set<string>, ref: number) {
         if (!t || !Array.isArray(t.deep) || typeof t.x !== "number" || !nearAnyLabel(t, labels, reach)) continue;
         for (const r of t.deep as AnyObj[]) {
           const v = String(r.text ?? "").replace(/[^0-9]/g, "");
-          if (/^\d{2,3}$/.test(v) && inRange(f, +v) && (Number(r.conf) || 0) >= 50) counts.set(v, (counts.get(v) || 0) + 1);
+          if (/^\d{2,3}$/.test(v) && inRange(f, +v)) counts.set(v, (counts.get(v) || 0) + 1);
         }
       }
       const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2).map((e) => e[0]);
@@ -253,7 +290,7 @@ function deepFill(traces: AnyObj[], skip: Set<string>, ref: number) {
       for (const t of traces) {
         if (!t || !Array.isArray(t.deep) || !isTempTrace(t)) continue;
         for (const r of t.deep as AnyObj[]) {
-          if (String(r.method ?? "").startsWith("mask:red") || (Number(r.conf) || 0) < 50) continue;
+          if (String(r.method ?? "").startsWith("mask:red")) continue;
           const f = tempDecimal(String(r.text ?? "").replace(/[^0-9.,]/g, ""));
           if (f !== null) counts.set(f.toFixed(1), (counts.get(f.toFixed(1)) || 0) + 1);
         }
@@ -325,16 +362,15 @@ const summarizeReads = (t: AnyObj) => {
 
 /** Winning "120/80" among a BP region's reads (2+ reads, twice the runner-up, systolic > diastolic, plausible ranges). */
 function voteBp(t: AnyObj): { sys: string; dia: string } | null {
-  const counts = new Map<string, number>();
+  const m: Tally = new Map();
   for (const r of (t.deep ?? []) as AnyObj[]) {
-    if (String(r.method ?? "").startsWith("mask:red") || (Number(r.conf) || 0) < 50) continue;
+    if (String(r.method ?? "").startsWith("mask:red")) continue;
     const v = String(r.text ?? "").replace(/[^0-9/]/g, "");
-    if (/^\d{2,3}\/\d{2,3}$/.test(v)) counts.set(v, (counts.get(v) || 0) + 1);
+    if (/^\d{2,3}\/\d{2,3}$/.test(v)) addVote(m, v, groupOf(r));
   }
-  const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1]);
-  if (!ranked.length || ranked[0][1] < 2) return null;
-  if (ranked.length > 1 && ranked[0][1] < 2 * ranked[1][1]) return null;
-  const [s, d] = ranked[0][0].split("/").map(Number);
+  const w = decide(m);
+  if (!w) return null;
+  const [s, d] = w.split("/").map(Number);
   return inRange("bpSystolic", s) && inRange("bpDiastolic", d) && s > d ? { sys: String(s), dia: String(d) } : null;
 }
 
