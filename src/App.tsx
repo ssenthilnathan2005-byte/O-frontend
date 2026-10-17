@@ -22,12 +22,14 @@ import FrontOfficeDashboard from "./pages/FrontOfficeDashboard";
 import NurseLogin from "./pages/NurseLogin";
 import NurseDashboard from "./pages/NurseDashboard";
 import AdminPanel from "./pages/admin/AdminPanel";
+import CtoDashboard from "./pages/cto/CtoDashboard";
 import HospitalAdminPanel from "./pages/hospital-admin/HospitalAdminPanel";
 import DoctorDashboard from "./pages/doctor/DoctorDashboard";
 import HospitalDoctorsPage from "./pages/patient/HospitalDoctorsPage";
 import HospitalsPage from "./pages/patient/HospitalsPage";
 import MyTokensPage from "./pages/patient/MyTokensPage";
 import MyPrescriptionsPage from "./pages/patient/MyPrescriptionsPage";
+import MyAdmissionPage from "./pages/patient/MyAdmissionPage";
 import TokenTrackerPage from "./pages/patient/TokenTrackerPage";
 import PharmaciesPage from "./pages/patient/PharmaciesPage"; // eslint-disable-line -- kept for quick revert, see ComingSoonPage swap below
 import LabsPage from "./pages/patient/LabsPage";
@@ -47,8 +49,10 @@ import PatientHomePage from "./pages/patient/PatientHomePage";
 import ProfilePage from "./pages/patient/ProfilePage";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ChatbotWidget from "./components/ChatbotWidget";
+import FloatingLoginButton from "./components/FloatingLoginButton";
 import LocationAlwaysPrompt from "./components/LocationAlwaysPrompt";
 import { RouterProvider, useRouter } from "./router/RouterContext";
+import PrescriptionAlert from "./components/PrescriptionAlert";
 
 function resolvePhotoUrl(url: string | null | undefined): string | null {
   if (!url) return null;
@@ -499,6 +503,7 @@ function AppRoutes() {
       }
       return <LoginPage initialTab="patient" initialPatientMode="login" />;
     }
+    if ((user as any).role === "cto") return <CtoDashboard />;
     if (user.role === "admin") return <AdminPanel />;
     if (user.role === "hospital_admin") return <HospitalAdminPanel />;
     if (user.role === "pharmacy") return <PharmacyDashboard />;
@@ -519,6 +524,7 @@ function AppRoutes() {
     if (route.path === "/ambulance") return <ComingSoonPage title="Ambulance" />; // was: <AmbulancePage />
     if (route.path === "/patient/profile") return <ProfilePage />;
     if (route.path === "/patient/tokens") return <MyTokensPage />;
+    if (route.path === "/patient/admission") return <MyAdmissionPage />;
     if (route.path === "/patient/prescriptions") return <MyPrescriptionsPage />;
     if (route.path === "/patient/track") {
       const r = route as { sessionId: string; tokenNumber: number };
@@ -571,7 +577,9 @@ function AppRoutes() {
       </main>
       <Toaster position="top-right" />
       <ChatbotWidget />
+      <FloatingLoginButton />
       <LocationAlwaysPrompt enabled={user?.role === "patient"} />
+      <PrescriptionAlert enabled={user?.role === "patient"} />
     </div>
   );
 }

@@ -19,11 +19,12 @@ type Route =
   | { path: "/patient/hospitals"; city?: string }
   | { path: "/patient/hospital"; id: string }
   | { path: "/patient/tokens" }
+  | { path: "/patient/admission" }
   | { path: "/patient/prescriptions" }
   | { path: "/patient/profile" }
   | { path: "/patient/track"; sessionId: string; tokenNumber: number }
   | { path: "/doctor" }
-  | { path: "/admin" }
+  | { path: "/admin" } | { path: "/cto" }
   | { path: "/admin/hospitals" }
   | { path: "/admin/doctors" }
   | { path: "/admin/patients" }
@@ -53,6 +54,7 @@ type Route =
   | { path: "/hospital-admin/hr" }
   | { path: "/hospital-admin/attendance" }
   | { path: "/hospital-admin/billing" }
+  | { path: "/hospital-admin/permissions" }
   | { path: "/pharmacy/login" }
   | { path: "/front-office/login" }
   | { path: "/nurse/login" }
@@ -111,6 +113,7 @@ function getInitialRoute(): Route {
   if (pathname === "/patient/hospitals") return { path: "/patient/hospitals", city };
   if (pathname === "/patient/hospital") return { path: "/patient/hospital", id: hospitalId };
   if (pathname === "/patient/tokens") return { path: "/patient/tokens" };
+  if (pathname === "/patient/admission") return { path: "/patient/admission" };
   if (pathname === "/patient/prescriptions") return { path: "/patient/prescriptions" };
   if (pathname === "/patient/track") {
     return {
@@ -120,7 +123,7 @@ function getInitialRoute(): Route {
     };
   }
   if (pathname === "/doctor") return { path: "/doctor" };
-  if (pathname === "/admin") return { path: "/admin" };
+  if (pathname === "/admin") return { path: "/admin" }; if (pathname === "/cto") return { path: "/cto" };
   if (pathname === "/admin/hospitals") return { path: "/admin/hospitals" };
   if (pathname === "/admin/doctors") return { path: "/admin/doctors" };
   if (pathname === "/admin/patients") return { path: "/admin/patients" };
@@ -149,6 +152,7 @@ function getInitialRoute(): Route {
   if (pathname === "/hospital-admin/hr") return { path: "/hospital-admin/hr" };
   if (pathname === "/hospital-admin/attendance") return { path: "/hospital-admin/attendance" };
   if (pathname === "/hospital-admin/billing") return { path: "/hospital-admin/billing" };
+  if (pathname === "/hospital-admin/permissions") return { path: "/hospital-admin/permissions" };
   if (pathname === "/hospital-admin") return { path: "/hospital-admin" };
   if (pathname === "/pharmacy/login") return { path: "/pharmacy/login" };
   if (pathname === "/front-office/login") return { path: "/front-office/login" };
@@ -184,7 +188,7 @@ function isProtectedRoute(r: Route): boolean {
   return (
     p.startsWith("/patient/") ||
     p === "/doctor" ||
-    p === "/nurse" ||
+    p === "/nurse" || p === "/cto" ||
     p.startsWith("/admin") ||
     p.startsWith("/hospital-admin") ||
     p === "/pharmacy-owner/dashboard"

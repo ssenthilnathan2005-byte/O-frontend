@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { getToken } from "../api";
 import { useStore } from "../context/StoreContext";
+import { useExtraNav, ExtraPanel } from "../components/StaffExtras";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
@@ -36,7 +37,8 @@ export default function HospitalLabDashboard() {
   const [resultFor, setResultFor] = useState<Order | null>(null);
   const [resultValue, setResultValue] = useState("");
   const [busy, setBusy] = useState(false);
-  const [tab, setTab] = useState<"board" | "orders">("board");
+  const [tab, setTab] = useState<string>("board");
+  const { nav: extraNav } = useExtraNav(["lab"]);
 
   async function call(path: string, method = "GET", body?: any) {
     const res = await fetch(`${BASE}/hospital-lab-staff${path}`, {
@@ -95,11 +97,13 @@ export default function HospitalLabDashboard() {
       </header>
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-4">
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <button type="button" onClick={() => setTab("board")} className={tabCls(tab === "board")}>Token Board</button>
         <button type="button" onClick={() => setTab("orders")} className={tabCls(tab === "orders")}>Bookings</button>
+        {extraNav.map(n => (<button key={n.key} type="button" onClick={() => setTab(n.key)} className={tabCls(tab === n.key)}>{n.label}</button>))}
       </div>
 
+      {tab.startsWith("x:") && <ExtraPanel moduleKey={tab.slice(2)} />}
       {tab === "board" && <TokenBoard orders={orders} busy={busy} update={update} onResult={(o) => { setResultFor(o); setResultValue(o.result_value || ""); }} />}
 
       {tab === "orders" && (<>

@@ -4,7 +4,7 @@ import { getToken } from "@/api";
 
 export const PRESET_API = `${import.meta.env.VITE_API_URL || "http://localhost:4000/api"}/prescription-presets`;
 
-export interface PresetItem { name: string; dosage: string; duration: string; instructions: string }
+export interface PresetItem { name: string; dosage: string; duration: string; instructions: string; form?: string }
 export interface Preset {
   id: string; name: string; symptoms: string[]; items: PresetItem[];
   minAge: number | null; maxAge: number | null;
@@ -32,7 +32,7 @@ export function presetItemToMedicine(i: PresetItem) {
   const d = splitAmountUnit(i.dosage, "mg", DOSAGE_UNITS);
   const u = splitAmountUnit(i.duration, "day", DURATION_UNITS);
   return {
-    name: i.name, dosage: i.dosage, duration: i.duration, instructions: i.instructions,
+    name: i.name, dosage: i.dosage, duration: i.duration, instructions: i.instructions, form: i.form,
     dosageAmount: d.amount, dosageUnit: d.unit, durationAmount: u.amount, durationUnit: u.unit,
   };
 }

@@ -1,4 +1,5 @@
-import { HeartPulse, Activity, BarChart3, ChevronDown, ShoppingCart, Fingerprint, BedDouble, Building2, ClipboardList, FlaskConical, LayoutDashboard, LogOut, Menu, Package, Pill, Receipt, Stethoscope, UserCog, Users2, Users, X } from "lucide-react";
+import { useBodyScrollLock } from "../../lib/useBodyScrollLock";
+import { ShieldCheck, HeartPulse, Activity, BarChart3, ChevronDown, ShoppingCart, Fingerprint, BedDouble, Building2, ClipboardList, FlaskConical, LayoutDashboard, LogOut, Menu, Package, Pill, Receipt, Stethoscope, UserCog, Users2, Users, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useStore } from "../../context/StoreContext";
 import useAdminSession from "../../hooks/useAdminSession";
@@ -18,6 +19,7 @@ import HAInventory from "./HAInventory";
 import HALab from "./HALab";
 import HAAttendance from "./HAAttendance";
 import HABilling from "./HABilling";
+import HAPermissions from "./HAPermissions";
 import { PharmRevenue, PharmInventory, PharmPatients, PharmSold, PharmStockUpdate, usePharmacySocket } from "./PharmacyModule";
 
 const NAV_ITEMS = [
@@ -34,6 +36,7 @@ const NAV_ITEMS = [
   { path: "/hospital-admin/patients", label: "Live Patients", icon: Users2 },
   { path: "/hospital-admin/nurses", label: "Nurses", icon: HeartPulse },
   { path: "/hospital-admin/front-desk", label: "Front Desk", icon: ClipboardList },
+  { path: "/hospital-admin/permissions", label: "Permissions", icon: ShieldCheck },
   { path: "/hospital-admin/pharmacy", label: "Pharmacy", icon: Pill },
 ] as const;
 
@@ -82,6 +85,7 @@ export default function HospitalAdminPanel() {
   useAdminSession(logout);
   const { route, navigate } = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  useBodyScrollLock(drawerOpen);
   usePharmacySocket(user && user.role === "hospital_admin" ? user.hospitalId : "");
 
   const hospitalName = user && user.role === "hospital_admin" ? user.hospitalName : "Hospital Admin";
@@ -105,6 +109,7 @@ export default function HospitalAdminPanel() {
     if (route.path === "/hospital-admin/front-desk") return <div className="p-4 max-w-3xl space-y-4"><HAFrontDeskCollections /><HAFrontOfficeStaff /></div>;
     if (route.path === "/hospital-admin/attendance") return <HAAttendance />;
     if (route.path === "/hospital-admin/billing") return <HABilling />;
+    if (route.path === "/hospital-admin/permissions") return <HAPermissions />;
     return <HADashboard />;
   }
 
@@ -178,7 +183,7 @@ export default function HospitalAdminPanel() {
             className="md:hidden fixed inset-0 z-50 bg-black/50 cursor-default"
             onClick={() => setDrawerOpen(false)}
           />
-          <div className="md:hidden fixed left-0 top-0 bottom-0 w-72 z-50 bg-admin-sidebar flex flex-col">
+          <div className="md:hidden fixed left-0 top-0 bottom-0 w-72 z-50 bg-admin-sidebar flex flex-col overflow-hidden" style={{ height: "100dvh" }}>
             <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between">
               <div className="flex items-center gap-3 min-w-0">
                 <Building2 className="w-6 h-6 text-white shrink-0" />
@@ -188,7 +193,7 @@ export default function HospitalAdminPanel() {
                 <X className="w-5 h-5 text-white" />
               </button>
             </div>
-            <nav className="flex-1 px-3 py-4 space-y-1">
+            <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y px-3 py-4 space-y-1">
               {NAV_ITEMS.filter(n => n.path !== "/hospital-admin/pharmacy").map(({ path, label, icon: Icon }) => (
                 <button
                   key={path}
@@ -216,7 +221,7 @@ export default function HospitalAdminPanel() {
         </>
       )}
 
-      <main className="flex-1 md:pt-0 pt-14">{renderContent()}</main>
+      <main className="flex-1 min-w-0 md:pt-0 pt-14">{renderContent()}</main>
     </div>
   );
 }

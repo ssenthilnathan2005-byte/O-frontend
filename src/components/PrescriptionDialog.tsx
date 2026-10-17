@@ -10,6 +10,7 @@ import { getToken } from "@/api";
 import { toast } from "sonner";
 import VoicePrescription, { type VoiceItem } from "@/components/VoicePrescription";
 import PresetSuggestions, { presetItemToMedicine, type PresetItem } from "@/components/PresetSuggestions";
+import { FORM_CONFIG, getFormConfig, coerceUnit, detectFormFromText, normalizeLegacyMedicine, type MedForm } from "@/lib/medicineTypes";
 
 interface Medicine {
   name: string;
@@ -22,6 +23,8 @@ interface Medicine {
   durationUnit: string;
   form?: string;
   qtyOverride?: string;
+  perDose?: string;      // tablets/capsules per dose (Tablet type only)
+  formManual?: boolean;  // doctor picked the type by hand, so don't auto-change it from the name
 }
 
 interface Props {
@@ -44,13 +47,14 @@ interface Props {
 const EMPTY_MED: Medicine = {
   name: "", dosage: "", duration: "", instructions: "",
   dosageAmount: "", dosageUnit: "mg", durationAmount: "", durationUnit: "day",
+  form: "tablet", perDose: "1",
 };
 
 const TIME_OPTIONS = ["Morning", "Afternoon", "Evening"];
 const FOOD_OPTIONS = ["After food", "Before food"];
 const CUSTOM_PREFIX = "Custom: ";
 
-const DOSAGE_UNITS = ["mg", "g", "ml", "mcg", "tablet", "capsule", "drop", "puff"];
+
 const DURATION_UNITS = ["day", "week"];
 const UNIT_NO_SPACE = new Set(["mg", "g", "ml", "mcg"]);
 
@@ -73,22 +77,10 @@ function isMedFilled(m: Medicine) {
   return m.name.trim() && m.dosageAmount.trim() && m.durationAmount.trim();
 }
 
-type MedForm = "tablet" | "syrup" | "drops" | "injection" | "ointment" | "spray" | "other";
-const FORM_OPTIONS: { value: MedForm; label: string; unit: string }[] = [
-  { value: "tablet", label: "Tablet / Capsule", unit: "tablets" },
-  { value: "syrup", label: "Syrup / Tonic", unit: "bottle(s)" },
-  { value: "drops", label: "Drops", unit: "bottle(s)" },
-  { value: "injection", label: "Injection", unit: "vial(s)" },
-  { value: "ointment", label: "Ointment / Cream", unit: "tube(s)" },
-  { value: "spray", label: "Spray / Inhaler", unit: "unit(s)" },
-  { value: "other", label: "Other", unit: "unit(s)" },
-];
+const FORM_OPTIONS = FORM_CONFIG; // fields used below: value, label, unit
+
 function guessForm(m: Medicine): MedForm {
-  if (m.form) return m.form as MedForm;
-  if (m.dosageUnit === "ml") return "syrup";
-  if (m.dosageUnit === "drop") return "drops";
-  if (m.dosageUnit === "puff") return "spray";
-  return "tablet";
+  return (m.form as MedForm) || detectFormFromText(m.name) || "tablet";
 }
 function timesPerDay(m: Medicine): number {
   return ["Morning", "Afternoon", "Evening", "Night"].filter(t => (m.instructions || "").includes(t)).length || 1;
@@ -97,21 +89,30 @@ function totalDays(m: Medicine): number {
   const n = parseFloat(m.durationAmount) || 0;
   return (m.durationUnit === "week" ? n * 7 : n) || 1;
 }
+function perDoseCount(m: Medicine): number {
+  return parseFloat(m.perDose || "1") || 1;
+}
+// Only tablets are computed (per dose x times x days). Everything else defaults to 1 bottle / vial / tube.
 function autoQuantity(m: Medicine): number {
-  if (guessForm(m) !== "tablet") return 1;
-  const perDose = (m.dosageUnit === "tablet" || m.dosageUnit === "capsule") ? (parseFloat(m.dosageAmount) || 1) : 1;
-  return Math.max(1, Math.ceil(perDose * timesPerDay(m) * totalDays(m)));
+  if (!getFormConfig(guessForm(m)).autoQuantity) return 1;
+  return Math.max(1, Math.ceil(perDoseCount(m) * timesPerDay(m) * totalDays(m)));
 }
 function finalQuantity(m: Medicine): number {
   const o = parseFloat(m.qtyOverride || "");
   return o > 0 ? Math.round(o) : autoQuantity(m);
 }
 function qtyHint(m: Medicine): string {
-  if (guessForm(m) !== "tablet") return "Dosage is the amount per time. Dispensing quantity is separate: default 1, change if needed.";
-  const perDose = (m.dosageUnit === "tablet" || m.dosageUnit === "capsule") ? (parseFloat(m.dosageAmount) || 1) : 1;
-  return `Auto: ${perDose} per dose x ${timesPerDay(m)} times/day x ${totalDays(m)} days = ${autoQuantity(m)}. Type a number to override.`;
+  const cfg = getFormConfig(guessForm(m));
+  if (!cfg.autoQuantity) return `Dose is the amount per time. Dispense quantity is separate and defaults to 1 ${cfg.unit.replace("(s)", "")}.`;
+  return `Auto: ${perDoseCount(m)} per dose x ${timesPerDay(m)} times/day x ${totalDays(m)} days = ${autoQuantity(m)}. Type a number to override.`;
 }
-
+function dosageText(m: Medicine): string {
+  const base = formatDosage(m.dosageAmount, m.dosageUnit);
+  if (guessForm(m) !== "tablet") return base;
+  const n = perDoseCount(m);
+  if (!base) return `${n} ${n === 1 ? "tablet" : "tablets"}`;
+  return n === 1 ? base : `${n} tablets x ${base}`;
+}
 function getParts(instructions: string): string[] {
   return instructions.split(",").map(p => p.trim()).filter(Boolean);
 }
@@ -133,11 +134,13 @@ export default function PrescriptionDialog({
   const [medicines, setMedicines] = useState<Medicine[]>([{ ...EMPTY_MED }]);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<{ name: string; inStock: boolean }[]>([]);
   const [activeMedIdx, setActiveMedIdx] = useState<number | null>(null);
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
   const [otherOpen, setOtherOpen] = useState<Set<number>>(new Set());
   const [mode, setMode] = useState<"manual" | "voice">("voice");
+  const [voiceItems, setVoiceItems] = useState<VoiceItem[]>([]);
+  const [voicePending, setVoicePending] = useState<string[]>([]);
 
   // always start in Speak mode when the dialog is opened again
   useEffect(() => { if (!open) setMode("voice"); }, [open]);
@@ -162,19 +165,41 @@ export default function PrescriptionDialog({
     setMedicines(prev => prev.map((m, i) => i === idx ? { ...m, durationUnit: unit, duration: formatDuration(m.durationAmount, unit) } : m));
   }
 
+  // Type picked by hand: unit and quantity follow the type automatically
+  function changeForm(idx: number, form: MedForm) {
+    const cfg = getFormConfig(form);
+    setMedicines(prev => prev.map((m, i) => {
+      if (i !== idx) return m;
+      const keep = m.dosageUnit === cfg.defaultUnit;
+      const amount = keep ? m.dosageAmount : "";   // never carry "500" from mg into ml
+      return { ...m, form, formManual: true, dosageUnit: cfg.defaultUnit, dosageAmount: amount,
+               dosage: formatDosage(amount, cfg.defaultUnit), qtyOverride: "" };
+    }));
+  }
+
+  // Name typed or picked: if it says tonic / syrup / drops etc., set the type and unit
+  function updateName(idx: number, name: string) {
+    setMedicines(prev => prev.map((m, i) => {
+      if (i !== idx) return m;
+      if (m.formManual) return { ...m, name };
+      const detected = detectFormFromText(name);
+      if (!detected || detected === m.form) return { ...m, name };
+      return { ...m, name, form: detected, dosageUnit: getFormConfig(detected).defaultUnit, qtyOverride: "" };
+    }));
+  }
   async function searchMedicines(idx: number, q: string) {
-    updateMed(idx, "name", q);
+    updateName(idx, q);
     setActiveMedIdx(idx);
     if (q.length < 2) { setSuggestions([]); return; }
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000/api"}/pharmacy/medicines?q=${encodeURIComponent(q)}`, { headers: { Authorization: `Bearer ${getToken()}` } });
       const data = await res.json();
-      setSuggestions(data.map((m: any) => m.name));
+      setSuggestions(Array.isArray(data) ? data.filter((m: any) => m && m.name).map((m: any) => ({ name: m.name, inStock: m.in_stock === true })) : []);
     } catch { setSuggestions([]); }
   }
 
   function pickSuggestion(idx: number, name: string) {
-    updateMed(idx, "name", name);
+    updateName(idx, name);
     setSuggestions([]);
     setActiveMedIdx(null);
   }
@@ -254,7 +279,7 @@ export default function PrescriptionDialog({
       const have = new Set(existing.map(m => m.name.trim().toLowerCase()));
       const added = items
         .filter(i => !have.has(i.name.trim().toLowerCase()))
-        .map(presetItemToMedicine);
+        .map(i => normalizeLegacyMedicine(presetItemToMedicine(i)));
       const next = [...existing, ...added];
       return next.length ? next : [{ ...EMPTY_MED }];
     });
@@ -263,19 +288,28 @@ export default function PrescriptionDialog({
     setMode("manual");
   }
 
-  async function handleSave() {
-    const validMeds = medicines
+  function buildManualItems(): VoiceItem[] {
+    return medicines
       .filter(m => m.name.trim())
       .map(m => ({
         name: m.name,
-        dosage: formatDosage(m.dosageAmount, m.dosageUnit),
+        dosage: dosageText(m),
         duration: formatDuration(m.durationAmount, m.durationUnit),
         instructions: m.instructions,
         form: guessForm(m),
         quantity: finalQuantity(m),
         quantityUnit: FORM_OPTIONS.find(o => o.value === guessForm(m))?.unit ?? "units",
       }));
-    await submitPrescription(validMeds);
+  }
+
+  async function handleSave() {
+    // voice medicines first, then manual ones
+    if (voicePending.length) {
+      toast.error(`Finish the voice medicine details first: ${voicePending.join(", ")}`);
+      setMode("voice");
+      return;
+    }
+    await submitPrescription([...voiceItems, ...buildManualItems()], true);
   }
 
   // Shared by the manual form and voice mode. keepOpenOnError is used by voice so a failed
@@ -313,6 +347,8 @@ export default function PrescriptionDialog({
     setSaving(false);
     if (keepOpenOnError && !ok) return;
     setMedicines([{ ...EMPTY_MED }]);
+    setVoiceItems([]);
+    setVoicePending([]);
     setNotes("");
     setCollapsed(new Set());
     setOtherOpen(new Set());
@@ -322,6 +358,8 @@ export default function PrescriptionDialog({
 
   function handleSkip() {
     setMedicines([{ ...EMPTY_MED }]);
+    setVoiceItems([]);
+    setVoicePending([]);
     setNotes("");
     setCollapsed(new Set());
     setOtherOpen(new Set());
@@ -369,18 +407,66 @@ export default function PrescriptionDialog({
           onApply={applyPreset}
         />
 
-        {mode === "voice" && (
+        {mode === "voice" && medicines.some(m => m.name.trim()) && (
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-gray-700 flex items-center gap-1">
+                <Pencil className="w-3.5 h-3.5" /> Added manually ({medicines.filter(m => m.name.trim()).length})
+              </span>
+              <button onClick={() => setMode("manual")} className="text-xs text-blue-700 underline">Edit in Manual</button>
+            </div>
+            {medicines.filter(m => m.name.trim()).map((m, i) => (
+              <div key={"ms" + i} className="flex items-start gap-2 text-sm bg-white border rounded-lg px-3 py-2">
+                <Check className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+                <div className="min-w-0">
+                  <div className="font-medium">{m.name}</div>
+                  <div className="text-xs text-gray-500">{[dosageText(m), formatDuration(m.durationAmount, m.durationUnit), m.instructions].filter(Boolean).join(", ")}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className={mode === "voice" ? "" : "hidden"}>
           <VoicePrescription
             saving={saving}
             notes={notes}
             onNotesChange={setNotes}
             onSkip={handleSkip}
-            onConfirm={items => submitPrescription(items, true)}
+            onItemsChange={(items, pending) => { setVoiceItems(items); setVoicePending(pending ?? []); }}
+            onConfirm={items => submitPrescription([...items, ...buildManualItems()], true)}
           />
-        )}
+        </div>
 
         {mode === "manual" && (<>
         <div className="space-y-4">
+          {(voiceItems.length > 0 || voicePending.length > 0) && (
+            <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-blue-700 flex items-center gap-1">
+                  <Mic className="w-3.5 h-3.5" /> Added by voice ({voiceItems.length + voicePending.length})
+                </span>
+                <button onClick={() => setMode("voice")} className="text-xs text-blue-700 underline">Edit in Speak</button>
+              </div>
+              {voiceItems.map((v, i) => (
+                <div key={"vs" + i} className="flex items-start gap-2 text-sm bg-white border rounded-lg px-3 py-2">
+                  <Check className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <div className="font-medium">{v.name}</div>
+                    <div className="text-xs text-gray-500">{[v.dosage, v.duration, v.instructions].filter(Boolean).join(", ")}</div>
+                  </div>
+                </div>
+              ))}
+              {voicePending.map((n, i) => (
+                <div key={"vp" + i} className="flex items-start gap-2 text-sm bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  <Mic className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <div className="font-medium">{n}</div>
+                    <div className="text-xs text-amber-700">Needs details. Tap "Edit in Speak" to finish it.</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           {medicines.map((med, idx) => {
             const isCollapsed = collapsed.has(idx) && isMedFilled(med);
             const parts = getParts(med.instructions);
@@ -397,7 +483,7 @@ export default function PrescriptionDialog({
                     <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
                     <span className="font-medium">{med.name}</span>
                     <span className="text-gray-400">·</span>
-                    <span className="text-gray-500">{med.dosage} · {med.duration}</span>
+                    <span className="text-gray-500">{dosageText(med)} · {med.duration}</span>
                   </div>
                   <Pencil className="w-3.5 h-3.5 text-gray-400" />
                 </div>
@@ -435,11 +521,12 @@ export default function PrescriptionDialog({
                     <div className="absolute z-10 bg-white border rounded-lg shadow-lg mt-1 w-full">
                       {suggestions.map(s => (
                         <button
-                          key={s}
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50"
-                          onClick={() => pickSuggestion(idx, s)}
+                          key={s.name}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 flex items-center justify-between gap-2"
+                          onClick={() => pickSuggestion(idx, s.name)}
                         >
-                          {s}
+                          <span>{s.name}</span>
+                          {s.inStock && <span className="text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded px-1.5 py-0.5">In Stock</span>}
                         </button>
                       ))}
                     </div>
@@ -460,11 +547,12 @@ export default function PrescriptionDialog({
                         className="flex-1"
                       />
                       <select
-                        value={med.dosageUnit}
+                        value={coerceUnit(guessForm(med), med.dosageUnit)}
                         onChange={e => updateDosageUnit(idx, e.target.value)}
+                        disabled={getFormConfig(guessForm(med)).allowedUnits.length === 1}
                         className="border rounded-md text-sm px-2 bg-white shrink-0"
                       >
-                        {DOSAGE_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                        {getFormConfig(guessForm(med)).allowedUnits.map(u => <option key={u} value={u}>{u}</option>)}
                       </select>
                     </div>
                   </div>
@@ -491,13 +579,24 @@ export default function PrescriptionDialog({
                   </div>
                 </div>
 
+                {guessForm(med) === "tablet" && (
+                  <div>
+                    <Label className="text-xs text-gray-500">Tablets / capsules per dose</Label>
+                    <Input
+                      type="number" min="0.25" step="0.25" className="w-28"
+                      value={med.perDose ?? "1"}
+                      onChange={e => setMedicines(prev => prev.map((m, i) => i === idx ? { ...m, perDose: e.target.value, qtyOverride: "" } : m))}
+                    />
+                  </div>
+                )}
+
                 <div className="rounded-lg border border-teal-100 bg-teal-50/50 p-2 space-y-1.5">
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <Label className="text-xs text-gray-500">Medicine type</Label>
                       <select
                         value={guessForm(med)}
-                        onChange={e => setMedicines(prev => prev.map((m, i) => i === idx ? { ...m, form: e.target.value, qtyOverride: "" } : m))}
+                        onChange={e => changeForm(idx, e.target.value as MedForm)}
                         className="w-full border rounded-md text-sm px-2 py-2 bg-white"
                       >
                         {FORM_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}

@@ -104,7 +104,7 @@ function matchesDrill(v: Visit, d: Drill) {
 
 export default function HAAllPatients() {
   const { bookings, doctors, patients, user } = useStore();
-  const hospitalId = user?.role === "hospital_admin" ? (user as any).hospitalId : "";
+  const hospitalId = (user as any)?.hospitalId || "";
 
   const { route } = useRouter();
   const [drill, setDrill] = useState<Drill>(() => drillFromRoute(route));

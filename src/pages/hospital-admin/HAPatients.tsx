@@ -41,7 +41,7 @@ function weekEndStr() {
 export default function HAPatients() {
   const { bookings, doctors, user } = useStore();
   const hospitalId =
-    user?.role === "hospital_admin" ? user.hospitalId : "";
+    (user as any)?.hospitalId || "";
 
   const [search, setSearch]         = useState("");
   const [dateFilter, setDateFilter] = useState<"all" | "today" | "week">("all");

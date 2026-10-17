@@ -247,6 +247,8 @@ export const auth = {
     post<{ token?: string; user?: AppUser; userId?: string; name?: string; email?: string }>(
       "/auth/patient/google", { credential }
     ),
+  ctoLogin: (email: string, password: string) =>
+    post<{ token: string; user: AppUser }>("/auth/cto/login", { email, password }),
   adminLogin: (code: string, password: string) =>
     post<{ token: string; user: AppUser }>("/auth/admin/login", { code, password }),
   doctorLogin: (code: string, password: string) =>
@@ -313,6 +315,18 @@ export const inward = {
   admit:     (data: any)             => post<any>(`/inward`, data),
   update:    (id: string, data: any) => patch<any>(`/inward/${id}`, data),
   discharge: (id: string)            => patch<any>(`/inward/${id}/discharge`, {}),
+};
+
+export const ipdBilling = {
+  list:          (status = "admitted")                       => get<any[]>(`/ipd-billing?status=${status}`),
+  get:           (id: string)                                => get<any>(`/ipd-billing/${id}`),
+  summary:       ()                                          => get<any>(`/ipd-billing/summary`),
+  mine:          (id: string)                                => get<any>(`/ipd-billing/my/${id}`),
+  settings:      (id: string, data: any)                     => patch<any>(`/ipd-billing/${id}/settings`, data),
+  addItem:       (id: string, data: any)                     => post<any>(`/ipd-billing/${id}/items`, data),
+  removeItem:    (id: string, itemId: string)                => del<any>(`/ipd-billing/${id}/items/${itemId}`),
+  addPayment:    (id: string, data: any)                     => post<any>(`/ipd-billing/${id}/payments`, data),
+  removePayment: (id: string, paymentId: string)             => del<any>(`/ipd-billing/${id}/payments/${paymentId}`),
 };
 
 export const nursing = {
@@ -661,4 +675,27 @@ export const labs = {
     get<LabSessionState | null>(`/labs/sessions/${labId}/${testId}/${date}/${session}`),
   sessionAction: (labId: string, testId: string, date: string, session: string, action: "call" | "complete" | "skip", token?: number) =>
     post<LabSessionState>(`/labs/sessions/${labId}/${testId}/${date}/${session}/${action}`, token != null ? { token } : {}),
+};
+
+// ── IPD bed booking ───────────────────────────────────────────────────────────
+export const bedBookings = {
+  myStays:      ()                               => get<any[]>("/bed-bookings/my-stays"),
+  availability: (hospitalId: string)            => get<any[]>(`/bed-bookings/availability/${hospitalId}`),
+  create:       (data: any)                      => post<any>("/bed-bookings", data),
+  mine:         ()                               => get<any[]>("/bed-bookings/mine"),
+  cancel:       (id: string)                     => patch<any>(`/bed-bookings/${id}/cancel`, {}),
+  hospitalList: (status = "requested,confirmed") => get<any[]>(`/bed-bookings/hospital?status=${status}`),
+  freeBeds:     ()                               => get<any[]>("/bed-bookings/free-beds"),
+  confirm:      (id: string, data: any)          => patch<any>(`/bed-bookings/${id}/confirm`, data),
+  reject:       (id: string, reason?: string)    => patch<any>(`/bed-bookings/${id}/reject`, { reason }),
+  admit:        (id: string, data: any = {})     => post<any>(`/bed-bookings/${id}/admit`, data),
+  wards:        ()                               => get<any[]>("/wards"),
+  setWardRate:  (wardId: string, dailyRate: number) => patch<any>(`/bed-bookings/ward-rate/${wardId}`, { dailyRate }),
+};
+
+// CTO dashboard endpoints (server enforces the cto role)
+export const cto = {
+  overview: () => get<any>("/cto/overview"),
+  supabase: () => get<any>("/cto/supabase"),
+  vercel: () => get<any>("/cto/vercel"),
 };

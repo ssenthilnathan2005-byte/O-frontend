@@ -12,9 +12,16 @@ import {
   toPrescriptionItem, defaultTimes, TIME_ORDER, normalise, parseSegment,
 } from "@/lib/voicePrescription";
 
-export type VoiceItem = { name: string; dosage: string; duration: string; instructions: string };
+import { getFormConfig, detectFormFromText, FORM_CONFIG, type MedForm } from "@/lib/medicineTypes";
+import { setVoiceForm } from "@/lib/voicePrescription";
+
+export type VoiceItem = {
+  name: string; dosage: string; duration: string; instructions: string;
+  form?: string; quantity?: number; quantityUnit?: string;
+};
 
 interface Props {
+  onItemsChange?: (items: VoiceItem[], pending?: string[]) => void;
   saving: boolean;
   notes: string;
   onNotesChange: (v: string) => void;
@@ -28,6 +35,16 @@ type Phase = "ready" | "listening" | "processing" | "asking" | "review";
 type ServerRec = { stop: () => void; abort: () => void };
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+
+// search box only: keeps the stock flag. Voice matching keeps using searchDb below.
+async function searchDbRich(q: string): Promise<{ name: string; inStock: boolean }[]> {
+  const res = await fetch(API + "/pharmacy/medicines?q=" + encodeURIComponent(q), {
+    headers: { Authorization: "Bearer " + getToken() },
+  });
+  if (!res.ok) throw new Error("medicine search failed");
+  const data = await res.json();
+  return Array.isArray(data) ? data.filter((m: any) => m && m.name).map((m: any) => ({ name: m.name, inStock: m.in_stock === true })) : [];
+}
 
 async function searchDb(q: string): Promise<string[]> {
   const res = await fetch(`${API}/pharmacy/medicines?q=${encodeURIComponent(q)}`, {
@@ -129,14 +146,14 @@ function applyAnswer(m: VoiceMed, field: Ask["field"], text: string): { med: Voi
   return { med: out, ok };
 }
 
-const STRENGTH_UNITS = ["mg", "mcg", "g", "unit"];
-const DOSE_FORMS = ["tablet", "capsule", "ml", "drop", "puff"];
+const STRENGTH_UNITS = ["mg", "ml", "g"];
+
 const DURATION_CHIPS = [3, 5, 7, 10, 14];
 
 const chip = (on: boolean) =>
   `px-3 py-1.5 rounded-full border text-sm transition-colors ${on ? "bg-blue-600 border-blue-600 text-white" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"}`;
 
-export default function VoicePrescription({ saving, notes, onNotesChange, onSkip, onConfirm }: Props) {
+export default function VoicePrescription({ saving, notes, onNotesChange, onSkip, onConfirm, onItemsChange }: Props) {
   const [phase, setPhase] = useState<Phase>("ready");
   const [error, setError] = useState("");
   const [live, setLive] = useState("");
@@ -146,6 +163,13 @@ export default function VoicePrescription({ saving, notes, onNotesChange, onSkip
 
   const medsRef = useRef<VoiceMed[]>([]);
   medsRef.current = meds;
+  useEffect(() => {
+    onItemsChange?.(
+      meds.filter(m => blockingIssues(m).length === 0).map(toPrescriptionItem),
+      meds.filter(m => blockingIssues(m).length > 0).map(m => m.name || "Unnamed medicine"),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meds]);
   const phaseRef = useRef<Phase>("ready");
   phaseRef.current = phase;
   const recRef = useRef<any>(null);
@@ -776,7 +800,7 @@ export default function VoicePrescription({ saving, notes, onNotesChange, onSkip
       {error && <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg p-2">{error}</div>}
 
       {meds.map((m, i) => (
-        <MedCard key={m.id} med={m} index={i} onPatch={p => patchMed(m.id, p)} onRemove={() => removeMed(m.id)} />
+        <MedCard key={m.id} med={m} index={i} onPatch={p => { const f = p.name ? detectFormFromText(p.name) : null; patchMed(m.id, f && f !== m.form ? setVoiceForm({ ...m, ...p }, f) : p); }} onRemove={() => removeMed(m.id)} />
       ))}
 
       <button
@@ -894,13 +918,21 @@ function MedCard({ med: m, index, onPatch, onRemove }: {
             <NameSearch value={m.name} onPick={n => onPatch({ name: n, nameState: "matched", candidates: [] })} onType={n => onPatch({ name: n, nameState: "manual" })} />
           </div>
 
+          <div>
+            <Label className="text-xs text-gray-500">Medicine type</Label>
+            <select value={m.form} onChange={e => onPatch(setVoiceForm(m, e.target.value as MedForm))}
+              className="w-full border rounded-md text-sm px-2 py-2 bg-white">
+              {FORM_CONFIG.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label className="text-xs text-gray-500">Strength</Label>
               <div className="flex gap-1">
                 <Input type="number" min="0" step="any" inputMode="decimal" placeholder="650" value={m.strengthAmount}
                   onChange={e => onPatch({ strengthAmount: e.target.value, strengthAssumed: false })} className="flex-1 min-w-0" />
-                <select value={m.strengthUnit} onChange={e => onPatch({ strengthUnit: e.target.value, strengthAssumed: false })}
+                <select value={STRENGTH_UNITS.includes(m.strengthUnit) ? m.strengthUnit : "mg"} onChange={e => onPatch({ strengthUnit: e.target.value, strengthAssumed: false })}
                   className="border rounded-md text-sm px-2 bg-white shrink-0">
                   {STRENGTH_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
                 </select>
@@ -911,10 +943,7 @@ function MedCard({ med: m, index, onPatch, onRemove }: {
               <div className="flex gap-1">
                 <Input type="number" min="0" step="any" inputMode="decimal" placeholder="1" value={m.qty}
                   onChange={e => onPatch({ qty: e.target.value })} className="flex-1 min-w-0" />
-                <select value={m.qtyUnit} onChange={e => onPatch({ qtyUnit: e.target.value })}
-                  className="border rounded-md text-sm px-2 bg-white shrink-0">
-                  {DOSE_FORMS.map(u => <option key={u} value={u}>{u}</option>)}
-                </select>
+                <span className="border rounded-md text-sm px-2 bg-gray-50 text-gray-600 shrink-0 flex items-center">{m.qtyUnit}</span>
               </div>
             </div>
           </div>
@@ -975,7 +1004,7 @@ function MedCard({ med: m, index, onPatch, onRemove }: {
 // medicine search box backed by the existing medicine list
 function NameSearch({ value, onPick, onType }: { value: string; onPick: (n: string) => void; onType?: (n: string) => void }) {
   const [q, setQ] = useState(value);
-  const [list, setList] = useState<string[]>([]);
+  const [list, setList] = useState<{ name: string; inStock: boolean }[]>([]);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
@@ -986,7 +1015,7 @@ function NameSearch({ value, onPick, onType }: { value: string; onPick: (n: stri
     if (timer.current) clearTimeout(timer.current);
     if (v.trim().length < 2) { setList([]); return; }
     timer.current = setTimeout(async () => {
-      try { setList((await searchDb(v.trim())).slice(0, 8)); } catch { setList([]); }
+      try { setList((await searchDbRich(v.trim())).slice(0, 8)); } catch { setList([]); }
     }, 250);
   }
 
@@ -996,8 +1025,11 @@ function NameSearch({ value, onPick, onType }: { value: string; onPick: (n: stri
       {list.length > 0 && (
         <div className="absolute z-20 bg-white border rounded-lg shadow-lg mt-1 w-full max-h-48 overflow-y-auto">
           {list.map(s => (
-            <button key={s} className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50"
-              onClick={() => { setQ(s); setList([]); onPick(s); }}>{s}</button>
+            <button key={s.name} className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 flex items-center justify-between gap-2"
+              onClick={() => { setQ(s.name); setList([]); onPick(s.name); }}>
+              <span>{s.name}</span>
+              {s.inStock && <span className="text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded px-1.5 py-0.5">In Stock</span>}
+            </button>
           ))}
         </div>
       )}

@@ -36,6 +36,8 @@ export default function LiveCapture({ onCapture, onClose }: Props) {
   const [status, setStatus] = useState('Starting camera…');
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState('');
+  const [ready, setReady] = useState(false);
+  const captureRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     let alive = true;
@@ -62,7 +64,7 @@ export default function LiveCapture({ onCapture, onClose }: Props) {
     // Grab a few frames (the phone is steady now) and keep the sharpest as the main photo.
     const capture = async () => {
       const v = videoRef.current;
-      if (!v || done) return;
+      if (!v || done || !v.videoWidth) return;
       done = true;
       window.clearInterval(timer);
       setStatus('Captured – hold still for a moment…');
@@ -79,6 +81,8 @@ export default function LiveCapture({ onCapture, onClose }: Props) {
       const main = frames[0].c;
       main.toBlob((b) => { if (b) onCaptureRef.current(b, main, frames.slice(1).map((f) => f.c)); }, 'image/jpeg', 0.92);
     };
+
+    captureRef.current = () => { void capture(); };
 
     const tick = () => {
       const v = videoRef.current;
@@ -131,6 +135,7 @@ export default function LiveCapture({ onCapture, onClose }: Props) {
         const v = videoRef.current!;
         v.srcObject = stream;
         await v.play();
+        setReady(true);
         setStatus('Point at the monitor…');
         timer = window.setInterval(tick, 150);
       } catch (e: any) {
@@ -142,8 +147,9 @@ export default function LiveCapture({ onCapture, onClose }: Props) {
   }, []);
 
   return (
+    <div>
     <div style={{ position: 'relative', background: '#000', borderRadius: 12, overflow: 'hidden' }}>
-      <video ref={videoRef} playsInline muted style={{ width: '100%', display: 'block' }} />
+      <video ref={videoRef} playsInline muted style={{ width: '100%', display: 'block', maxHeight: '55vh', objectFit: 'cover' }} />
       <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: 12, background: 'linear-gradient(transparent, rgba(0,0,0,.75))', color: '#fff' }}>
         <div style={{ fontSize: 14, marginBottom: 6 }}>{error || status}</div>
         <div style={{ height: 6, background: 'rgba(255,255,255,.25)', borderRadius: 3 }}>
@@ -153,6 +159,15 @@ export default function LiveCapture({ onCapture, onClose }: Props) {
       {onClose && (
         <button onClick={onClose} aria-label="Close" style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,.5)', color: '#fff', border: 0, borderRadius: 16, width: 32, height: 32 }}>×</button>
       )}
+    </div>
+    <button
+      type="button"
+      onClick={() => captureRef.current()}
+      disabled={!ready || !!error}
+      style={{ width: '100%', marginTop: 8, padding: 12, borderRadius: 10, border: 0, background: '#0d9488', color: '#fff', fontWeight: 600, fontSize: 16, opacity: !ready || error ? 0.5 : 1 }}
+    >
+      Capture Photo
+    </button>
     </div>
   );
 }

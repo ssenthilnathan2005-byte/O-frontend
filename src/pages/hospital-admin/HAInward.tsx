@@ -4,8 +4,11 @@ import * as api from "../../api";
 import { useStore } from "../../context/StoreContext";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { BedDouble, Plus, X, Pencil, LogOut, ChevronDown, ChevronUp, Thermometer, HeartPulse, Download } from "lucide-react";
+import { BedDouble, Plus, X, Pencil, LogOut, ChevronDown, ChevronUp, Thermometer, HeartPulse, Download, Receipt } from "lucide-react";
 import { getToken } from "../../api";
+import HABedRequests from "./HABedRequests";
+import IPDBillModal from "./IPDBillModal";
+import IPDCollections from "./IPDCollections";
 import { downloadFile } from "../../lib/downloadFile";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
@@ -54,8 +57,9 @@ export default function HAInward() {
   const [exportFrom, setExportFrom] = useState(monthAgoStr());
   const [exportTo, setExportTo] = useState(todayStr());
   const [exporting, setExporting] = useState(false);
+  const [billId, setBillId] = useState<string | null>(null);
 
-  const hospitalId = user?.role === "hospital_admin" ? (user as any).hospitalId : "";
+  const hospitalId = (user as any)?.hospitalId || "";
   const myDoctors = doctors.filter((d: any) => d.hospitalId === hospitalId);
 
   async function load() {
@@ -114,8 +118,13 @@ export default function HAInward() {
   }
 
   async function handleDischarge(id: string) {
-    if (!confirm("Mark this patient as discharged?")) return;
-    try { await api.inward.discharge(id); await load(); } catch (_) {}
+    let note = "";
+    try {
+      const b = await api.ipdBilling.get(id);
+      note = b.balance > 0 ? "\n\nBalance due: ₹" + Number(b.balance).toLocaleString("en-IN") + ". Collect payment before discharge." : "";
+    } catch (_) {}
+    if (!confirm("Mark this patient as discharged?" + note)) return;
+    try { await api.inward.discharge(id); await load(); setBillId(id); } catch (_) {}
   }
 
   async function handleExport() {
@@ -140,6 +149,8 @@ export default function HAInward() {
 
   return (
     <div className="p-4 md:p-6 space-y-4">
+      <HABedRequests />
+      <IPDCollections onOpen={setBillId} refreshKey={billId} />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <BedDouble className="w-5 h-5 text-teal-600" />
@@ -170,7 +181,7 @@ export default function HAInward() {
       <Input placeholder="Search by name, ward, bed..." value={search}
         onChange={e => setSearch(e.target.value)} className="max-w-sm" />
 
-      <div className="rounded-xl border overflow-hidden">
+      <div className="rounded-xl border overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-muted/50">
             <tr>
@@ -207,6 +218,9 @@ export default function HAInward() {
                   <div className="flex gap-2">
                     <button onClick={() => toggleHistory(p.id)} className="p-1.5 rounded hover:bg-muted transition-colors" title="Vitals & notes">
                       {expandedId === p.id ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
+                    </button>
+                    <button onClick={() => setBillId(p.id)} className="p-1.5 rounded hover:bg-teal-50 transition-colors" title="Bill">
+                      <Receipt className="w-3.5 h-3.5 text-teal-600" />
                     </button>
                     <button onClick={() => openEdit(p)} className="p-1.5 rounded hover:bg-muted transition-colors">
                       <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
@@ -276,6 +290,7 @@ export default function HAInward() {
         </table>
       </div>
 
+      {billId && <IPDBillModal inwardId={billId} onClose={() => setBillId(null)} />}
       {showForm && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-background rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">

@@ -1,8 +1,10 @@
+import { ArrowDown as IcDown, ArrowUp as IcUp, History as IcHistory, Pencil as IcEdit, Trash2 as IcDelete } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import DateInput from "@/components/DateInput";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { getToken } from "@/api";
 import { useStore } from "../../context/StoreContext";
+import PharmImportButton from "./PharmImportButton";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 const inr = (n: number | null | undefined) =>
@@ -52,7 +54,7 @@ export function usePharmacySocket(hospitalId: string) {
 
 function useHid() {
   const { user } = useStore();
-  return user?.role === "hospital_admin" || user?.role === "pharmacy" ? user.hospitalId : "";
+  return (user as any)?.hospitalId || "";
 }
 
 // Loads now, every 10s, and whenever a pharmacy update arrives.
@@ -177,7 +179,7 @@ export function PharmRevenue() {
 // ── 2. Inventory ─────────────────────────────────────────────────────────────
 type InvStatus = "ok" | "low_stock" | "out_of_stock" | "expiring_soon" | "expired";
 type Inv = {
-  id: string; name: string; quantity: number; packSize: number; tabletsAvailable: number; reorderLevel: number;
+  id: string; name: string; quantity: number; packSize: number; packUnit?: string | null; tabletsAvailable: number; reorderLevel: number;
   purchasePrice: number | null; sellingPrice: number | null; supplier: string | null; batchNo: string | null; batches?: { batchNo: string | null; expiryDate: string | null; tablets: number; supplier: string | null }[]; medCategory: string | null;
   expiryDate: string | null; location: string | null; status: InvStatus;
   stripsPerBox?: number | null; tabletsPerBox?: number | null; schedule?: string; gstPercent?: number | null;
@@ -216,6 +218,14 @@ const STATUS_UI: Record<InvStatus, [string, string]> = {
 };
 const nOrNaN = (s: string) => (String(s ?? "").trim() === "" ? NaN : Number(s));
 const rs = (n: number) => "\u20B9" + n.toFixed(2);
+const fmtQty = (n: number) => String(Math.round((Number(n) || 0) * 100) / 100);
+const unitWord = (r: Inv, n: number) => { if (r.packUnit) return n === 1 ? r.packUnit : r.packUnit + "s"; const L = packLabels(r.medCategory); return n === 1 ? L.s : L.ss; };
+function availText(r: Inv): string {
+  if (r.stripsPerBox && r.breakdown) return stockText(r);
+  const c = String(r.medCategory || "Tablet");
+  if ((c === "Tablet" || c === "Capsule") && r.packSize > 1) return r.tabletsAvailable + " " + packLabels(r.medCategory).u;
+  return "";
+}
 const SCHEDULE_OPTS: [string, string][] = [["none", "Normal (no schedule)"], ["H", "Schedule H"], ["H1", "Schedule H1"], ["X", "Schedule X"]];
 function stockText(r: Inv): string {
   if (!r.stripsPerBox || !r.breakdown) return "packing not set";
@@ -269,7 +279,7 @@ function PackPreview({ cat, tps, spb, mrp, pbox, boxes = "", strips = "", tablet
     </div>
   );
 }
-export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
+export function PharmInventory({ readOnly = false, iconActions = false }: { readOnly?: boolean; iconActions?: boolean }) {
   const hid = useHid();
   const [rows, setRows] = useState<Inv[]>([]);
   const [cats, setCats] = useState<string[]>(MED_CATEGORIES);
@@ -296,6 +306,31 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
   const [rm, setRm] = useState<Inv | null>(null);
   const [rmReason, setRmReason] = useState("");
   const [rmErr, setRmErr] = useState("");
+  const [so, setSo] = useState<Inv | null>(null);
+  const [soQty, setSoQty] = useState("");
+  const [soReason, setSoReason] = useState("");
+  const [soErr, setSoErr] = useState("");
+  const [hist, setHist] = useState<Inv | null>(null);
+  const [histRows, setHistRows] = useState<Array<{ id: string; type: string; quantity: number; reason: string | null; created_at: string }>>([]);
+  const [histLoading, setHistLoading] = useState(false);
+  async function openHistory(r: Inv) {
+    setHist(r); setHistLoading(true);
+    try { setHistRows(await pm<any[]>("/inventory/" + r.id + "/history")); } catch (_) { setHistRows([]); }
+    setHistLoading(false);
+  }
+  async function saveStockOut() {
+    if (!so) return;
+    const n = Number(soQty);
+    if (!(n > 0) || n > so.tabletsAvailable) { setSoErr("Enter a number between 1 and " + so.tabletsAvailable); return; }
+    if (!soReason.trim()) { setSoErr("Reason is required"); return; }
+    setSaving(true); setSoErr("");
+    try {
+      await pm("/inventory/" + so.id + "/stock", { method: "POST", body: JSON.stringify({ mode: "set", tablets: so.tabletsAvailable - n, reason: soReason.trim() }) });
+      setSo(null);
+      setRows(await pm<Inv[]>("/inventory"));
+    } catch (e: any) { setSoErr(e.message); }
+    setSaving(false);
+  }
   useLive(async () => {
     try { setRows(await pm<Inv[]>("/inventory")); setErr(""); } catch (e: any) { setErr(e.message); }
     try { setCats(await pm<string[]>("/inventory-categories")); } catch (_) { /* keep current list */ }
@@ -442,6 +477,7 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
         {!readOnly && (
           <button type="button" onClick={() => { setNf(BLANK); setNErr(""); setAdding(true); }} className="px-3 py-2 rounded-md bg-teal-600 text-white text-sm">+ Add medicine</button>
         )}
+        {!readOnly && <PharmImportButton />}
         <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search medicine"
           className="border border-gray-200 rounded-md text-sm px-3 py-2 bg-white w-64" />
         <select value={flt} onChange={e => setFlt(e.target.value)} className="border border-gray-200 rounded-md text-sm px-2 py-2 bg-white">
@@ -460,21 +496,30 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
               <tr key={r.id} className="border-t border-gray-100">
                 <td className={TD + " font-medium"}>{r.name}{r.schedule && r.schedule !== "none" && <span className="ml-2 px-1.5 py-0.5 rounded bg-red-50 text-red-700 text-xs">{r.schedule}</span>}</td>
                 <td className={TD}>{r.medCategory || "-"}</td>
-                <td className={TD}>{r.tabletsAvailable} <span className="text-xs text-gray-400">({stockText(r)})</span></td>
-                <td className={TD}>{r.batches && r.batches.length > 0 ? (<div className="space-y-0.5">{r.batches.map((b, i) => (<div key={i} className="text-xs whitespace-nowrap">{b.batchNo ? "Batch " + b.batchNo : "No batch recorded"} - {b.expiryDate || "no expiry"} - {b.tablets} tab</div>))}</div>) : (r.expiryDate || "-")}</td>
+                <td className={TD}>{fmtQty(r.quantity)} {unitWord(r, r.quantity)}{availText(r) && <span className="text-xs text-gray-400"> ({availText(r)})</span>}</td>
+                <td className={TD}>{r.batches && r.batches.length > 0 ? (<div className="space-y-0.5">{r.batches.map((b, i) => (<div key={i} className="text-xs whitespace-nowrap">{b.batchNo ? "Batch " + b.batchNo : "No batch recorded"} - {b.expiryDate || "no expiry"} - {fmtQty(b.tablets / (r.packSize || 1))} {unitWord(r, b.tablets / (r.packSize || 1))}</div>))}</div>) : (r.expiryDate || "-")}</td>
                 <td className={TD}>{r.supplier || "-"}</td>
                 <td className={TD}>{r.location || "-"}</td>
-                <td className={TD}>{r.reorderLevel} <span className="text-xs text-gray-400">({Math.round(r.reorderLevel * (r.packSize || 1))} {packLabels(r.medCategory).us})</span></td>
-                <td className={TD}>{inr(r.sellingPrice)}{r.sellingPrice != null && <span className="text-xs text-gray-400"> ({rs(r.sellingPrice / (r.packSize || 1))}/{packLabels(r.medCategory).us})</span>}</td>
+                <td className={TD}>{r.reorderLevel}{r.packSize > 1 && <span className="text-xs text-gray-400"> ({Math.round(r.reorderLevel * r.packSize)} {packLabels(r.medCategory).us})</span>}</td>
+                <td className={TD}>{inr(r.sellingPrice)}{r.sellingPrice != null && r.packSize > 1 && <span className="text-xs text-gray-400"> ({rs(r.sellingPrice / r.packSize)}/{packLabels(r.medCategory).us})</span>}</td>
                 <td className={TD}><span className={"px-2 py-0.5 rounded-full text-xs font-medium " + STATUS_UI[r.status][1]}>{STATUS_UI[r.status][0]}</span></td>
-                <td className={TD + " whitespace-nowrap"}>{!readOnly && (
+                <td className={TD + " whitespace-nowrap"}>{!readOnly && (iconActions ? (
+                  <div className="flex flex-nowrap items-center gap-1.5">
+                    <button type="button" title="Stock In" onClick={() => openReceive(r)} className="px-2.5 py-1 rounded-md border text-xs font-medium text-center whitespace-nowrap transition-colors border-green-200 bg-green-50 text-green-700 hover:bg-green-100">Stock In</button>
+                    <button type="button" title="Stock Out" onClick={() => { setSo(r); setSoQty(""); setSoReason(""); setSoErr(""); }} className="px-2.5 py-1 rounded-md border text-xs font-medium text-center whitespace-nowrap transition-colors border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100">Stock Out</button>
+                    <button type="button" title="History" onClick={() => openHistory(r)} className="px-2.5 py-1 rounded-md border text-xs font-medium text-center whitespace-nowrap transition-colors border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100">History</button>
+                    <button type="button" title="Edit" onClick={() => openEdit(r)} className="px-2.5 py-1 rounded-md border text-xs font-medium text-center whitespace-nowrap transition-colors border-gray-200 bg-white text-gray-700 hover:bg-gray-50">Edit</button>
+                    <button type="button" title="Delete" onClick={() => { setRm(r); setRmReason(""); setRmErr(""); }} className="px-2.5 py-1 rounded-md border text-xs font-medium text-center whitespace-nowrap transition-colors border-red-200 bg-white text-red-600 hover:bg-red-50">Remove</button>
+                  </div>
+                ) : (
+
                   <>
                     <button type="button" onClick={() => openReceive(r)} className="text-teal-700 text-sm hover:underline mr-3">Receive stock</button>
                     <button type="button" onClick={() => { setStock(r); setSMode("add"); setSQty(""); setSReason(""); setSErr(""); }} className="text-teal-700 text-sm hover:underline mr-3">Correct count</button>
                     <button type="button" onClick={() => openEdit(r)} className="text-teal-700 text-sm hover:underline mr-3">Edit</button>
                     <button type="button" onClick={() => { setRm(r); setRmReason(""); setRmErr(""); }} className="text-red-600 text-sm hover:underline">Remove</button>
                   </>
-                )}</td>
+                ))}</td>
               </tr>
             ))}
             {shown.length === 0 && <tr><td colSpan={10} className="px-3 py-8 text-center text-sm text-gray-400">No medicines found</td></tr>}
@@ -603,6 +648,41 @@ export function PharmInventory({ readOnly = false }: { readOnly?: boolean }) {
           </div>
         </div>
       )}
+      {so && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setSo(null)}>
+          <div className="bg-white rounded-xl p-5 w-full max-w-md space-y-3" onClick={e => e.stopPropagation()}>
+            <p className="font-semibold text-gray-900">Stock out: {so.name}</p>
+            <p className="text-sm text-gray-500">Currently {so.tabletsAvailable} {packLabels(so.medCategory).u} in stock</p>
+            <Fld label={"Quantity to remove (" + packLabels(so.medCategory).u + ")"} type="number" value={soQty} onChange={setSoQty} />
+            <Fld label="Reason *" value={soReason} onChange={setSoReason} />
+            {soErr && <p className="text-sm text-red-600">{soErr}</p>}
+            <div className="flex justify-end gap-2 pt-1">
+              <button type="button" onClick={() => setSo(null)} className="px-3 py-1.5 text-sm rounded-md border border-gray-200">Cancel</button>
+              <button type="button" disabled={saving} onClick={saveStockOut} className="px-3 py-1.5 text-sm rounded-md bg-orange-500 text-white">{saving ? "Saving..." : "Remove stock"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {hist && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setHist(null)}>
+          <div className="bg-white rounded-xl p-5 w-full max-w-lg space-y-3" onClick={e => e.stopPropagation()}>
+            <p className="font-semibold text-gray-900">Stock History: {hist.name}</p>
+            {histLoading ? <p className="text-sm text-gray-400">Loading...</p> : histRows.length === 0 ? <p className="text-sm text-gray-400">No transactions yet</p> : (
+              <div className="max-h-80 overflow-y-auto">
+                <table className="w-full"><thead className="bg-gray-50"><tr>{["Date", "Type", "Qty", "Reason"].map(x => <th key={x} className={TH}>{x}</th>)}</tr></thead>
+                  <tbody>{histRows.map(t => (
+                    <tr key={t.id} className="border-t border-gray-100">
+                      <td className={TD}>{fmtTime(t.created_at)}</td>
+                      <td className={TD}><span className={t.type === "in" ? "text-green-600" : "text-orange-500"}>{t.type === "in" ? "In" : "Out"}</span></td>
+                      <td className={TD}>{fmtQty(t.quantity)}</td>
+                      <td className={TD}>{t.reason || "-"}</td>
+                    </tr>))}</tbody></table>
+              </div>
+            )}
+            <div className="flex justify-end"><button type="button" onClick={() => setHist(null)} className="px-3 py-1.5 text-sm rounded-md border border-gray-200">Close</button></div>
+          </div>
+        </div>
+      )}
       {rc && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-start justify-center p-4 overflow-y-auto" onClick={() => setRc(null)}>
           <div className="bg-white rounded-xl p-5 w-full max-w-lg space-y-3 my-8" onClick={e => e.stopPropagation()}>
@@ -649,10 +729,17 @@ type Log = {
   billAmount: number | null; paymentMode: string | null; billStatus: "Billed" | "Pending"; timestamp: string;
 };
 type Invoice = {
-  invoiceNo?: string; billNo?: number | null; hospitalName: string; patientId: string; patientName: string; doctorName: string; issuedAt: string | null;
-  paymentMode: string | null; lines: { name: string; tablets: number; unitPrice: number; amount: number }[]; total: number | null; status: string;
+  subtotal?: number | null; discountPct?: number; discountAmount?: number; cgstPct?: number; sgstPct?: number; cgstAmount?: number; sgstAmount?: number; invoiceNo?: string; billNo?: number | null; hospitalName: string; patientId: string; patientName: string; doctorName: string; issuedAt: string | null;
+  paymentMode: string | null; lines: { name: string; tablets: number; unitPrice: number; amount: number; note?: string }[]; total: number | null; status: string;
 };
-import { printInvoice } from "@/lib/printInvoice";
+import { printInvoice, invoiceSummary } from "@/lib/printInvoice";
+const pbPack = (name: string): number => {
+  if (!/bottle|vial|syrup|tonic|suspension|elixir|drops|liquid/i.test(name || "")) return 1;
+  const m = /(\d+(?:\.\d+)?)\s*ml\b/i.exec(name || "");
+  return m ? (Number(m[1]) || 1) : 1;
+};
+const pbQty = (name: string, n: number): string => { const pk = pbPack(name); return pk > 1 ? String(Math.round((n / pk) * 100) / 100) + " bottle(s)" : String(n); };
+const pbRate = (name: string, price: number): string => { const pk = pbPack(name); return pk > 1 ? inr(price * pk) + " / bottle" : inr(price); };
 export function PharmPatients() {
   const hid = useHid();
   const { range, ui } = useRange();
@@ -665,7 +752,27 @@ export function PharmPatients() {
     catch (e: any) { setErr(e.message); }
   }, [hid, range.from, range.to, q]);
   async function openInvoice(id: string) {
-    try { setInv(await pm<Invoice>("/invoice/" + encodeURIComponent(id))); } catch (e: any) { setErr(e.message); }
+    try {
+      const invData = await pm<Invoice>("/invoice/" + encodeURIComponent(id));
+      try {
+        const res = await fetch(BASE + "/pharmacy/prescriptions?hospitalId=" + encodeURIComponent(String(hid)), { headers: { Authorization: "Bearer " + getToken() } });
+        const list = await res.json();
+        const rx: any = Array.isArray(list) ? list.find((x: any) => String(x.id) === String(id)) : null;
+        if (rx && Array.isArray(rx.items) && Array.isArray(invData.lines)) {
+          const noteOf = (it: any) => [it.dosage, String(it.instructions || "").trim(), it.duration].filter(Boolean).join(" \u00b7 ");
+          const sameLen = invData.lines.length === rx.items.length;
+          invData.lines = invData.lines.map((l, i) => {
+            let it: any = sameLen ? rx.items[i] : undefined;
+            if (!it) {
+              const ln = String(l.name || "").toLowerCase();
+              it = rx.items.find((x: any) => { const b = String(x.name || "").toLowerCase().replace(/\s*\(.*$/, "").trim(); return b.length > 2 && ln.includes(b); });
+            }
+            return it ? { ...l, note: noteOf(it) } : l;
+          });
+        }
+      } catch {}
+      setInv(invData);
+    } catch (e: any) { setErr(e.message); }
   }
   return (
     <Shell title="Patient Purchases" subtitle="Patient-wise dispensing log with bill status. Open an invoice for the itemized pharmacy bill.">
@@ -686,7 +793,7 @@ export function PharmPatients() {
                 <td className={TD}>{r.doctorName}</td>
                 <td className={TD}>
                   {r.medicines.map((m, i) => (
-                    <div key={i}>{m.name}{m.tablets != null ? " x " + m.tablets : ""}{m.dosage ? <span className="text-xs text-gray-400"> ({m.dosage})</span> : null}</div>
+                    <div key={i}>{m.name}{m.tablets != null ? " x " + pbQty(m.name, m.tablets) : ""}{m.dosage ? <span className="text-xs text-gray-400"> ({m.dosage})</span> : null}</div>
                   ))}
                 </td>
                 <td className={TD}>
@@ -713,9 +820,10 @@ export function PharmPatients() {
             <table className="w-full text-sm">
               <thead><tr className="text-left text-xs text-gray-500"><th className="py-1">Medicine</th><th>Qty</th><th>Rate</th><th className="text-right">Amount</th></tr></thead>
               <tbody>{inv.lines.map((l, i) => (
-                <tr key={i} className="border-t border-gray-100"><td className="py-1.5">{l.name}</td><td>{l.tablets}</td><td>{inr(l.unitPrice)}</td><td className="text-right">{inr(l.amount)}</td></tr>
+                <tr key={i} className="border-t border-gray-100"><td className="py-1.5">{l.name}{l.note ? <div className="text-xs text-gray-500">{l.note}</div> : null}</td><td>{pbQty(l.name, l.tablets)}</td><td>{pbRate(l.name, l.unitPrice)}</td><td className="text-right">{inr(l.amount)}</td></tr>
               ))}</tbody>
             </table>
+            {invoiceSummary(inv).length > 0 && (<div className="space-y-1 border-t border-gray-200 pt-2 text-sm text-gray-700">{invoiceSummary(inv).map(r => (<div key={r.label} className="flex justify-between"><span>{r.label}</span><span>{r.amount}</span></div>))}</div>)}
             <div className="flex justify-between border-t border-gray-200 pt-2 font-semibold"><span>Total ({inv.paymentMode || "cash"})</span><span>{inr(inv.total)}</span></div>
             <p className="text-xs text-gray-400">{fmtTime(inv.issuedAt)}</p>
             <div className="flex justify-end gap-2"><button type="button" onClick={() => { if (!printInvoice(inv)) alert("Allow pop-ups to print the invoice"); }} className="px-3 py-1.5 text-sm rounded-md bg-teal-600 text-white">Print</button><button type="button" onClick={() => setInv(null)} className="px-3 py-1.5 text-sm rounded-md border border-gray-200">Close</button></div>
@@ -742,6 +850,18 @@ export function PharmSold() {
   const units = (r: Sold) => (per === "Today" ? r.unitsToday : per === "Week" ? r.unitsWeek : r.unitsMonth);
   const rev = (r: Sold) => (per === "Today" ? r.revenueToday : per === "Week" ? r.revenueWeek : r.revenueMonth);
   const shown = rows.filter(r => units(r) > 0);
+  const packMl = (r: Sold): number => {
+    const n = r.name || "";
+    if (!/bottle|vial|syrup|tonic|suspension|elixir|drops|liquid/i.test(n)) return 1;
+    const m = /(\d+(?:\.\d+)?)\s*ml\b/i.exec(n);
+    return m ? (Number(m[1]) || 1) : 1;
+  };
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  const qtyLabel = (r: Sold) => packMl(r) > 1 ? r2(units(r) / packMl(r)) + " bottle(s)" : String(units(r));
+  const priceLabel = (r: Sold) => packMl(r) > 1 ? inr(r2(r.unitPrice * packMl(r))) + " / bottle" : inr(r.unitPrice);
+  const totTabs = shown.filter(r => packMl(r) === 1).reduce((s, r) => s + units(r), 0);
+  const totBottles = r2(shown.filter(r => packMl(r) > 1).reduce((s, r) => s + units(r) / packMl(r), 0));
+  const totLabel = String(totTabs) + (totBottles > 0 ? (totTabs > 0 ? " + " : "") + totBottles + " bottle(s)" : "");
   const totU = shown.reduce((s, r) => s + units(r), 0);
   const totR = shown.reduce((s, r) => s + rev(r), 0);
   return (
@@ -762,8 +882,8 @@ export function PharmSold() {
             {shown.map(r => (
               <tr key={r.name} className="border-t border-gray-100">
                 <td className={TD + " font-medium"}>{r.name}</td>
-                <td className={TD}>{units(r)}</td>
-                <td className={TD}>{inr(r.unitPrice)}</td>
+                <td className={TD}>{qtyLabel(r)}</td>
+                <td className={TD}>{priceLabel(r)}</td>
                 <td className={TD}>{inr(rev(r))}</td>
               </tr>
             ))}
@@ -771,7 +891,7 @@ export function PharmSold() {
           </tbody>
           {shown.length > 0 && (
             <tfoot><tr className="border-t border-gray-200 bg-gray-50 font-semibold">
-              <td className={TD}>Total</td><td className={TD}>{totU}</td><td className={TD}></td><td className={TD}>{inr(totR)}</td>
+              <td className={TD}>Total</td><td className={TD}>{totLabel}</td><td className={TD}></td><td className={TD}>{inr(totR)}</td>
             </tr></tfoot>
           )}
         </table>
@@ -785,6 +905,38 @@ type PendLine = { rxId: string; patient: string; index: number; name: string; ta
 type PendMed = { name: string; soldTablets: number; deductedTablets: number; pendingTablets: number; pendingLines: number };
 type PendData = { date: string; medicines: PendMed[]; pending: PendLine[] };
 
+// ---- bottle helpers (Stock Update) ----
+const SU_LIQ = /bottle|vial|syrup|tonic|suspension|elixir|drops|liquid/i;
+const suRound = (n: number) => Math.round(n * 100) / 100;
+function suPack(name: string, inv: Inv[], itemId?: string): number {
+  const item = itemId ? inv.find(i => String(i.id) === itemId) : matchInv(name, inv);
+  const names = [item?.name || "", name || ""];
+  const mc = (item as any)?.medCategory;
+  if (mc === "Tablet" || mc === "Capsule") return 1;
+  if (mc) { const ps = Number((item as any).packSize); return ps > 1 ? ps : 1; }
+  if (!names.some(n => SU_LIQ.test(n))) return 1;
+  for (const n of names) {
+    const m = /(\d+(?:\.\d+)?)\s*ml\b/i.exec(n);
+    if (m && Number(m[1]) > 1) return Number(m[1]);
+  }
+  return 1;
+}
+function suUnit(name: string, inv: Inv[], itemId?: string): string {
+  const item: any = itemId ? inv.find(i => String(i.id) === itemId) : matchInv(name, inv);
+  const byCat: Record<string, string> = { "Ointment/Cream": "tube", Injection: "vial", Powder: "sachet", Others: "pack" };
+  return (item && (item.packUnit || byCat[item.medCategory])) || "bottle";
+}
+function suShow(name: string, units: number, inv: Inv[]): string {
+  const pk = suPack(name, inv);
+  return pk > 1 ? suRound(units / pk) + " " + suUnit(name, inv) + "(s)" : String(units);
+}
+function suMix(rows: { name: string; v: number }[], inv: Inv[]): string {
+  let tabs = 0, bt = 0; const us = new Set<string>();
+  for (const r of rows) { const pk = suPack(r.name, inv); if (pk > 1) { bt += r.v / pk; us.add(suUnit(r.name, inv)); } else tabs += r.v; }
+  bt = suRound(bt);
+  if (bt <= 0) return String(tabs);
+  return (tabs > 0 ? tabs + " + " : "") + bt + " " + (us.size === 1 ? Array.from(us)[0] : "pack") + "(s)";
+}
 function matchInv(name: string, inv: Inv[]): Inv | undefined {
   const n = name.toLowerCase().replace(/\s+/g, " ").trim();
   const base = n.replace(/\s*\d+(\.\d+)?\s*(mg|ml|g|mcg)\b.*$/, "").trim();
@@ -814,17 +966,20 @@ export function PharmStockUpdate() {
 
   const keyOf = (l: PendLine) => l.rxId + ":" + l.index;
   const itemOf = (l: PendLine) => pick[keyOf(l)] ?? matchInv(l.name, inv)?.id ?? "";
-  const qtyOf = (l: PendLine) => qty[keyOf(l)] ?? String(l.tablets);
+  const packOfLine = (l: PendLine) => suPack(l.name, inv, itemOf(l));
+  const qtyOf = (l: PendLine) => qty[keyOf(l)] ?? String(packOfLine(l) > 1 ? suRound(l.tablets / packOfLine(l)) : l.tablets);
 
   async function deduct(l: PendLine): Promise<string | null> {
     const itemId = itemOf(l);
     const n = Number(qtyOf(l));
+    const sendQty = packOfLine(l) > 1 ? Math.round(n * packOfLine(l)) : n;
     if (!itemId) return "Select a stock item for " + l.name;
     if (!(n > 0)) return "Enter a valid quantity for " + l.name;
+    if (packOfLine(l) > 1 && !Number.isInteger(n)) return l.name + ": enter whole " + suUnit(l.name, inv, itemOf(l)) + "s only";
     try {
       await pm("/stock-deduct", {
         method: "POST",
-        body: JSON.stringify({ rxId: l.rxId, index: l.index, inventoryItemId: itemId, tablets: n }),
+        body: JSON.stringify({ rxId: l.rxId, index: l.index, inventoryItemId: itemId, tablets: sendQty }),
       });
       return null;
     } catch (e: any) { return l.name + ": " + e.message; }
@@ -857,9 +1012,9 @@ export function PharmStockUpdate() {
       {d && (
         <>
           <div className="grid grid-cols-3 gap-3">
-            <Stat label="Tablets sold" value={String(sum(m => m.soldTablets))} />
-            <Stat label="Already deducted" value={String(sum(m => m.deductedTablets))} color="text-teal-700" />
-            <Stat label="Pending" value={String(sum(m => m.pendingTablets))} color={sum(m => m.pendingTablets) > 0 ? "text-amber-600" : "text-gray-900"} />
+            <Stat label="Sold" value={suMix(d.medicines.map(m => ({ name: m.name, v: m.soldTablets })), inv)} />
+            <Stat label="Already deducted" value={suMix(d.medicines.map(m => ({ name: m.name, v: m.deductedTablets })), inv)} color="text-teal-700" />
+            <Stat label="Pending" value={suMix(d.medicines.map(m => ({ name: m.name, v: m.pendingTablets })), inv)} color={sum(m => m.pendingTablets) > 0 ? "text-amber-600" : "text-gray-900"} />
           </div>
 
           <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
@@ -875,9 +1030,9 @@ export function PharmStockUpdate() {
                   {d.medicines.map(m => (
                     <tr key={m.name}>
                       <td className={TD}>{m.name}</td>
-                      <td className={TD}>{m.soldTablets}</td>
-                      <td className={TD}>{m.deductedTablets}</td>
-                      <td className={TD + (m.pendingTablets > 0 ? " text-amber-700 font-semibold" : "")}>{m.pendingTablets}</td>
+                      <td className={TD}>{suShow(m.name, m.soldTablets, inv)}</td>
+                      <td className={TD}>{suShow(m.name, m.deductedTablets, inv)}</td>
+                      <td className={TD + (m.pendingTablets > 0 ? " text-amber-700 font-semibold" : "")}>{suShow(m.name, m.pendingTablets, inv)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -900,7 +1055,7 @@ export function PharmStockUpdate() {
               </div>
               <table className="w-full mt-2">
                 <thead className="bg-gray-50"><tr>
-                  <th className={TH}>Medicine</th><th className={TH}>Patient</th><th className={TH}>Tablets</th>
+                  <th className={TH}>Medicine</th><th className={TH}>Patient</th><th className={TH}>Qty</th>
                   <th className={TH}>Stock item</th><th className={TH}></th>
                 </tr></thead>
                 <tbody className="divide-y divide-gray-100">
@@ -911,8 +1066,9 @@ export function PharmStockUpdate() {
                         <td className={TD}>{l.name}</td>
                         <td className={TD}>{l.patient}</td>
                         <td className={TD}>
-                          <input type="number" min={1} value={qtyOf(l)} onChange={e => setQty(prev => ({ ...prev, [k]: e.target.value }))}
+                          <input type="number" min={0} step={packOfLine(l) > 1 ? "0.01" : "1"} value={qtyOf(l)} onChange={e => setQty(prev => ({ ...prev, [k]: e.target.value }))}
                             className="w-20 border border-gray-200 rounded-md text-sm px-2 py-1 bg-white" />
+                          {packOfLine(l) > 1 && <span className="ml-1 text-xs text-gray-500">bottle(s)</span>}
                         </td>
                         <td className={TD}>
                           <select value={itemOf(l)} onChange={e => setPick(prev => ({ ...prev, [k]: e.target.value }))}

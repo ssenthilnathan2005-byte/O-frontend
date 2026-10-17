@@ -1,13 +1,16 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useStore } from "../context/StoreContext";
 import { getToken } from "@/api";
-import { printInvoice } from "@/lib/printInvoice";
+import { printInvoice, showInvoicePopup } from "@/lib/printInvoice";
+import { detectFormFromText } from "@/lib/medicineTypes";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
+import { useExtraNav, ExtraPanel } from "@/components/StaffExtras";
+import GstInvoice from "./hospital-admin/GstInvoice";
 import { PharmRevenue, PharmInventory, PharmPatients, PharmSold, PharmStockUpdate, usePharmacySocket } from "./hospital-admin/PharmacyModule";
 import {
-  Pill, LogOut, RefreshCw, HandMetal, Search, Inbox, ArrowUpDown, Clock, CheckCircle2, Package, BarChart3, ShoppingCart, Users,
+  Pill, LogOut, RefreshCw, HandMetal, Search, Inbox, ArrowUpDown, Clock, CheckCircle2, Package, BarChart3, ShoppingCart, Users, FileText,
 } from "lucide-react";
 
 // pharmacy-layout-v3
@@ -20,12 +23,53 @@ interface Prescription {
   id: string; patient_name: string; doctor_name: string; items: RxItem[];
   notes: string; status: PrescStatus; created_at: string; dispensed_items?: string | null;
 }
-interface StockItem { id: string; name: string; unit: string; quantity: number; pack_size: number; selling_price?: number | null }
+interface StockItem { id: string; name: string; unit: string; quantity: number; pack_size: number; selling_price?: number | null; med_category?: string | null; pack_unit?: string | null }
 interface Plan { itemId: string; qty: string; reason: string; price?: string }
+
+const LIQUID_RE = /bottle|vial|syrup|tonic|suspension|elixir|drops|liquid|ointment|cream|lotion/i;
+const isBottle = (item?: RxItem, st?: StockItem): boolean => {
+  if (st && st.med_category) return st.med_category !== 'Tablet' && st.med_category !== 'Capsule';
+  if (st) return LIQUID_RE.test([st.unit, st.name].filter(Boolean).join(" "));
+  const u = (item?.quantityUnit || "").trim();
+  if (/bottle|vial|tube|sachet/i.test(u)) return true;
+  if (/^(ml|milli|tablet|capsule|strip|pack)/i.test(u)) return false;
+  return LIQUID_RE.test([item?.name, item?.form].filter(Boolean).join(" "));
+};
+const packOf = (st?: StockItem) => Number(st?.pack_size) || 1;
+const PACK_BY_CAT: Record<string, string> = { 'Ointment/Cream': 'tube', 'Injection': 'vial', 'Powder': 'sachet', 'Others': 'pack' };
+const packName = (st?: StockItem): string => st?.pack_unit || (st?.med_category ? PACK_BY_CAT[st.med_category] : '') || 'bottle';
+// For a dispensed line saved in ml: is it a whole number of bottles?
+const lineBottles = (d: any, stock: StockItem[]): { pack: number; st: StockItem } | null => {
+  const st = stock.find(s => s.id === d?.inventoryItemId) || stock.find(s => s.name === d?.inventoryName);
+  const pack = packOf(st);
+  const n = Number(d?.tablets) || 0;
+  return st && isBottle(undefined, st) && pack > 1 && n >= pack && n % pack === 0 ? { pack, st } : null;
+};
+const fmtQty = (d: any, stock: StockItem[]) => {
+  const b = lineBottles(d, stock);
+  return b ? `${Math.round((Number(d.tablets) / b.pack) * 100) / 100} ${packName(b.st)}(s)` : String(d.tablets);
+};
+const toLineUnits = (d: any, stock: StockItem[], v: string) => {
+  const b = lineBottles(d, stock);
+  return b && v !== "" ? String(Math.round(Number(v) * b.pack)) : v;
+};
+const fromLineUnits = (d: any, stock: StockItem[], v: string) => {
+  const b = lineBottles(d, stock);
+  return b && v !== "" ? String(Math.round((Number(v) / b.pack) * 100) / 100) : v;
+};
+
+// Anything that is not a tablet is dispensed as 1 pack (bottle / vial / tube / inhaler), never multiplied by dose x days.
+const isPackaged = (item: RxItem): boolean => {
+  const f = (item.form || "").toLowerCase();
+  if (f) return f !== "tablet" && f !== "other";
+  const d = detectFormFromText(item.name);
+  if (d) return d !== "tablet";
+  return /\d\s*mls?\b/i.test(item.dosage || "") && !/tablet|capsule/i.test(item.dosage || "");
+};
 
 // tablets = tablets per dose x doses per day x days
 function calcTablets(item: RxItem): number {
-  if (Number(item.quantity) > 0) return Math.round(Number(item.quantity)); // doctor's quantity wins
+  if (Number(item.quantity) > 0) return Math.round(Number(item.quantity)); if (isBottle(item) || isPackaged(item)) return 1; // doctor's quantity wins
   const dm = /([\d.]+)\s*(tablet|capsule)/i.exec(item.dosage || "");
   const perDose = dm ? parseFloat(dm[1]) : 1;
   const times = ["Morning", "Afternoon", "Evening", "Night"].filter(t => (item.instructions || "").includes(t)).length || 1;
@@ -54,6 +98,21 @@ const splitList = (s: string) => (s || "").split(",").map(x => x.trim()).filter(
 const TIMES = ["morning", "afternoon", "evening", "night"];
 const isTime = (t: string) => TIMES.includes(t.toLowerCase());
 
+const PATIENT_TONES = [
+  { bar: "bg-sky-400", head: "bg-sky-50", avatar: "bg-sky-500" },
+  { bar: "bg-violet-400", head: "bg-violet-50", avatar: "bg-violet-500" },
+  { bar: "bg-rose-400", head: "bg-rose-50", avatar: "bg-rose-500" },
+  { bar: "bg-amber-400", head: "bg-amber-50", avatar: "bg-amber-500" },
+  { bar: "bg-emerald-400", head: "bg-emerald-50", avatar: "bg-emerald-500" },
+  { bar: "bg-indigo-400", head: "bg-indigo-50", avatar: "bg-indigo-500" },
+  { bar: "bg-fuchsia-400", head: "bg-fuchsia-50", avatar: "bg-fuchsia-500" },
+  { bar: "bg-orange-400", head: "bg-orange-50", avatar: "bg-orange-500" },
+];
+const patientTone = (name: string) => {
+  void name;
+  return { bar: "bg-teal-500", head: "bg-teal-50", avatar: "bg-teal-600" };
+};
+
 function Pillbox({ text, tone }: { text: string; tone: "time" | "food" }) {
   const cls = tone === "time"
     ? "bg-teal-50 text-teal-700 border-teal-100"
@@ -80,23 +139,27 @@ export default function PharmacyDashboard() {
   const [busy, setBusy] = useState<string | null>(null);
   const [handover, setHandover] = useState<Record<string, Record<number, { qty: string; reason: string }>>>({});
   const [payModes, setPayModes] = useState<Record<string, string>>({});
+  const [taxes, setTaxes] = useState<Record<string, { cgst: string; sgst: string; disc: string }>>({});
   const [filter, setFilter] = useState<"received" | "given">("received");
   const [manualDeduct, setManualDeduct] = useState<Record<string, boolean>>({});
   const [query, setQuery] = useState("");
-  const [newestFirst, setNewestFirst] = useState(true);
+  const [newestFirst, setNewestFirst] = useState(false); // oldest first: patients are served in order
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [openRx, setOpenRx] = useState<Record<string, boolean>>({});
-  const [tab, setTab] = useState<"rx" | "revenue" | "inventory" | "patients" | "sold" | "stock">("rx");
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [tab, setTab] = useState<string>("rx");
+  const { nav: extraNav } = useExtraNav(["pharmacy", "inventory"]);
   usePharmacySocket(hospitalId);
   const headers = { Authorization: `Bearer ${getToken()}` };
 
-  const fetchPrescriptions = useCallback(async () => {
+  const fetchPrescriptions = useCallback(async (silent = false) => {
     try {
       const url = `${BASE}/pharmacy/prescriptions?hospitalId=${hospitalId}`;
       const res = await fetch(url, { headers });
       const data = await res.json();
-      setPrescriptions(Array.isArray(data) ? data : []);
-    } catch { toast.error("Failed to load prescriptions"); }
+      if (Array.isArray(data)) setPrescriptions(data);
+      else if (!silent) setPrescriptions([]);
+    } catch { if (!silent) toast.error("Failed to load prescriptions"); }
     finally { setLoading(false); }
   }, [hospitalId]);
 
@@ -112,13 +175,44 @@ export default function PharmacyDashboard() {
   useEffect(() => { fetchStock(); }, [fetchStock]);
   const [amounts, setAmounts] = useState<Record<string, string>>({});
   const [pStats, setPStats] = useState<{ patientsServed: number; tabletsSold: number; revenue: number } | null>(null);
+  const [soldSplit, setSoldSplit] = useState<{ tablets: number; bottles: number } | null>(null);
   const fetchStats = useCallback(async () => {
     try {
       const res = await fetch(`${BASE}/pharmacy-stats`, { headers });
       if (res.ok) setPStats(await res.json());
+      try {
+        const sr = await fetch(`${BASE}/pharmacy-module/medicines-sold`, { headers });
+        if (sr.ok) {
+          const rows = await sr.json();
+          if (Array.isArray(rows)) {
+            let tablets = 0, bottles = 0;
+            for (const r of rows) {
+              const units = Number(r.unitsToday) || 0;
+              const nm = String(r.name || "");
+              const ml = /(\d+(?:\.\d+)?)\s*ml\b/i.exec(nm);
+              const liquid = /bottle|vial|syrup|tonic|suspension|elixir|drops|liquid/i.test(nm) && ml && Number(ml[1]) > 1;
+              if (liquid) bottles += units / Number(ml![1]); else tablets += units;
+            }
+            setSoldSplit({ tablets: Math.round(tablets), bottles: Math.round(bottles * 100) / 100 });
+          }
+        }
+      } catch { /* split is optional */ }
     } catch { /* stats are optional */ }
   }, [hospitalId]);
   useEffect(() => { fetchStats(); }, [fetchStats]);
+
+  // Auto-refresh every 3s so new prescriptions appear without a manual refresh
+  useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState !== "visible") return;
+      fetchPrescriptions(true);
+      fetchStats();
+    };
+    const t = setInterval(tick, 3000);
+    const onVisible = () => { if (document.visibilityState === "visible") tick(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { clearInterval(t); document.removeEventListener("visibilitychange", onVisible); };
+  }, [fetchPrescriptions, fetchStats]);
 
   function getPlan(p: Prescription, idx: number): Plan {
     return plans[p.id]?.[idx] ?? {
@@ -134,12 +228,12 @@ export default function PharmacyDashboard() {
 
   const round2 = (n: number) => Math.round((n || 0) * 100) / 100;
   const round4 = (n: number) => Math.round((n || 0) * 10000) / 10000;
-  const defaultUnitPrice = (st?: StockItem) =>
-    st && Number(st.selling_price) > 0 ? round4(Number(st.selling_price) / (Number(st.pack_size) || 1)) : 0;
+  const defaultUnitPrice = (st?: StockItem, bottle = false) =>
+    st && Number(st.selling_price) > 0 ? (bottle ? round2(Number(st.selling_price)) : round4(Number(st.selling_price) / (Number(st.pack_size) || 1))) : 0;
   function unitPriceFor(p: Prescription, i: number): number {
     const pl = getPlan(p, i);
     const st = stock.find(s => s.id === pl.itemId);
-    return pl.price === undefined ? defaultUnitPrice(st) : round4(Number(pl.price) || 0);
+    return pl.price === undefined ? defaultUnitPrice(st, isBottle(p.items[i], st)) : round4(Number(pl.price) || 0);
   }
   function lineTotal(p: Prescription, i: number): number {
     const pl = getPlan(p, i);
@@ -149,12 +243,27 @@ export default function PharmacyDashboard() {
   function grandTotal(p: Prescription): number {
     return round2(p.items.reduce((s, _it, i) => s + lineTotal(p, i), 0));
   }
-  async function printInvoiceFor(id: string) {
+  async function printInvoiceFor(id: string, preview = false) {
     try {
       const res = await fetch(`${BASE}/pharmacy-module/invoice/${encodeURIComponent(id)}`, { headers });
       const inv = await res.json();
       if (!res.ok) return toast.error(inv.error || "Could not load invoice");
-      if (!printInvoice(inv)) toast.error("Allow pop-ups to print the invoice");
+      try {
+        const rx = prescriptions.find(x => String(x.id) === String(id));
+        if (rx && Array.isArray(inv.lines)) {
+          const noteOf = (it: RxItem) => [it.dosage, (it.instructions || "").trim(), it.duration].filter(Boolean).join(" \u00b7 ");
+          const sameLen = inv.lines.length === rx.items.length;
+          inv.lines = inv.lines.map((l: any, i: number) => {
+            let it: RxItem | undefined = sameLen ? rx.items[i] : undefined;
+            if (!it) {
+              const ln = String(l.name || "").toLowerCase();
+              it = rx.items.find(x => { const b = String(x.name || "").toLowerCase().replace(/\s*\(.*$/, "").trim(); return b.length > 2 && ln.includes(b); });
+            }
+            return it ? { ...l, note: noteOf(it) } : l;
+          });
+        }
+      } catch {}
+      if (preview) showInvoicePopup(inv); else if (!printInvoice(inv)) toast.error("Allow pop-ups to print the invoice");
     } catch { toast.error("Could not load invoice"); }
   }
 
@@ -177,6 +286,7 @@ export default function PharmacyDashboard() {
         ? Number(amounts[p.id])
         : round2(rxLines.reduce((s, l, idx) => s + round2((Number(getHo(p.id, idx, l.tablets).qty) || 0) * Number(l.unitPrice)), 0));
     const amt = String(billTotal);
+    for (const v of [taxes[p.id]?.disc, taxes[p.id]?.cgst, taxes[p.id]?.sgst]) { const n = Number(v || 0); if (!(n >= 0 && n <= 100)) return toast.error("Discount and GST must be between 0 and 100"); }
     if (amt === undefined || String(amt).trim() === "" || !(Number(amt) >= 0))
       return toast.error("Enter the bill amount first (enter 0 if free)");
     const dispense: any[] = [];
@@ -188,8 +298,9 @@ export default function PharmacyDashboard() {
         const st = stock.find(s => s.id === pl.itemId);
         const qty = Number(pl.qty);
         if (!(qty > 0)) return toast.error(`Enter a quantity for ${p.items[i].name}`);
-        if (st && qty > tabletsAvailable(st)) return toast.error(`Only ${tabletsAvailable(st)} available for ${st.name}`);
-        dispense.push({ index: i, inventoryItemId: pl.itemId, quantity: qty, reason: pl.reason, unitPrice: unitPriceFor(p, i) });
+        if (!Number.isInteger(qty)) return toast.error(isBottle(p.items[i], st) ? `${p.items[i].name} is dispensed in whole ${packName(st)}s only` : `Enter a whole number for ${p.items[i].name}`);
+        if (st && qty * (isBottle(p.items[i], st) ? packOf(st) : 1) > tabletsAvailable(st)) return toast.error(`Only ${isBottle(p.items[i], st) ? Math.floor(tabletsAvailable(st) / packOf(st)) + " " + packName(st) + "(s)" : tabletsAvailable(st)} available for ${st.name}`);
+        const pk = isBottle(p.items[i], st) ? packOf(st) : 1; dispense.push({ index: i, inventoryItemId: pl.itemId, quantity: pk === 1 ? qty : Math.round(qty * pk), reason: pl.reason, unitPrice: pk === 1 ? unitPriceFor(p, i) : Math.round(unitPriceFor(p, i) / pk * 1e6) / 1e6 });
       }
       handoverPayload = dispense.map((d, line) => ({ line, quantity: d.quantity, reason: "" }));
     } else {
@@ -218,8 +329,9 @@ export default function PharmacyDashboard() {
     try {
       if (p.status === "pending") await send("packed", { dispense });
       if (p.status === "pending" || p.status === "packed") await send("ready", {});
-      await send("handed_over", { handover: handoverPayload, billAmount: billTotal, paymentMode: payModes[p.id] || "cash" });
-      toast.success("Marked as packed. Patient notified");
+      await send("handed_over", { handover: handoverPayload, billAmount: billTotal, paymentMode: payModes[p.id] || "cash", discountPct: Number(taxes[p.id]?.disc) || 0, cgstPct: Number(taxes[p.id]?.cgst) || 0, sgstPct: Number(taxes[p.id]?.sgst) || 0 });
+      toast.success("Marked as given. Patient notified");
+      await printInvoiceFor(p.id, true);
     } catch (err: any) {
       toast.error(err?.message || "Network error");
     } finally {
@@ -230,6 +342,22 @@ export default function PharmacyDashboard() {
     }
   }
 
+  const seenRx = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const pending = prescriptions.filter(p => p.status === "pending").map(p => p.id);
+    if (seenRx.current === null) { if (!loading) seenRx.current = new Set(pending); return; }
+    const fresh = pending.filter(id => !seenRx.current!.has(id));
+    fresh.forEach(id => seenRx.current!.add(id));
+    if (fresh.length > 0) {
+      toast.success(fresh.length === 1 ? "New prescription received" : fresh.length + " new prescriptions received");
+      try {
+        const ctx = new ((window as any).AudioContext || (window as any).webkitAudioContext)();
+        const o = ctx.createOscillator();
+        o.connect(ctx.destination); o.frequency.value = 880; o.start();
+        setTimeout(() => { o.stop(); ctx.close(); }, 300);
+      } catch { /* sound is optional */ }
+    }
+  }, [prescriptions, loading]);
   const receivedList = prescriptions.filter(p => p.status !== "handed_over");
   const givenList = prescriptions.filter(p => p.status === "handed_over");
   const givenToday = givenList.filter(p => isToday(p.created_at)).length;
@@ -238,15 +366,31 @@ export default function PharmacyDashboard() {
   const shown = (filter === "given" ? givenList : receivedList)
     .filter(p => !q || (p.patient_name || "").toLowerCase().includes(q))
     .sort((a, b) => dir * (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
+  const dayLabel = (iso: string) => {
+    const d = new Date(iso);
+    const y = new Date(); y.setDate(y.getDate() - 1);
+    if (isToday(iso)) return "Today";
+    if (d.toDateString() === y.toDateString()) return "Yesterday";
+    return d.toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" });
+  };
+  const dayGroups = (list: Prescription[]) => {
+    const map = new Map<string, Prescription[]>();
+    for (const p of list) {
+      const k = new Date(p.created_at).toDateString();
+      map.set(k, [...(map.get(k) ?? []), p]);
+    }
+    return Array.from(map.values()).map(items => ({ label: dayLabel(items[0].created_at) + " (" + items.length + ")", items }));
+  };
   const sections: { label: string; items: Prescription[] }[] = filter === "given"
     ? [
-        { label: "Today", items: shown.filter(p => isToday(p.created_at)) },
-        { label: "Earlier", items: shown.filter(p => !isToday(p.created_at)) },
+        ...dayGroups(shown),
+        
       ].filter(g => g.items.length > 0)
     : [{ label: "", items: shown }];
 
   // group prescriptions of the same patient together (keeps sorted order of first appearance)
   function byPatient(list: Prescription[]) {
+    if (filter === "given") return list.map(p => [p]);
     const map = new Map<string, Prescription[]>();
     for (const p of list) {
       const k = (p.patient_name || "").trim().toLowerCase();
@@ -262,7 +406,7 @@ export default function PharmacyDashboard() {
     const pl = getPlan(p, i);
     const st = stock.find(s => s.id === pl.itemId);
     const qty = Number(pl.qty);
-    const short = st && qty > tabletsAvailable(st);
+    const bottle = isBottle(item, st); const short = st && qty * (bottle ? packOf(st) : 1) > tabletsAvailable(st);
     const reduced = qty > 0 && qty < suggested;
     const key = `${p.id}-${i}`;
     const deduct = !!pl.itemId || !!manualDeduct[key];
@@ -275,7 +419,7 @@ export default function PharmacyDashboard() {
           <p className="text-sm font-semibold text-gray-900">{item.name}</p>
           {!isGiven && (
             <span className="text-xs font-semibold text-teal-700 bg-teal-50 rounded-md px-2 py-0.5 whitespace-nowrap">
-              Prescribed: {suggested} {item.quantityUnit || "tablets"}
+              Prescribed: {suggested} {bottle ? packName(st) + "(s)" : (item.quantityUnit || "tablets")}
             </span>
           )}
         </div>
@@ -311,21 +455,21 @@ export default function PharmacyDashboard() {
                 <select value={pl.itemId} onChange={e => setPlan(p, i, { itemId: e.target.value })}
                   className="w-full border border-gray-200 rounded-md text-xs px-2 py-1.5 bg-white">
                   <option value="">Select stock item...</option>
-                  {stock.map(s => <option key={s.id} value={s.id}>{s.name} ({tabletsAvailable(s)} in stock)</option>)}
+                  {stock.map(s => <option key={s.id} value={s.id}>{s.name} ({isBottle(undefined, s) ? (Math.round(tabletsAvailable(s) / packOf(s) * 10) / 10) + " " + packName(s) + "s" : tabletsAvailable(s)} in stock)</option>)}
                 </select>
                 {pl.itemId && (
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-gray-500">Dispensed</span>
-                    <input type="number" min={1} value={pl.qty}
+                    <input type="number" min={1} step={1} value={pl.qty}
                       onChange={e => setPlan(p, i, { qty: e.target.value })}
                       className="w-20 border border-gray-200 rounded-md text-sm px-2 py-1 bg-white" />
-                    <span className="text-xs text-gray-500">{item.quantityUnit || "tablets"}</span>
+                    <span className="text-xs text-gray-500">{bottle ? packName(st) + "(s)" : (item.quantityUnit || "tablets")}</span>
                   </div>
                 )}
                 {pl.itemId && st && (
                   <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <span className="text-gray-500">Price per {(item.quantityUnit || "tablets").replace(/\(s\)$|s$/, "")} {"\u20b9"}</span>
-                    <input type="number" min={0} step="any" value={pl.price ?? String(defaultUnitPrice(st))}
+                    <span className="text-gray-500">Price per {bottle ? packName(st) : (item.quantityUnit || "tablets").replace(/\(s\)$|s$/, "")} {"\u20b9"}</span>
+                    <input type="number" min={0} step="any" value={pl.price ?? String(defaultUnitPrice(st, bottle))}
                       onChange={e => setPlan(p, i, { price: e.target.value })}
                       className="w-24 border border-gray-200 rounded-md text-sm px-2 py-1 bg-white" />
                     <span className="text-gray-500">{"\u00d7"} {qty > 0 ? qty : 0} =</span>
@@ -337,7 +481,7 @@ export default function PharmacyDashboard() {
                     onChange={e => setPlan(p, i, { reason: e.target.value })}
                     className="w-full border border-gray-200 rounded-md text-xs px-2 py-1.5 bg-white" />
                 )}
-                {short && <p className="text-xs text-red-600">Not enough stock: only {tabletsAvailable(st!)} available.</p>}
+                {short && <p className="text-xs text-red-600">Not enough stock: only {bottle ? Math.floor(tabletsAvailable(st!) / packOf(st)) + " bottle(s)" : tabletsAvailable(st!)} available.</p>}
               </div>
             )}
           </div>
@@ -400,7 +544,7 @@ export default function PharmacyDashboard() {
           <p className="text-xs text-gray-500 flex items-start gap-1.5">
             <Package className="w-3.5 h-3.5 mt-0.5 shrink-0" />
             <span>
-              Handed over: {dispensed.map(d => `${d.inventoryName} \u00d7${d.tablets}`).join(", ")}
+              Handed over: {dispensed.map(d => `${d.inventoryName} \u00d7${fmtQty(d, stock)}`).join(", ")}
               {dispensed.some(d => d.returned) ? " (some returned to stock)" : ""}
             </span>
           </p>
@@ -410,22 +554,22 @@ export default function PharmacyDashboard() {
           <div className="text-xs text-gray-500 space-y-2">
             {dispensed.map((d, i) => (
               <div key={i} className="space-y-1">
-                <p>Dispensed <b>{d.tablets}</b> {"\u00d7"} {d.inventoryName}{d.reduced ? ` (reduced from ${d.suggested})` : ""}</p>
+                <p>Dispensed <b>{fmtQty(d, stock)}</b> {"\u00d7"} {d.inventoryName}{d.reduced ? ` (reduced from ${d.suggested})` : ""}</p>
                 {p.status === "ready" && (
                   <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 space-y-1.5">
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-600">Patient takes</span>
-                      <input type="number" min={0} max={d.tablets} value={getHo(p.id, i, d.tablets).qty}
-                        onChange={e => setHo(p.id, i, d.tablets, { qty: e.target.value })}
+                      <input type="number" min={0} max={fromLineUnits(d, stock, String(d.tablets))} value={fromLineUnits(d, stock, getHo(p.id, i, d.tablets).qty)}
+                        onChange={e => setHo(p.id, i, d.tablets, { qty: toLineUnits(d, stock, e.target.value) })}
                         className="w-20 border border-gray-200 rounded-md text-sm px-2 py-1 bg-white" />
-                      <span className="text-xs text-gray-600">of {d.tablets} tablets</span>
+                      <span className="text-xs text-gray-600">of {fmtQty(d, stock)}{lineBottles(d, stock) ? "" : " tablets"}</span>
                     </div>
                     {Number(getHo(p.id, i, d.tablets).qty) < d.tablets && (
                       <>
                         <input placeholder="Reason (e.g. patient needs fewer)" value={getHo(p.id, i, d.tablets).reason}
                           onChange={e => setHo(p.id, i, d.tablets, { reason: e.target.value })}
                           className="w-full border border-gray-200 rounded-md text-xs px-2 py-1.5 bg-white" />
-                        <p className="text-xs text-amber-700">{d.tablets - Number(getHo(p.id, i, d.tablets).qty || 0)} tablets will be returned to stock.</p>
+                        <p className="text-xs text-amber-700">{fromLineUnits(d, stock, String(d.tablets - Number(getHo(p.id, i, d.tablets).qty || 0)))} {lineBottles(d, stock) ? "bottle(s)" : "tablets"} will be returned to stock.</p>
                       </>
                     )}
                   </div>
@@ -455,6 +599,28 @@ export default function PharmacyDashboard() {
             </select>
           </div>
         )}
+        {!isGiven && (() => {
+          const t = taxes[p.id] ?? { cgst: "", sgst: "", disc: "" };
+          const setT = (patch: Partial<{ cgst: string; sgst: string; disc: string }>) => setTaxes(prev => ({ ...prev, [p.id]: { ...t, ...patch } }));
+          const sub = autoBill ? billShown : Number(amounts[p.id]);
+          const d = Number(t.disc) || 0, c = Number(t.cgst) || 0, sg = Number(t.sgst) || 0;
+          const show = Number.isFinite(sub) && (d > 0 || c > 0 || sg > 0);
+          const discAmt = round2(sub * d / 100), taxable = round2(sub - discAmt);
+          const cgAmt = round2(taxable * c / 100), sgAmt = round2(taxable * sg / 100);
+          const field = (label: string, key: "disc" | "cgst" | "sgst") => (
+            <label className="flex-1 text-xs text-gray-600">{label}
+              <input type="number" min={0} max={100} step="0.01" inputMode="decimal" placeholder="0" value={t[key]}
+                onChange={e => setT({ [key]: e.target.value })}
+                className="mt-0.5 w-full border border-gray-200 rounded-md text-sm px-2 py-1.5 bg-white" />
+            </label>
+          );
+          return (
+            <div className="space-y-1">
+              <div className="flex gap-2">{field("Discount %", "disc")}{field("CGST %", "cgst")}{field("SGST %", "sgst")}</div>
+              {show && <p className="text-xs text-gray-700 text-right">Amount payable: <b>{"\u20b9"}{round2(taxable + cgAmt + sgAmt).toFixed(2)}</b></p>}
+            </div>
+          );
+        })()}
         {!isGiven && (
           confirming ? (
             <div className="flex gap-2">
@@ -465,14 +631,14 @@ export default function PharmacyDashboard() {
               <Button className="flex-[2] h-10 text-sm bg-teal-600 hover:bg-teal-700" disabled={busy === p.id}
                 onClick={async () => { await markGiven(p); setConfirmId(null); }}>
                 <CheckCircle2 className="w-4 h-4 mr-2" />
-                {busy === p.id ? "Please wait..." : "Yes, mark as packed"}
+                {busy === p.id ? "Please wait..." : "Yes, mark as given"}
               </Button>
             </div>
           ) : (
             <Button className="w-full h-10 text-sm bg-teal-600 hover:bg-teal-700" disabled={busy === p.id}
               onClick={() => setConfirmId(p.id)}>
               <HandMetal className="w-4 h-4 mr-2" />
-              Mark as Packed
+              Mark as Given
             </Button>
           )
         )}
@@ -480,13 +646,89 @@ export default function PharmacyDashboard() {
     );
   }
 
+  function renderGivenCard(p: Prescription) {
+    let dispensed: any[] = [];
+    try { dispensed = p.dispensed_items ? JSON.parse(p.dispensed_items) : []; } catch {}
+    const open = detailId === p.id;
+    const tone = patientTone(p.patient_name);
+    const billAmt: number | null = (() => {
+      if (!dispensed.length || dispensed.some((d: any) => d.unitPrice == null)) return null;
+      return round2(dispensed.reduce((s: number, d: any) => {
+        const kept = Math.max(0, (Number(d.tablets) || 0) - (typeof d.returned === "number" ? d.returned : 0));
+        return s + round2(kept * Number(d.unitPrice));
+      }, 0));
+    })();
+    return (
+      <div key={p.id} className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+        <div className={"h-1 " + tone.bar} />
+        <div role="button" tabIndex={0} onClick={() => setDetailId(p.id)}
+          className="flex items-center gap-3 px-3 py-3 cursor-pointer active:bg-gray-50">
+          <div className={"w-10 h-10 rounded-full text-white flex items-center justify-center font-semibold text-sm shrink-0 " + tone.avatar}>
+            {(p.patient_name || "?").trim().charAt(0).toUpperCase()}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-sm truncate">{p.patient_name}</p>
+            <p className="text-xs text-gray-500 truncate">
+              {exactLabel(p.created_at)} {"\u00b7"} {p.items.length} medicine{p.items.length === 1 ? "" : "s"}{billAmt != null && <>{" "}{"\u00b7"}{" "}<b className="text-gray-800">{"\u20b9"}{billAmt.toFixed(2)}</b></>}
+            </p>
+          </div>
+          <Button variant="outline" className="h-9 px-3 text-xs shrink-0"
+            onClick={e => { e.stopPropagation(); printInvoiceFor(p.id); }}>
+            Print invoice
+          </Button>
+        </div>
+        {open && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40" onClick={() => setDetailId(null)}>
+            <div className="bg-white w-full sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl" onClick={e => e.stopPropagation()}>
+              <div className="sticky top-0 bg-white border-b border-gray-100 px-4 py-3 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-semibold text-sm truncate">{p.patient_name}</p>
+                  <p className="text-xs text-gray-500">
+                    Dr. {p.doctor_name} {"\u00b7"} {exactLabel(p.created_at)}
+                  </p>
+                </div>
+                <button type="button" onClick={() => setDetailId(null)}
+                  className="text-gray-400 hover:text-gray-700 text-lg leading-none px-1">{"\u2715"}</button>
+              </div>
+              <div className="px-4 py-3 space-y-3">
+                <div className="rounded-xl border border-gray-100 bg-gray-50/70 divide-y divide-gray-100">
+                  {p.items.map((item, i) => renderMedicine(p, item, i))}
+                </div>
+                {dispensed.length > 0 && (
+                  <p className="text-xs text-gray-500 flex items-start gap-1.5">
+                    <Package className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                    <span>
+                      Handed over: {dispensed.map(d => `${d.inventoryName} \u00d7${fmtQty(d, stock)}`).join(", ")}
+                      {dispensed.some(d => d.returned) ? " (some returned to stock)" : ""}
+                    </span>
+                  </p>
+                )}
+                {p.notes && (
+                  <p className="text-xs text-gray-600 bg-yellow-50 border border-yellow-100 rounded-lg px-3 py-2 italic">
+                    Note: {p.notes}
+                  </p>
+                )}
+                <Button variant="outline" className="w-full h-10 text-sm" onClick={() => printInvoiceFor(p.id)}>
+                  Print invoice
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   function renderPatient(list: Prescription[]) {
+    if (list[0].status === "handed_over") return renderGivenCard(list[0]);
     const first = list[0];
+    const tone = patientTone(first.patient_name);
     const multi = list.length > 1;
     return (
       <div key={first.id} className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-        <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 border-b border-gray-100">
-          <div className="w-9 h-9 rounded-full bg-teal-600 text-white flex items-center justify-center font-semibold text-sm shrink-0">
+        <div className={"h-1 " + tone.bar} />
+        <div className={"flex items-center gap-3 px-4 py-3 border-b border-gray-100 " + tone.head}>
+          <div className={"w-9 h-9 rounded-full text-white flex items-center justify-center font-semibold text-sm shrink-0 " + tone.avatar}>
             {(first.patient_name || "?").trim().charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0">
@@ -507,8 +749,10 @@ export default function PharmacyDashboard() {
     { key: "inventory", label: "Inventory Management", icon: Package },
     { key: "patients", label: "Patient Purchases", icon: Users },
     { key: "sold", label: "Sales History", icon: ShoppingCart },
+    { key: "gst", label: "GST Invoice", icon: FileText },
     { key: "stock", label: "Stock Update", icon: RefreshCw },
   ] as const;
+  const ALL_NAV: { key: string; label: string; icon: any }[] = [...NAV_ITEMS, ...extraNav];
   const sidebar = (
     <aside className="hidden md:flex w-60 shrink-0 flex-col bg-admin-sidebar text-admin-sidebar-fg sticky top-0 h-screen">
       <div className="px-5 py-5 border-b border-white/10 flex items-center gap-3">
@@ -521,7 +765,7 @@ export default function PharmacyDashboard() {
         </div>
       </div>
       <nav className="flex-1 px-3 py-4 space-y-1">
-        {NAV_ITEMS.map(({ key, label, icon: Icon }) => (
+        {ALL_NAV.map(({ key, label, icon: Icon }) => (
           <button key={key} type="button" onClick={() => setTab(key)}
             className={"w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors " + (tab === key ? "bg-white/15 text-white border-l-2 border-teal-400" : "text-white/60 hover:bg-white/8 hover:text-white/90")}>
             <Icon className="w-4 h-4 shrink-0" />
@@ -540,7 +784,7 @@ export default function PharmacyDashboard() {
   );
   const mobileTabs = (
     <div className="md:hidden flex gap-2 overflow-x-auto bg-admin-sidebar px-3 py-2">
-      {NAV_ITEMS.map(({ key, label }) => (
+      {ALL_NAV.map(({ key, label }) => (
         <button key={key} type="button" onClick={() => setTab(key)}
           className={"whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium " + (tab === key ? "bg-white/20 text-white" : "text-white/60")}>
           {label}
@@ -554,7 +798,7 @@ export default function PharmacyDashboard() {
         {sidebar}
         <div className="flex-1 min-w-0">
           {mobileTabs}
-          {tab === "revenue" ? <PharmRevenue /> : tab === "inventory" ? <PharmInventory /> : tab === "patients" ? <PharmPatients /> : tab === "stock" ? <PharmStockUpdate /> : <PharmSold />}
+          {tab.startsWith("x:") ? <ExtraPanel moduleKey={tab.slice(2)} /> : tab === "revenue" ? <PharmRevenue /> : tab === "inventory" ? <PharmInventory iconActions /> : tab === "patients" ? <PharmPatients /> : tab === "stock" ? <PharmStockUpdate /> : tab === "gst" ? <GstInvoice /> : <PharmSold />}
         </div>
       </div>
     );
@@ -592,8 +836,8 @@ export default function PharmacyDashboard() {
               <p className="text-[11px] text-gray-500">Patients served today</p>
             </div>
             <div className="bg-white border border-gray-200 rounded-xl px-3 py-2">
-              <p className="text-xl font-bold leading-tight text-blue-700">{pStats.tabletsSold}</p>
-              <p className="text-[11px] text-gray-500">Tablets sold today</p>
+              <p className="text-xl font-bold leading-tight text-blue-700">{soldSplit ? soldSplit.tablets : pStats.tabletsSold}</p>
+              <p className="text-[11px] text-gray-500">Tablets sold today{soldSplit && soldSplit.bottles > 0 ? " + " + soldSplit.bottles + " bottle(s)" : ""}</p>
             </div>
             <div className="bg-white border border-gray-200 rounded-xl px-3 py-2">
               <p className="text-xl font-bold leading-tight text-emerald-700">{"\u20b9"}{Number(pStats.revenue).toLocaleString("en-IN")}</p>
@@ -607,8 +851,8 @@ export default function PharmacyDashboard() {
           <Stat label="Total given" value={givenList.length} tone="text-gray-700" />
         </div>
 
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap gap-2">
             {(["received", "given"] as const).map(f => (
               <button key={f} onClick={() => setFilter(f)}
                 className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap border transition-colors ${

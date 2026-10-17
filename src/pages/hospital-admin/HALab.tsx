@@ -38,7 +38,7 @@ const EMPTY_ORDER = { patientName:"", doctorName:"", testId:"", priority:"normal
 
 export default function HALab() {
   const { user } = useStore();
-  const hospitalId = user?.role === "hospital_admin" ? (user as any).hospitalId : "";
+  const hospitalId = (user as any)?.hospitalId || "";
 
   const [tab, setTab] = useState<"orders"|"tests">("orders");
   const [orders, setOrders] = useState<LabOrder[]>([]);
@@ -285,7 +285,7 @@ export default function HALab() {
       )}
 
       {tab === "tests" && (
-        <div className="rounded-xl border overflow-hidden bg-white">
+        <div className="rounded-xl border overflow-x-auto bg-white">
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr>

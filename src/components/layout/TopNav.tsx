@@ -1,9 +1,10 @@
-import { Ambulance, BookOpen, FlaskConical, Hospital, LogOut, Mail, Phone, Pill, User, UserCog, X } from "lucide-react";
+import { Ambulance, BedDouble, BookOpen, FlaskConical, Hospital, LogOut, Mail, Phone, Pill, User, UserCog, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useStore } from "../../context/StoreContext";
 import { useRouter } from "../../router/RouterContext";
 import { enablePushNotifications } from "../../lib/push";
+import { bedBookings } from "../../api";
 
 export default function TopNav() {
   const { user, logout, doctors, bookings, hasNewPrescription, clearPrescriptionDot } = useStore();
@@ -11,6 +12,25 @@ export default function TopNav() {
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [admission, setAdmission] = useState<{ show: boolean; active: boolean }>({ show: false, active: false });
+  const showAdmission = admission.show;
+  const admissionActive = admission.active;
+  useEffect(() => {
+    if (!user || user.role !== "patient") { setAdmission({ show: false, active: false }); return; }
+    let stop = false;
+    const check = async () => {
+      try {
+        const [s, r] = await Promise.all([bedBookings.myStays(), bedBookings.mine()]);
+        if (stop) return;
+        const active = s.some((x: any) => x.status === "admitted") || r.some((x: any) => x.status === "requested" || x.status === "confirmed");
+        setAdmission({ show: s.length > 0 || r.length > 0, active });
+      } catch { /* keep the nav unchanged if the check fails */ }
+    };
+    check();
+    const t = setInterval(check, 60000);
+    return () => { stop = true; clearInterval(t); };
+  }, [user]);
+
   const desktopMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -56,7 +76,9 @@ export default function TopNav() {
       ? (user as { name: string }).name
       : user?.role === "doctor"
         ? (doctors.find((d) => d.code === (user as { code: string }).code)?.name ?? "Doctor")
-        : "Admin";
+        : user?.role === ("cto" as string)
+          ? "CTO"
+          : "Admin";
 
   const isPatient = user?.role === "patient";
   const isDoctor  = user?.role === "doctor";
@@ -373,6 +395,16 @@ export default function TopNav() {
                 <span className="absolute -top-1 -right-2 w-2 h-2 bg-teal-500 rounded-full border border-white" />
               )}
             </button>
+            {showAdmission && (
+              <button
+                type="button"
+                className={`relative flex items-center gap-1.5 transition-colors ${isActive(["/patient/admission"])} hover:text-teal-600`}
+                onClick={() => navigate({ path: "/patient/admission" })}
+              >
+                <BedDouble className="w-4 h-4" /> Admission
+                {admissionActive && <span className="absolute -top-1 -right-2 w-2 h-2 bg-blue-500 rounded-full border border-white" />}
+              </button>
+            )}
             <button
               type="button"
               className={`relative flex items-center gap-1.5 transition-colors ${isActive(["/patient/prescriptions"])} hover:text-teal-600`}
@@ -491,6 +523,20 @@ export default function TopNav() {
             </div>
             <span className="text-[10px] font-medium text-teal-600">Home</span>
           </button>
+
+          {showAdmission && (
+            <button
+              type="button"
+              className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl transition-colors ${isActive(["/patient/admission"])}`}
+              onClick={() => navigate({ path: "/patient/admission" })}
+            >
+              <span className="relative">
+                <BedDouble className="w-5 h-5" strokeWidth={2} />
+                {admissionActive && <span className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full border border-white" />}
+              </span>
+              <span className="text-[10px] font-medium">Admission</span>
+            </button>
+          )}
 
           {/* Prescriptions */}
           <button

@@ -58,6 +58,7 @@ import { getToken as foGetToken } from "@/api";
 import { Vitals, vitalsText } from "@/lib/vitals";
 import VitalsPanel from "@/components/VitalsPanel";
 import MonthlyArchiveBanner from "../../components/MonthlyArchiveBanner";
+import { useExtraNav, ExtraPanel } from "../../components/StaffExtras";
 import {
   SESSION_TIMES,
   formatTime12h,
@@ -306,6 +307,7 @@ export default function DoctorDashboard() {
       .catch(() => {});
   }, [doctor?.hospitalId]);
   const [activeTab, setActiveTab] = useState<DoctorTab>(getInitialDoctorTab);
+  const { nav: extraNav } = useExtraNav(["live_patients"]);
 
   // Initial tab is set from getInitialDoctorTab(); persistence handled on user interaction
 
@@ -1069,6 +1071,7 @@ export default function DoctorDashboard() {
         <ClipboardList className="w-4 h-4" />
         Presets
       </TabsTrigger>
+        {extraNav.map(n => (<TabsTrigger key={n.key} value={n.key} className="flex h-auto min-w-0 flex-col items-center gap-1 px-1 py-2 text-[11px] leading-tight sm:flex-row sm:justify-center sm:gap-2 sm:px-3 sm:text-sm"><n.icon className="w-4 h-4" />{n.label}</TabsTrigger>))}
         </TabsList>
 
         {/* Token Regulator Tab */}
@@ -1582,7 +1585,8 @@ export default function DoctorDashboard() {
           </Card>
         </TabsContent>
 
-      <TabsContent value="presets">
+      {extraNav.map(n => (<TabsContent key={n.key} value={n.key}><ExtraPanel moduleKey={n.key.slice(2)} /></TabsContent>))}
+        <TabsContent value="presets">
         <PrescriptionPresetsManager doctor={doctor} />
       </TabsContent>
 

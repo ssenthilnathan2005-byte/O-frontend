@@ -6,6 +6,8 @@ import { BedDouble, Plus, X, Trash2, ChevronDown, ChevronUp, Clock, Settings, Pe
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { getToken } from "../../api";
+import { ipdBilling } from "../../api";
+import IPDBillModal from "./IPDBillModal";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
@@ -172,13 +174,14 @@ function CleaningTimePicker({ value, onChange, presets = CLEANING_PRESETS, inher
 
 export default function HAWards() {
   const { user, doctors } = useStore();
-  const hospitalId = user?.role === "hospital_admin" ? (user as any).hospitalId : "";
+  const hospitalId = (user as any)?.hospitalId || "";
   const availableDoctors = ((doctors as any[]) || []).filter((d: any) => d.hospitalId === hospitalId && (d.isAvailable ?? true));
 
   const [wards, setWards] = useState<Ward[]>([]);
   const [beds, setBeds] = useState<Record<string, Bed[]>>({});
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [billId, setBillId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", type: "general", totalBeds: "10" });
   const [loading, setLoading] = useState(false);
   const [bedLoading, setBedLoading] = useState<string | null>(null);
@@ -475,12 +478,20 @@ export default function HAWards() {
     } catch {} finally { setBedLoading(null); }
   }
 
-  async function handleVacate(wardId: string, bedId: string) {
-    if (!confirm("Discharge this patient and send the bed for cleaning?")) return;
+  async function handleVacate(wardId: string, bedId: string, inwardId?: string | null) {
+    let note = "";
+    if (inwardId) {
+      try {
+        const b = await ipdBilling.get(inwardId);
+        note = b.balance > 0 ? "\n\nBalance due: ₹" + Number(b.balance).toLocaleString("en-IN") + ". Collect payment before discharge." : "";
+      } catch (_) {}
+    }
+    if (!confirm("Discharge this patient and send the bed for cleaning?" + note)) return;
     setBedLoading(bedId);
     try {
       const vacateRes = await api(`/wards/${wardId}/beds/${bedId}/vacate`, "PATCH", {});
       if (vacateRes && vacateRes.error) alert(vacateRes.error);
+      else if (inwardId) setBillId(inwardId);
       setDetailsTarget(null);
       await loadBeds(wardId);
       await loadWards();
@@ -661,7 +672,7 @@ export default function HAWards() {
                   ) : (
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                       {beds[ward.id].map(bed => (
-                        <div key={bed.id} className={`relative rounded-lg border p-2 text-center text-xs cursor-pointer transition-all ${STATUS_COLORS[bed.status]}`}
+                        <div key={bed.id} className={`relative rounded-lg border p-2 pt-6 sm:pt-2 text-center text-xs cursor-pointer transition-all ${STATUS_COLORS[bed.status]}`}
                           onClick={() => handleBedClick(ward.id, bed)}>
                           <div className="absolute top-1 left-1 flex gap-0.5">
                             <button type="button" title="Edit Bed" aria-label="Edit Bed"
@@ -680,7 +691,7 @@ export default function HAWards() {
                             className="absolute top-1 right-1 p-0.5 rounded opacity-50 hover:opacity-100 hover:bg-black/10">
                             <Clock className="w-3 h-3" />
                           </button>
-                          <p className="font-bold">{bed.bed_number}</p>
+                          <p className="font-bold break-words">{bed.bed_number}</p>
                           <p className="capitalize mt-0.5 opacity-80">
                             {bed.status === "maintenance" ? "Cleaning" : bed.status}
                           </p>
@@ -920,6 +931,7 @@ export default function HAWards() {
       )}
 
       {/* Bed Details Modal */}
+      {billId && <IPDBillModal inwardId={billId} onClose={() => setBillId(null)} />}
       {detailsTarget && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
@@ -1063,7 +1075,7 @@ export default function HAWards() {
             <div className="px-6 py-4 border-t flex gap-3 justify-end">
               <button onClick={() => setDetailsTarget(null)}
                 className="px-4 py-2 rounded-lg text-sm border hover:bg-gray-50 transition-colors">Close</button>
-              <button onClick={() => handleVacate(detailsTarget.wardId, detailsTarget.bed.id)}
+              <button onClick={() => handleVacate(detailsTarget.wardId, detailsTarget.bed.id, detailsTarget.bed.inward_id)}
                 disabled={bedLoading === detailsTarget.bed.id}
                 className="px-4 py-2 rounded-lg text-sm bg-orange-500 hover:bg-orange-600 text-white font-medium transition-colors disabled:opacity-50">
                 {bedLoading === detailsTarget.bed.id ? "Discharging..." : "Discharge & Send for Cleaning"}

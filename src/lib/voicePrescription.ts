@@ -2,6 +2,8 @@
 // Output maps onto the existing prescription item shape
 // { name, dosage, duration, instructions } so pharmacy / patient views keep working.
 
+import { detectFormFromText, getFormConfig, voiceDoseUnit, type MedForm } from "./medicineTypes";
+
 export type NameState = "matched" | "ambiguous" | "unknown" | "manual";
 
 export interface VoiceMed {
@@ -16,6 +18,7 @@ export interface VoiceMed {
   strengthAssumed: boolean;  // number heard without a unit -> mg assumed
   qty: string;               // dose per intake, e.g. "1"
   qtyUnit: string;           // tablet | capsule | ml | drop | puff
+  form: MedForm;             // medicine type: drives dose unit and dispensing unit
   freq: number | null;       // times per day
   times: string[];           // Morning | Afternoon | Evening | Night
   prn: boolean;
@@ -169,9 +172,14 @@ export function defaultTimes(freq: number): string[] {
 }
 const sortTimes = (t: string[]) => TIME_ORDER.filter(x => t.includes(x));
 
+export function setVoiceForm(m: VoiceMed, form: MedForm): VoiceMed {
+  const unit = voiceDoseUnit(form, m.qtyUnit);
+  return { ...m, form, qtyUnit: unit, qty: unit === m.qtyUnit ? m.qty : "" };
+}
 export function parseSegment(seg: string): VoiceMed | null {
   let tokens = seg.split(" ").filter(Boolean);
-  while (tokens.length && LEADING_STRIP.has(tokens[0])) tokens.shift();
+  const lead: string[] = [];
+  while (tokens.length && LEADING_STRIP.has(tokens[0])) lead.push(tokens.shift()!);
   const nameTokens: string[] = [];
   while (tokens.length && !/^[\d.]/.test(tokens[0]) && !KEYWORDS.has(tokens[0]) && nameTokens.length < 4) {
     nameTokens.push(tokens.shift()!);
@@ -260,6 +268,16 @@ export function parseSegment(seg: string): VoiceMed | null {
     if (bare) rest = rest.replace(bare[0], " ");
   }
 
+  // medicine type: from the words spoken (tonic, syrup, drops...), else from the dose unit
+  const spokenForm = detectFormFromText([...lead, ...nameTokens].join(" "));
+  const form: MedForm = spokenForm
+    ?? (dq && qtyUnit === "ml" ? "syrup" : dq && qtyUnit === "drop" ? "drops" : dq && qtyUnit === "puff" ? "spray" : "tablet");
+  const fixedUnit = voiceDoseUnit(form, qtyUnit);
+  if (fixedUnit !== qtyUnit) {
+    // drops / sprays: keep the spoken count ("2 drops") as an instruction; the dose unit stays ml
+    if ((qtyUnit === "drop" || qtyUnit === "puff") && qty) extraParts.push(`${qty} ${plural(qtyUnit, qty)}`);
+    qty = ""; qtyUnit = fixedUnit;
+  }
   // a bare number right after the name is the strength (mg assumed) — never guessed further
   if (!strengthAmount) {
     const bn = take(/\s(\d+(?:\.\d+)?)\s/);
@@ -288,7 +306,7 @@ export function parseSegment(seg: string): VoiceMed | null {
     searchTerm: ALIASES[key] ?? spoken,
     name: "", nameState: "unknown", candidates: [],
     strengthAmount, strengthUnit, strengthAssumed,
-    qty, qtyUnit,
+    qty, qtyUnit, form,
     freq, times, prn, everyHours, unusualFreq,
     food,
     extra: cap(extraParts.join(", ")),
@@ -364,7 +382,7 @@ import { findCategory, categoryCandidates } from "./voiceCategories";
 
 export type MedicineSearch = (q: string) => Promise<string[]>;
 
-export async function resolveMed(m: VoiceMed, search: MedicineSearch, catalog: string[] = []): Promise<VoiceMed> {
+async function resolveMedRaw(m: VoiceMed, search: MedicineSearch, catalog: string[] = []): Promise<VoiceMed> {
   // a generic word like "cough syrup" is not a medicine: offer the choices instead of picking one
   const cat = findCategory(m.spoken, m.searchTerm);
   if (cat) {
@@ -407,6 +425,11 @@ export async function resolveMed(m: VoiceMed, search: MedicineSearch, catalog: s
 
 // ───────────────────────── review helpers ─────────────────────────
 
+export async function resolveMed(m: VoiceMed, search: MedicineSearch, catalog: string[] = []): Promise<VoiceMed> {
+  const r = await resolveMedRaw(m, search, catalog);
+  const f = r.name ? detectFormFromText(r.name) : null;
+  return f && f !== r.form ? setVoiceForm(r, f) : r;
+}
 const plural = (unit: string, amount: string) => (parseFloat(amount) === 1 ? unit : `${unit}s`);
 const strengthText = (m: VoiceMed) =>
   m.strengthAmount ? `${m.strengthAmount} ${m.strengthUnit === "unit" ? "units" : m.strengthUnit}` : "";
@@ -432,9 +455,14 @@ export function durationText(m: VoiceMed): string {
   return m.durationAmount ? `${m.durationAmount} ${plural(m.durationUnit, m.durationAmount)}` : "";
 }
 
+function doseText(m: VoiceMed): string {
+  if (!m.qty) return strengthText(m).replace(" ", "");
+  if (m.qtyUnit === "ml" || m.qtyUnit === "g") return `${m.qty}${m.qtyUnit}`;           // "5ml", never "5 mls"
+  return `${m.qty} ${plural(m.qtyUnit, m.qty)}`;
+}
+
 export function summaryLine(m: VoiceMed): string {
-  const dose = m.qty ? `${m.qty} ${plural(m.qtyUnit, m.qty)}` : "";
-  return [dose, frequencyLabel(m), durationText(m)].filter(Boolean).join(" × ");
+  return [doseText(m), frequencyLabel(m), durationText(m)].filter(Boolean).join(" \u00d7 ");
 }
 
 /** Problems that must be fixed by the doctor before the prescription can be confirmed. */
@@ -454,13 +482,24 @@ export function blockingIssues(m: VoiceMed): string[] {
 export function softWarnings(m: VoiceMed): string[] {
   const w: string[] = [];
   if (m.strengthAssumed && m.strengthAmount) w.push(`${m.strengthAmount} ${m.strengthUnit} assumed`);
-  if (!m.qty) w.push("Dose per intake not stated");
+  if (!m.qty && !((m.form === "drops" || m.form === "spray") && m.extra.trim())) w.push("Dose per intake not stated");
   return w;
 }
 
+// Tablets are counted (dose x times x days). Everything else defaults to 1 bottle / vial / tube.
+function voiceQuantity(m: VoiceMed): number | undefined {
+  if (m.form !== "tablet") return 1;
+  const days = (parseFloat(m.durationAmount) || 0) * (m.durationUnit === "week" ? 7 : 1);
+  if (m.prn || !days) return undefined; // SOS / open-ended: pharmacy decides
+  const perDay = m.everyHours ? Math.ceil(24 / m.everyHours) : (m.times.length || m.freq || 1);
+  return Math.max(1, Math.ceil((parseFloat(m.qty) || 1) * perDay * days));
+}
+
 /** Final item in the same shape the manual form saves. */
-export function toPrescriptionItem(m: VoiceMed): { name: string; dosage: string; duration: string; instructions: string } {
-  const dosage = m.qty ? `${m.qty} ${plural(m.qtyUnit, m.qty)}` : strengthText(m).replace(" ", "");
+export function toPrescriptionItem(m: VoiceMed): {
+  name: string; dosage: string; duration: string; instructions: string;
+  form: string; quantity?: number; quantityUnit: string;
+} {
   const parts: string[] = [];
   if (m.prn) parts.push("SOS (if needed)");
   else if (m.everyHours) parts.push(`Every ${m.everyHours} hours`);
@@ -468,5 +507,9 @@ export function toPrescriptionItem(m: VoiceMed): { name: string; dosage: string;
   parts.push(...sortTimes(m.times));
   if (m.food) parts.push(m.food);
   if (m.extra.trim()) parts.push(m.extra.trim());
-  return { name: displayName(m), dosage, duration: durationText(m), instructions: parts.join(", ") };
+  const quantity = voiceQuantity(m);
+  return {
+    name: displayName(m), dosage: doseText(m), duration: durationText(m), instructions: parts.join(", "),
+    form: m.form, ...(quantity !== undefined ? { quantity } : {}), quantityUnit: getFormConfig(m.form).unit,
+  };
 }
