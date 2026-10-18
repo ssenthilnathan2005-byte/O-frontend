@@ -938,7 +938,7 @@ export default function NurseWards() {
               )}
             </div>
 
-            {detailsTarget.bed.inward_id && /matern|obstet|labou?r/i.test(wards.find(w => w.id === detailsTarget.wardId)?.name || "") && (
+            {detailsTarget.bed.inward_id && (wards.find(w => w.id === detailsTarget.wardId)?.type || "").toLowerCase() === "maternity" && (
               <div className="px-6 pb-3">
                 <button
                   onClick={() => { const id = detailsTarget.bed.inward_id as string; setDetailsTarget(null); setMatObsId(id); }}

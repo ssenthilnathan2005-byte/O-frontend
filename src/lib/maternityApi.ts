@@ -22,4 +22,5 @@ export const maternityApi = {
   obsAdd: (inwardId: string, data: any) => call<any>("POST", `/maternity-obs/${inwardId}`, data),
   obsDelete: (id: string) => call<any>("DELETE", `/maternity-obs/entry/${id}`),
   record: (inwardId: string) => call<any>("GET", `/maternity-record/${inwardId}`),
+  eligible: () => call<{ ids: string[] }>("GET", "/maternity-eligible"),
 };

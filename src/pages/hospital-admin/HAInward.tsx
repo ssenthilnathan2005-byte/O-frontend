@@ -9,6 +9,7 @@ import { getToken } from "../../api";
 import HABedRequests from "./HABedRequests";
 import IPDBillModal from "./IPDBillModal";
 import MaternityModal from "./MaternityModal";
+import { maternityApi } from "../../lib/maternityApi";
 import IPDCollections from "./IPDCollections";
 import { downloadFile } from "../../lib/downloadFile";
 
@@ -60,6 +61,10 @@ export default function HAInward() {
   const [exporting, setExporting] = useState(false);
   const [billId, setBillId] = useState<string | null>(null);
   const [matId, setMatId] = useState<string | null>(null);
+  const [matEligible, setMatEligible] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    maternityApi.eligible().then((r) => setMatEligible(new Set(r.ids))).catch(() => setMatEligible(new Set()));
+  }, [patients]);
 
   const hospitalId = (user as any)?.hospitalId || "";
   const myDoctors = doctors.filter((d: any) => d.hospitalId === hospitalId);
@@ -221,9 +226,11 @@ export default function HAInward() {
                     <button onClick={() => toggleHistory(p.id)} className="p-1.5 rounded hover:bg-muted transition-colors" title="Vitals & notes">
                       {expandedId === p.id ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
                     </button>
+                    {matEligible.has(p.id) && (
                     <button onClick={() => setMatId(p.id)} className="p-1.5 rounded hover:bg-pink-50 transition-colors" title="Maternity profile">
                       <Baby className="w-3.5 h-3.5 text-pink-600" />
                     </button>
+                    )}
                     <button onClick={() => setBillId(p.id)} className="p-1.5 rounded hover:bg-teal-50 transition-colors" title="Bill">
                       <Receipt className="w-3.5 h-3.5 text-teal-600" />
                     </button>

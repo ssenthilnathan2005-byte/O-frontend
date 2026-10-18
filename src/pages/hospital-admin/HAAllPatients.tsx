@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Search, X, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { printMaternityRecord } from "../../lib/maternityRecord";
+import { maternityApi } from "../../lib/maternityApi";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -120,6 +121,10 @@ export default function HAAllPatients() {
   const [error, setError] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [printingId, setPrintingId] = useState<string | null>(null);
+  const [matEligible, setMatEligible] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    maternityApi.eligible().then((r) => setMatEligible(new Set(r.ids))).catch(() => setMatEligible(new Set()));
+  }, [inwardList]);
 
   useEffect(() => {
     let cancelled = false;
@@ -398,7 +403,7 @@ export default function HAAllPatients() {
                   <p><span className="text-gray-500">Doctor:</span> {v.doctor || "-"}</p>
                   {v.detail && <p><span className="text-gray-500">{v.type === "Inward" ? "Diagnosis:" : "Token:"}</span> {v.type === "Inward" ? v.detail : v.detail.replace("Token ", "")}</p>}
                   {v.place && <p><span className="text-gray-500">Ward / Bed:</span> {v.place}</p>}
-                  {v.type === "Inward" && v.inwardId && /maternity/i.test(v.place) && (
+                  {v.type === "Inward" && v.inwardId && matEligible.has(v.inwardId) && (
                     <button type="button" disabled={printingId === v.inwardId}
                       onClick={async () => {
                         setPrintingId(v.inwardId!);
