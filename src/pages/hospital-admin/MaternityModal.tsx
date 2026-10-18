@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { X } from "lucide-react";
+import { X, Printer } from "lucide-react";
 import { maternityApi } from "../../lib/maternityApi";
 import MaternityChart from "./MaternityChart";
+import { useStore } from "../../context/StoreContext";
+import { printMaternityRecord } from "../../lib/maternityRecord";
 
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 const RISKS: [string, string][] = [
@@ -42,6 +44,15 @@ export default function MaternityModal({ inwardId, onClose, defaultTab = "profil
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const { user } = useStore() as any;
+  const isAdmin = user?.role === "hospital_admin" || user?.role === "admin";
+  const [printing, setPrinting] = useState(false);
+  async function printRecord() {
+    setPrinting(true);
+    try { await printMaternityRecord(inwardId); }
+    catch (e: any) { toast.error(e.message || "Could not open the record"); }
+    setPrinting(false);
+  }
 
   useEffect(() => {
     (async () => {
@@ -90,7 +101,12 @@ export default function MaternityModal({ inwardId, onClose, defaultTab = "profil
             <h3 className="font-semibold">Maternity profile</h3>
             {patient && <p className="text-xs text-muted-foreground">{patient.patient_name}{patient.age ? ` - ${patient.age}y` : ""}{patient.ward ? ` - ${patient.ward}` : ""}{patient.bed_number ? ` / Bed ${patient.bed_number}` : ""}</p>}
           </div>
-          <button onClick={onClose} className="p-1.5 rounded hover:bg-muted"><X className="w-4 h-4" /></button>
+          <div className="flex items-center gap-1">
+            {isAdmin && (
+              <button onClick={printRecord} disabled={printing} title="Print full maternity record" className="px-2.5 py-1.5 text-xs rounded-lg border hover:bg-muted flex items-center gap-1.5 disabled:opacity-50"><Printer className="w-3.5 h-3.5" />{printing ? "Preparing..." : "Print record"}</button>
+            )}
+            <button onClick={onClose} className="p-1.5 rounded hover:bg-muted"><X className="w-4 h-4" /></button>
+          </div>
         </div>
         <div className="flex gap-1 px-5 pt-3 border-b">
           {([["profile", "Profile"], ["chart", "Observations"]] as const).map(([k, l]) => (
