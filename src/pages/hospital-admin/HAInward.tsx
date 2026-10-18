@@ -4,10 +4,11 @@ import * as api from "../../api";
 import { useStore } from "../../context/StoreContext";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { BedDouble, Plus, X, Pencil, LogOut, ChevronDown, ChevronUp, Thermometer, HeartPulse, Download, Receipt } from "lucide-react";
+import { BedDouble, Plus, X, Pencil, LogOut, ChevronDown, ChevronUp, Thermometer, HeartPulse, Download, Receipt, Baby } from "lucide-react";
 import { getToken } from "../../api";
 import HABedRequests from "./HABedRequests";
 import IPDBillModal from "./IPDBillModal";
+import MaternityModal from "./MaternityModal";
 import IPDCollections from "./IPDCollections";
 import { downloadFile } from "../../lib/downloadFile";
 
@@ -58,6 +59,7 @@ export default function HAInward() {
   const [exportTo, setExportTo] = useState(todayStr());
   const [exporting, setExporting] = useState(false);
   const [billId, setBillId] = useState<string | null>(null);
+  const [matId, setMatId] = useState<string | null>(null);
 
   const hospitalId = (user as any)?.hospitalId || "";
   const myDoctors = doctors.filter((d: any) => d.hospitalId === hospitalId);
@@ -219,6 +221,9 @@ export default function HAInward() {
                     <button onClick={() => toggleHistory(p.id)} className="p-1.5 rounded hover:bg-muted transition-colors" title="Vitals & notes">
                       {expandedId === p.id ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
                     </button>
+                    <button onClick={() => setMatId(p.id)} className="p-1.5 rounded hover:bg-pink-50 transition-colors" title="Maternity profile">
+                      <Baby className="w-3.5 h-3.5 text-pink-600" />
+                    </button>
                     <button onClick={() => setBillId(p.id)} className="p-1.5 rounded hover:bg-teal-50 transition-colors" title="Bill">
                       <Receipt className="w-3.5 h-3.5 text-teal-600" />
                     </button>
@@ -291,6 +296,7 @@ export default function HAInward() {
       </div>
 
       {billId && <IPDBillModal inwardId={billId} onClose={() => setBillId(null)} />}
+      {matId && <MaternityModal inwardId={matId} onClose={() => setMatId(null)} />}
       {showForm && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-background rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
