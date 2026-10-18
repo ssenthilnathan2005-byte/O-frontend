@@ -97,7 +97,7 @@ export default function HospitalLabDashboard() {
       </header>
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-4">
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <button type="button" onClick={() => setTab("board")} className={tabCls(tab === "board")}>Token Board</button>
         <button type="button" onClick={() => setTab("orders")} className={tabCls(tab === "orders")}>Bookings</button>
         {extraNav.map(n => (<button key={n.key} type="button" onClick={() => setTab(n.key)} className={tabCls(tab === n.key)}>{n.label}</button>))}

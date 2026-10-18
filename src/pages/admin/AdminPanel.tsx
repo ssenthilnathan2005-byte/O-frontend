@@ -1,3 +1,4 @@
+import { useBodyScrollLock } from "../../lib/useBodyScrollLock";
 import {
   Ambulance,
   BookOpen,
@@ -45,6 +46,7 @@ export default function AdminPanel() {
   const { logout } = useStore();
   const { route, navigate } = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  useBodyScrollLock(drawerOpen);
 
   function renderContent() {
     switch (route.path) {
@@ -165,7 +167,7 @@ export default function AdminPanel() {
             onClick={() => setDrawerOpen(false)}
           />
           {/* Drawer panel */}
-          <div className="md:hidden fixed left-0 top-0 bottom-0 w-72 z-50 bg-admin-sidebar flex flex-col">
+          <div className="md:hidden fixed left-0 top-0 bottom-0 w-72 z-50 bg-admin-sidebar flex flex-col overflow-hidden" style={{ height: "100dvh" }}>
             <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <img
@@ -190,7 +192,7 @@ export default function AdminPanel() {
               </button>
             </div>
 
-            <nav className="flex-1 px-3 py-4 space-y-1" data-ocid="admin.panel">
+            <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y px-3 py-4 space-y-1" data-ocid="admin.panel">
               {NAV_ITEMS.map(({ path, label, icon: Icon }) => {
                 const isActive = route.path === path;
                 return (

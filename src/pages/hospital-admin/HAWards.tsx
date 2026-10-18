@@ -672,7 +672,7 @@ export default function HAWards() {
                   ) : (
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                       {beds[ward.id].map(bed => (
-                        <div key={bed.id} className={`relative rounded-lg border p-2 text-center text-xs cursor-pointer transition-all ${STATUS_COLORS[bed.status]}`}
+                        <div key={bed.id} className={`relative rounded-lg border p-2 pt-6 sm:pt-2 text-center text-xs cursor-pointer transition-all ${STATUS_COLORS[bed.status]}`}
                           onClick={() => handleBedClick(ward.id, bed)}>
                           <div className="absolute top-1 left-1 flex gap-0.5">
                             <button type="button" title="Edit Bed" aria-label="Edit Bed"
@@ -691,7 +691,7 @@ export default function HAWards() {
                             className="absolute top-1 right-1 p-0.5 rounded opacity-50 hover:opacity-100 hover:bg-black/10">
                             <Clock className="w-3 h-3" />
                           </button>
-                          <p className="font-bold">{bed.bed_number}</p>
+                          <p className="font-bold break-words">{bed.bed_number}</p>
                           <p className="capitalize mt-0.5 opacity-80">
                             {bed.status === "maintenance" ? "Cleaning" : bed.status}
                           </p>

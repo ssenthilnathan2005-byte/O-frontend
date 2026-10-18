@@ -273,6 +273,13 @@ export default function VitalsScanAll({ onApply, include, label, captureAudit }:
   function openScanner() { resetAll(); setOpen(true); }
   function closeScanner() { resetAll(); setOpen(false); }
 
+      /** Manual entry: open the same review form with empty fields (no photo, no OCR). */
+      function startManual() {
+        setError(""); setVals({}); setTouched({}); setVerified(false); setThumb(null); setSeenInfo(null); setOrig(null);
+        setOut({ values: {}, suggestions: {}, notes: [], log: [] } as any);
+        setStep("review");
+      }
+
   /**
    * Advisory only: proposes a crop and warns about photo quality. It never changes the pixels sent to the OCR,
    * and any failure here simply leaves the manual crop workflow as it was.
@@ -534,13 +541,13 @@ export default function VitalsScanAll({ onApply, include, label, captureAudit }:
                 <p className="text-sm text-gray-600">Take one photo of the monitor screen. Fill the frame with the display and avoid glare. Every reading it can read clearly will be filled; you review them before anything is saved.</p>
                 <button type="button" onClick={() => setStep("live")} className="w-full rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold py-2.5">Open camera</button>
                 <button type="button" onClick={() => galleryRef.current?.click()} className="w-full rounded-lg border border-gray-300 text-sm text-gray-700 py-2">Choose a photo instead</button>
-                <button type="button" onClick={closeScanner} className="w-full text-sm text-gray-500 py-1">Enter values manually</button>
+                <button type="button" onClick={startManual} className="w-full rounded-lg border border-teal-600 text-sm text-teal-700 font-semibold py-2">Enter values manually</button>
               </div>
             )}
 
             {step === "live" && (
               <div className="space-y-3">
-                <p className="text-sm text-gray-600">Point the camera at the monitor and hold steady. The photo is taken automatically once the screen is in focus.</p>
+                <p className="text-sm text-gray-600">Point the camera at the monitor and hold steady. The photo is taken automatically once the screen is in focus, or tap Capture Photo.</p>
                 <LiveCapture onCapture={(blob, _canvas, extra) => { framesRef.current = extra; loadPhoto(blob); }} onClose={() => setStep("capture")} />
                 <button type="button" onClick={() => cameraRef.current?.click()} className="w-full rounded-lg border border-gray-300 text-sm text-gray-700 py-2">Use the phone camera app instead</button>
               </div>
@@ -711,7 +718,7 @@ export default function VitalsScanAll({ onApply, include, label, captureAudit }:
                 <p className="text-[11px] text-gray-500">Nothing is saved yet. Applying fills the form; you still tap Save Vitals.</p>
 
                 <div className="flex gap-2">
-                  <button type="button" onClick={() => { setOut(null); setStep("crop"); }} className="flex-1 rounded-lg border border-gray-300 text-sm text-gray-700 py-2">Rescan</button>
+                  <button type="button" onClick={() => { setOut(null); setStep(imgEl ? "crop" : "capture"); }} className="flex-1 rounded-lg border border-gray-300 text-sm text-gray-700 py-2">{imgEl ? "Rescan" : "Back"}</button>
                   <button type="button" onClick={apply} disabled={!canApply} className="flex-1 rounded-lg bg-teal-600 hover:bg-teal-700 disabled:opacity-40 text-white text-sm font-semibold py-2">Fill the form</button>
                 </div>
               </div>

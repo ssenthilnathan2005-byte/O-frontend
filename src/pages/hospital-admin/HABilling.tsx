@@ -1,4 +1,4 @@
-﻿import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import DateInput from "@/components/DateInput";
 import { toast } from "sonner";
 import { Download, FlaskConical, IndianRupee, TrendingUp, Users } from "lucide-react";
@@ -407,7 +407,7 @@ export default function HABilling() {
   const cardLabel = "text-xs text-muted-foreground flex items-center gap-1.5";
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-bold">Billing</h1>
@@ -438,7 +438,7 @@ export default function HABilling() {
           </button>
         ))}
         {period === "custom" && (
-          <div className="flex items-center gap-2 text-sm">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
             <DateInput value={from} max={to} onChange={(e) => setFrom(e.target.value)}
               className="border border-border rounded-md px-2 py-1 bg-card" />
             <span className="text-muted-foreground">to</span>
