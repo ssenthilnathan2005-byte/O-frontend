@@ -2,7 +2,7 @@ import VitalsScanAll from "@/components/VitalsScanAll";
 import DateInput from "@/components/DateInput";
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { LogOut, RefreshCw, UserCheck, BedDouble, Undo2, ClipboardList, Activity, Receipt } from "lucide-react";
+import { LogOut, RefreshCw, UserCheck, BedDouble, Undo2, ClipboardList, Activity, Receipt, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,8 @@ import { Vitals, vitalsText } from "@/lib/vitals";
 import { useExtraNav, ExtraPanel } from "@/components/StaffExtras";
 import HABedRequests from "./hospital-admin/HABedRequests";
 import IPDBillModal from "./hospital-admin/IPDBillModal";
+import { maternityApi } from "@/lib/maternityApi";
+import { printMaternityRecord } from "@/lib/maternityRecord";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
@@ -214,6 +216,8 @@ function Outpatients() {
 
 function Admit() {
   const [billId, setBillId] = useState<string | null>(null);
+  const [printingId, setPrintingId] = useState<string | null>(null);
+  const [matEligible, setMatEligible] = useState<Set<string>>(new Set());
   const [doctors, setDoctors] = useState<{ id: string; name: string; specialty: string }[]>([]);
   const [beds, setBeds] = useState<Bed[]>([]);
   const [inward, setInward] = useState<Admitted[]>([]);
@@ -228,6 +232,9 @@ function Admit() {
     } catch (e: any) { toast.error(e.message); }
   }, []);
   useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    maternityApi.eligible().then((r) => setMatEligible(new Set(r.ids))).catch(() => setMatEligible(new Set()));
+  }, [inward]);
 
   async function submit() {
     if (!f.patientName.trim()) { toast.error("Enter the patient name"); return; }
@@ -283,7 +290,21 @@ function Admit() {
             <div key={p.id} className="border border-gray-100 rounded-lg px-3 py-2">
               <div className="flex items-start justify-between gap-2">
                 <p className="font-medium text-gray-900">{p.patient_name}{p.age != null ? ", " + p.age : ""}</p>
-                <button type="button" onClick={() => setBillId(p.id)} className="flex items-center gap-1 text-xs text-teal-700 border border-teal-200 rounded-md px-2 py-0.5 hover:bg-teal-50"><Receipt className="w-3 h-3" />Bill</button>
+                <div className="flex items-center gap-1.5">
+                  {matEligible.has(p.id) && (
+                    <button type="button" disabled={printingId === p.id}
+                      onClick={async () => {
+                        setPrintingId(p.id);
+                        try { await printMaternityRecord(p.id); }
+                        catch (e: any) { toast.error(e?.message || "Could not open the record"); }
+                        setPrintingId(null);
+                      }}
+                      className="flex items-center gap-1 text-xs text-pink-700 border border-pink-200 rounded-md px-2 py-0.5 hover:bg-pink-50 disabled:opacity-50">
+                      <Printer className="w-3 h-3" />{printingId === p.id ? "Preparing..." : "Print record"}
+                    </button>
+                  )}
+                  <button type="button" onClick={() => setBillId(p.id)} className="flex items-center gap-1 text-xs text-teal-700 border border-teal-200 rounded-md px-2 py-0.5 hover:bg-teal-50"><Receipt className="w-3 h-3" />Bill</button>
+                </div>
               </div>
               <p className="text-xs text-gray-500">{p.ward} / {p.bed_number}{p.admitting_doctor_name ? " | " + p.admitting_doctor_name : ""}</p>
               {p.diagnosis && <p className="text-xs text-gray-400">{p.diagnosis}</p>}
