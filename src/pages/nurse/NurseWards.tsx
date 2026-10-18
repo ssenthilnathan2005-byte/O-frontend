@@ -6,6 +6,7 @@ import { BedDouble, Plus, X, Trash2, ChevronDown, ChevronUp, Clock, Settings, Pe
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { getToken } from "../../api";
+import MaternityModal from "../hospital-admin/MaternityModal";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
@@ -187,6 +188,7 @@ export default function NurseWards() {
   const [dutyMode, setDutyMode] = useState(false);
   useEffect(() => { setDutyMode(false); }, [occupyTarget]);
   const [detailsTarget, setDetailsTarget] = useState<{ wardId: string; bed: Bed } | null>(null);
+  const [matObsId, setMatObsId] = useState<string | null>(null);
   const [vitals, setVitals] = useState<Vitals[]>([]);
   const [notes, setNotes] = useState<NoteEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -904,6 +906,8 @@ export default function NurseWards() {
         </div>
       )}
 
+      {matObsId && <MaternityModal inwardId={matObsId} defaultTab="chart" onClose={() => setMatObsId(null)} />}
+
       {/* Bed Details Modal */}
       {detailsTarget && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
@@ -934,6 +938,15 @@ export default function NurseWards() {
               )}
             </div>
 
+            {detailsTarget.bed.inward_id && /matern|obstet|labou?r/i.test(wards.find(w => w.id === detailsTarget.wardId)?.name || "") && (
+              <div className="px-6 pb-3">
+                <button
+                  onClick={() => { const id = detailsTarget.bed.inward_id as string; setDetailsTarget(null); setMatObsId(id); }}
+                  className="w-full px-3 py-2 text-sm rounded-lg bg-pink-50 text-pink-700 border border-pink-200 hover:bg-pink-100">
+                  Maternity chart (fetal and labour observations)
+                </button>
+              </div>
+            )}
             <div className="px-6 pb-2 space-y-3 border-t pt-3">
               <div className="flex flex-wrap items-center justify-between gap-y-2">
                 <h3 className="text-sm font-semibold text-gray-700">Vitals</h3>

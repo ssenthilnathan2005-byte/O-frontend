@@ -17,4 +17,8 @@ export const maternityApi = {
   list: () => call<any[]>("GET", "/maternity"),
   get: (inwardId: string) => call<{ patient: any; profile: any | null }>("GET", `/maternity/${inwardId}`),
   save: (inwardId: string, data: any) => call<any>("POST", `/maternity/${inwardId}`, data),
+  // observations / fetal monitoring
+  obsList: (inwardId: string) => call<any>("GET", `/maternity-obs/${inwardId}`),
+  obsAdd: (inwardId: string, data: any) => call<any>("POST", `/maternity-obs/${inwardId}`, data),
+  obsDelete: (id: string) => call<any>("DELETE", `/maternity-obs/entry/${id}`),
 };

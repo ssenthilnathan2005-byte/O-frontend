@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { X } from "lucide-react";
 import { maternityApi } from "../../lib/maternityApi";
+import MaternityChart from "./MaternityChart";
 
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 const RISKS: [string, string][] = [
@@ -34,7 +35,8 @@ function eddFromLmp(lmp: string) {
   return d.toISOString().slice(0, 10);
 }
 
-export default function MaternityModal({ inwardId, onClose }: { inwardId: string; onClose: () => void }) {
+export default function MaternityModal({ inwardId, onClose, defaultTab = "profile" }: { inwardId: string; onClose: () => void; defaultTab?: "profile" | "chart" }) {
+  const [tab, setTab] = useState<"profile" | "chart">(defaultTab);
   const [patient, setPatient] = useState<any>(null);
   const [f, setF] = useState({ ...EMPTY });
   const [loading, setLoading] = useState(true);
@@ -90,8 +92,15 @@ export default function MaternityModal({ inwardId, onClose }: { inwardId: string
           </div>
           <button onClick={onClose} className="p-1.5 rounded hover:bg-muted"><X className="w-4 h-4" /></button>
         </div>
+        <div className="flex gap-1 px-5 pt-3 border-b">
+          {([["profile", "Profile"], ["chart", "Observations"]] as const).map(([k, l]) => (
+            <button key={k} onClick={() => setTab(k)}
+              className={`px-3 py-1.5 text-sm rounded-t-lg border-b-2 ${tab === k ? "border-teal-600 text-teal-700 font-medium" : "border-transparent text-gray-500"}`}>{l}</button>
+          ))}
+        </div>
+        {tab === "chart" && <MaternityChart inwardId={inwardId} />}
 
-        {loading ? <p className="p-6 text-sm text-muted-foreground">Loading...</p> : (
+        {tab === "profile" && (loading ? <p className="p-6 text-sm text-muted-foreground">Loading...</p> : (
           <div className="p-5 space-y-5">
             <section>
               <h4 className="text-sm font-semibold mb-2">Pregnancy dates</h4>
@@ -175,7 +184,7 @@ export default function MaternityModal({ inwardId, onClose }: { inwardId: string
               </button>
             </div>
           </div>
-        )}
+        ))}
       </div>
     </div>
   );
