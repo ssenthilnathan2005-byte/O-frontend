@@ -25,3 +25,5 @@ dist/
 *.bak*
 .vercel
 .env*
+
+build.log
