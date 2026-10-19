@@ -61,6 +61,10 @@ export default function HAInward() {
   const [exporting, setExporting] = useState(false);
   const [billId, setBillId] = useState<string | null>(null);
   const [matId, setMatId] = useState<string | null>(null);
+  const [freeBeds, setFreeBeds] = useState<any[]>([]);
+  const [bedId, setBedId] = useState("");
+  const [formError, setFormError] = useState("");
+  const [origAdmittedAt, setOrigAdmittedAt] = useState("");
   const [matEligible, setMatEligible] = useState<Set<string>>(new Set());
   useEffect(() => {
     maternityApi.eligible().then((r) => setMatEligible(new Set(r.ids))).catch(() => setMatEligible(new Set()));
@@ -94,7 +98,13 @@ export default function HAInward() {
      (p.bed_number || "").toLowerCase().includes(search.toLowerCase()))
   );
 
-  function openAdmit() { setForm({ ...EMPTY_FORM }); setEditId(null); setShowForm(true); }
+  function openAdmit() {
+    setForm({ ...EMPTY_FORM }); setEditId(null); setBedId(""); setFormError(""); setFreeBeds([]);
+    setShowForm(true);
+    api.bedBookings.freeBeds()
+      .then((r) => setFreeBeds(Array.isArray(r) ? r : []))
+      .catch(() => setFormError("Could not load the free beds. Close and try again."));
+  }
   function openEdit(p: InwardPatient) {
     setForm({
       patientName: p.patient_name, phone: p.phone || "", age: p.age?.toString() || "",
@@ -103,25 +113,39 @@ export default function HAInward() {
       diagnosis: p.diagnosis || "", notes: p.notes || "",
       admittedAt: p.admitted_at ? p.admitted_at.slice(0, 10) : todayStr(),
     });
+    setOrigAdmittedAt(p.admitted_at ? p.admitted_at.slice(0, 10) : "");
+    setFormError("");
     setEditId(p.id); setShowForm(true);
   }
 
   async function handleSubmit() {
-    if (!form.patientName.trim()) return;
+    if (!form.patientName.trim()) { setFormError("Enter the patient name."); return; }
+    if (!editId && !bedId) { setFormError("Choose a bed from the list."); return; }
+    setFormError("");
     setLoading(true);
     try {
-      const payload = {
-        patientName: form.patientName, phone: form.phone,
-        age: form.age ? Number(form.age) : null,
-        gender: form.gender, ward: form.ward, bedNumber: form.bedNumber,
-        admittingDoctorName: form.admittingDoctorName,
-        diagnosis: form.diagnosis, notes: form.notes,
-        admittedAt: form.admittedAt ? new Date(form.admittedAt).toISOString() : null,
-      };
-      if (editId) await api.inward.update(editId, payload);
-      else await api.inward.admit(payload);
+      if (editId) {
+        const payload: any = {
+          diagnosis: form.diagnosis, notes: form.notes,
+          admittingDoctorName: form.admittingDoctorName,
+        };
+        if (form.admittedAt && form.admittedAt !== origAdmittedAt)
+          payload.admittedAt = new Date(form.admittedAt).toISOString();
+        await api.inward.update(editId, payload);
+      } else {
+        await api.inward.admit({
+          patientName: form.patientName, phone: form.phone,
+          age: form.age ? Number(form.age) : null,
+          gender: form.gender, bedId,
+          admittingDoctorName: form.admittingDoctorName,
+          diagnosis: form.diagnosis, notes: form.notes,
+          admittedAt: form.admittedAt ? new Date(form.admittedAt).toISOString() : null,
+        });
+      }
       setShowForm(false); await load();
-    } catch (_) {} finally { setLoading(false); }
+    } catch (e: any) {
+      setFormError(e?.message || "Could not save. Please try again.");
+    } finally { setLoading(false); }
   }
 
   async function handleDischarge(id: string) {
@@ -318,16 +342,36 @@ export default function HAInward() {
                 { label: "Patient Name *", key: "patientName", placeholder: "Full name" },
                 { label: "Phone", key: "phone", placeholder: "Mobile number" },
                 { label: "Age", key: "age", placeholder: "Age in years" },
-                { label: "Ward", key: "ward", placeholder: "e.g. General Ward, ICU" },
-                { label: "Bed Number", key: "bedNumber", placeholder: "e.g. B-12" },
                 { label: "Diagnosis", key: "diagnosis", placeholder: "Primary diagnosis" },
               ].map(({ label, key, placeholder }) => (
                 <div key={key}>
                   <label className="text-sm font-medium text-muted-foreground mb-1 block">{label}</label>
-                  <Input placeholder={placeholder} value={(form as any)[key]}
+                  <Input placeholder={placeholder} value={(form as any)[key]} disabled={!!editId && ["patientName", "phone", "age"].includes(key)}
                     onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} />
                 </div>
               ))}
+              {editId ? (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground mb-1 block">Ward / Bed</label>
+                  <Input disabled value={(() => { const c = patients.find(x => x.id === editId); return c ? `${c.ward || "-"} / ${c.bed_number || "-"}` : ""; })()} />
+                  <p className="text-xs text-muted-foreground mt-1">To move the patient to another bed, use the transfer option (coming next).</p>
+                </div>
+              ) : (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground mb-1 block">Bed *</label>
+                  <select value={bedId} onChange={e => setBedId(e.target.value)}
+                    className="w-full border rounded-md px-3 py-2 text-sm bg-background">
+                    <option value="">{freeBeds.length ? "Select a free bed" : "No free beds available"}</option>
+                    {Array.from(new Set(freeBeds.map((b: any) => b.ward_name))).map((w: any) => (
+                      <optgroup key={w} label={w}>
+                        {freeBeds.filter((b: any) => b.ward_name === w).map((b: any) => (
+                          <option key={b.bed_id} value={b.bed_id}>{b.bed_number}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">Admitted On</label>
                 <DateInput value={form.admittedAt}
@@ -373,6 +417,7 @@ export default function HAInward() {
                   className="w-full border rounded-md px-3 py-2 text-sm bg-background resize-none" />
               </div>
             </div>
+            {formError && <p className="px-6 pb-2 text-sm text-red-600">{formError}</p>}
             <div className="px-6 py-4 border-t flex gap-3 justify-end">
               <button onClick={() => setShowForm(false)}
                 className="px-4 py-2 rounded-lg text-sm border hover:bg-muted transition-colors">Cancel</button>
