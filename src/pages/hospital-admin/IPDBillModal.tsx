@@ -81,7 +81,16 @@ export default function IPDBillModal({ inwardId, onClose }: { inwardId: string; 
                 <span className="font-medium">Bed charge</span>
                 <span className="font-semibold">{inr(bill.bedCharge)}</span>
               </div>
-              <p className="text-xs text-gray-500">{bill.days} day{bill.days === 1 ? "" : "s"} × {inr(bill.bedRate)} per day (calendar days)</p>
+              {bill.segments && bill.segments.length > 1 ? (
+                <div className="text-xs text-gray-500 space-y-0.5">
+                  {bill.segments.map((s: any, i: number) => (
+                    <p key={i}>{s.ward}: {s.days} day{s.days === 1 ? "" : "s"} &times; {inr(s.rate)} = {inr(s.amount)}</p>
+                  ))}
+                  <p>Calendar days. The rate box below changes the current ward rate.</p>
+                </div>
+              ) : (
+                <p className="text-xs text-gray-500">{bill.days} day{bill.days === 1 ? "" : "s"} × {inr(bill.bedRate)} per day (calendar days)</p>
+              )}
               <div className="flex items-end gap-2">
                 <div className="flex-1"><label className="text-[11px] text-gray-500">Bed rate per day (₹)</label>
                   <input className={inp} inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} /></div>

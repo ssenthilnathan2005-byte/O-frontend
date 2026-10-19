@@ -31,7 +31,11 @@ export default function PatientBill({ inwardId }: { inwardId: string }) {
       {open && bill && (
         <div className="pt-2 space-y-2 text-sm">
           {bill.invoiceNo && <p className="text-xs text-gray-500">Invoice {bill.invoiceNo}</p>}
-          <div className="flex justify-between"><span className="text-gray-600">Bed ({bill.days} day{bill.days === 1 ? "" : "s"} × {rupee(bill.bedRate)})</span><span>{rupee(bill.bedCharge)}</span></div>
+          {bill.segments && bill.segments.length > 1 ? bill.segments.map((s: any, i: number) => (
+            <div key={i} className="flex justify-between"><span className="text-gray-600">Bed - {s.ward} ({s.days} day{s.days === 1 ? "" : "s"} &times; {rupee(s.rate)})</span><span>{rupee(s.amount)}</span></div>
+          )) : (
+            <div className="flex justify-between"><span className="text-gray-600">Bed ({bill.days} day{bill.days === 1 ? "" : "s"} × {rupee(bill.bedRate)})</span><span>{rupee(bill.bedCharge)}</span></div>
+          )}
           {bill.items.map((i: any) => (
             <div key={i.id} className="flex justify-between gap-2"><span className="text-gray-600">{i.description}{i.qty !== 1 ? " × " + i.qty : ""}</span><span>{rupee(i.amount)}</span></div>
           ))}

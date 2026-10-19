@@ -4,7 +4,7 @@ import * as api from "../../api";
 import { useStore } from "../../context/StoreContext";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { BedDouble, Plus, X, Pencil, LogOut, ChevronDown, ChevronUp, Thermometer, HeartPulse, Download, Receipt, Baby } from "lucide-react";
+import { BedDouble, Plus, X, Pencil, LogOut, ChevronDown, ChevronUp, Thermometer, HeartPulse, Download, Receipt, Baby, ArrowRightLeft } from "lucide-react";
 import { getToken } from "../../api";
 import HABedRequests from "./HABedRequests";
 import IPDBillModal from "./IPDBillModal";
@@ -65,6 +65,12 @@ export default function HAInward() {
   const [bedId, setBedId] = useState("");
   const [formError, setFormError] = useState("");
   const [origAdmittedAt, setOrigAdmittedAt] = useState("");
+  const [trId, setTrId] = useState<string | null>(null);
+  const [trBed, setTrBed] = useState("");
+  const [trRate, setTrRate] = useState("");
+  const [trReason, setTrReason] = useState("");
+  const [trBusy, setTrBusy] = useState(false);
+  const [trErr, setTrErr] = useState("");
   const [matEligible, setMatEligible] = useState<Set<string>>(new Set());
   useEffect(() => {
     maternityApi.eligible().then((r) => setMatEligible(new Set(r.ids))).catch(() => setMatEligible(new Set()));
@@ -97,6 +103,26 @@ export default function HAInward() {
      (p.ward || "").toLowerCase().includes(search.toLowerCase()) ||
      (p.bed_number || "").toLowerCase().includes(search.toLowerCase()))
   );
+
+  function openTransfer(p: InwardPatient) {
+    setTrId(p.id); setTrBed(""); setTrRate(""); setTrReason(""); setTrErr(""); setFreeBeds([]);
+    api.bedBookings.freeBeds()
+      .then((r) => setFreeBeds(Array.isArray(r) ? r : []))
+      .catch(() => setTrErr("Could not load the free beds. Close and try again."));
+  }
+  async function doTransfer() {
+    if (!trId) return;
+    if (!trBed) { setTrErr("Choose the bed to move the patient to."); return; }
+    setTrBusy(true); setTrErr("");
+    try {
+      const body: any = { bedId: trBed, reason: trReason };
+      if (trRate.trim() !== "") body.rate = Number(trRate);
+      await api.inward.transfer(trId, body);
+      setTrId(null); await load();
+    } catch (e: any) {
+      setTrErr(e?.message || "Could not move the patient. Please try again.");
+    } finally { setTrBusy(false); }
+  }
 
   function openAdmit() {
     setForm({ ...EMPTY_FORM }); setEditId(null); setBedId(""); setFormError(""); setFreeBeds([]);
@@ -262,6 +288,11 @@ export default function HAInward() {
                       <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
                     </button>
                     {p.status === "admitted" && (
+                      <button onClick={() => openTransfer(p)} className="p-1.5 rounded hover:bg-blue-50 transition-colors" title="Transfer to another bed or ward">
+                        <ArrowRightLeft className="w-3.5 h-3.5 text-blue-600" />
+                      </button>
+                    )}
+                    {p.status === "admitted" && (
                       <button onClick={() => handleDischarge(p.id)} className="p-1.5 rounded hover:bg-red-50 transition-colors">
                         <LogOut className="w-3.5 h-3.5 text-red-500" />
                       </button>
@@ -326,6 +357,51 @@ export default function HAInward() {
         </table>
       </div>
 
+      {trId && (() => { const cur = patients.find(x => x.id === trId); return (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-background rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b">
+              <h2 className="font-semibold text-lg">Transfer patient</h2>
+              <button onClick={() => setTrId(null)} className="p-1.5 rounded hover:bg-muted"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="px-6 py-4 space-y-3">
+              <p className="text-sm"><b>{cur?.patient_name}</b> is now in {cur?.ward || "-"} / {cur?.bed_number || "-"}</p>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-1 block">Move to bed *</label>
+                <select value={trBed} onChange={e => setTrBed(e.target.value)}
+                  className="w-full border rounded-md px-3 py-2 text-sm bg-background">
+                  <option value="">{freeBeds.length ? "Select a free bed" : "No free beds available"}</option>
+                  {Array.from(new Set(freeBeds.map((b: any) => b.ward_name))).map((w: any) => (
+                    <optgroup key={w} label={w}>
+                      {freeBeds.filter((b: any) => b.ward_name === w).map((b: any) => (
+                        <option key={b.bed_id} value={b.bed_id}>{b.bed_number}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-1 block">Special daily rate in the new ward (optional)</label>
+                <Input placeholder="Leave empty to use the new ward rate" inputMode="decimal" value={trRate}
+                  onChange={e => setTrRate(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-1 block">Reason (optional)</label>
+                <Input placeholder="e.g. needs ICU care" value={trReason} onChange={e => setTrReason(e.target.value)} />
+              </div>
+              <p className="text-xs text-muted-foreground">The new ward rate is charged from today. Earlier days stay at the old ward rate. The old bed goes to cleaning.</p>
+              {trErr && <p className="text-sm text-red-600">{trErr}</p>}
+            </div>
+            <div className="px-6 py-4 border-t flex gap-3 justify-end">
+              <button onClick={() => setTrId(null)} className="px-4 py-2 rounded-lg text-sm border hover:bg-muted transition-colors">Cancel</button>
+              <button onClick={doTransfer} disabled={trBusy}
+                className="px-4 py-2 rounded-lg text-sm bg-teal-600 hover:bg-teal-700 text-white font-medium transition-colors disabled:opacity-50">
+                {trBusy ? "Moving..." : "Move patient"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ); })()}
       {billId && <IPDBillModal inwardId={billId} onClose={() => setBillId(null)} />}
       {matId && <MaternityModal inwardId={matId} onClose={() => setMatId(null)} />}
       {showForm && (
@@ -354,7 +430,7 @@ export default function HAInward() {
                 <div>
                   <label className="text-sm font-medium text-muted-foreground mb-1 block">Ward / Bed</label>
                   <Input disabled value={(() => { const c = patients.find(x => x.id === editId); return c ? `${c.ward || "-"} / ${c.bed_number || "-"}` : ""; })()} />
-                  <p className="text-xs text-muted-foreground mt-1">To move the patient to another bed, use the transfer option (coming next).</p>
+                  <p className="text-xs text-muted-foreground mt-1">To move the patient, use the transfer button (arrows icon) in the list.</p>
                 </div>
               ) : (
                 <div>

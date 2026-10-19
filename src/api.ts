@@ -315,6 +315,7 @@ export const inward = {
   admit:     (data: any)             => post<any>(`/inward`, data),
   update:    (id: string, data: any) => patch<any>(`/inward/${id}`, data),
   discharge: (id: string)            => patch<any>(`/inward/${id}/discharge`, {}),
+  transfer:  (id: string, data: any) => post<any>(`/inward/${id}/transfer`, data),
 };
 
 export const ipdBilling = {

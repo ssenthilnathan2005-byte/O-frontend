@@ -100,11 +100,19 @@ export default function PatientInvoice({ inwardId }: { inwardId: string }) {
                 </tr>
               </thead>
               <tbody>
+                {bill.segments && bill.segments.length > 1 ? bill.segments.map((s: any, i: number) => (
+                  <tr key={i} className="border-b">
+                    <td className="py-2 pr-2">Bed charge ({s.ward})</td>
+                    <td className="py-2 text-right text-gray-600">{s.days} day{s.days === 1 ? "" : "s"} x {rupee(s.rate)}</td>
+                    <td className="py-2 text-right">{rupee(s.amount)}</td>
+                  </tr>
+                )) : (
                 <tr className="border-b">
                   <td className="py-2 pr-2">Bed charge ({bill.ward || "Ward"})</td>
                   <td className="py-2 text-right text-gray-600">{bill.days} day{bill.days === 1 ? "" : "s"} x {rupee(bill.bedRate)}</td>
                   <td className="py-2 text-right">{rupee(bill.bedCharge)}</td>
                 </tr>
+                )}
                 {items.map((i) => (
                   <tr key={i.id} className="border-b">
                     <td className="py-2 pr-2">{i.description}</td>

@@ -30,7 +30,7 @@ th.r{text-align:right}.tot td{border:0;padding:3px 4px}.big td{font-weight:bold;
 <td>Doctor: ${esc(b.doctor || "-")}<br>Admitted: ${esc(dt(b.admittedAt))}<br>${b.dischargedAt ? "Discharged: " + esc(dt(b.dischargedAt)) : ""}</td></tr></table>
 <h2>Charges</h2>
 <table><tr><th>Description</th><th class="r">Qty</th><th class="r">Rate</th><th class="r">Amount</th></tr>
-<tr><td>Bed charge (${esc(b.ward || "Ward")})<div class="s">${esc(b.days)} day(s), calendar days</div></td><td class="r">${esc(b.days)}</td><td class="r">${inr(b.bedRate)}</td><td class="r">${inr(b.bedCharge)}</td></tr>
+${b.segments && b.segments.length > 1 ? b.segments.map((s: any) => `<tr><td>Bed charge (${esc(s.ward)})<div class="s">${esc(s.days)} day(s), from ${esc(s.from)}</div></td><td class="r">${esc(s.days)}</td><td class="r">${inr(s.rate)}</td><td class="r">${inr(s.amount)}</td></tr>`).join("") : `<tr><td>Bed charge (${esc(b.ward || "Ward")})<div class="s">${esc(b.days)} day(s), calendar days</div></td><td class="r">${esc(b.days)}</td><td class="r">${inr(b.bedRate)}</td><td class="r">${inr(b.bedCharge)}</td></tr>`}
 ${itemRows}</table>
 <table class="tot" style="margin-top:8px"><tr><td class="r">Subtotal</td><td class="r" style="width:130px">${inr(b.subtotal)}</td></tr>
 ${b.discount > 0 ? `<tr><td class="r">Discount</td><td class="r">-${inr(b.discount)}</td></tr>` : ""}
