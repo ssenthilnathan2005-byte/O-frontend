@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { BedDouble, ClipboardList, FlaskConical, IndianRupee, Loader2, Package, Stethoscope, type LucideIcon } from "lucide-react";
 import usePermissions from "../hooks/usePermissions";
 import { getToken } from "../api";
@@ -117,7 +117,7 @@ const EXTRAS: Record<string, Extra> = {
   beds_wards: { label: "Beds & Wards", icon: Stethoscope, render: () => <HAWards /> },
   all_patients: { label: "All Patients", icon: Users, render: () => <HAAllPatients /> },
   live_patients: { label: "Live Patients", icon: Users, render: () => <HAPatients /> },
-  billing: { label: "Billing", icon: Receipt, render: () => <HABilling /> },
+  billing: { label: "Revenue", icon: Receipt, render: () => <HABilling /> },
   attendance: { label: "Attendance", icon: Fingerprint, render: () => <HAAttendance /> },
   pharmacy: { label: "Pharmacy", icon: Pill, render: () => <PharmacyPanel /> },
 };
