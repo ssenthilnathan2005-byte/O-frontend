@@ -27,7 +27,7 @@ const NAV_ITEMS = [
   { path: "/hospital-admin/all-patients", label: "All Patients", icon: Users },
   { path: "/hospital-admin/attendance", label: "Attendance", icon: Fingerprint },
   { path: "/hospital-admin/wards", label: "Beds & Wards", icon: Stethoscope },
-  { path: "/hospital-admin/billing", label: "Billing", icon: Receipt },
+  { path: "/hospital-admin/billing", label: "Revenue", icon: Receipt },
   { path: "/hospital-admin/doctors", label: "Doctors", icon: UserCog },
   { path: "/hospital-admin/hr", label: "HR / Staff", icon: ClipboardList },
   { path: "/hospital-admin/inventory", label: "Inventory", icon: Package },
