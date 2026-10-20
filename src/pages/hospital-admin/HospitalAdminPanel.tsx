@@ -20,6 +20,7 @@ import HALab from "./HALab";
 import HAAttendance from "./HAAttendance";
 import HABilling from "./HABilling";
 import HAPermissions from "./HAPermissions";
+import GstInvoice from "./GstInvoice";
 import { PharmRevenue, PharmInventory, PharmPatients, PharmSold, PharmStockUpdate, usePharmacySocket } from "./PharmacyModule";
 
 const NAV_ITEMS = [
@@ -44,6 +45,7 @@ const PHARMACY_SUB = [
   { path: "/hospital-admin/pharmacy/inventory", label: "Inventory Management", icon: Package },
   { path: "/hospital-admin/pharmacy/patients", label: "Patient Purchases", icon: Users },
   { path: "/hospital-admin/pharmacy/sold", label: "Sales History", icon: ShoppingCart },
+  { path: "/hospital-admin/pharmacy/gst", label: "GST Invoice", icon: Receipt },
   { path: "/hospital-admin/pharmacy/stock", label: "Stock Update", icon: ClipboardList },
   { path: "/hospital-admin/pharmacy", label: "Staff & Setup", icon: UserCog },
 ] as const;
@@ -95,9 +97,10 @@ export default function HospitalAdminPanel() {
     if (route.path === "/hospital-admin/patients") return <HAPatients />;
     if (route.path === "/hospital-admin/all-patients") return <HAAllPatients />;
     if (route.path === "/hospital-admin/pharmacy/revenue") return <PharmRevenue />;
-    if (route.path === "/hospital-admin/pharmacy/inventory") return <PharmInventory />;
+    if (route.path === "/hospital-admin/pharmacy/inventory") return <PharmInventory iconActions />;
     if (route.path === "/hospital-admin/pharmacy/patients") return <PharmPatients />;
     if (route.path === "/hospital-admin/pharmacy/sold") return <PharmSold />;
+    if (route.path === "/hospital-admin/pharmacy/gst") return <GstInvoice />;
     if (route.path === "/hospital-admin/pharmacy/stock") return <PharmStockUpdate />;
     if (route.path === "/hospital-admin/pharmacy") return <HAPharmacy />;
     if (route.path === "/hospital-admin/doctors") return <HADoctors />;
