@@ -37,19 +37,26 @@ export default function ProfilePage() {
 
   async function refreshPermissionStatuses() {
     try {
-      const res = await Geolocation.checkPermissions();
-      const status = res.location || res.coarseLocation;
-      if (status === "granted") {
-        // Permission is granted, but that doesn't mean GPS itself is on -
-        // actually try to get a position (short timeout) to find out.
-        try {
-          await Geolocation.getCurrentPosition({ timeout: 5000, maximumAge: 60000 });
-          setLocStatus("granted");
-        } catch (posErr) {
-          setLocStatus(isGpsOffError(posErr) ? "gps-off" : "granted");
+      if (!Capacitor.isNativePlatform()) {
+        if (navigator.permissions?.query) {
+          const p = await navigator.permissions.query({ name: "geolocation" as PermissionName });
+          setLocStatus(p.state === "granted" ? "granted" : p.state === "denied" ? "denied" : "prompt");
+        } else {
+          setLocStatus("prompt");
         }
       } else {
-        setLocStatus(status === "denied" ? "denied" : "prompt");
+        const res = await Geolocation.checkPermissions();
+        const status = res.location || res.coarseLocation;
+        if (status === "granted") {
+          setLocStatus("granted");
+          try {
+            await Geolocation.getCurrentPosition({ timeout: 5000, maximumAge: 60000 });
+          } catch (posErr) {
+            if (isGpsOffError(posErr)) setLocStatus("gps-off");
+          }
+        } else {
+          setLocStatus(status === "denied" ? "denied" : "prompt");
+        }
       }
     } catch {
       setLocStatus("unknown");
@@ -71,7 +78,27 @@ export default function ProfilePage() {
 
   useEffect(() => {
     refreshPermissionStatuses();
-    if (!Capacitor.isNativePlatform()) return;
+    if (!Capacitor.isNativePlatform()) {
+      const onVisible = () => { if (document.visibilityState === "visible") refreshPermissionStatuses(); };
+      const onFocus = () => { refreshPermissionStatuses(); };
+      window.addEventListener("focus", onFocus);
+      document.addEventListener("visibilitychange", onVisible);
+      const watched: PermissionStatus[] = [];
+      let gone = false;
+      for (const name of ["geolocation", "notifications"]) {
+        navigator.permissions?.query({ name: name as PermissionName }).then((p) => {
+          if (gone) return;
+          p.onchange = () => { refreshPermissionStatuses(); };
+          watched.push(p);
+        }).catch(() => {});
+      }
+      return () => {
+        gone = true;
+        window.removeEventListener("focus", onFocus);
+        document.removeEventListener("visibilitychange", onVisible);
+        watched.forEach((p) => { p.onchange = null; });
+      };
+    }
     let listenerHandle: { remove: () => void } | null = null;
     let cancelled = false;
     (async () => {
@@ -109,6 +136,14 @@ export default function ProfilePage() {
       return;
     }
     try {
+      if (!Capacitor.isNativePlatform()) {
+        await new Promise<void>((resolve) => {
+          if (!navigator.geolocation) { resolve(); return; }
+          navigator.geolocation.getCurrentPosition(() => resolve(), () => resolve(), { timeout: 10000 });
+        });
+        await refreshPermissionStatuses();
+        return;
+      }
       const res = await Geolocation.requestPermissions();
       const status = res.location || res.coarseLocation;
       setLocStatus(status === "granted" ? "granted" : status === "denied" ? "denied" : "prompt");
