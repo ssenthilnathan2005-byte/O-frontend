@@ -22,7 +22,7 @@ async function pm<T>(path: string, init?: RequestInit): Promise<T> {
 
 type Row = { billNos: number[]; supplier: string | null; purchasedOn: string | null; purchaseRate: number; name: string; batchNo: string | null; expiryDate: string | null; unit: string; qty: number; mrp: number; gross: number; discount: number; taxable: number; hsn: string | null; gstPercent: number | null };
 type CalcRow = Row & { cgAmt: number; sgAmt: number; total: number };
-type Profile = { name: string; address: string; phone: string; gstin: string; drugLicence: string; defaultHsn: string };
+type Profile = { name: string; address: string; phone: string; gstin: string; drugLicence: string; defaultHsn: string; gstType: string };
 type Report = { from: string; to: string; bills: number; billNoFrom: number | null; billNoTo: number | null; profile: Profile; rows: Row[] };
 
 export default function GstInvoice() {
@@ -31,13 +31,21 @@ export default function GstInvoice() {
   const [to, setTo] = useState(today);
   
   
-  const [profile, setProfile] = useState<Profile>({ name: "", address: "", phone: "", gstin: "", drugLicence: "", defaultHsn: "3004" });
+  const [profile, setProfile] = useState<Profile>({ name: "", address: "", phone: "", gstin: "", drugLicence: "", defaultHsn: "3004", gstType: "loading" });
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [busy, setBusy] = useState("");
 
-  useEffect(() => { pm<Profile>("/gst-profile").then(setProfile).catch(() => {}); }, []);
+  useEffect(() => { pm<Profile>("/gst-profile").then(setProfile).catch(() => setProfile(p => ({ ...p, gstType: "" }))); }, []);
+  const [pickType, setPickType] = useState(false);
+  async function setGstType(t: "registered" | "none") {
+    try {
+      const p = await pm<Profile>("/gst-type", { method: "PUT", body: JSON.stringify({ gstType: t }) });
+      setProfile(prev => ({ ...prev, gstType: p.gstType }));
+      setPickType(false);
+    } catch (e: any) { toast.error(e.message); }
+  }
 
   
   
@@ -45,10 +53,11 @@ export default function GstInvoice() {
 
   const calc = useMemo(() => {
     const rows: CalcRow[] = (report?.rows || []).map(r => {
-      const half = (r.gstPercent ?? 0) / 2;
-      const cgAmt = r2(r.taxable * half / 100);
-      const sgAmt = r2(r.taxable * half / 100);
-      return { ...r, cgAmt, sgAmt, total: r2(r.taxable + cgAmt + sgAmt) };
+      const rate = r.gstPercent ?? 0;
+      const gstAmt = r.taxable * rate / (100 + rate);
+      const cgAmt = r2(gstAmt / 2);
+      const sgAmt = r2(gstAmt / 2);
+      return { ...r, taxable: r2(r.taxable - cgAmt - sgAmt), cgAmt, sgAmt, total: r2(r.taxable) };
     });
     const sum = (f: (x: CalcRow) => number) => r2(rows.reduce((s, x) => s + f(x), 0));
     return { rows, discount: sum(x => x.discount), taxable: sum(x => x.taxable), cgst: sum(x => x.cgAmt), sgst: sum(x => x.sgAmt), total: sum(x => x.total) };
@@ -145,7 +154,7 @@ export default function GstInvoice() {
       line("Total GST", "Rs. " + plain(r2(calc.cgst + calc.sgst)));
       line("Invoice total", "Rs. " + plain(calc.total), true);
       doc.setFont("helvetica", "normal"); doc.setFontSize(8);
-      doc.text("Prices are exclusive of GST. CGST and SGST are added on the taxable value (amount after discount).", 14, fy + 4);
+      doc.text("Amounts are inclusive of GST. Taxable value = amount paid less GST. CGST and SGST are half of the GST each.", 14, fy + 4);
       doc.addPage();
       doc.setFontSize(12); doc.text("Sales and purchase detail (from pharmacy inventory)", 14, 14);
       autoTable(doc, { startY: 18, head: [detailHead], body: detailBody(), styles: { fontSize: 8 }, headStyles: { fillColor: [13, 148, 136] }, columnStyles: { 7: { halign: "right" }, 8: { halign: "right" } } });
@@ -197,10 +206,32 @@ export default function GstInvoice() {
   const th = "px-2 py-2 text-left text-xs font-semibold text-gray-600 whitespace-nowrap";
   const td = "px-2 py-1.5 text-sm text-gray-800 whitespace-nowrap";
 
+  if (profile.gstType === "loading") return <p className="text-sm text-gray-500">Loading...</p>;
+  if (profile.gstType !== "registered" || pickType) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-xl font-bold text-gray-900">GST Invoice</h1>
+        <p className="text-sm text-gray-600">Choose how this pharmacy deals with GST. You can change it later.</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <button type="button" onClick={() => setGstType("registered")} className={"text-left border rounded-lg p-4 bg-white hover:border-teal-500 " + (profile.gstType === "registered" ? "border-teal-500" : "border-gray-200")}>
+            <p className="font-semibold text-gray-900">GST registered (regular)</p>
+            <p className="text-xs text-gray-500 mt-1">The pharmacy has a GSTIN and issues tax invoices. GST is taken out of the MRP, never added on top.</p>
+          </button>
+          <button type="button" onClick={() => setGstType("none")} className={"text-left border rounded-lg p-4 bg-white hover:border-teal-500 " + (profile.gstType === "none" ? "border-teal-500" : "border-gray-200")}>
+            <p className="font-semibold text-gray-900">Not charging GST</p>
+            <p className="text-xs text-gray-500 mt-1">Composition scheme or not registered. No GST invoice is needed; bills show the total only.</p>
+          </button>
+        </div>
+        {profile.gstType === "none" && !pickType && <p className="text-sm text-gray-700">GST invoices are turned off for this pharmacy.</p>}
+        {pickType && <button type="button" onClick={() => setPickType(false)} className="text-xs text-gray-500 underline">Back</button>}
+      </div>
+    );
+  }
   return (
     <div className="p-4 md:p-6 space-y-4">
       <div>
         <h1 className="text-xl font-bold text-gray-900">GST Invoice</h1>
+  <button type="button" onClick={() => setPickType(true)} className="text-xs text-gray-500 underline">Change GST type</button>
         <p className="text-sm text-gray-500">Pick a date range, generate the invoice for all sales in that period, then download it.</p>
       </div>
 
