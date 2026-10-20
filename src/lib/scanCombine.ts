@@ -53,7 +53,6 @@ const inside = (a: AnyObj, b: AnyObj) => b.w > 0 && b.h > 0 && a.x >= b.x && a.x
 const NUM = /^\d{2,3}(\.\d)?$/;
 const isNumTrace = (t: AnyObj) => variantsOf(t).some((v) => NUM.test(v) || /^\d{2,3}\/\d{2,3}$/.test(v));
 const LIMIT_RATIO = 0.25;
-const WEAK_MIN_CONF = 40; // layout / matcher guesses below this confidence are never pre-filled
 
 /** Typical height of the big readings: median of the numeric boxes at least 60% as tall as the tallest. */
 function sizeRef(traces: AnyObj[]): number {
@@ -110,196 +109,66 @@ const labelTraces = (f: string, traces: AnyObj[]) => {
 const nearAnyLabel = (c: AnyObj, labels: AnyObj[], reach: number) =>
   labels.some((l) => { const dx = c.x - l.x, dy = c.y - l.y; return dx > -60 && dy > -60 && Math.hypot(dx, dy) <= reach; });
 
-/** How many pulse / SpO2 / resp / temp / BP labels the OCR actually found. Few labels = an unlabeled (layout-only) screen. */
-const knownLabelCount = (traces: AnyObj[]) => traces.filter((t) => t && CORE_LABELS.test(clean(String(t.text ?? "")))).length;
-
-/** A temperature-looking decimal ("37.5" degC or "99.5" degF) as text, or null. */
-const tempDecimal = (v: string): number | null => {
-  const m = /^(\d{2,3})[.,](\d)$/.exec(v.trim());
-  if (!m) return null;
-  const n = +`${m[1]}.${m[2]}`;
-  return n >= 34 && n <= 42.5 ? n * 9 / 5 + 32 : n >= 93 && n <= 108.5 ? n : null;
-};
-const isTempTrace = (t: AnyObj) => variantsOf(t).some((v) => tempDecimal(v) !== null) || ((t.deep ?? []) as AnyObj[]).some((r) => tempDecimal(String(r.text ?? "")) !== null);
-
-/**
- * Not-yet-confirmed numbers worth re-reading on every frame:
- *  1. big numbers next to a pulse / SpO2 / resp label,
- *  2. temperature-looking decimals (36.8 / 98.6), wherever they are,
- *  3. on a screen with (almost) no readable labels: every big unconfirmed number.
- * Alarm limits (tiny digits) are never targets. Boxes without a size get a typical one.
- */
+/** Big, not-yet-confirmed numbers next to a pulse / SpO2 / resp label. Boxes without a size get a typical one. */
 export function pickDeepTargets(traces: AnyObj[]) {
   const ref = sizeRef(traces);
-  type Target = { trace: AnyObj; box: { x0: number; y0: number; x1: number; y1: number }; pri: number };
   if (!ref) return [] as { trace: AnyObj; box: { x0: number; y0: number; x1: number; y1: number } }[];
   const labels = ["pulse", "spo2", "respRate"].flatMap((f) => labelTraces(f, traces));
-  const unlabeled = knownLabelCount(traces) < 2;
-  const out: Target[] = [];
+  const out: { trace: AnyObj; box: { x0: number; y0: number; x1: number; y1: number } }[] = [];
   for (const t of traces) {
     if (!t || typeof t.x !== "number" || typeof t.y !== "number") continue;
     if (String(t.status ?? "") === "confirmed") continue;
-    if (!variantsOf(t).some((v) => NUM.test(v) || tempDecimal(v) !== null)) continue;
-    const temp = variantsOf(t).some((v) => tempDecimal(v) !== null);
-    if (t.h > 0 && t.h < (temp ? 0.25 : 0.6) * ref) continue; // tiny numbers are alarm limits, not readings
-    const near = nearAnyLabel(t, labels, 1.5 * ref);
-    if (!near && !temp && !unlabeled) continue;
+    if (!variantsOf(t).some((v) => NUM.test(v))) continue;
+    if (t.h > 0 && t.h < 0.6 * ref) continue; // tiny numbers are alarm limits, not readings
+    if (!nearAnyLabel(t, labels, 1.5 * ref)) continue;
     const w = t.w > 0 ? t.w : ref * 1.5, h = t.h > 0 ? t.h : ref;
-    out.push({ trace: t, box: { x0: t.x, y0: t.y, x1: t.x + w, y1: t.y + h }, pri: near ? 0 : temp ? 1 : 2 });
+    out.push({ trace: t, box: { x0: t.x, y0: t.y, x1: t.x + w, y1: t.y + h } });
   }
-  return out.sort((a, b) => a.pri - b.pri || a.trace.y - b.trace.y).map(({ trace, box }) => ({ trace, box }));
-}
-
-/** Vote bookkeeping: each read counts for its value and remembers which preprocessing method produced it. */
-type Tally = Map<string, { n: number; groups: Set<string> }>;
-const addVote = (m: Tally, v: string, group: string) => { const e = m.get(v) ?? { n: 0, groups: new Set<string>() }; e.n++; e.groups.add(group); m.set(v, e); };
-const groupOf = (r: AnyObj) => String(r.method ?? "normal").split("/")[0]; // "mask:green/psm7" and "mask:green/psm8" are one method
-/**
- * A winner needs 2+ agreeing reads, at least twice the runner-up, and agreement from 2+ DIFFERENT preprocessing
- * methods (or 4+ reads, e.g. many frames). Tesseract's confidence is deliberately not used: with a digits-only
- * whitelist it reports 0% for many correct reads and for wrong ones alike, so it cannot tell them apart. On a real
- * monitor photo the correct 154 came back at 0% three times, while the wrong 14 and 248 also scored 0%.
- */
-function decide(m: Tally): string | null {
-  const ranked = [...m.entries()].sort((a, b) => b[1].n - a[1].n);
-  if (!ranked.length || ranked[0][1].n < 2) return null;
-  if (ranked.length > 1 && ranked[0][1].n < 2 * ranked[1][1].n) return null;
-  if (ranked[0][1].groups.size < 2 && ranked[0][1].n < 4) return null; // one method agreeing with itself is not enough
-  return ranked[0][0];
+  return out.sort((a, b) => a.trace.y - b.trace.y);
 }
 
 /** Winning value of the votes for one box (needs 2+ agreeing reads and at least twice the runner-up), else null. */
 function deepVote(t: AnyObj): string | null {
-  const m: Tally = new Map();
+  const reads: string[] = [];
   for (const r of (t.deep ?? []) as AnyObj[]) {
-    if (String(r.method ?? "").startsWith("mask:red")) continue; // red = ART / IBP clue, never a vote
     const v = String(r.text ?? "").replace(/[^0-9]/g, "");
-    if (/^\d{2,3}$/.test(v)) addVote(m, v, groupOf(r));
+    if (/^\d{2,3}$/.test(v) && (Number(r.conf) || 0) >= 50) reads.push(v);
   }
-  if (t.recheck) { const v = clean(String(t.recheck)); if (/^\d{2,3}$/.test(v)) addVote(m, v, "recheck"); }
-  return decide(m);
-}
-
-/**
- * Boxes found by brightness blobs (colorMask.findNumberBlobs) that the OCR text finder did not already confirm.
- * Each becomes a pseudo-trace to re-read; its reads are voted like any other target and can only ever fill amber.
- * Thin single blobs (grid / bezel lines), boxes on top of an already-confirmed number, and near-duplicates are dropped.
- */
-export function pickBlobTargets(traces: AnyObj[], blobs: { x0: number; y0: number; x1: number; y1: number; blobs: number }[], max = 4) {
-  type B = { x0: number; y0: number; x1: number; y1: number };
-  const area = (b: B) => Math.max(0, b.x1 - b.x0) * Math.max(0, b.y1 - b.y0);
-  const inter = (a: B, b: B) => Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0));
-  const confirmed: B[] = (traces ?? []).filter((t) => t && String(t.status ?? "") === "confirmed" && t.w > 0 && t.h > 0).map((t) => ({ x0: t.x, y0: t.y, x1: t.x + t.w, y1: t.y + t.h }));
-  const kept: (B & { blobs: number })[] = [];
-  for (const b of [...(blobs ?? [])].sort((a, c) => area(c) - area(a))) {
-    const w = b.x1 - b.x0, h = b.y1 - b.y0;
-    if (!(w > 0 && h > 0)) continue;
-    if (b.blobs === 1 && w < 0.2 * h) continue;
-    if (confirmed.some((c) => inter(b, c) / area(b) > 0.3)) continue;
-    if (kept.some((k) => inter(b, k) / Math.min(area(b), area(k)) > 0.5)) continue;
-    kept.push(b);
-    if (kept.length >= max) break;
-  }
-  return kept.sort((a, c) => a.y0 - c.y0).map((b) => ({
-    trace: { blobBox: true, text: "", raw: "", conf: 0, seen: "", x: b.x0, y: b.y0, w: b.x1 - b.x0, h: b.y1 - b.y0, status: "found by brightness", deep: [] as AnyObj[] } as AnyObj,
-    box: { x0: b.x0, y0: b.y0, x1: b.x1, y1: b.y1 },
-  }));
-}
-
-/** Winning temperature (degF text) among a box's reads, with the same "2+ reads and twice the runner-up" rule. */
-function deepVoteTemp(t: AnyObj): string | null {
-  const m: Tally = new Map();
-  for (const r of (t.deep ?? []) as AnyObj[]) {
-    if (String(r.method ?? "").startsWith("mask:red")) continue;
-    const f = tempDecimal(String(r.text ?? "").replace(/[^0-9.,]/g, ""));
-    if (f !== null) addVote(m, f.toFixed(1), groupOf(r));
-  }
-  return decide(m);
-}
-
-/** One readable line per re-checked number: original read, every extra read and the method that made it, and why it was accepted or not. */
-function describeDeep(f: string, t: AnyObj, decision: string): string {
-  const byValue = new Map<string, Map<string, number>>();
-  for (const r of (t.deep ?? []) as AnyObj[]) {
-    const v = String(r.text ?? "").replace(/[^0-9]/g, "") || "?";
-    const m = String(r.method ?? "normal");
-    const inner = byValue.get(v) ?? new Map<string, number>();
-    inner.set(m, (inner.get(m) || 0) + 1);
-    byValue.set(v, inner);
-  }
-  const reads = [...byValue.entries()]
-    .map(([v, ms]) => `${v}\u00D7${[...ms.values()].reduce((a, b) => a + b, 0)} (${[...ms.entries()].map(([m, n]) => `${m}\u00D7${n}`).join(", ")})`)
-    .join("; ");
-  const box = `x=${Math.round(t.x)}, y=${Math.round(t.y)}, w=${Math.round(t.w || 0)}, h=${Math.round(t.h || 0)}`;
-  const rc = t.recheck ? `, digit check ${t.recheck}${t.recheckConf !== undefined ? ` (${t.recheckConf}%)` : ""}` : "";
-  const orig = t.blobBox ? "none (box found by brightness blobs, not by the text finder)" : `"${String(t.text ?? "")}" (${Math.round(Number(t.conf) || 0)}%${rc})`;
-  return `Big digits for ${(FIELD_LABEL as AnyObj)[f] ?? f} [${box}]: original read ${orig}; extra reads ${reads || "none"}; ${decision}`;
+  if (t.recheck) { const v = clean(String(t.recheck)); if (/^\d{2,3}$/.test(v)) reads.push(v); }
+  const counts = new Map<string, number>();
+  for (const v of reads) counts.set(v, (counts.get(v) || 0) + 1);
+  const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  if (!ranked.length || ranked[0][1] < 2) return null;
+  if (ranked.length > 1 && ranked[0][1] < 2 * ranked[1][1]) return null; // needs a clear lead, not a narrow majority
+  return ranked[0][0];
 }
 
 function deepFill(traces: AnyObj[], skip: Set<string>, ref: number) {
-  const fills: Record<string, string> = {}, choices: Record<string, string[]> = {}, logs: string[] = [];
+  const fills: Record<string, string> = {}, choices: Record<string, string[]> = {};
   const reach = ref > 0 ? 1.5 * ref : 250;
   for (const f of ["pulse", "spo2", "respRate"]) {
     if (skip.has(f)) continue;
     const labels = labelTraces(f, traces);
-    const boxes = traces.filter((t) => t && Array.isArray(t.deep) && t.deep.length && typeof t.x === "number" && nearAnyLabel(t, labels, reach));
-    const votes = boxes.map((t) => ({ t, v: deepVote(t) }));
-    for (const { t, v } of votes) {
-      logs.push(describeDeep(f, t, v === null ? "REJECTED: no value had 2+ reads and twice the runner-up" : !inRange(f, +v) ? `REJECTED: ${v} is outside the plausible range` : `voted ${v}`));
-    }
-    const vals = [...new Set(votes.map((x) => x.v).filter((v): v is string => !!v && inRange(f, +v)))];
-    if (vals.length === 1) { fills[f] = vals[0]; if (boxes.length) logs.push(`${(FIELD_LABEL as AnyObj)[f] ?? f}: ACCEPTED ${vals[0]} as an amber suggestion (never green).`); }
-    else if (vals.length > 1) { choices[f] = vals; logs.push(`${(FIELD_LABEL as AnyObj)[f] ?? f}: boxes disagree (${vals.join(" vs ")}), so the field is left blank for manual checking.`); }
+    const vals = [...new Set(
+      traces.filter((t) => t && Array.isArray(t.deep) && t.deep.length && typeof t.x === "number" && nearAnyLabel(t, labels, reach))
+        .map(deepVote).filter((v): v is string => !!v && inRange(f, +v)),
+    )];
+    if (vals.length === 1) fills[f] = vals[0];
+    else if (vals.length > 1) choices[f] = vals;
     else {
       const counts = new Map<string, number>();
       for (const t of traces) {
         if (!t || !Array.isArray(t.deep) || typeof t.x !== "number" || !nearAnyLabel(t, labels, reach)) continue;
         for (const r of t.deep as AnyObj[]) {
           const v = String(r.text ?? "").replace(/[^0-9]/g, "");
-          if (/^\d{2,3}$/.test(v) && inRange(f, +v)) counts.set(v, (counts.get(v) || 0) + 1);
+          if (/^\d{2,3}$/.test(v) && inRange(f, +v) && (Number(r.conf) || 0) >= 50) counts.set(v, (counts.get(v) || 0) + 1);
         }
       }
       const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2).map((e) => e[0]);
       if (top.length) choices[f] = top;
     }
   }
-  // Screens with (almost) no readable labels: assign the voted big numbers top to bottom as pulse, SpO2, resp (by range).
-  // Amber only: this is position + plausible range, so the nurse must confirm each one.
-  if (knownLabelCount(traces) < 2) {
-    const order = ["pulse", "spo2", "respRate"].filter((f) => !skip.has(f) && !fills[f] && !choices[f]);
-    const taken = new Set(Object.values(fills));
-    const boxes = traces.filter((t) => t && Array.isArray(t.deep) && t.deep.length && typeof t.y === "number" && !isSmall(t, ref) && !isTempTrace(t)).sort((a, b) => a.y - b.y);
-    for (const t of boxes) {
-      const v = deepVote(t);
-      if (!v) { logs.push(describeDeep("pulse", t, "REJECTED (no labels on screen): no value had 2+ reads and twice the runner-up").replace("Pulse", "Unlabeled number")); continue; }
-      const f = order.find((x) => inRange(x, +v));
-      if (!f || taken.has(v)) continue;
-      fills[f] = v; taken.add(v); order.splice(order.indexOf(f), 1);
-      logs.push(describeDeep(f, t, `ACCEPTED ${v} by position and range (no labels on screen) as an amber suggestion`));
-    }
-  }
-
-  // Temperature: a decimal in the temperature range, voted across frames and methods (shown in degF).
-  if (!skip.has("temperature")) {
-    const tvals = [...new Set(traces.filter((t) => t && Array.isArray(t.deep) && t.deep.length && isTempTrace(t)).map(deepVoteTemp).filter((v): v is string => !!v))];
-    if (tvals.length === 1) { fills.temperature = tvals[0]; logs.push(`Temperature: ACCEPTED ${tvals[0]} \u00B0F from repeated decimal reads as an amber suggestion (never green).`); }
-    else if (tvals.length > 1) { choices.temperature = tvals; logs.push(`Temperature: reads disagree (${tvals.join(" vs ")}), so the field is left blank for manual checking.`); }
-    else {
-      // nobody won the vote: offer the two most-read plausible temperatures to tap
-      const counts = new Map<string, number>();
-      for (const t of traces) {
-        if (!t || !Array.isArray(t.deep) || !isTempTrace(t)) continue;
-        for (const r of t.deep as AnyObj[]) {
-          if (String(r.method ?? "").startsWith("mask:red")) continue;
-          const f = tempDecimal(String(r.text ?? "").replace(/[^0-9.,]/g, ""));
-          if (f !== null) counts.set(f.toFixed(1), (counts.get(f.toFixed(1)) || 0) + 1);
-        }
-      }
-      const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2).map((e) => e[0]);
-      if (top.length) { choices.temperature = top; logs.push(`Temperature: no clear winner among the reads (${top.join(" vs ")}), so the field is left blank for manual checking.`); }
-    }
-  }
-  return { fills, choices, logs };
+  return { fills, choices };
 }
 
 /** Temperature without a label: a decimal like 36.8 / 98.6 (no other vital has one). Returns degF text, or null. */
@@ -321,59 +190,6 @@ function tempRescue(traces: AnyObj[]): string | null {
   return cands[0].h >= 1.4 * cands[1].h ? cands[0].text : null;
 }
 
-// ---- NIBP (cuff) vs ART / IBP (invasive) --------------------------------------------------------------------
-// The form only has cuff-BP fields. A BP-looking number whose nearest label is an invasive-pressure label
-// (ART / ABP / IBP / P1 / P2) must never fill them, whatever colour it is printed in.
-const ART_LABEL = /^(art|abp|ibp|ibp1|ibp2|p1|p2)$/i;
-const NIBP_LABEL = /^(nibp|nbp|nibp1|nibp2|bp|cuff)$/i;
-
-function invasiveCopies(sys: string, dia: string, traces: AnyObj[], ref: number): { invasive: boolean; ambiguous: boolean } {
-  const pair = `${sys}/${dia}`;
-  const copies = traces.filter((t) => t && typeof t.x === "number" && variantsOf(t).some((v) => v === pair));
-  if (!copies.length) return { invasive: false, ambiguous: false };
-  const reach = ref > 0 ? 2.2 * ref : 400;
-  const labelsOf = (re: RegExp) => traces.filter((l) => l && typeof l.x === "number" && /^[A-Za-z0-9]+$/.test(clean(String(l.text ?? ""))) && re.test(clean(String(l.text ?? ""))));
-  const arts = labelsOf(ART_LABEL), nibps = labelsOf(NIBP_LABEL);
-  const near = (c: AnyObj, ls: AnyObj[]) => Math.min(Infinity, ...ls.map((l) => Math.hypot(c.x - l.x, c.y - l.y)).filter((d) => d <= reach));
-  let invasive = false, ambiguous = false;
-  for (const c of copies) {
-    const dA = near(c, arts), dN = near(c, nibps);
-    if (!isFinite(dA)) continue;                 // no invasive label nearby: normal cuff BP
-    if (!isFinite(dN) || dA < 0.85 * dN) invasive = true;
-    else if (dN >= 0.85 * dA && dN <= 1.18 * dA) ambiguous = true; // equally close to both: identity unclear
-  }
-  return { invasive, ambiguous };
-}
-
-// ---- Saved screen layout (regions) ----------------------------------------------------------------------------
-// A region pseudo-trace is { regionField, x, y, w, h, deep: [{text, conf, method}] }. The nurse said where this vital
-// is printed, so only that box was read (digits only, several frames and zoom levels, plus colour masks).
-const summarizeReads = (t: AnyObj) => {
-  const byValue = new Map<string, Map<string, number>>();
-  for (const r of (t.deep ?? []) as AnyObj[]) {
-    const v = String(r.text ?? "").replace(/[^0-9./]/g, "") || "?";
-    const m = String(r.method ?? "normal");
-    const inner = byValue.get(v) ?? new Map<string, number>();
-    inner.set(m, (inner.get(m) || 0) + 1);
-    byValue.set(v, inner);
-  }
-  return [...byValue.entries()].map(([v, ms]) => `${v}\u00D7${[...ms.values()].reduce((a, b) => a + b, 0)} (${[...ms.entries()].map(([m, n]) => `${m}\u00D7${n}`).join(", ")})`).join("; ") || "none";
-};
-
-/** Winning "120/80" among a BP region's reads (2+ reads, twice the runner-up, systolic > diastolic, plausible ranges). */
-function voteBp(t: AnyObj): { sys: string; dia: string } | null {
-  const m: Tally = new Map();
-  for (const r of (t.deep ?? []) as AnyObj[]) {
-    if (String(r.method ?? "").startsWith("mask:red")) continue;
-    const v = String(r.text ?? "").replace(/[^0-9/]/g, "");
-    if (/^\d{2,3}\/\d{2,3}$/.test(v)) addVote(m, v, groupOf(r));
-  }
-  const w = decide(m);
-  if (!w) return null;
-  const [s, d] = w.split("/").map(Number);
-  return inRange("bpSystolic", s) && inRange("bpDiastolic", d) && s > d ? { sys: String(s), dia: String(d) } : null;
-}
-
 function rescue(traces: AnyObj[], haveVals: Record<string, string>, ref: number): Record<string, string> {
   const have = new Set(Object.keys(haveVals));
   const out: Record<string, string> = {};
@@ -388,8 +204,6 @@ function rescue(traces: AnyObj[], haveVals: Record<string, string>, ref: number)
       const best = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
       if (!best || best[1] < 2) continue;
       const [s, d] = best[0].split("/").map(Number);
-      const inv = invasiveCopies(String(s), String(d), traces, ref);
-      if (inv.invasive || inv.ambiguous) continue; // ART / IBP (or unclear): never into the cuff BP fields
       if (inRange("bpSystolic", s) && inRange("bpDiastolic", d) && s > d) {
         out.bpSystolic = String(s); out.bpDiastolic = String(d); used.add(t); break;
       }
@@ -475,14 +289,10 @@ export function combineMatches(words: AnyObj[], width: number, height: number, m
     // No strong read: weak layout guesses -> amber suggestion only if they agree.
     const weak: Read[] = [];
     const ps: Read | undefined = primary.out.suggestions?.[f];
-    // A guess the matcher itself rated near 0% is noise, not a suggestion: never pre-fill it.
-    if (ps?.text && (Number(ps.conf) || 0) >= WEAK_MIN_CONF) weak.push({ text: ps.text, conf: Number(ps.conf) || 0 });
-    else if (ps?.text) log.push(`${name}: matcher suggestion ${ps.text} ignored (confidence ${Math.round(Number(ps.conf) || 0)}%, below ${WEAK_MIN_CONF}%)`);
+    if (ps?.text) weak.push({ text: ps.text, conf: Number(ps.conf) || 0 });
     for (const r of runs.filter((x) => x.forced)) {
       const v: Read | undefined = r.out.values?.[f] ?? r.out.suggestions?.[f];
-      if (!v?.text) continue;
-      if ((Number(v.conf) || 0) < WEAK_MIN_CONF) { log.push(`${name}: ${r.name} layout guess ${v.text} ignored (confidence ${Math.round(Number(v.conf) || 0)}%, below ${WEAK_MIN_CONF}%)`); continue; }
-      weak.push({ text: v.text, conf: Number(v.conf) || 0 }); log.push(`${name}: ${r.name} layout guessed ${v.text}`);
+      if (v?.text) { weak.push({ text: v.text, conf: Number(v.conf) || 0 }); log.push(`${name}: ${r.name} layout guessed ${v.text}`); }
     }
     const wg = groups(weak);
     if (wg.length === 1) suggestions[f] = { text: wg[0].text, conf: Math.min(wg[0].conf, minConf - 1) };
@@ -512,79 +322,13 @@ export function combineMatches(words: AnyObj[], width: number, height: number, m
     }
   }
 
-  // BP alarm limits (e.g. "200 / 80" in small digits) are not the cuff reading: drop a pair that is only ever printed tiny.
-  for (const store of [values, suggestions]) {
-    const sy = store.bpSystolic, di = store.bpDiastolic;
-    if (!sy || !di || !ref) continue;
-    const pair = `${sy.text}/${di.text}`;
-    const copies = traces.filter((t) => t && t.h > 0 && variantsOf(t).some((v) => v === pair));
-    if (copies.length && copies.every((t) => isSmall(t, ref))) {
-      delete store.bpSystolic; delete store.bpDiastolic;
-      notes.push(`BP ${pair} is printed much smaller than the main numbers on the screen, so it is probably an alarm limit and was not used.`);
-    }
-  }
-
-  // NIBP vs ART / IBP: drop a BP pair that belongs to an invasive-pressure label (or whose identity is unclear).
-  for (const store of [values, suggestions]) {
-    const sy = store.bpSystolic, di = store.bpDiastolic;
-    if (!sy || !di) continue;
-    const inv = invasiveCopies(sy.text, di.text, traces, ref);
-    if (inv.invasive || inv.ambiguous) {
-      delete store.bpSystolic; delete store.bpDiastolic;
-      notes.push(`BP ${sy.text}/${di.text}: ${inv.invasive ? "it sits next to an ART / IBP label (invasive pressure)" : "it is equally close to an NIBP and an ART / IBP label"}, so it was not put into the cuff BP fields.`);
-      log.push(`BP ${sy.text}/${di.text} excluded: ${inv.invasive ? "invasive (ART/IBP) label nearest" : "NIBP and ART/IBP labels equally near"}`);
-    }
-  }
-
-  // Digits are tiny in this photo: say so (the single most useful fix is a closer photo).
-  if (ref > 0 && height > 0 && ref < 0.035 * height) {
-    notes.push("The digits on the screen are small in this photo, so readings may be wrong. Move closer so the screen fills the frame.");
-  }
-
-  // Saved screen layout: the nurse told us where each vital is printed. A voted value is amber at most.
-  // If it disagrees with a value the label / layout reading produced, the field is left empty and both are offered.
-  const regionHandled = new Set<string>();
-  const regionChoices: Record<string, string[]> = {};
-  try {
-    for (const t of traces.filter((x) => x && x.regionField && Array.isArray(x.deep))) {
-      const rf = String(t.regionField);
-      const label = rf === "bp" ? "BP" : (FIELD_LABEL as AnyObj)[rf] ?? rf;
-      const box = `x=${Math.round(t.x)}, y=${Math.round(t.y)}, w=${Math.round(t.w || 0)}, h=${Math.round(t.h || 0)}`;
-      const pairs: [string, string][] = [];
-      if (rf === "bp") { const b = voteBp(t); if (b) pairs.push(["bpSystolic", b.sys], ["bpDiastolic", b.dia]); }
-      else if (rf === "temperature") { const v = deepVoteTemp(t); if (v) pairs.push([rf, v]); }
-      else { const v = deepVote(t); if (v && inRange(rf, +v)) pairs.push([rf, v]); }
-
-      if (!pairs.length) {
-        log.push(`Saved region for ${label} [${box}]: extra reads ${summarizeReads(t)}; REJECTED: no value had 2+ reads and twice the runner-up, so this box was not used`);
-        continue;
-      }
-      for (const [f, v] of pairs) {
-        regionHandled.add(f);
-        const cur = values[f];
-        if (cur && !same(cur.text, v)) {
-          delete values[f]; delete suggestions[f];
-          regionChoices[f] = [v, cur.text];
-          notes.push(`${(FIELD_LABEL as AnyObj)[f] ?? f}: the saved box reads ${v} but the label/layout reading was ${cur.text}, so it was left empty. Check the monitor.`);
-          log.push(`Saved region for ${label} [${box}]: extra reads ${summarizeReads(t)}; CONFLICT with ${cur.text}, field left blank`);
-        } else if (cur) {
-          log.push(`Saved region for ${label} [${box}]: extra reads ${summarizeReads(t)}; AGREES with the existing ${cur.text}`);
-        } else {
-          suggestions[f] = { text: v, conf: Math.min(minConf - 1, 65), source: "saved region" };
-          log.push(`Saved region for ${label} [${box}]: extra reads ${summarizeReads(t)}; ACCEPTED ${v} as an amber suggestion (never green)`);
-        }
-      }
-    }
-  } catch { /* regions are optional: the normal result stands */ }
-
   // Big-digit vote across frames and zoom levels (amber only, never green).
   const deepChoices: Record<string, string[]> = {};
   try {
-    const skip = new Set<string>([...Object.keys(values), ...Object.keys(suggestions), ...regionHandled]);
+    const skip = new Set<string>([...Object.keys(values), ...Object.keys(suggestions)]);
     const d = deepFill(traces, skip, ref);
     for (const f of Object.keys(d.fills)) suggestions[f] = { text: d.fills[f], conf: Math.min(minConf - 1, 65), source: "multi-frame" };
     Object.assign(deepChoices, d.choices);
-    log.push(...d.logs);
     const keys = Object.keys(d.fills);
     if (keys.length) notes.push(`The big digits were re-read on several frames and zoom levels and filled in amber for: ${keys.map((k) => (FIELD_LABEL as AnyObj)[k] ?? k).join(", ")}. Check each against the monitor.`);
   } catch { /* optional */ }
@@ -592,7 +336,6 @@ export function combineMatches(words: AnyObj[], width: number, height: number, m
   // Rescue: only for fields still empty. Always amber, never green.
   const haveVals: Record<string, string> = {};
   for (const [k, v] of Object.entries({ ...suggestions, ...values })) haveVals[k] = v.text;
-  for (const k of regionHandled) if (!(k in haveVals)) haveVals[k] = "";
   try {
     const rescued = rescue(traces, haveVals, ref);
     const keys = Object.keys(rescued);
@@ -611,9 +354,9 @@ export function combineMatches(words: AnyObj[], width: number, height: number, m
 
   // Tap-to-pick: fields that are still empty get the big, unreliable numbers printed next to their label.
   const choices: Record<string, string[]> = {};
-  for (const f of ["pulse", "spo2", "respRate", "temperature", "bpSystolic", "bpDiastolic"]) {
+  for (const f of ["pulse", "spo2", "respRate"]) {
     if (values[f] || suggestions[f]) continue;
-    const list = [...new Set([...(regionChoices[f] || []), ...(conflictChoices[f] || []), ...(deepChoices[f] || []), ...(f === "temperature" ? [] : choicesFor(f, traces, ref))])];
+    const list = [...new Set([...(conflictChoices[f] || []), ...(deepChoices[f] || []), ...choicesFor(f, traces, ref)])];
     if (list.length) choices[f] = list;
   }
   if (Object.keys(choices).length) notes.push("Some numbers on the screen could not be read reliably. Tap the matching choice under the field, or type the value.");
