@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { getToken } from "@/api";
 
@@ -8,6 +8,7 @@ const plain = (n: number) => n.toLocaleString("en-IN", { minimumFractionDigits: 
 const money = (n: number) => "\u20B9" + plain(n);
 const ymd = (d: Date) => { const p = (n: number) => String(n).padStart(2, "0"); return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()); };
 const fmtDate = (s: string | null) => (s ? s.split("-").reverse().join("/") : "-");
+const hsnCell = (r: { hsn: string | null; gstPercent: number | null }) => (r.hsn ? r.hsn + " / " + (r.gstPercent == null ? "?" : r.gstPercent + "%") : "MISSING");
 
 async function pm<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(BASE + "/pharmacy-module" + path, {
@@ -19,7 +20,7 @@ async function pm<T>(path: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 
-type Row = { billNos: number[]; supplier: string | null; purchasedOn: string | null; purchaseRate: number; name: string; batchNo: string | null; expiryDate: string | null; unit: string; qty: number; mrp: number; gross: number; discount: number; taxable: number };
+type Row = { billNos: number[]; supplier: string | null; purchasedOn: string | null; purchaseRate: number; name: string; batchNo: string | null; expiryDate: string | null; unit: string; qty: number; mrp: number; gross: number; discount: number; taxable: number; hsn: string | null; gstPercent: number | null };
 type CalcRow = Row & { cgAmt: number; sgAmt: number; total: number };
 type Profile = { name: string; address: string; phone: string; gstin: string; drugLicence: string; defaultHsn: string };
 type Report = { from: string; to: string; bills: number; billNoFrom: number | null; billNoTo: number | null; profile: Profile; rows: Row[] };
@@ -28,8 +29,8 @@ export default function GstInvoice() {
   const today = ymd(new Date());
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
-  const [cgst, setCgst] = useState("9");
-  const [sgst, setSgst] = useState("9");
+  
+  
   const [profile, setProfile] = useState<Profile>({ name: "", address: "", phone: "", gstin: "", drugLicence: "", defaultHsn: "3004" });
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(false);
@@ -38,19 +39,20 @@ export default function GstInvoice() {
 
   useEffect(() => { pm<Profile>("/gst-profile").then(setProfile).catch(() => {}); }, []);
 
-  const cg = Number(cgst) || 0;
-  const sg = Number(sgst) || 0;
-  const hsn = profile.defaultHsn || "3004";
+  
+  
+  
 
   const calc = useMemo(() => {
     const rows: CalcRow[] = (report?.rows || []).map(r => {
-      const cgAmt = r2(r.taxable * cg / 100);
-      const sgAmt = r2(r.taxable * sg / 100);
+      const half = (r.gstPercent ?? 0) / 2;
+      const cgAmt = r2(r.taxable * half / 100);
+      const sgAmt = r2(r.taxable * half / 100);
       return { ...r, cgAmt, sgAmt, total: r2(r.taxable + cgAmt + sgAmt) };
     });
     const sum = (f: (x: CalcRow) => number) => r2(rows.reduce((s, x) => s + f(x), 0));
     return { rows, discount: sum(x => x.discount), taxable: sum(x => x.taxable), cgst: sum(x => x.cgAmt), sgst: sum(x => x.sgAmt), total: sum(x => x.total) };
-  }, [report, cg, sg]);
+  }, [report]);
 
   const invNo = report ? "GST-" + report.from.replace(/-/g, "") + (report.to !== report.from ? "-" + report.to.replace(/-/g, "") : "") : "";
   const period = report ? (report.from === report.to ? fmtDate(report.from) : fmtDate(report.from) + " to " + fmtDate(report.to)) : "";
@@ -75,7 +77,7 @@ export default function GstInvoice() {
 
   async function generate() {
     if (from > to) return toast.error("The From date must not be after the To date");
-    if (!(cg >= 0 && cg <= 100 && sg >= 0 && sg <= 100)) return toast.error("CGST and SGST must be between 0 and 100");
+    
     setLoading(true);
     try {
       const r = await pm<Report>("/gst-report?from=" + from + "&to=" + to);
@@ -84,6 +86,11 @@ export default function GstInvoice() {
     } catch (e: any) { toast.error(e.message); } finally { setLoading(false); }
   }
 
+  function needHsn(): boolean {
+    const bad = calc.rows.filter(r => !r.hsn || r.gstPercent == null);
+    if (bad.length) { toast.error(bad.length + " medicine line(s) have no HSN code or GST %. Add them in Pharmacy > Inventory Management (Edit) or by importing the vendor bill."); return true; }
+    return false;
+  }
   function needGstin(): boolean {
     if (!profile.gstin.trim()) { toast.error("Enter your GSTIN in Pharmacy details first"); return true; }
     return false;
@@ -92,10 +99,10 @@ export default function GstInvoice() {
   const detailHead = ["#", "Medicine", "Batch", "Sold in Bill No", "Qty sold", "Supplier", "Purchased on", "Last purchase rate (Rs./unit)", "MRP (Rs./unit)"];
   const billsText = (a: number[]) => (a.length > 8 ? a.slice(0, 8).join(", ") + " +" + (a.length - 8) + " more" : a.join(", "));
   const detailBody = () => calc.rows.map((r, i) => [String(i + 1), r.name, r.batchNo || "-", billsText(r.billNos || []) || "-", r.qty + " " + r.unit, r.supplier || "-", fmtDate(r.purchasedOn), r.purchaseRate > 0 ? plain(r.purchaseRate) : "-", plain(r.mrp)]);
-  const heads = ["#", "Medicine", "HSN", "Batch", "Expiry", "Qty", "MRP", "Discount", "Taxable value", "CGST " + cg + "%", "SGST " + sg + "%", "Total"];
+  const heads = ["#", "Medicine", "HSN / GST %", "Batch", "Expiry", "Qty", "MRP", "Discount", "Taxable value", "CGST", "SGST", "Total"];
 
   async function downloadPdf() {
-    if (!report || needGstin()) return;
+    if (!report || needGstin() || needHsn()) return;
     setBusy("pdf");
     try {
       const { default: JsPDF } = await import("jspdf");
@@ -113,7 +120,7 @@ export default function GstInvoice() {
       doc.text("Invoice No: " + invNo, W - 14, 20, { align: "right" });
       doc.text("Period: " + period, W - 14, 25, { align: "right" });
       if (billRange) doc.text(billRange + " (" + report.bills + " bills)", W - 14, 30, { align: "right" });
-      const body = calc.rows.map((r, i) => [String(i + 1), r.name, hsn, r.batchNo || "-", fmtDate(r.expiryDate), r.qty + " " + r.unit, plain(r.mrp), plain(r.discount), plain(r.taxable), plain(r.cgAmt), plain(r.sgAmt), plain(r.total)]);
+      const body = calc.rows.map((r, i) => [String(i + 1), r.name, hsnCell(r), r.batchNo || "-", fmtDate(r.expiryDate), r.qty + " " + r.unit, plain(r.mrp), plain(r.discount), plain(r.taxable), plain(r.cgAmt), plain(r.sgAmt), plain(r.total)]);
       const right = { halign: "right" as const };
       autoTable(doc, {
         startY: Math.max(y + 5, 36),
@@ -133,8 +140,8 @@ export default function GstInvoice() {
       };
       doc.setFontSize(10);
       line("Taxable value", "Rs. " + plain(calc.taxable));
-      line("CGST @ " + cg + "%", "Rs. " + plain(calc.cgst));
-      line("SGST @ " + sg + "%", "Rs. " + plain(calc.sgst));
+      line("CGST", "Rs. " + plain(calc.cgst));
+      line("SGST", "Rs. " + plain(calc.sgst));
       line("Total GST", "Rs. " + plain(r2(calc.cgst + calc.sgst)));
       line("Invoice total", "Rs. " + plain(calc.total), true);
       doc.setFont("helvetica", "normal"); doc.setFontSize(8);
@@ -147,7 +154,7 @@ export default function GstInvoice() {
   }
 
   async function downloadExcel() {
-    if (!report || needGstin()) return;
+    if (!report || needGstin() || needHsn()) return;
     setBusy("xlsx");
     try {
       const ExcelJS: any = await import("exceljs");
@@ -161,14 +168,14 @@ export default function GstInvoice() {
       ws.addRow(["Period", period]);
       if (billRange) ws.addRow([billRange, report.bills + " bills"]);
       ws.addRow([]);
-      const head = ws.addRow(["#", "Medicine", "HSN", "Batch", "Expiry", "Qty", "Unit", "MRP", "Discount", "Taxable value", "CGST " + cg + "%", "SGST " + sg + "%", "Total"]);
+      const head = ws.addRow(["#", "Medicine", "HSN / GST %", "Batch", "Expiry", "Qty", "Unit", "MRP", "Discount", "Taxable value", "CGST", "SGST", "Total"]);
       head.font = { bold: true };
-      calc.rows.forEach((r, i) => ws.addRow([i + 1, r.name, hsn, r.batchNo || "", r.expiryDate ? fmtDate(r.expiryDate) : "", r.qty, r.unit, r.mrp, r.discount, r.taxable, r.cgAmt, r.sgAmt, r.total]));
+      calc.rows.forEach((r, i) => ws.addRow([i + 1, r.name, hsnCell(r), r.batchNo || "", r.expiryDate ? fmtDate(r.expiryDate) : "", r.qty, r.unit, r.mrp, r.discount, r.taxable, r.cgAmt, r.sgAmt, r.total]));
       ws.addRow(["", "Total", "", "", "", "", "", "", calc.discount, calc.taxable, calc.cgst, calc.sgst, calc.total]).font = { bold: true };
       ws.addRow([]);
       ws.addRow(["", "Taxable value", "", "", "", "", "", "", "", calc.taxable]);
-      ws.addRow(["", "CGST @ " + cg + "%", "", "", "", "", "", "", "", calc.cgst]);
-      ws.addRow(["", "SGST @ " + sg + "%", "", "", "", "", "", "", "", calc.sgst]);
+      ws.addRow(["", "CGST", "", "", "", "", "", "", "", calc.cgst]);
+      ws.addRow(["", "SGST", "", "", "", "", "", "", "", calc.sgst]);
       ws.addRow(["", "Total GST", "", "", "", "", "", "", "", r2(calc.cgst + calc.sgst)]);
       ws.addRow(["", "Invoice total", "", "", "", "", "", "", "", calc.total]).font = { bold: true };
       [8, 9, 10, 11, 12, 13].forEach(c => { ws.getColumn(c).numFmt = "#,##0.00"; });
@@ -194,7 +201,7 @@ export default function GstInvoice() {
     <div className="p-4 md:p-6 space-y-4">
       <div>
         <h1 className="text-xl font-bold text-gray-900">GST Invoice</h1>
-        <p className="text-sm text-gray-500">Pick a date range, set the CGST and SGST rates, generate the invoice for all sales in that period, then download it.</p>
+        <p className="text-sm text-gray-500">Pick a date range, generate the invoice for all sales in that period, then download it.</p>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
@@ -206,8 +213,6 @@ export default function GstInvoice() {
             <input className={inp} value={profile.drugLicence} onChange={e => setProfile({ ...profile, drugLicence: e.target.value })} /></label>
           <label className="text-xs text-gray-600 md:col-span-2">Address
             <input className={inp} value={profile.address} onChange={e => setProfile({ ...profile, address: e.target.value })} /></label>
-          <label className="text-xs text-gray-600">HSN code (all medicines)
-            <input className={inp} value={profile.defaultHsn} inputMode="numeric" onChange={e => setProfile({ ...profile, defaultHsn: e.target.value })} /></label>
         </div>
         <button type="button" onClick={saveProfile} disabled={saving} className="px-3 py-1.5 text-sm rounded-md bg-teal-600 text-white disabled:opacity-60">{saving ? "Saving..." : "Save details"}</button>
       </div>
@@ -221,8 +226,6 @@ export default function GstInvoice() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <label className="text-xs text-gray-600">From<input type="date" className={inp} value={from} onChange={e => setFrom(e.target.value)} /></label>
           <label className="text-xs text-gray-600">To<input type="date" className={inp} value={to} onChange={e => setTo(e.target.value)} /></label>
-          <label className="text-xs text-gray-600">CGST %<input type="number" min={0} max={100} step="0.01" className={inp} value={cgst} onChange={e => setCgst(e.target.value)} /></label>
-          <label className="text-xs text-gray-600">SGST %<input type="number" min={0} max={100} step="0.01" className={inp} value={sgst} onChange={e => setSgst(e.target.value)} /></label>
         </div>
         <button type="button" onClick={generate} disabled={loading} className="px-4 py-2 text-sm rounded-md bg-teal-600 text-white font-medium disabled:opacity-60">{loading ? "Generating..." : "Generate GST Invoice"}</button>
       </div>
@@ -242,13 +245,14 @@ export default function GstInvoice() {
               {billRange && <p className="text-xs text-gray-600">{billRange} ({report.bills} bills)</p>}
             </div>
           </div>
+          {calc.rows.some(r => !r.hsn || r.gstPercent == null) && <p className="text-xs text-red-600 font-medium">Some medicines have no HSN code or GST %. Add them in Pharmacy, Inventory Management (Edit) or by importing the vendor bill, then generate again. Downloads are blocked until then.</p>}
           <div className="overflow-x-auto border border-gray-100 rounded-lg">
             <table className="w-full">
               <thead className="bg-gray-50"><tr>{heads.map(h => <th key={h} className={th}>{h}</th>)}</tr></thead>
               <tbody>
                 {calc.rows.map((r, i) => (
                   <tr key={i} className="border-t border-gray-100">
-                    <td className={td}>{i + 1}</td><td className={td + " font-medium"}>{r.name}</td><td className={td}>{hsn}</td>
+                    <td className={td}>{i + 1}</td><td className={td + " font-medium"}>{r.name}</td><td className={td + (r.hsn && r.gstPercent != null ? "" : " text-red-600 font-semibold")}>{hsnCell(r)}</td>
                     <td className={td}>{r.batchNo || "-"}</td><td className={td}>{fmtDate(r.expiryDate)}</td><td className={td}>{r.qty} {r.unit}</td>
                     <td className={td}>{money(r.mrp)}</td><td className={td}>{money(r.discount)}</td><td className={td}>{money(r.taxable)}</td>
                     <td className={td}>{money(r.cgAmt)}</td><td className={td}>{money(r.sgAmt)}</td><td className={td + " font-semibold"}>{money(r.total)}</td>
@@ -261,8 +265,8 @@ export default function GstInvoice() {
           {calc.rows.length > 0 && (
             <div className="ml-auto w-full max-w-xs space-y-1 text-sm text-gray-800">
               <div className="flex justify-between"><span>Taxable value</span><span>{money(calc.taxable)}</span></div>
-              <div className="flex justify-between"><span>CGST @ {cg}%</span><span>{money(calc.cgst)}</span></div>
-              <div className="flex justify-between"><span>SGST @ {sg}%</span><span>{money(calc.sgst)}</span></div>
+              <div className="flex justify-between"><span>CGST</span><span>{money(calc.cgst)}</span></div>
+              <div className="flex justify-between"><span>SGST</span><span>{money(calc.sgst)}</span></div>
               <div className="flex justify-between"><span>Total GST</span><span>{money(r2(calc.cgst + calc.sgst))}</span></div>
               <div className="flex justify-between border-t border-gray-300 pt-1 text-base font-bold"><span>Invoice total</span><span>{money(calc.total)}</span></div>
             </div>

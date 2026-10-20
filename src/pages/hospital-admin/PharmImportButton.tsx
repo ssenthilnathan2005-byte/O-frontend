@@ -7,11 +7,11 @@ const UNITS = ["", "box", "strip", "bottle", "vial", "tube", "sachet", "inhaler"
 
 type Row = {
   name: string; medCategory: string; quantity: string; quantityUnit: string; tabletsPerStrip: string; stripsPerBox: string; batchNo: string;
-  expiryDate: string; purchasePrice: string; sellingPrice: string; gstPercent: string; supplier: string;
+  expiryDate: string; purchasePrice: string; sellingPrice: string; gstPercent: string; hsn: string; hsnReplace: boolean; supplier: string;
   allowNoBatchExpiry: boolean; warnings: string[];
 };
 type Issue = { level: "blocked" | "held" | "warn"; code: string; msg: string };
-type Check = { status: "ready" | "attention" | "held" | "blocked"; issues: Issue[]; preview: { stock: string; cost: string }; existing: boolean };
+type Check = { status: "ready" | "attention" | "held" | "blocked"; issues: Issue[]; preview: { stock: string; cost: string }; existing: boolean; hsn?: string; savedHsn?: string | null };
 
 const STATUS_UI: Record<Check["status"], [string, string]> = {
   ready: ["Ready", "bg-emerald-50 text-emerald-700"],
@@ -66,7 +66,7 @@ export default function PharmImportButton() {
         name: s(r.name), medCategory: s(r.medCategory), quantity: s(r.quantity), quantityUnit: s(r.quantityUnit),
         tabletsPerStrip: s(r.tabletsPerStrip), stripsPerBox: s(r.stripsPerBox),
         batchNo: s(r.batchNo), expiryDate: s(r.expiryDate), purchasePrice: s(r.purchasePrice), sellingPrice: s(r.sellingPrice),
-        gstPercent: s(r.gstPercent), supplier: s(r.supplier), allowNoBatchExpiry: false, warnings: r.warnings || [],
+        gstPercent: s(r.gstPercent), hsn: s(r.hsn), hsnReplace: false, supplier: s(r.supplier), allowNoBatchExpiry: false, warnings: r.warnings || [],
       })));
       setChecks([]); setDup(null); setConfirmDup(false); setPartial(false);
       const sup = (d.rows || []).find((r: any) => r.supplier); if (d.invoiceNo) setInvoiceNo(s(d.invoiceNo));
@@ -205,7 +205,7 @@ export default function PharmImportButton() {
                   <table className="min-w-full text-xs">
                     <thead>
                       <tr className="text-left text-gray-500">
-                        {["", "Medicine", "Category", "Qty", "Unit", "Tabs/strip", "Strips/box", "Batch", "Expiry", "Purchase price", "MRP", "GST %", ""].map((h, k) => <th key={k} className="px-1 py-1 font-medium">{h}</th>)}
+                        {["", "Medicine", "Category", "Qty", "Unit", "Tabs/strip", "Strips/box", "Batch", "Expiry", "Purchase price", "MRP", "GST %", "HSN code", ""].map((h, k) => <th key={k} className="px-1 py-1 font-medium">{h}</th>)}
                       </tr>
                     </thead>
                     <tbody>
@@ -251,6 +251,15 @@ export default function PharmImportButton() {
                             <td className="px-1 py-1 w-20"><input value={r.purchasePrice} onChange={e => upd(i, "purchasePrice", e.target.value)} className={inp} inputMode="decimal" /></td>
                             <td className="px-1 py-1 w-20"><input value={r.sellingPrice} onChange={e => upd(i, "sellingPrice", e.target.value)} className={inp} inputMode="decimal" /></td>
                             <td className="px-1 py-1 w-14"><input value={r.gstPercent} onChange={e => upd(i, "gstPercent", e.target.value)} className={inp} inputMode="decimal" /></td>
+                            <td className="px-1 py-1 w-28">
+                              <input value={r.hsn} onChange={e => upd(i, "hsn", e.target.value)} className={inp + (r.hsn ? "" : " border-red-300")} inputMode="numeric" placeholder="HSN" />
+                              {c && c.hsn === "conflict" && (
+                                <label className="flex items-center gap-1 text-gray-600">
+                                  <input type="checkbox" checked={r.hsnReplace} onChange={e => upd(i, "hsnReplace", e.target.checked)} />
+                                  Replace saved {c.savedHsn}
+                                </label>
+                              )}
+                            </td>
                             <td className="px-1 py-1">
                               <button type="button" onClick={() => { setRows(p => p.filter((_, j) => j !== i)); setChecks(p => p.filter((_, j) => j !== i)); }} className="text-red-600">Remove</button>
                             </td>
