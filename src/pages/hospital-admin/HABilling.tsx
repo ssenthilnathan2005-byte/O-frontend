@@ -225,6 +225,26 @@ export default function HABilling() {
     return [ymd(start), ymd(now)];
   }, [period, from, to]);
 
+  // IPD (inward) collections: money received on inward patients, net of refunds
+  const [ipd, setIpd] = useState<{ collected: number; patients: number; perDay: { date: string; amount: number }[] }>({ collected: 0, patients: 0, perDay: [] });
+  const [ipdDue, setIpdDue] = useState(0);
+  useEffect(() => {
+    if (!hospitalId) return;
+    let off = false;
+    const qs = range ? `?from=${range[0]}&to=${range[1]}` : "";
+    const load = () => {
+      getJson(`/ipd-billing/report${qs}`)
+        .then((d) => { if (!off) setIpd({ collected: Number(d.collected) || 0, patients: Number(d.patients) || 0, perDay: Array.isArray(d.perDay) ? d.perDay : [] }); })
+        .catch(() => { if (!off) setIpd({ collected: 0, patients: 0, perDay: [] }); });
+      getJson("/ipd-billing/summary")
+        .then((d) => { if (!off) setIpdDue(Number(d.outstandingTotal) || 0); })
+        .catch(() => { if (!off) setIpdDue(0); });
+    };
+    load();
+    const timer = setInterval(load, 15000);
+    return () => { off = true; clearInterval(timer); };
+  }, [hospitalId, range?.[0], range?.[1]]);
+
   const { rows, labRows, daily, labTotals, outcomes, weekday, sessions } = useMemo(() => {
     const inRange = (date: string) => !range || (date >= range[0] && date <= range[1]);
     const feeOf = new Map(myDoctors.map((d) => [d.id, d.doctorFee ?? 0]));
@@ -275,9 +295,9 @@ export default function HABilling() {
       unpriced,
     };
 
-    const byDay = new Map<string, { consultation: number; lab: number; pharmacy: number }>();
-    const bump = (date: string, k: "consultation" | "lab" | "pharmacy", n: number) => {
-      const cur = byDay.get(date) ?? { consultation: 0, lab: 0, pharmacy: 0 };
+    const byDay = new Map<string, { consultation: number; lab: number; pharmacy: number; ipd: number }>();
+    const bump = (date: string, k: "consultation" | "lab" | "pharmacy" | "ipd", n: number) => {
+      const cur = byDay.get(date) ?? { consultation: 0, lab: 0, pharmacy: 0, ipd: 0 };
       cur[k] += n;
       byDay.set(date, cur);
     };
@@ -291,9 +311,13 @@ export default function HABilling() {
       const d = String(r.date).slice(0, 10);
       if (inRange(d)) bump(d, "pharmacy", Number(r.revenue) || 0);
     }
+    for (const r of ipd.perDay) {
+      const d = String(r.date).slice(0, 10);
+      if (inRange(d)) bump(d, "ipd", Number(r.amount) || 0);
+    }
     const daily = Array.from(byDay.entries())
       .sort(([a], [b]) => (a < b ? -1 : 1))
-      .map(([date, v]) => ({ date: date.slice(5), full: date, ...v, amount: v.consultation + v.lab + v.pharmacy }));
+      .map(([date, v]) => ({ date: date.slice(5), full: date, ...v, amount: v.consultation + v.lab + v.pharmacy + v.ipd }));
 
     const count = (s: string) => scoped.filter((b) => b.status === s).length;
     const outcomes = [
@@ -314,17 +338,19 @@ export default function HABilling() {
       .filter((x) => x.value > 0);
 
     return { rows, labRows, daily, labTotals, outcomes, weekday, sessions };
-  }, [list, myDoctors, labOrders, labTests, range, pharmStats.daily]);
+  }, [list, myDoctors, labOrders, labTests, range, pharmStats.daily, ipd.perDay]);
 
   const sum = (k: "visits" | "total" | "paidAmt" | "unpaidAmt" | "lost" | "lostAmt") =>
     rows.reduce((s, r) => s + r[k], 0);
   const totalVisits = sum("visits");
   const consultRevenue = sum("total");
-  const grandRevenue = consultRevenue + labTotals.revenue + pharmStats.revenue;
+  const grandRevenue = consultRevenue + labTotals.revenue + pharmStats.revenue + ipd.collected;
   const lostRevenue = sum("lostAmt") + labTotals.lost;
   const lostCount = sum("lost") + labTotals.cancelled;
   const pharmTotal = pharmStats.revenue;
   const showPharm = pharmTotal > 0;
+  const ipdTotal = ipd.collected;
+  const showIpd = ipdTotal > 0;
   const hasLab = labTests.length > 0 || labOrders.length > 0;
   const showLab = hasLab && labTotals.revenue > 0;
   const missingFee = rows.filter((r) => !r.hasFee).length;
@@ -357,6 +383,7 @@ export default function HABilling() {
     { name: "Consultations", value: consultRevenue, go: () => drillTo({ status: "completed" }) },
     { name: "Laboratory", value: labTotals.revenue, go: () => navigate({ path: "/hospital-admin/lab" }) },
     { name: "Pharmacy", value: pharmStats.revenue, go: () => openPharmacyDrawer(hospitalId, pharmRange[0], pharmRange[1]) },
+    { name: "Inward (IPD)", value: ipdTotal },
   ].filter((x) => x.value > 0);
   const paidSplit = [
     { name: "Paid", value: sum("paidAmt"), go: () => drillTo({ status: "completed", payment: "paid" }) },
@@ -388,6 +415,7 @@ export default function HABilling() {
       out.push("", line(["Lab test", "Reports done", "Price", "Total", "Cancelled", "Lost revenue"]));
       for (const r of labRows) out.push(line([r.name, r.done, r.price, r.total, r.cancelled, r.lostAmt]));
     }
+    out.push("", line(["IPD collected (net of refunds)", ipd.collected]), line(["IPD outstanding (all time)", ipdDue]));
     out.push("", line(["Grand total revenue", grandRevenue]));
     const url = URL.createObjectURL(new Blob([out.join("\n")], { type: "text/csv;charset=utf-8;" }));
     const a = document.createElement("a");
@@ -411,7 +439,7 @@ export default function HABilling() {
       <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-bold">Billing</h1>
-          <p className="text-muted-foreground mt-1">Consultation fees from completed visits{hasLab ? " and laboratory reports" : ""}</p>
+          <p className="text-muted-foreground mt-1">Consultations, laboratory, pharmacy and inward (IPD) collections</p>
         </div>
         <button
           type="button"
@@ -464,7 +492,7 @@ export default function HABilling() {
         </div>
       </div>
 
-      <div className={`grid grid-cols-2 ${hasLab ? "lg:grid-cols-5" : "lg:grid-cols-4"} gap-4 mb-6`}>
+      <div className={`grid grid-cols-2 ${hasLab ? "lg:grid-cols-6" : "lg:grid-cols-5"} gap-4 mb-6`}>
         <div className={card}>
           <p className="text-xs text-muted-foreground">Consultations</p>
           <p className="text-xl font-bold mt-1">{rupee(consultRevenue)}</p>
@@ -480,6 +508,11 @@ export default function HABilling() {
           <p className="text-xs text-muted-foreground">Pharmacy</p>
           <p className="text-xl font-bold mt-1">{rupee(pharmTotal)}</p>
           <p className="text-[11px] text-muted-foreground mt-0.5">{pharmStats.patientsServed} patients</p>
+        </div>
+        <div className={card}>
+          <p className="text-xs text-muted-foreground">Inward (IPD)</p>
+          <p className="text-xl font-bold mt-1">{rupee(ipdTotal)}</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">{ipd.patients} patients · Due {rupee(ipdDue)}</p>
         </div>
         <div className={card}>
           <p className="text-xs text-muted-foreground">Consultations paid</p>
@@ -510,11 +543,12 @@ export default function HABilling() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {daily.length > 0 && (
             <ChartCard title="Revenue per day" sub={`${rupee(grandRevenue)} total`}>
-              {(showLab || showPharm) && (
+              {(showLab || showPharm || showIpd) && (
                 <div className="flex gap-3 text-[11px] text-muted-foreground mb-1">
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm" style={{ background: "#0d9488" }} />Consultations</span>
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm" style={{ background: "#6366f1" }} />Laboratory</span>
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm" style={{ background: "#f97316" }} />Pharmacy</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm" style={{ background: "#0ea5e9" }} />Inward (IPD)</span>
                 </div>
               )}
               <div style={{ width: "100%", height: 170 }}>
@@ -525,9 +559,10 @@ export default function HABilling() {
                     <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={44} />
                     <Tooltip cursor={{ fill: "rgba(0,0,0,0.04)" }} content={<HintTip fmt={rupee} hint={CLICK_HINT} />} />
                     <Bar dataKey="consultation" name="Consultations" stackId="rev" fill="#0d9488" maxBarSize={32} onClick={onDayClick}
-                      radius={showLab || showPharm ? undefined : [3, 3, 0, 0]} />
-                    {showLab && <Bar dataKey="lab" name="Laboratory" stackId="rev" fill="#6366f1" maxBarSize={32} radius={showPharm ? undefined : [3, 3, 0, 0]} onClick={() => navigate({ path: "/hospital-admin/lab" })} />}
-                    {showPharm && <Bar dataKey="pharmacy" name="Pharmacy" stackId="rev" fill="#f97316" maxBarSize={32} radius={[3, 3, 0, 0]} onClick={() => openPharmacyDrawer(hospitalId, pharmRange[0], pharmRange[1])} />}
+                      radius={showLab || showPharm || showIpd ? undefined : [3, 3, 0, 0]} />
+                    {showLab && <Bar dataKey="lab" name="Laboratory" stackId="rev" fill="#6366f1" maxBarSize={32} radius={showPharm || showIpd ? undefined : [3, 3, 0, 0]} onClick={() => navigate({ path: "/hospital-admin/lab" })} />}
+                    {showPharm && <Bar dataKey="pharmacy" name="Pharmacy" stackId="rev" fill="#f97316" maxBarSize={32} radius={showIpd ? undefined : [3, 3, 0, 0]} onClick={() => openPharmacyDrawer(hospitalId, pharmRange[0], pharmRange[1])} />}
+                    {showIpd && <Bar dataKey="ipd" name="Inward (IPD)" stackId="rev" fill="#0ea5e9" maxBarSize={32} radius={[3, 3, 0, 0]} />}
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -550,8 +585,8 @@ export default function HABilling() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             <PieCard title="Revenue by doctor" data={doctorShare} money />
-            {showLab || showPharm ? (
-              <PieCard title="Consultations vs laboratory vs pharmacy" data={sourceSplit} money />
+            {showLab || showPharm || showIpd ? (
+              <PieCard title="Revenue by source" data={sourceSplit} money />
             ) : (
               <PieCard title="Paid vs unpaid" data={paidSplit} money />
             )}

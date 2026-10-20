@@ -315,6 +315,7 @@ export const inward = {
   admit:     (data: any)             => post<any>(`/inward`, data),
   update:    (id: string, data: any) => patch<any>(`/inward/${id}`, data),
   discharge: (id: string)            => patch<any>(`/inward/${id}/discharge`, {}),
+  transfer:  (id: string, data: any) => post<any>(`/inward/${id}/transfer`, data),
 };
 
 export const ipdBilling = {
@@ -324,9 +325,9 @@ export const ipdBilling = {
   mine:          (id: string)                                => get<any>(`/ipd-billing/my/${id}`),
   settings:      (id: string, data: any)                     => patch<any>(`/ipd-billing/${id}/settings`, data),
   addItem:       (id: string, data: any)                     => post<any>(`/ipd-billing/${id}/items`, data),
-  removeItem:    (id: string, itemId: string)                => del<any>(`/ipd-billing/${id}/items/${itemId}`),
+  removeItem:    (id: string, itemId: string, reason?: string) => del<any>(`/ipd-billing/${id}/items/${itemId}${reason ? "?reason=" + encodeURIComponent(reason) : ""}`),
   addPayment:    (id: string, data: any)                     => post<any>(`/ipd-billing/${id}/payments`, data),
-  removePayment: (id: string, paymentId: string)             => del<any>(`/ipd-billing/${id}/payments/${paymentId}`),
+  removePayment: (id: string, paymentId: string, reason?: string) => del<any>(`/ipd-billing/${id}/payments/${paymentId}${reason ? "?reason=" + encodeURIComponent(reason) : ""}`),
 };
 
 export const nursing = {

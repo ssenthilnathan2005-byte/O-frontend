@@ -4,10 +4,12 @@ import * as api from "../../api";
 import { useStore } from "../../context/StoreContext";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { BedDouble, Plus, X, Pencil, LogOut, ChevronDown, ChevronUp, Thermometer, HeartPulse, Download, Receipt } from "lucide-react";
+import { BedDouble, Plus, X, Pencil, LogOut, ChevronDown, ChevronUp, Thermometer, HeartPulse, Download, Receipt, Baby, ArrowRightLeft } from "lucide-react";
 import { getToken } from "../../api";
 import HABedRequests from "./HABedRequests";
 import IPDBillModal from "./IPDBillModal";
+import MaternityModal from "./MaternityModal";
+import { maternityApi } from "../../lib/maternityApi";
 import IPDCollections from "./IPDCollections";
 import { downloadFile } from "../../lib/downloadFile";
 
@@ -58,6 +60,21 @@ export default function HAInward() {
   const [exportTo, setExportTo] = useState(todayStr());
   const [exporting, setExporting] = useState(false);
   const [billId, setBillId] = useState<string | null>(null);
+  const [matId, setMatId] = useState<string | null>(null);
+  const [freeBeds, setFreeBeds] = useState<any[]>([]);
+  const [bedId, setBedId] = useState("");
+  const [formError, setFormError] = useState("");
+  const [origAdmittedAt, setOrigAdmittedAt] = useState("");
+  const [trId, setTrId] = useState<string | null>(null);
+  const [trBed, setTrBed] = useState("");
+  const [trRate, setTrRate] = useState("");
+  const [trReason, setTrReason] = useState("");
+  const [trBusy, setTrBusy] = useState(false);
+  const [trErr, setTrErr] = useState("");
+  const [matEligible, setMatEligible] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    maternityApi.eligible().then((r) => setMatEligible(new Set(r.ids))).catch(() => setMatEligible(new Set()));
+  }, [patients]);
 
   const hospitalId = (user as any)?.hospitalId || "";
   const myDoctors = doctors.filter((d: any) => d.hospitalId === hospitalId);
@@ -87,7 +104,33 @@ export default function HAInward() {
      (p.bed_number || "").toLowerCase().includes(search.toLowerCase()))
   );
 
-  function openAdmit() { setForm({ ...EMPTY_FORM }); setEditId(null); setShowForm(true); }
+  function openTransfer(p: InwardPatient) {
+    setTrId(p.id); setTrBed(""); setTrRate(""); setTrReason(""); setTrErr(""); setFreeBeds([]);
+    api.bedBookings.freeBeds()
+      .then((r) => setFreeBeds(Array.isArray(r) ? r : []))
+      .catch(() => setTrErr("Could not load the free beds. Close and try again."));
+  }
+  async function doTransfer() {
+    if (!trId) return;
+    if (!trBed) { setTrErr("Choose the bed to move the patient to."); return; }
+    setTrBusy(true); setTrErr("");
+    try {
+      const body: any = { bedId: trBed, reason: trReason };
+      if (trRate.trim() !== "") body.rate = Number(trRate);
+      await api.inward.transfer(trId, body);
+      setTrId(null); await load();
+    } catch (e: any) {
+      setTrErr(e?.message || "Could not move the patient. Please try again.");
+    } finally { setTrBusy(false); }
+  }
+
+  function openAdmit() {
+    setForm({ ...EMPTY_FORM }); setEditId(null); setBedId(""); setFormError(""); setFreeBeds([]);
+    setShowForm(true);
+    api.bedBookings.freeBeds()
+      .then((r) => setFreeBeds(Array.isArray(r) ? r : []))
+      .catch(() => setFormError("Could not load the free beds. Close and try again."));
+  }
   function openEdit(p: InwardPatient) {
     setForm({
       patientName: p.patient_name, phone: p.phone || "", age: p.age?.toString() || "",
@@ -96,25 +139,39 @@ export default function HAInward() {
       diagnosis: p.diagnosis || "", notes: p.notes || "",
       admittedAt: p.admitted_at ? p.admitted_at.slice(0, 10) : todayStr(),
     });
+    setOrigAdmittedAt(p.admitted_at ? p.admitted_at.slice(0, 10) : "");
+    setFormError("");
     setEditId(p.id); setShowForm(true);
   }
 
   async function handleSubmit() {
-    if (!form.patientName.trim()) return;
+    if (!form.patientName.trim()) { setFormError("Enter the patient name."); return; }
+    if (!editId && !bedId) { setFormError("Choose a bed from the list."); return; }
+    setFormError("");
     setLoading(true);
     try {
-      const payload = {
-        patientName: form.patientName, phone: form.phone,
-        age: form.age ? Number(form.age) : null,
-        gender: form.gender, ward: form.ward, bedNumber: form.bedNumber,
-        admittingDoctorName: form.admittingDoctorName,
-        diagnosis: form.diagnosis, notes: form.notes,
-        admittedAt: form.admittedAt ? new Date(form.admittedAt).toISOString() : null,
-      };
-      if (editId) await api.inward.update(editId, payload);
-      else await api.inward.admit(payload);
+      if (editId) {
+        const payload: any = {
+          diagnosis: form.diagnosis, notes: form.notes,
+          admittingDoctorName: form.admittingDoctorName,
+        };
+        if (form.admittedAt && form.admittedAt !== origAdmittedAt)
+          payload.admittedAt = new Date(form.admittedAt).toISOString();
+        await api.inward.update(editId, payload);
+      } else {
+        await api.inward.admit({
+          patientName: form.patientName, phone: form.phone,
+          age: form.age ? Number(form.age) : null,
+          gender: form.gender, bedId,
+          admittingDoctorName: form.admittingDoctorName,
+          diagnosis: form.diagnosis, notes: form.notes,
+          admittedAt: form.admittedAt ? new Date(form.admittedAt).toISOString() : null,
+        });
+      }
       setShowForm(false); await load();
-    } catch (_) {} finally { setLoading(false); }
+    } catch (e: any) {
+      setFormError(e?.message || "Could not save. Please try again.");
+    } finally { setLoading(false); }
   }
 
   async function handleDischarge(id: string) {
@@ -124,7 +181,7 @@ export default function HAInward() {
       note = b.balance > 0 ? "\n\nBalance due: ₹" + Number(b.balance).toLocaleString("en-IN") + ". Collect payment before discharge." : "";
     } catch (_) {}
     if (!confirm("Mark this patient as discharged?" + note)) return;
-    try { await api.inward.discharge(id); await load(); setBillId(id); } catch (_) {}
+    try { await api.inward.discharge(id); await load(); setBillId(id); } catch (e) { alert((e as Error)?.message || "Could not discharge this patient."); await load(); }
   }
 
   async function handleExport() {
@@ -219,12 +276,22 @@ export default function HAInward() {
                     <button onClick={() => toggleHistory(p.id)} className="p-1.5 rounded hover:bg-muted transition-colors" title="Vitals & notes">
                       {expandedId === p.id ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
                     </button>
+                    {matEligible.has(p.id) && (
+                    <button onClick={() => setMatId(p.id)} className="p-1.5 rounded hover:bg-pink-50 transition-colors" title="Maternity profile">
+                      <Baby className="w-3.5 h-3.5 text-pink-600" />
+                    </button>
+                    )}
                     <button onClick={() => setBillId(p.id)} className="p-1.5 rounded hover:bg-teal-50 transition-colors" title="Bill">
                       <Receipt className="w-3.5 h-3.5 text-teal-600" />
                     </button>
                     <button onClick={() => openEdit(p)} className="p-1.5 rounded hover:bg-muted transition-colors">
                       <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
                     </button>
+                    {p.status === "admitted" && (
+                      <button onClick={() => openTransfer(p)} className="p-1.5 rounded hover:bg-blue-50 transition-colors" title="Transfer to another bed or ward">
+                        <ArrowRightLeft className="w-3.5 h-3.5 text-blue-600" />
+                      </button>
+                    )}
                     {p.status === "admitted" && (
                       <button onClick={() => handleDischarge(p.id)} className="p-1.5 rounded hover:bg-red-50 transition-colors">
                         <LogOut className="w-3.5 h-3.5 text-red-500" />
@@ -290,7 +357,53 @@ export default function HAInward() {
         </table>
       </div>
 
+      {trId && (() => { const cur = patients.find(x => x.id === trId); return (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-background rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b">
+              <h2 className="font-semibold text-lg">Transfer patient</h2>
+              <button onClick={() => setTrId(null)} className="p-1.5 rounded hover:bg-muted"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="px-6 py-4 space-y-3">
+              <p className="text-sm"><b>{cur?.patient_name}</b> is now in {cur?.ward || "-"} / {cur?.bed_number || "-"}</p>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-1 block">Move to bed *</label>
+                <select value={trBed} onChange={e => setTrBed(e.target.value)}
+                  className="w-full border rounded-md px-3 py-2 text-sm bg-background">
+                  <option value="">{freeBeds.length ? "Select a free bed" : "No free beds available"}</option>
+                  {Array.from(new Set(freeBeds.map((b: any) => b.ward_name))).map((w: any) => (
+                    <optgroup key={w} label={w}>
+                      {freeBeds.filter((b: any) => b.ward_name === w).map((b: any) => (
+                        <option key={b.bed_id} value={b.bed_id}>{b.bed_number}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-1 block">Special daily rate in the new ward (optional)</label>
+                <Input placeholder="Leave empty to use the new ward rate" inputMode="decimal" value={trRate}
+                  onChange={e => setTrRate(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-1 block">Reason (optional)</label>
+                <Input placeholder="e.g. needs ICU care" value={trReason} onChange={e => setTrReason(e.target.value)} />
+              </div>
+              <p className="text-xs text-muted-foreground">The new ward rate is charged from today. Earlier days stay at the old ward rate. The old bed goes to cleaning.</p>
+              {trErr && <p className="text-sm text-red-600">{trErr}</p>}
+            </div>
+            <div className="px-6 py-4 border-t flex gap-3 justify-end">
+              <button onClick={() => setTrId(null)} className="px-4 py-2 rounded-lg text-sm border hover:bg-muted transition-colors">Cancel</button>
+              <button onClick={doTransfer} disabled={trBusy}
+                className="px-4 py-2 rounded-lg text-sm bg-teal-600 hover:bg-teal-700 text-white font-medium transition-colors disabled:opacity-50">
+                {trBusy ? "Moving..." : "Move patient"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ); })()}
       {billId && <IPDBillModal inwardId={billId} onClose={() => setBillId(null)} />}
+      {matId && <MaternityModal inwardId={matId} onClose={() => setMatId(null)} />}
       {showForm && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-background rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -305,16 +418,36 @@ export default function HAInward() {
                 { label: "Patient Name *", key: "patientName", placeholder: "Full name" },
                 { label: "Phone", key: "phone", placeholder: "Mobile number" },
                 { label: "Age", key: "age", placeholder: "Age in years" },
-                { label: "Ward", key: "ward", placeholder: "e.g. General Ward, ICU" },
-                { label: "Bed Number", key: "bedNumber", placeholder: "e.g. B-12" },
                 { label: "Diagnosis", key: "diagnosis", placeholder: "Primary diagnosis" },
               ].map(({ label, key, placeholder }) => (
                 <div key={key}>
                   <label className="text-sm font-medium text-muted-foreground mb-1 block">{label}</label>
-                  <Input placeholder={placeholder} value={(form as any)[key]}
+                  <Input placeholder={placeholder} value={(form as any)[key]} disabled={!!editId && ["patientName", "phone", "age"].includes(key)}
                     onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} />
                 </div>
               ))}
+              {editId ? (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground mb-1 block">Ward / Bed</label>
+                  <Input disabled value={(() => { const c = patients.find(x => x.id === editId); return c ? `${c.ward || "-"} / ${c.bed_number || "-"}` : ""; })()} />
+                  <p className="text-xs text-muted-foreground mt-1">To move the patient, use the transfer button (arrows icon) in the list.</p>
+                </div>
+              ) : (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground mb-1 block">Bed *</label>
+                  <select value={bedId} onChange={e => setBedId(e.target.value)}
+                    className="w-full border rounded-md px-3 py-2 text-sm bg-background">
+                    <option value="">{freeBeds.length ? "Select a free bed" : "No free beds available"}</option>
+                    {Array.from(new Set(freeBeds.map((b: any) => b.ward_name))).map((w: any) => (
+                      <optgroup key={w} label={w}>
+                        {freeBeds.filter((b: any) => b.ward_name === w).map((b: any) => (
+                          <option key={b.bed_id} value={b.bed_id}>{b.bed_number}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">Admitted On</label>
                 <DateInput value={form.admittedAt}
@@ -360,6 +493,7 @@ export default function HAInward() {
                   className="w-full border rounded-md px-3 py-2 text-sm bg-background resize-none" />
               </div>
             </div>
+            {formError && <p className="px-6 pb-2 text-sm text-red-600">{formError}</p>}
             <div className="px-6 py-4 border-t flex gap-3 justify-end">
               <button onClick={() => setShowForm(false)}
                 className="px-4 py-2 rounded-lg text-sm border hover:bg-muted transition-colors">Cancel</button>

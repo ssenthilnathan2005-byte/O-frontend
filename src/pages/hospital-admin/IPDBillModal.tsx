@@ -21,6 +21,7 @@ export default function IPDBillModal({ inwardId, onClose }: { inwardId: string; 
   const [pay, setPay] = useState({ kind: "payment", mode: "cash", amount: "", note: "" });
   const [rate, setRate] = useState("");
   const [disc, setDisc] = useState("");
+  const closed = bill?.status === "discharged";
 
   const load = useCallback(async () => {
     try {
@@ -29,6 +30,14 @@ export default function IPDBillModal({ inwardId, onClose }: { inwardId: string; 
     } catch (e: any) { setErr(e.message || "Could not load bill"); }
   }, [inwardId]);
   useEffect(() => { load(); }, [load]);
+
+  // Changing a closed (discharged) bill needs a reason; the server logs it. Removing a payment always needs one.
+  function askReason(need: boolean): { ok: boolean; reason?: string } {
+    if (!need) return { ok: true };
+    const r = (window.prompt("Reason for this change (required, will be logged):") || "").trim();
+    if (r.length < 3) { toast.error("A reason is required for this change"); return { ok: false }; }
+    return { ok: true, reason: r };
+  }
 
   async function run(fn: () => Promise<any>, ok: string, after?: () => void) {
     setBusy(true);
@@ -72,11 +81,20 @@ export default function IPDBillModal({ inwardId, onClose }: { inwardId: string; 
                 <span className="font-medium">Bed charge</span>
                 <span className="font-semibold">{inr(bill.bedCharge)}</span>
               </div>
-              <p className="text-xs text-gray-500">{bill.days} day{bill.days === 1 ? "" : "s"} × {inr(bill.bedRate)} per day (calendar days)</p>
+              {bill.segments && bill.segments.length > 1 ? (
+                <div className="text-xs text-gray-500 space-y-0.5">
+                  {bill.segments.map((s: any, i: number) => (
+                    <p key={i}>{s.ward}: {s.days} day{s.days === 1 ? "" : "s"} &times; {inr(s.rate)} = {inr(s.amount)}</p>
+                  ))}
+                  <p>Calendar days. The rate box below changes the current ward rate.</p>
+                </div>
+              ) : (
+                <p className="text-xs text-gray-500">{bill.days} day{bill.days === 1 ? "" : "s"} × {inr(bill.bedRate)} per day (calendar days)</p>
+              )}
               <div className="flex items-end gap-2">
                 <div className="flex-1"><label className="text-[11px] text-gray-500">Bed rate per day (₹)</label>
                   <input className={inp} inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} /></div>
-                <button disabled={busy} onClick={() => run(() => ipdBilling.settings(inwardId, { bedRate: Number(rate) }), "Bed rate updated")}
+                <button disabled={busy} onClick={() => { const a = askReason(closed); if (a.ok) run(() => ipdBilling.settings(inwardId, { bedRate: Number(rate), reason: a.reason }), "Bed rate updated"); }}
                   className="px-3 py-1.5 rounded-lg text-sm border hover:bg-gray-50 disabled:opacity-50">Save</button>
               </div>
             </div>
@@ -93,7 +111,7 @@ export default function IPDBillModal({ inwardId, onClose }: { inwardId: string; 
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="font-medium">{inr(i.amount)}</span>
-                    <button disabled={busy} onClick={() => { if (confirm("Remove this charge?")) run(() => ipdBilling.removeItem(inwardId, i.id), "Charge removed"); }}
+                    <button disabled={busy} onClick={() => { if (!confirm("Remove this charge?")) return; const a = askReason(closed); if (a.ok) run(() => ipdBilling.removeItem(inwardId, i.id, a.reason), "Charge removed"); }}
                       className="p-1 rounded hover:bg-red-50"><Trash2 className="w-3.5 h-3.5 text-red-500" /></button>
                   </div>
                 </div>
@@ -106,7 +124,7 @@ export default function IPDBillModal({ inwardId, onClose }: { inwardId: string; 
                 <input className={inp + " col-span-2"} inputMode="decimal" placeholder="Qty" value={item.qty} onChange={(e) => setItem({ ...item, qty: e.target.value })} />
                 <input className={inp + " col-span-3"} inputMode="decimal" placeholder="Price (₹)" value={item.unitPrice} onChange={(e) => setItem({ ...item, unitPrice: e.target.value })} />
                 <button disabled={busy || !item.description.trim() || item.unitPrice === ""}
-                  onClick={() => run(() => ipdBilling.addItem(inwardId, { ...item, qty: Number(item.qty || 1), unitPrice: Number(item.unitPrice) }), "Charge added", () => setItem({ ...item, description: "", qty: "1", unitPrice: "" }))}
+                  onClick={() => { const a = askReason(closed); if (a.ok) run(() => ipdBilling.addItem(inwardId, { ...item, qty: Number(item.qty || 1), unitPrice: Number(item.unitPrice), reason: a.reason }), "Charge added", () => setItem({ ...item, description: "", qty: "1", unitPrice: "" })); }}
                   className="col-span-1 flex items-center justify-center rounded-lg bg-teal-600 text-white disabled:opacity-50"><Plus className="w-4 h-4" /></button>
               </div>
             </div>
@@ -117,7 +135,7 @@ export default function IPDBillModal({ inwardId, onClose }: { inwardId: string; 
               <div className="flex items-end gap-2">
                 <div className="flex-1"><label className="text-[11px] text-gray-500">Discount (₹)</label>
                   <input className={inp} inputMode="decimal" value={disc} onChange={(e) => setDisc(e.target.value)} /></div>
-                <button disabled={busy} onClick={() => run(() => ipdBilling.settings(inwardId, { discount: Number(disc || 0) }), "Discount saved")}
+                <button disabled={busy} onClick={() => { const a = askReason(closed); if (a.ok) run(() => ipdBilling.settings(inwardId, { discount: Number(disc || 0), reason: a.reason }), "Discount saved"); }}
                   className="px-3 py-1.5 rounded-lg text-sm border hover:bg-gray-50 disabled:opacity-50">Save</button>
               </div>
             </div>
@@ -134,7 +152,7 @@ export default function IPDBillModal({ inwardId, onClose }: { inwardId: string; 
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className={"font-medium " + (p.kind === "refund" ? "text-red-600" : "text-green-700")}>{p.kind === "refund" ? "-" : ""}{inr(p.amount)}</span>
-                    {isAdmin && <button disabled={busy} onClick={() => { if (confirm("Remove this payment entry?")) run(() => ipdBilling.removePayment(inwardId, p.id), "Payment removed"); }}
+                    {isAdmin && <button disabled={busy} onClick={() => { if (!confirm("Remove this payment entry?")) return; const a = askReason(true); if (a.ok) run(() => ipdBilling.removePayment(inwardId, p.id, a.reason), "Payment removed"); }}
                       className="p-1 rounded hover:bg-red-50"><Trash2 className="w-3.5 h-3.5 text-red-500" /></button>}
                   </div>
                 </div>
@@ -149,7 +167,7 @@ export default function IPDBillModal({ inwardId, onClose }: { inwardId: string; 
                 <input className={inp + " col-span-2"} inputMode="decimal" placeholder="Amount (₹)" value={pay.amount} onChange={(e) => setPay({ ...pay, amount: e.target.value })} />
                 <input className={inp + " col-span-3"} placeholder="Note (optional)" value={pay.note} onChange={(e) => setPay({ ...pay, note: e.target.value })} />
                 <button disabled={busy || !(Number(pay.amount) > 0)}
-                  onClick={() => run(() => ipdBilling.addPayment(inwardId, { ...pay, amount: Number(pay.amount) }), "Payment recorded", () => setPay({ ...pay, amount: "", note: "" }))}
+                  onClick={() => { const a = askReason(closed && pay.kind === "refund"); if (a.ok) run(() => ipdBilling.addPayment(inwardId, { ...pay, amount: Number(pay.amount), reason: a.reason }), "Payment recorded", () => setPay({ ...pay, amount: "", note: "" })); }}
                   className="col-span-1 flex items-center justify-center rounded-lg bg-teal-600 text-white disabled:opacity-50"><Plus className="w-4 h-4" /></button>
               </div>
             </div>

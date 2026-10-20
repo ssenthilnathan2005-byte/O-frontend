@@ -1,7 +1,7 @@
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { Clock, MapPin, FileText, ChevronRight } from "lucide-react";
-import logo from "../assets/doctorbooked-logo.png";
+import logo from "../assets/doctorbooked-logo-cropped.png";
 
 interface Props {
   onContinue: () => void;
@@ -73,7 +73,7 @@ export default function AboutPage({ onContinue }: Props) {
       </button>
 
       <div className="max-w-3xl mx-auto px-6 py-12 lg:py-20 flex flex-col items-center text-center min-h-full">
-        <motion.div {...up(0)}><TransparentLogo src={logo} width={190} /></motion.div>
+        <motion.div {...up(0)}><img src={logo} alt="Doctor Booked" style={{ width: 220, display: "block" }} /></motion.div>
 
         <motion.span
           {...up(0.15)}

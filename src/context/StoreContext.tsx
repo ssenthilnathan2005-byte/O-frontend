@@ -77,6 +77,7 @@ export function useStore(): Store {
 
 const REFRESH_MS = 10_000; // 10 seconds
 let _bkDeniedAt = 0;
+let _bkLastAt = 0;
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const { navigate, resetToLogin } = useRouter();
@@ -175,7 +176,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     if (["nurse", "front_office", "pharmacy", "hospital_lab"].includes((u as any).role)) {
       const hid = (u as any).hospitalId;
-      if (hid && Date.now() - _bkDeniedAt > 60000) {
+      if (hid && document.visibilityState === "visible" && Date.now() - _bkDeniedAt > 60000 && Date.now() - _bkLastAt > 20000) {
+        _bkLastAt = Date.now();
         try { setBookings(await api.bookings.forHospital(hid)); _bkDeniedAt = 0; }
         catch { _bkDeniedAt = Date.now(); }
       }

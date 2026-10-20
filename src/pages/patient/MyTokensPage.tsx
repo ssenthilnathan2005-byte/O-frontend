@@ -11,9 +11,8 @@ import { isLiveBookingStatus, normalizeBookingStatus } from "../../lib/bookingSt
 import { useRouter } from "../../router/RouterContext";
 import type { SessionType } from "../../types";
 
-// Past bookings older than this many days are hidden from the PATIENT view only.
-// Nothing is deleted; hospital admin and lab staff still see the full history.
-const HIDE_AFTER_DAYS = 6;
+// Patient history is never hidden: every past booking stays visible until the patient
+// or an admin deletes it.
 // Past bookings shown per click of "Show more" inside a folder.
 const PAGE_SIZE = 5;
 
@@ -40,17 +39,6 @@ function parseDay(d?: string | null): Date | null {
   if (!d) return null;
   const dt = /^\d{4}-\d{2}-\d{2}/.test(d) ? new Date(`${d.slice(0, 10)}T00:00:00`) : new Date(d);
   return Number.isNaN(dt.getTime()) ? null : dt;
-}
-function cutoffDate(): Date {
-  const c = new Date();
-  c.setHours(0, 0, 0, 0);
-  c.setDate(c.getDate() - HIDE_AFTER_DAYS);
-  return c;
-}
-// Unreadable dates stay visible rather than silently disappearing.
-function isRecent(d?: string | null): boolean {
-  const dt = parseDay(d);
-  return !dt || dt >= cutoffDate();
 }
 function dayLabel(d: string): string {
   const dt = parseDay(d);
@@ -94,7 +82,7 @@ function PastFolder({
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-gray-900">{title}</p>
           <p className="text-xs text-gray-500">
-            {count === 0 ? `Nothing in the last ${HIDE_AFTER_DAYS} days` : open ? "Tap to hide" : "Tap to view"}
+            {count === 0 ? "Nothing here yet" : open ? "Tap to hide" : "Tap to view"}
           </p>
         </div>
         <span className="text-sm font-semibold text-gray-600 bg-gray-100 rounded-full px-2.5 py-0.5">{count}</span>
@@ -183,18 +171,17 @@ export default function MyTokensPage() {
   const pastBookings = allMyBookings.filter((b) => {
     const status = normalizeBookingStatus(b.status);
     if (!FINISHED_STATUSES.has(status)) return false;
-    if (!isRecent(b.date)) return false;
     if (status === "cancelled") return true;
     return sessionEnded(b);
   });
   const pastGroups = groupByDay(pastBookings.slice(0, pastVisible), (b) => b.date);
 
-  // Labs: unfinished ones stay on top; finished/cancelled go in the folder (6-day limit).
+  // Labs: unfinished ones stay on top; finished/cancelled go in the folder (no age limit).
   const sortedLab = [...labBookings].map(markExpired).sort(
     (a, b) => (parseDay(b.slot_date)?.getTime() ?? 0) - (parseDay(a.slot_date)?.getTime() ?? 0),
   );
   const activeLab = sortedLab.filter((b) => !LAB_DONE.has(b.status));
-  const pastLab = sortedLab.filter((b) => LAB_DONE.has(b.status) && isRecent(b.slot_date));
+  const pastLab = sortedLab.filter((b) => LAB_DONE.has(b.status));
   const labGroups = groupByDay(pastLab.slice(0, labVisible), (b) => b.slot_date);
 
   const renderLabCard = (b: LabBooking) => (

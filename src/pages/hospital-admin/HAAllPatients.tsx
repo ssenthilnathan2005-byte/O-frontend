@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, X } from "lucide-react";
+import { Search, X, Printer } from "lucide-react";
+import { toast } from "sonner";
+import { printMaternityRecord } from "../../lib/maternityRecord";
+import { maternityApi } from "../../lib/maternityApi";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -19,6 +22,7 @@ type Visit = {
   doctorId?: string;
   session?: string;
   paid?: boolean;
+  inwardId?: string;
 };
 
 type Raw = Visit & { name: string; phone: string; age: string; gender: string };
@@ -116,6 +120,11 @@ export default function HAAllPatients() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [printingId, setPrintingId] = useState<string | null>(null);
+  const [matEligible, setMatEligible] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    maternityApi.eligible().then((r) => setMatEligible(new Set(r.ids))).catch(() => setMatEligible(new Set()));
+  }, [inwardList]);
 
   useEffect(() => {
     let cancelled = false;
@@ -168,6 +177,7 @@ export default function HAAllPatients() {
       const bed = pick(p, "bed_number", "bedNumber");
       out.push({
         key: `ipd-${id || out.length}`,
+        inwardId: id || undefined,
         type: "Inward",
         name: pick(p, "patientName", "patient_name", "name"),
         phone: pick(p, "phone", "patientPhone", "patient_phone"),
@@ -393,6 +403,18 @@ export default function HAAllPatients() {
                   <p><span className="text-gray-500">Doctor:</span> {v.doctor || "-"}</p>
                   {v.detail && <p><span className="text-gray-500">{v.type === "Inward" ? "Diagnosis:" : "Token:"}</span> {v.type === "Inward" ? v.detail : v.detail.replace("Token ", "")}</p>}
                   {v.place && <p><span className="text-gray-500">Ward / Bed:</span> {v.place}</p>}
+                  {v.type === "Inward" && v.inwardId && matEligible.has(v.inwardId) && (
+                    <button type="button" disabled={printingId === v.inwardId}
+                      onClick={async () => {
+                        setPrintingId(v.inwardId!);
+                        try { await printMaternityRecord(v.inwardId!); }
+                        catch (e: any) { toast.error(e?.message || "Could not open the record"); }
+                        setPrintingId(null);
+                      }}
+                      className="mt-1 inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg border border-teal-600 text-teal-700 hover:bg-teal-50 disabled:opacity-50">
+                      <Printer className="w-3.5 h-3.5" />{printingId === v.inwardId ? "Preparing..." : "Print maternity record"}
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
