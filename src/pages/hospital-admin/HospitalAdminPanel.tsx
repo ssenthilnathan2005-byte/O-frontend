@@ -28,17 +28,17 @@ const NAV_ITEMS = [
   { path: "/hospital-admin/all-patients", label: "All Patients", icon: Users },
   { path: "/hospital-admin/attendance", label: "Attendance", icon: Fingerprint },
   { path: "/hospital-admin/wards", label: "Beds & Wards", icon: Stethoscope },
-  { path: "/hospital-admin/billing", label: "Revenue", icon: Receipt },
   { path: "/hospital-admin/doctors", label: "Doctors", icon: UserCog },
+  { path: "/hospital-admin/front-desk", label: "Front Desk", icon: ClipboardList },
   { path: "/hospital-admin/hr", label: "HR / Staff", icon: ClipboardList },
   { path: "/hospital-admin/inventory", label: "Inventory", icon: Package },
   { path: "/hospital-admin/ipd", label: "IPD / Inward", icon: BedDouble },
   { path: "/hospital-admin/lab", label: "Laboratory", icon: FlaskConical },
   { path: "/hospital-admin/patients", label: "Live Patients", icon: Users2 },
   { path: "/hospital-admin/nurses", label: "Nurses", icon: HeartPulse },
-  { path: "/hospital-admin/front-desk", label: "Front Desk", icon: ClipboardList },
   { path: "/hospital-admin/permissions", label: "Permissions", icon: ShieldCheck },
   { path: "/hospital-admin/pharmacy", label: "Pharmacy", icon: Pill },
+  { path: "/hospital-admin/billing", label: "Revenue", icon: Receipt },
 ] as const;
 
 const PHARMACY_SUB = [
@@ -135,7 +135,8 @@ export default function HospitalAdminPanel() {
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {NAV_ITEMS.filter(n => n.path !== "/hospital-admin/pharmacy").map(({ path, label, icon: Icon }) => {
+          {NAV_ITEMS.map(({ path, label, icon: Icon }) => {
+            if (path === "/hospital-admin/pharmacy") return <PharmacyMenu key={path} />;
             const isActive = route.path === path || (route.path === "/hospital-admin" && path === "/hospital-admin");
             return (
               <button
@@ -151,7 +152,6 @@ export default function HospitalAdminPanel() {
               </button>
             );
           })}
-          <PharmacyMenu />
         </nav>
 
         <div className="px-3 py-4 border-t border-white/10">
@@ -197,7 +197,7 @@ export default function HospitalAdminPanel() {
               </button>
             </div>
             <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y px-3 py-4 space-y-1">
-              {NAV_ITEMS.filter(n => n.path !== "/hospital-admin/pharmacy").map(({ path, label, icon: Icon }) => (
+              {NAV_ITEMS.map(({ path, label, icon: Icon }) => path === "/hospital-admin/pharmacy" ? <PharmacyMenu key={path} onNavigate={() => setDrawerOpen(false)} /> : (
                 <button
                   key={path}
                   type="button"
@@ -208,7 +208,6 @@ export default function HospitalAdminPanel() {
                   {label}
                 </button>
               ))}
-              <PharmacyMenu onNavigate={() => setDrawerOpen(false)} />
             </nav>
             <div className="px-3 py-4 border-t border-white/10">
               <button
