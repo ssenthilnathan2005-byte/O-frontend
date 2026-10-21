@@ -69,6 +69,28 @@ export default function PrescriptionPresetsManager({ doctor }: { doctor?: { spec
   const [minAge, setMinAge] = useState("");
   const [maxAge, setMaxAge] = useState("");
   const [saving, setSaving] = useState(false);
+  const [suggestions, setSuggestions] = useState<{ name: string; inStock: boolean }[]>([]);
+  const [activeMedIdx, setActiveMedIdx] = useState<number | null>(null);
+  function applyMedName(i: number, n: string) {
+    const fm = detectFormFromText(n);
+    const cur = meds[i];
+    setMed(i, fm && cur && fm !== cur.form ? { name: n, ...withForm(cur, fm) } : { name: n });
+  }
+  async function searchMedicines(i: number, q: string) {
+    applyMedName(i, q);
+    setActiveMedIdx(i);
+    if (q.length < 2) { setSuggestions([]); return; }
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000/api"}/pharmacy/medicines?q=${encodeURIComponent(q)}`, { headers: { Authorization: `Bearer ${getToken()}` } });
+      const data = await res.json();
+      setSuggestions(Array.isArray(data) ? data.filter((m: any) => m && m.name).map((m: any) => ({ name: m.name, inStock: m.in_stock === true })) : []);
+    } catch { setSuggestions([]); }
+  }
+  function pickSuggestion(i: number, name: string) {
+    applyMedName(i, name);
+    setSuggestions([]);
+    setActiveMedIdx(null);
+  }
 
   const symptomList = getSymptomsForSpecialty(doctor?.specialty || "")?.symptoms ?? [];
 
@@ -176,7 +198,19 @@ export default function PrescriptionPresetsManager({ doctor }: { doctor?: { spec
               {meds.map((m, i) => (
                 <div key={i} className="space-y-2 rounded-xl border bg-gray-50 p-3">
                   <div className="flex items-center gap-2">
-                    <Input value={m.name} onChange={e => { const n = e.target.value; const fm = detectFormFromText(n); setMed(i, fm && fm !== m.form ? { name: n, ...withForm(m, fm) } : { name: n }); }} placeholder="Medicine name" />
+                    <div className="relative flex-1">
+                      <Input value={m.name} onChange={e => searchMedicines(i, e.target.value)} onFocus={() => setActiveMedIdx(i)} placeholder="Medicine name" />
+                      {activeMedIdx === i && suggestions.length > 0 && (
+                        <div className="absolute z-10 bg-white border rounded-lg shadow-lg mt-1 w-full max-h-60 overflow-y-auto">
+                          {suggestions.map(s => (
+                            <button type="button" key={s.name} className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 flex items-center justify-between gap-2" onClick={() => pickSuggestion(i, s.name)}>
+                              <span>{s.name}</span>
+                              {s.inStock && <span className="text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded px-1.5 py-0.5">In Stock</span>}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     {meds.length > 1 && (
                       <button onClick={() => setMeds(prev => prev.filter((_, idx) => idx !== i))} className="text-red-400"><Trash2 className="h-4 w-4" /></button>
                     )}
