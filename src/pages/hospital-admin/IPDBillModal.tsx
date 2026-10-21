@@ -21,14 +21,24 @@ export default function IPDBillModal({ inwardId, onClose }: { inwardId: string; 
   const [pay, setPay] = useState({ kind: "payment", mode: "cash", amount: "", note: "" });
   const [rate, setRate] = useState("");
   const [disc, setDisc] = useState("");
+  const [discType, setDiscType] = useState("amount");
+  const [cgst, setCgst] = useState("0");
+  const [sgst, setSgst] = useState("0");
   const closed = bill?.status === "discharged";
+
+  const applyBill = useCallback((b: any) => {
+    setBill(b); setRate(String(b.bedRate));
+    setDisc(String(b.discountValue ?? b.discount ?? 0));
+    setDiscType(b.discountType === "percent" ? "percent" : "amount");
+    setCgst(String(b.cgstRate ?? 0)); setSgst(String(b.sgstRate ?? 0));
+  }, []);
 
   const load = useCallback(async () => {
     try {
       const b = await ipdBilling.get(inwardId);
-      setBill(b); setRate(String(b.bedRate)); setDisc(String(b.discount)); setErr("");
+      applyBill(b); setErr("");
     } catch (e: any) { setErr(e.message || "Could not load bill"); }
-  }, [inwardId]);
+  }, [inwardId, applyBill]);
   useEffect(() => { load(); }, [load]);
 
   // Changing a closed (discharged) bill needs a reason; the server logs it. Removing a payment always needs one.
@@ -39,9 +49,46 @@ export default function IPDBillModal({ inwardId, onClose }: { inwardId: string; 
     return { ok: true, reason: r };
   }
 
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+  const calcTotals = (subtotal: number, type: string, dv: number, cr: number, sr: number) => {
+    const v = Math.max(0, dv || 0);
+    const discount = type === "percent" ? round2(Math.min(subtotal, (subtotal * Math.min(v, 100)) / 100)) : Math.min(round2(v), subtotal);
+    const taxable = round2(subtotal - discount);
+    const cgstAmt = round2((taxable * Math.min(Math.max(0, cr || 0), 100)) / 100);
+    const sgstAmt = round2((taxable * Math.min(Math.max(0, sr || 0), 100)) / 100);
+    return { discount, taxable, cgst: cgstAmt, sgst: sgstAmt, total: round2(taxable + cgstAmt + sgstAmt) };
+  };
+  const cgstNum = Number(cgst) || 0;
+  const sgstNum = Number(sgst) || 0;
+  const dirty = !!bill && (discType !== (bill.discountType || "amount") || Number(disc || 0) !== Number(bill.discountValue ?? bill.discount ?? 0) || cgstNum !== Number(bill.cgstRate || 0) || sgstNum !== Number(bill.sgstRate || 0));
+  const live = bill
+    ? (dirty
+        ? calcTotals(Number(bill.subtotal || 0), discType, Number(disc) || 0, cgstNum, sgstNum)
+        : { discount: Number(bill.discount || 0), taxable: Number(bill.taxable ?? round2(Number(bill.subtotal || 0) - Number(bill.discount || 0))), cgst: Number(bill.cgst || 0), sgst: Number(bill.sgst || 0), total: Number(bill.total || 0) })
+    : null;
+  const liveTotal = live ? live.total : 0;
+  const liveBalance = bill ? round2(liveTotal - Number(bill.paid || 0)) : 0;
+  const shownCgstRate = dirty ? cgstNum : Number(bill?.cgstRate || 0);
+  const shownSgstRate = dirty ? sgstNum : Number(bill?.sgstRate || 0);
+  const shownDiscType = dirty ? discType : (bill?.discountType || "amount");
+  const shownDiscValue = dirty ? Number(disc) || 0 : Number(bill?.discountValue ?? bill?.discount ?? 0);
+  const payAmt = Number(pay.amount) || 0;
+  const afterPay = round2(pay.kind === "refund" ? liveBalance + payAmt : liveBalance - payAmt);
+
+  function saveAdjustments() {
+    const d = Number(disc || 0), c = Number(cgst || 0), s = Number(sgst || 0);
+    if (!(d >= 0)) { toast.error("Enter a valid discount"); return; }
+    if (discType === "percent" && d > 100) { toast.error("Discount cannot be more than 100%"); return; }
+    if (!(c >= 0 && c <= 100) || !(s >= 0 && s <= 100)) { toast.error("Tax rates must be between 0 and 100"); return; }
+    const a = askReason(closed);
+    if (!a.ok) return;
+    const body: any = { discount: d, discountType: discType, cgstRate: c, sgstRate: s, reason: a.reason };
+    run(() => ipdBilling.settings(inwardId, body), "Discount and tax saved");
+  }
+
   async function run(fn: () => Promise<any>, ok: string, after?: () => void) {
     setBusy(true);
-    try { const b = await fn(); toast.success(ok); if (b) { setBill(b); setRate(String(b.bedRate)); setDisc(String(b.discount)); } after?.(); }
+    try { const b = await fn(); toast.success(ok); if (b) applyBill(b); after?.(); }
     catch (e: any) { toast.error(e.message || "Failed"); }
     finally { setBusy(false); }
   }
@@ -67,11 +114,11 @@ export default function IPDBillModal({ inwardId, onClose }: { inwardId: string; 
           <div className="p-4 space-y-4">
             {/* Summary */}
             <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="rounded-lg bg-gray-50 p-2"><p className="text-[11px] text-gray-500">Total</p><p className="font-semibold">{inr(bill.total)}</p></div>
+              <div className="rounded-lg bg-gray-50 p-2"><p className="text-[11px] text-gray-500">Final total</p><p className="font-semibold">{inr(liveTotal)}</p></div>
               <div className="rounded-lg bg-green-50 p-2"><p className="text-[11px] text-green-700">Paid</p><p className="font-semibold text-green-700">{inr(bill.paid)}</p></div>
-              <div className={"rounded-lg p-2 " + (bill.balance > 0 ? "bg-red-50" : "bg-teal-50")}>
-                <p className={"text-[11px] " + (bill.balance > 0 ? "text-red-600" : "text-teal-700")}>{bill.balance < 0 ? "Refund due" : "Balance due"}</p>
-                <p className={"font-semibold " + (bill.balance > 0 ? "text-red-600" : "text-teal-700")}>{inr(Math.abs(bill.balance))}</p>
+              <div className={"rounded-lg p-2 " + (liveBalance > 0 ? "bg-red-50" : "bg-teal-50")}>
+                <p className={"text-[11px] " + (liveBalance > 0 ? "text-red-600" : "text-teal-700")}>{liveBalance < 0 ? "Refund due" : "Remaining balance"}</p>
+                <p className={"font-semibold " + (liveBalance > 0 ? "text-red-600" : "text-teal-700")}>{inr(Math.abs(liveBalance))}</p>
               </div>
             </div>
 
@@ -129,20 +176,44 @@ export default function IPDBillModal({ inwardId, onClose }: { inwardId: string; 
               </div>
             </div>
 
-            {/* Discount */}
-            <div className="border rounded-xl p-3">
-              <div className="flex items-center justify-between text-sm mb-1"><span>Subtotal</span><span>{inr(bill.subtotal)}</span></div>
-              <div className="flex items-end gap-2">
-                <div className="flex-1"><label className="text-[11px] text-gray-500">Discount (₹)</label>
-                  <input className={inp} inputMode="decimal" value={disc} onChange={(e) => setDisc(e.target.value)} /></div>
-                <button disabled={busy} onClick={() => { const a = askReason(closed); if (a.ok) run(() => ipdBilling.settings(inwardId, { discount: Number(disc || 0), reason: a.reason }), "Discount saved"); }}
-                  className="px-3 py-1.5 rounded-lg text-sm border hover:bg-gray-50 disabled:opacity-50">Save</button>
+            {/* Discount & tax */}
+            <div className="border rounded-xl p-3 space-y-2">
+              <div className="flex items-center justify-between text-sm"><span>Subtotal</span><span>{inr(bill.subtotal)}</span></div>
+              <div>
+                <label className="text-[11px] text-gray-500">Discount</label>
+                <div className="flex items-center gap-2">
+                  <input className={inp} inputMode="decimal" value={disc} onChange={(e) => setDisc(e.target.value)} />
+                  <div className="flex shrink-0 rounded-lg border overflow-hidden text-sm">
+                    <button type="button" onClick={() => setDiscType("amount")} className={"px-3 py-1.5 " + (discType === "amount" ? "bg-teal-600 text-white" : "bg-white hover:bg-gray-50")}>{"\u20B9"}</button>
+                    <button type="button" onClick={() => setDiscType("percent")} className={"px-3 py-1.5 border-l " + (discType === "percent" ? "bg-teal-600 text-white" : "bg-white hover:bg-gray-50")}>%</button>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div><label className="text-[11px] text-gray-500">CGST (%)</label>
+                  <input className={inp} inputMode="decimal" value={cgst} onChange={(e) => setCgst(e.target.value)} /></div>
+                <div><label className="text-[11px] text-gray-500">SGST (%)</label>
+                  <input className={inp} inputMode="decimal" value={sgst} onChange={(e) => setSgst(e.target.value)} /></div>
+              </div>
+              {live && (
+                <div className="text-sm space-y-0.5 border-t pt-2">
+                  {live.discount > 0 && <div className="flex justify-between"><span>Discount{shownDiscType === "percent" ? " (" + shownDiscValue + "%)" : ""}</span><span>-{inr(live.discount)}</span></div>}
+                  {(shownCgstRate > 0 || shownSgstRate > 0) && <div className="flex justify-between"><span>Amount after discount</span><span>{inr(live.taxable)}</span></div>}
+                  {shownCgstRate > 0 && <div className="flex justify-between"><span>CGST ({shownCgstRate}%)</span><span>{inr(live.cgst)}</span></div>}
+                  {shownSgstRate > 0 && <div className="flex justify-between"><span>SGST ({shownSgstRate}%)</span><span>{inr(live.sgst)}</span></div>}
+                  <div className="flex justify-between font-semibold"><span>Final total</span><span>{inr(live.total)}</span></div>
+                </div>
+              )}
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] text-amber-600">{dirty ? "Preview only - press Save to apply" : ""}</p>
+                <button disabled={busy || !dirty} onClick={saveAdjustments} className="px-3 py-1.5 rounded-lg text-sm border hover:bg-gray-50 disabled:opacity-50">Save</button>
               </div>
             </div>
 
             {/* Payments */}
             <div className="border rounded-xl p-3 space-y-2">
               <p className="font-medium text-sm">Payments</p>
+              <p className="text-xs text-gray-500">Remaining balance = Final total {inr(liveTotal)} - Paid {inr(bill.paid)} = <span className={"font-semibold " + (liveBalance > 0 ? "text-red-600" : "text-teal-700")}>{inr(Math.abs(liveBalance))}{liveBalance < 0 ? " (refund due)" : ""}</span></p>
               {bill.payments.length === 0 && <p className="text-xs text-gray-400">No payments yet.</p>}
               {bill.payments.map((p: any) => (
                 <div key={p.id} className="flex items-center justify-between gap-2 text-sm border-t pt-1.5 first:border-0 first:pt-0">
@@ -164,6 +235,7 @@ export default function IPDBillModal({ inwardId, onClose }: { inwardId: string; 
                 <select className={inp + " col-span-3"} value={pay.mode} onChange={(e) => setPay({ ...pay, mode: e.target.value })}>
                   {MODES.map((m) => <option key={m} value={m}>{m.toUpperCase()}</option>)}
                 </select>
+                {payAmt > 0 && <p className="col-span-6 text-xs text-teal-700">After this {pay.kind}, remaining balance will be {inr(Math.abs(afterPay))}{afterPay < 0 ? " (refund due)" : ""}</p>}
                 <input className={inp + " col-span-2"} inputMode="decimal" placeholder="Amount (₹)" value={pay.amount} onChange={(e) => setPay({ ...pay, amount: e.target.value })} />
                 <input className={inp + " col-span-3"} placeholder="Note (optional)" value={pay.note} onChange={(e) => setPay({ ...pay, note: e.target.value })} />
                 <button disabled={busy || !(Number(pay.amount) > 0)}

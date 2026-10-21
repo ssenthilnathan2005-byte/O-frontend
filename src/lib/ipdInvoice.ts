@@ -33,12 +33,15 @@ th.r{text-align:right}.tot td{border:0;padding:3px 4px}.big td{font-weight:bold;
 ${b.segments && b.segments.length > 1 ? b.segments.map((s: any) => `<tr><td>Bed charge (${esc(s.ward)})<div class="s">${esc(s.days)} day(s), from ${esc(s.from)}</div></td><td class="r">${esc(s.days)}</td><td class="r">${inr(s.rate)}</td><td class="r">${inr(s.amount)}</td></tr>`).join("") : `<tr><td>Bed charge (${esc(b.ward || "Ward")})<div class="s">${esc(b.days)} day(s), calendar days</div></td><td class="r">${esc(b.days)}</td><td class="r">${inr(b.bedRate)}</td><td class="r">${inr(b.bedCharge)}</td></tr>`}
 ${itemRows}</table>
 <table class="tot" style="margin-top:8px"><tr><td class="r">Subtotal</td><td class="r" style="width:130px">${inr(b.subtotal)}</td></tr>
-${b.discount > 0 ? `<tr><td class="r">Discount</td><td class="r">-${inr(b.discount)}</td></tr>` : ""}
+${b.discount > 0 ? `<tr><td class="r">Discount${b.discountType === "percent" ? " (" + esc(b.discountValue) + "%)" : ""}</td><td class="r">-${inr(b.discount)}</td></tr>` : ""}
+${Number(b.cgstRate) > 0 || Number(b.sgstRate) > 0 ? `<tr><td class="r">Amount after discount</td><td class="r">${inr(b.taxable)}</td></tr>` : ""}
+${Number(b.cgstRate) > 0 ? `<tr><td class="r">CGST (${esc(b.cgstRate)}%)</td><td class="r">${inr(b.cgst)}</td></tr>` : ""}
+${Number(b.sgstRate) > 0 ? `<tr><td class="r">SGST (${esc(b.sgstRate)}%)</td><td class="r">${inr(b.sgst)}</td></tr>` : ""}
 <tr class="big"><td class="r">Total</td><td class="r">${inr(b.total)}</td></tr></table>
 <h2>Payments</h2>
 <table>${payRows || "<tr><td class='s'>No payments recorded.</td></tr>"}</table>
 <table class="tot" style="margin-top:8px"><tr><td class="r">Paid</td><td class="r" style="width:130px">${inr(b.paid)}</td></tr>
-<tr class="big"><td class="r">${b.balance < 0 ? "Refund due" : "Balance due"}</td><td class="r">${inr(Math.abs(b.balance))}</td></tr></table>
+<tr class="big"><td class="r">${b.balance < 0 ? "Refund due" : "Remaining balance"}</td><td class="r">${inr(Math.abs(b.balance))}</td></tr></table>
 <p class="s" style="margin-top:24px">This is a computer generated ${final ? "invoice" : "provisional bill"}.</p>
 </body></html>`;
 }
