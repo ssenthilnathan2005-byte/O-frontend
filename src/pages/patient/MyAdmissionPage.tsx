@@ -39,13 +39,26 @@ export default function MyAdmissionPage() {
         <button onClick={() => navigate({ path: "/patient/hospitals" })} className="text-gray-400 hover:text-gray-600"><ArrowLeft className="w-5 h-5" /></button>
         <div className="flex items-center gap-2">
           <BedDouble className="w-5 h-5 text-teal-600" />
-          <h1 className="font-bold text-lg">My Admission</h1>
+          <h1 className="font-bold text-lg">Bed Bookings &amp; Receipts</h1>
         </div>
       </div>
 
       <div className="max-w-lg mx-auto px-4 py-5 space-y-4 pb-28">
         {loading && <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-teal-600" /></div>}
         {err && <p className="text-sm text-red-600">{err}</p>}
+
+        {!loading && !err && current.length === 0 && open.length === 0 && (
+          <div className="rounded-2xl bg-white border border-gray-200 p-5 text-center space-y-2">
+            <BedDouble className="w-9 h-9 text-gray-300 mx-auto" />
+            <p className="text-sm font-semibold text-gray-800">No bed bookings for now</p>
+            <p className="text-xs text-gray-500">
+              {past.length > 0 ? "Your previous stays and receipts are below." : "When you book a bed, it will show here."}
+            </p>
+            {past.length === 0 && (
+              <button onClick={() => navigate({ path: "/patient/hospitals" })} className="text-sm font-medium text-teal-700">Find a hospital</button>
+            )}
+          </div>
+        )}
 
         {!loading && current.map((s) => (
           <div key={s.id} className="rounded-2xl bg-white border-2 border-teal-500 p-4 space-y-3 shadow-sm">
@@ -89,7 +102,7 @@ export default function MyAdmissionPage() {
 
         {!loading && past.length > 0 && (
           <div className="space-y-2">
-            <h2 className="text-sm font-semibold text-gray-800">Past stays</h2>
+            <h2 className="text-sm font-semibold text-gray-800">Previous stays &amp; receipts</h2>
             {past.map((s) => (
               <div key={s.id} className="rounded-xl bg-white border border-gray-200 p-3 space-y-0.5">
                 <p className="text-sm font-semibold text-gray-900">{s.hospital_name || "Hospital"}</p>
@@ -102,13 +115,6 @@ export default function MyAdmissionPage() {
           </div>
         )}
 
-        {!loading && !err && current.length === 0 && open.length === 0 && past.length === 0 && (
-          <div className="text-center py-12 space-y-3">
-            <BedDouble className="w-10 h-10 text-gray-300 mx-auto" />
-            <p className="text-sm text-gray-500">You have no admissions or bed requests.</p>
-            <button onClick={() => navigate({ path: "/patient/hospitals" })} className="text-sm font-medium text-teal-700">Find a hospital</button>
-          </div>
-        )}
       </div>
     </div>
   );

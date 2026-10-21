@@ -113,11 +113,11 @@ export default function TopNav() {
           <button
             type="button"
             className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-gray-400 hover:text-teal-600 transition-colors"
-            onClick={() => navigate({ path: "/pharmacies" })}
+            onClick={() => navigate({ path: "/patient/tokens" })}
             data-ocid="nav.link"
           >
-            <Pill className="w-5 h-5"  strokeWidth={2} />
-            <span className="text-[10px] font-medium">Pharmacies</span>
+            <BookOpen className="w-5 h-5"  strokeWidth={2} />
+            <span className="text-[10px] font-medium">Bookings</span>
           </button>
 
           <button
@@ -142,12 +142,12 @@ export default function TopNav() {
 
           <button
             type="button"
-            className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-gray-400 hover:text-red-500 transition-colors"
-            onClick={() => navigate({ path: "/ambulance" })}
+            className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-gray-400 hover:text-teal-600 transition-colors"
+            onClick={() => navigate({ path: "/login", tab: "patient", patientMode: "login" })}
             data-ocid="nav.link"
           >
-            <Ambulance className="w-5 h-5"  strokeWidth={2} />
-            <span className="text-[10px] font-medium">Ambulance</span>
+            <Pill className="w-5 h-5"  strokeWidth={2} />
+            <span className="text-[10px] font-medium">Prescriptions</span>
           </button>
 
           <button
@@ -523,20 +523,6 @@ export default function TopNav() {
             </div>
             <span className="text-[10px] font-medium text-teal-600">Home</span>
           </button>
-
-          {showAdmission && (
-            <button
-              type="button"
-              className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl transition-colors ${isActive(["/patient/admission"])}`}
-              onClick={() => navigate({ path: "/patient/admission" })}
-            >
-              <span className="relative">
-                <BedDouble className="w-5 h-5" strokeWidth={2} />
-                {admissionActive && <span className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full border border-white" />}
-              </span>
-              <span className="text-[10px] font-medium">Admission</span>
-            </button>
-          )}
 
           {/* Prescriptions */}
           <button
