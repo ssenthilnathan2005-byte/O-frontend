@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle, FlaskConical, LogOut, Phone, X, XCircle } from "lucide-react";
+import { BedDouble, CheckCircle, FlaskConical, LogOut, Phone, X, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { getToken } from "../api";
@@ -100,10 +100,12 @@ export default function HospitalLabDashboard() {
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={() => setTab("board")} className={tabCls(tab === "board")}>Token Board</button>
         <button type="button" onClick={() => setTab("orders")} className={tabCls(tab === "orders")}>Bookings</button>
+        <button type="button" onClick={() => setTab("inpatients")} className={tabCls(tab === "inpatients")}>Inpatients</button>
         {extraNav.map(n => (<button key={n.key} type="button" onClick={() => setTab(n.key)} className={tabCls(tab === n.key)}>{n.label}</button>))}
       </div>
 
       {tab.startsWith("x:") && <ExtraPanel moduleKey={tab.slice(2)} />}
+      {tab === "inpatients" && <InpatientsPanel call={call} onChanged={load} />}
       {tab === "board" && <TokenBoard orders={orders} busy={busy} update={update} onResult={(o) => { setResultFor(o); setResultValue(o.result_value || ""); }} />}
 
       {tab === "orders" && (<>
@@ -342,6 +344,191 @@ function TokenBoard({ orders, busy, update, onResult }: {
                 <button disabled={busy} onClick={() => { if (confirm(`Cancel ${sel.test_name} for ${sel.patient_name}?`)) update(sel, "cancelled"); }}
                   className="px-3 py-2 rounded-lg text-xs font-medium bg-red-50 text-red-600 hover:bg-red-100">Cancel booking</button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// Inpatients: pick an admitted patient, choose tests + amounts, send to the IPD bill
+type Inpatient = {
+  id: string; patient_name: string; phone?: string | null; age?: number | null; gender?: string | null;
+  ward?: string | null; bed_number?: string | null; admitting_doctor_name?: string | null;
+  diagnosis?: string | null; admitted_at: string; test_count: number;
+};
+type CatalogTest = { id: string; name: string; category: string; sample_type: string; price: number | string };
+type PatientOrder = { id: string; test_name: string; status: string; amount: number | string | null; result_value: string | null; ordered_at: string };
+
+function InpatientsPanel({ call, onChanged }: { call: (path: string, method?: string, body?: any) => Promise<any>; onChanged: () => void }) {
+  const [patients, setPatients] = useState<Inpatient[]>([]);
+  const [catalog, setCatalog] = useState<CatalogTest[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [search, setSearch] = useState("");
+  const [sel, setSel] = useState<Inpatient | null>(null);
+  const [picks, setPicks] = useState<Record<string, string>>({});
+  const [testSearch, setTestSearch] = useState("");
+  const [priority, setPriority] = useState("normal");
+  const [notes, setNotes] = useState("");
+  const [history, setHistory] = useState<PatientOrder[]>([]);
+  const [busy, setBusy] = useState(false);
+
+  async function loadPatients() {
+    try { const d = await call("/inpatients"); if (Array.isArray(d)) setPatients(d); } catch {}
+    setLoaded(true);
+  }
+  useEffect(() => {
+    loadPatients();
+    call("/catalog").then((d) => { if (Array.isArray(d)) setCatalog(d); }).catch(() => {});
+    const t = setInterval(loadPatients, 10000);
+    return () => clearInterval(t);
+  }, []);
+
+  async function loadHistory(id: string) {
+    try { const d = await call(`/inpatients/${id}/orders`); if (Array.isArray(d)) setHistory(d); } catch {}
+  }
+  function open(p: Inpatient) {
+    setSel(p); setPicks({}); setTestSearch(""); setPriority("normal"); setNotes(""); setHistory([]);
+    loadHistory(p.id);
+  }
+  function toggle(t: CatalogTest) {
+    setPicks((cur) => {
+      const n = { ...cur };
+      if (t.id in n) delete n[t.id]; else n[t.id] = String(Number(t.price) || 0);
+      return n;
+    });
+  }
+  const chosen = Object.entries(picks);
+  const total = chosen.reduce((s, [, a]) => s + (Number(a) || 0), 0);
+
+  async function send() {
+    if (!sel || chosen.length === 0) return;
+    setBusy(true);
+    try {
+      const r = await call(`/inpatients/${sel.id}/orders`, "POST", {
+        tests: chosen.map(([testId, amount]) => ({ testId, amount: Number(amount) || 0 })), priority, notes: notes.trim() || undefined,
+      });
+      toast.success(`Sent to billing: Rs. ${r.addedToBill}`);
+      setSel(null);
+      await loadPatients();
+      onChanged();
+    } catch (e: any) { toast.error(e.message || "Failed"); }
+    finally { setBusy(false); }
+  }
+
+  const q = search.toLowerCase();
+  const shown = patients.filter((p) =>
+    p.patient_name.toLowerCase().includes(q) || String(p.ward || "").toLowerCase().includes(q) || String(p.bed_number || "").toLowerCase().includes(q));
+  const tq = testSearch.toLowerCase();
+  const tests = catalog.filter((t) => t.name.toLowerCase().includes(tq) || t.category.toLowerCase().includes(tq));
+
+  return (
+    <div>
+      <div className="mb-4">
+        <h2 className="text-lg font-bold text-gray-900">Inpatients</h2>
+        <p className="text-xs text-gray-500 mt-0.5">Admitted patients. Add tests here and they go straight to the patient's IPD bill.</p>
+      </div>
+      <Input placeholder="Search patient, ward or bed..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-sm mb-3" />
+
+      {!loaded ? (
+        <div className="py-12 text-center text-gray-400 text-sm">Loading...</div>
+      ) : shown.length === 0 ? (
+        <div className="py-12 text-center text-gray-400 text-sm">No admitted patients found.</div>
+      ) : (
+        <div className="space-y-2">
+          {shown.map((p) => (
+            <div key={p.id} className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-semibold text-gray-800 truncate">{p.patient_name}
+                  <span className="ml-2 text-xs font-normal text-gray-400">{[p.age != null ? `${p.age}y` : "", p.gender || ""].filter(Boolean).join(" / ")}</span>
+                </p>
+                <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                  <BedDouble className="w-3.5 h-3.5" /> {p.ward || "-"} {"\u00b7"} Bed {p.bed_number || "-"}
+                  {p.admitting_doctor_name ? ` \u00b7 ${p.admitting_doctor_name}` : ""}
+                </p>
+                {p.diagnosis && <p className="text-xs text-gray-400 truncate mt-0.5">{p.diagnosis}</p>}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {p.test_count > 0 && <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-teal-50 text-teal-700">{p.test_count} test{p.test_count > 1 ? "s" : ""}</span>}
+                <button type="button" onClick={() => open(p)} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-500 hover:bg-teal-600 text-white">Add tests</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {sel && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setSel(null)}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-3 border-b">
+              <div className="min-w-0">
+                <h2 className="font-semibold truncate">{sel.patient_name}</h2>
+                <p className="text-xs text-gray-500">{sel.ward || "-"} {"\u00b7"} Bed {sel.bed_number || "-"}</p>
+              </div>
+              <button onClick={() => setSel(null)}><X className="w-4 h-4" /></button>
+            </div>
+            <div className="px-5 py-3 overflow-y-auto space-y-3">
+              {history.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Already ordered</p>
+                  <div className="space-y-1">
+                    {history.map((h) => (
+                      <div key={h.id} className="flex items-center justify-between text-xs text-gray-600">
+                        <span className={h.status === "cancelled" ? "line-through text-gray-400" : ""}>{h.test_name}</span>
+                        <span className="text-gray-400">{(BADGE[h.status] || { label: h.status }).label}{h.amount != null ? ` \u00b7 Rs. ${Number(h.amount)}` : ""}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Choose tests</p>
+              <Input placeholder="Search tests..." value={testSearch} onChange={(e) => setTestSearch(e.target.value)} />
+              {catalog.length === 0 ? (
+                <p className="text-sm text-gray-400 py-4 text-center">No tests in your lab catalog yet. Ask the hospital admin to add tests in the Lab section.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {tests.map((t) => {
+                    const on = t.id in picks;
+                    return (
+                      <div key={t.id} className={`flex items-center gap-2 border rounded-lg px-3 py-2 ${on ? "border-teal-400 bg-teal-50" : "border-gray-200"}`}>
+                        <input type="checkbox" checked={on} onChange={() => toggle(t)} className="w-4 h-4 accent-teal-600" />
+                        <div className="min-w-0 flex-1" onClick={() => toggle(t)}>
+                          <p className="text-sm text-gray-800 truncate">{t.name}</p>
+                          <p className="text-[11px] text-gray-400">{t.category} {"\u00b7"} catalog Rs. {Number(t.price) || 0}</p>
+                        </div>
+                        {on && (
+                          <div className="flex items-center gap-1 shrink-0">
+                            <span className="text-xs text-gray-500">Rs.</span>
+                            <input type="number" min="0" inputMode="decimal" value={picks[t.id]}
+                              onChange={(e) => setPicks((c) => ({ ...c, [t.id]: e.target.value }))}
+                              className="w-20 border rounded-md px-2 py-1 text-sm" />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              <div className="flex gap-2">
+                {["normal", "urgent"].map((k) => (
+                  <button key={k} type="button" onClick={() => setPriority(k)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium ${priority === k ? (k === "urgent" ? "bg-red-500 text-white" : "bg-teal-600 text-white") : "bg-gray-100 text-gray-600"}`}>
+                    {k === "urgent" ? "Urgent" : "Normal"}
+                  </button>
+                ))}
+              </div>
+              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Note (optional)"
+                className="w-full border rounded-md px-3 py-2 text-sm resize-none" />
+            </div>
+            <div className="px-5 py-3 border-t flex items-center justify-between gap-3">
+              <p className="text-sm text-gray-600">{chosen.length} test{chosen.length === 1 ? "" : "s"} {"\u00b7"} <b className="text-gray-900">Rs. {total}</b></p>
+              <div className="flex gap-2">
+                <button onClick={() => setSel(null)} className="px-4 py-2 rounded-lg text-sm border">Cancel</button>
+                <button disabled={busy || chosen.length === 0} onClick={send}
+                  className="px-4 py-2 rounded-lg text-sm bg-teal-500 hover:bg-teal-600 text-white font-medium disabled:opacity-50">Send to billing</button>
+              </div>
             </div>
           </div>
         </div>

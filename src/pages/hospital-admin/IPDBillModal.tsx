@@ -146,6 +146,26 @@ export default function IPDBillModal({ inwardId, onClose }: { inwardId: string; 
               </div>
             </div>
 
+            {/* Lab tests (from the hospital lab) */}
+            {bill.labTests && bill.labTests.length > 0 && (
+              <div className="border rounded-xl p-3 space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium">Lab tests</span>
+                  <span className="font-semibold">{inr(bill.labTotal)}</span>
+                </div>
+                {bill.labTests.map((t: any) => (
+                  <div key={t.id} className="flex items-start justify-between gap-2 text-sm border-t pt-1.5 first:border-0 first:pt-0">
+                    <div className="min-w-0">
+                      <p className="truncate">{t.testName}</p>
+                      <p className="text-[11px] text-gray-500 capitalize">{String(t.status).replace("_", " ")}{t.result ? " \u00b7 Result: " + t.result : ""}</p>
+                    </div>
+                    <span className="font-medium shrink-0">{inr(t.amount)}</span>
+                  </div>
+                ))}
+                <p className="text-[11px] text-gray-400">These amounts are already included in the charges below.</p>
+              </div>
+            )}
+
             {/* Items */}
             <div className="border rounded-xl p-3 space-y-2">
               <p className="font-medium text-sm">Charges</p>
