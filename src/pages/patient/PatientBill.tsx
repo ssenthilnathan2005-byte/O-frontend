@@ -39,11 +39,14 @@ export default function PatientBill({ inwardId }: { inwardId: string }) {
           {bill.items.map((i: any) => (
             <div key={i.id} className="flex justify-between gap-2"><span className="text-gray-600">{i.description}{i.qty !== 1 ? " × " + i.qty : ""}</span><span>{rupee(i.amount)}</span></div>
           ))}
-          {bill.discount > 0 && <div className="flex justify-between text-green-700"><span>Discount</span><span>-{rupee(bill.discount)}</span></div>}
+          {bill.discount > 0 && <div className="flex justify-between text-green-700"><span>Discount{bill.discountType === "percent" ? " (" + bill.discountValue + "%)" : ""}</span><span>-{rupee(bill.discount)}</span></div>}
+          {(Number(bill.cgstRate) > 0 || Number(bill.sgstRate) > 0) && <div className="flex justify-between"><span className="text-gray-600">Amount after discount</span><span>{rupee(bill.taxable)}</span></div>}
+          {Number(bill.cgstRate) > 0 && <div className="flex justify-between"><span className="text-gray-600">CGST ({bill.cgstRate}%)</span><span>{rupee(bill.cgst)}</span></div>}
+          {Number(bill.sgstRate) > 0 && <div className="flex justify-between"><span className="text-gray-600">SGST ({bill.sgstRate}%)</span><span>{rupee(bill.sgst)}</span></div>}
           <div className="flex justify-between font-semibold border-t pt-1.5"><span>Total</span><span>{rupee(bill.total)}</span></div>
           <div className="flex justify-between text-green-700"><span>Paid</span><span>{rupee(bill.paid)}</span></div>
           <div className={"flex justify-between font-bold " + (bill.balance > 0 ? "text-red-600" : "text-teal-700")}>
-            <span>{bill.balance < 0 ? "Refund due" : "Balance due"}</span><span>{rupee(Math.abs(bill.balance))}</span>
+            <span>{bill.balance < 0 ? "Refund due" : "Remaining balance"}</span><span>{rupee(Math.abs(bill.balance))}</span>
           </div>
           {bill.status === "admitted" && <p className="text-[11px] text-gray-400">Running bill. The final amount is fixed at discharge.</p>}
         </div>

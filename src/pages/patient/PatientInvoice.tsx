@@ -126,12 +126,21 @@ export default function PatientInvoice({ inwardId }: { inwardId: string }) {
             <div className="mt-3 ml-auto w-full max-w-xs space-y-1 text-sm">
               <div className="flex justify-between"><span className="text-gray-600">Subtotal</span><span>{rupee(bill.subtotal)}</span></div>
               {Number(bill.discount) > 0 && (
-                <div className="flex justify-between"><span className="text-gray-600">Discount</span><span>- {rupee(bill.discount)}</span></div>
+                <div className="flex justify-between"><span className="text-gray-600">Discount{bill.discountType === "percent" ? " (" + bill.discountValue + "%)" : ""}</span><span>- {rupee(bill.discount)}</span></div>
+              )}
+              {(Number(bill.cgstRate) > 0 || Number(bill.sgstRate) > 0) && (
+                <div className="flex justify-between"><span className="text-gray-600">Amount after discount</span><span>{rupee(bill.taxable)}</span></div>
+              )}
+              {Number(bill.cgstRate) > 0 && (
+                <div className="flex justify-between"><span className="text-gray-600">CGST ({bill.cgstRate}%)</span><span>{rupee(bill.cgst)}</span></div>
+              )}
+              {Number(bill.sgstRate) > 0 && (
+                <div className="flex justify-between"><span className="text-gray-600">SGST ({bill.sgstRate}%)</span><span>{rupee(bill.sgst)}</span></div>
               )}
               <div className="flex justify-between border-t pt-1 text-base font-bold"><span>Total</span><span>{rupee(bill.total)}</span></div>
               <div className="flex justify-between"><span className="text-gray-600">Paid</span><span>{rupee(bill.paid)}</span></div>
               <div className={"flex justify-between border-t pt-1 text-base font-bold " + (due > 0 ? "text-red-600" : "text-green-700")}>
-                <span>{due > 0 ? "Balance due" : "Paid in full"}</span>
+                <span>{due > 0 ? "Remaining balance" : "Paid in full"}</span>
                 <span>{rupee(Math.max(due, 0))}</span>
               </div>
             </div>
