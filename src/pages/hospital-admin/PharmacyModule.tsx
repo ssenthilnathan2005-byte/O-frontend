@@ -182,7 +182,7 @@ type Inv = {
   id: string; name: string; quantity: number; packSize: number; packUnit?: string | null; tabletsAvailable: number; reorderLevel: number;
   purchasePrice: number | null; sellingPrice: number | null; supplier: string | null; batchNo: string | null; batches?: { batchNo: string | null; expiryDate: string | null; tablets: number; supplier: string | null }[]; medCategory: string | null;
   expiryDate: string | null; location: string | null; status: InvStatus;
-  stripsPerBox?: number | null; tabletsPerBox?: number | null; schedule?: string; gstPercent?: number | null;
+  stripsPerBox?: number | null; tabletsPerBox?: number | null; schedule?: string; gstPercent?: number | null; hsnCode?: string | null;
   breakdown?: { boxes: number; strips: number; tablets: number };
 };
 const MED_CATEGORIES = ["Tablet", "Capsule", "Syrup/Tonic", "Injection", "Oil", "Ointment/Cream", "Drops", "Powder", "Others"];
@@ -294,12 +294,12 @@ export function PharmInventory({ readOnly = false, iconActions = false }: { read
   const [sQty, setSQty] = useState("");
   const [sReason, setSReason] = useState("");
   const [sErr, setSErr] = useState("");
-  const BLANK = { name: "", medCategory: "Tablet", tabletsPerStrip: "", stripsPerBox: "", mrpStrip: "", purchaseBox: "", schedule: "none", gstPercent: "", reorderLevel: "", location: "", supplier: "", boxes: "", strips: "", tablets: "", batchNo: "", expiryDate: "", invoiceNo: "" };
+  const BLANK = { name: "", medCategory: "Tablet", hsnCode: "", tabletsPerStrip: "", stripsPerBox: "", mrpStrip: "", purchaseBox: "", schedule: "none", gstPercent: "", reorderLevel: "", location: "", supplier: "", boxes: "", strips: "", tablets: "", batchNo: "", expiryDate: "", invoiceNo: "" };
   const [adding, setAdding] = useState(false);
   const [nf, setNf] = useState(BLANK);
   const [nErr, setNErr] = useState("");
   const [eErr, setEErr] = useState("");
-  const [pf, setPf] = useState({ tabletsPerStrip: "", stripsPerBox: "", mrpStrip: "", purchaseBox: "", schedule: "none", gstPercent: "", reorderLevel: "" });
+  const [pf, setPf] = useState({ tabletsPerStrip: "", stripsPerBox: "", mrpStrip: "", purchaseBox: "", schedule: "none", gstPercent: "", hsnCode: "", reorderLevel: "" });
   const [rc, setRc] = useState<Inv | null>(null);
   const [rf, setRf] = useState({ boxes: "", strips: "", tablets: "", batchNo: "", expiryDate: "", supplier: "", invoiceNo: "", mrpStrip: "", purchaseBox: "" });
   const [rErr, setRErr] = useState("");
@@ -348,6 +348,7 @@ export function PharmInventory({ readOnly = false, iconActions = false }: { read
       purchaseBox: r.purchasePrice != null && r.stripsPerBox ? String(Math.round(r.purchasePrice * r.stripsPerBox * 100) / 100) : "",
       schedule: r.schedule || "none",
       gstPercent: r.gstPercent == null ? "" : String(r.gstPercent),
+      hsnCode: r.hsnCode || "",
       reorderLevel: String(r.reorderLevel ?? ""),
     });
   }
@@ -378,6 +379,7 @@ export function PharmInventory({ readOnly = false, iconActions = false }: { read
     if (!(mrp >= 0)) { setNErr("MRP per " + packLabels(nf.medCategory).s + " is required"); return; }
     if (nf.purchaseBox.trim() !== "" && !(pbox >= 0)) { setNErr("Invalid purchase price per box"); return; }
     if (nf.gstPercent.trim() !== "" && !(gst >= 0 && gst <= 40)) { setNErr("GST percent must be between 0 and 40"); return; }
+    if (nf.hsnCode.trim() !== "" && !/^[0-9]{4,8}$/.test(nf.hsnCode.replace(/[\s.]/g, ""))) { setNErr("HSN code must be 4 to 8 digits"); return; }
     if (opening > 0 && (!nf.batchNo.trim() || !nf.expiryDate)) { setNErr("Batch number and expiry date are required when adding opening stock"); return; }
     setSaving(true); setNErr("");
     let newId = "";
@@ -393,6 +395,7 @@ export function PharmInventory({ readOnly = false, iconActions = false }: { read
         tabletsPerStrip: tps, stripsPerBox: spb, mrpStrip: mrp,
         purchaseBox: nf.purchaseBox.trim() === "" ? undefined : pbox, schedule: nf.schedule,
         gstPercent: nf.gstPercent.trim() === "" ? undefined : gst,
+        hsnCode: nf.hsnCode.replace(/[\s.]/g, "") || undefined,
       }) });
       if (opening > 0) {
         await pm("/inventory/" + newId + "/receive", { method: "POST", body: JSON.stringify({
@@ -445,6 +448,7 @@ export function PharmInventory({ readOnly = false, iconActions = false }: { read
     if (!(mrp >= 0)) { setEErr("MRP per " + packLabels(f.medCategory).s + " is required"); return; }
     if (pf.purchaseBox.trim() !== "" && !(pbox >= 0)) { setEErr("Invalid purchase price per box"); return; }
     if (pf.gstPercent.trim() !== "" && !(gst >= 0 && gst <= 40)) { setEErr("GST percent must be between 0 and 40"); return; }
+    if (pf.hsnCode.trim() !== "" && !/^[0-9]{4,8}$/.test(pf.hsnCode.replace(/[\s.]/g, ""))) { setEErr("HSN code must be 4 to 8 digits"); return; }
     if (pf.reorderLevel.trim() !== "" && !(Number(pf.reorderLevel) >= 0)) { setEErr("Reorder level must be 0 or more"); return; }
     setSaving(true); setEErr("");
     try {
@@ -459,6 +463,7 @@ export function PharmInventory({ readOnly = false, iconActions = false }: { read
         tabletsPerStrip: tps, stripsPerBox: spb, mrpStrip: mrp,
         purchaseBox: pf.purchaseBox.trim() === "" ? undefined : pbox, schedule: pf.schedule,
         gstPercent: pf.gstPercent.trim() === "" ? undefined : gst,
+        hsnCode: pf.hsnCode.replace(/[\s.]/g, ""),
         reorderLevel: pf.reorderLevel.trim() === "" ? undefined : Number(pf.reorderLevel),
       }) });
       setEdit(null);
@@ -494,7 +499,7 @@ export function PharmInventory({ readOnly = false, iconActions = false }: { read
           <tbody>
             {shown.map(r => (
               <tr key={r.id} className="border-t border-gray-100">
-                <td className={TD + " font-medium"}>{r.name}{r.schedule && r.schedule !== "none" && <span className="ml-2 px-1.5 py-0.5 rounded bg-red-50 text-red-700 text-xs">{r.schedule}</span>}</td>
+                <td className={TD + " font-medium"}>{r.name}{r.schedule && r.schedule !== "none" && <span className="ml-2 px-1.5 py-0.5 rounded bg-red-50 text-red-700 text-xs">{r.schedule}</span>}<span className="block text-[11px] font-normal text-gray-500">{r.hsnCode ? "HSN " + r.hsnCode : <span className="text-red-600">HSN missing</span>}{r.gstPercent != null ? ", GST " + r.gstPercent + "%" : <span className="text-red-600">, GST % missing</span>}</span></td>
                 <td className={TD}>{r.medCategory || "-"}</td>
                 <td className={TD}>{fmtQty(r.quantity)} {unitWord(r, r.quantity)}{availText(r) && <span className="text-xs text-gray-400"> ({availText(r)})</span>}</td>
                 <td className={TD}>{r.batches && r.batches.length > 0 ? (<div className="space-y-0.5">{r.batches.map((b, i) => (<div key={i} className="text-xs whitespace-nowrap">{b.batchNo ? "Batch " + b.batchNo : "No batch recorded"} - {b.expiryDate || "no expiry"} - {fmtQty(b.tablets / (r.packSize || 1))} {unitWord(r, b.tablets / (r.packSize || 1))}</div>))}</div>) : (r.expiryDate || "-")}</td>
@@ -575,6 +580,7 @@ export function PharmInventory({ readOnly = false, iconActions = false }: { read
               <Fld label={"Purchase price per box (\u20B9)"} type="number" value={nf.purchaseBox} onChange={v => setNf(p => ({ ...p, purchaseBox: v }))} />
               <ScheduleSelect value={nf.schedule} onChange={v => setNf(p => ({ ...p, schedule: v }))} />
               <Fld label="GST %" type="number" value={nf.gstPercent} onChange={v => setNf(p => ({ ...p, gstPercent: v }))} />
+              <Fld label="HSN code (4-8 digits)" type="text" value={nf.hsnCode} onChange={v => setNf(p => ({ ...p, hsnCode: v }))} />
             </div>
             <PackPreview cat={nf.medCategory} tps={nf.tabletsPerStrip} spb={nf.stripsPerBox} mrp={nf.mrpStrip} pbox={nf.purchaseBox} boxes={nf.boxes} strips={nf.strips} tablets={nf.tablets} />
             <p className="text-xs font-semibold text-gray-500 uppercase pt-1">Opening stock (optional, can be added later with Receive stock)</p>
@@ -612,6 +618,7 @@ export function PharmInventory({ readOnly = false, iconActions = false }: { read
               <Fld label={"Purchase price per box (\u20B9)"} type="number" value={pf.purchaseBox} onChange={v => setPf(p => ({ ...p, purchaseBox: v }))} />
               <ScheduleSelect value={pf.schedule} onChange={v => setPf(p => ({ ...p, schedule: v }))} />
               <Fld label="GST %" type="number" value={pf.gstPercent} onChange={v => setPf(p => ({ ...p, gstPercent: v }))} />
+              <Fld label="HSN code (4-8 digits)" type="text" value={pf.hsnCode} onChange={v => setPf(p => ({ ...p, hsnCode: v }))} />
               <Fld label={"Reorder level (" + packLabels(f.medCategory).ss + ")"} type="number" value={pf.reorderLevel} onChange={v => setPf(p => ({ ...p, reorderLevel: v }))} />
             </div>
             <PackPreview cat={f.medCategory} tps={pf.tabletsPerStrip} spb={pf.stripsPerBox} mrp={pf.mrpStrip} pbox={pf.purchaseBox} />

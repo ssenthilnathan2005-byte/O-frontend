@@ -25,6 +25,7 @@ import { PharmRevenue, PharmInventory, PharmPatients, PharmSold, PharmStockUpdat
 
 const NAV_ITEMS = [
   { path: "/hospital-admin", label: "Dashboard", icon: LayoutDashboard },
+  { path: "/hospital-admin/billing", label: "Revenue", icon: Receipt },
   { path: "/hospital-admin/all-patients", label: "All Patients", icon: Users },
   { path: "/hospital-admin/attendance", label: "Attendance", icon: Fingerprint },
   { path: "/hospital-admin/wards", label: "Beds & Wards", icon: Stethoscope },
@@ -38,7 +39,6 @@ const NAV_ITEMS = [
   { path: "/hospital-admin/nurses", label: "Nurses", icon: HeartPulse },
   { path: "/hospital-admin/permissions", label: "Permissions", icon: ShieldCheck },
   { path: "/hospital-admin/pharmacy", label: "Pharmacy", icon: Pill },
-  { path: "/hospital-admin/billing", label: "Revenue", icon: Receipt },
 ] as const;
 
 const PHARMACY_SUB = [
