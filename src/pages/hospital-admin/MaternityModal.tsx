@@ -24,6 +24,29 @@ const EMPTY = {
   deliveryPlan: "", notes: "",
 };
 
+// date inputs only accept yyyy-mm-dd; a timestamp like 2026-03-20T00:00:00.000Z leaves the box blank
+function normDate(v: any): string {
+  if (!v) return "";
+  const s = String(v);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return "";
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+function profileToForm(p: any) {
+  return {
+    lmp: normDate(p.lmp), edd: normDate(p.edd),
+    gravida: p.gravida ?? "", para: p.para ?? "", abortions: p.abortions ?? "", living: p.living ?? "",
+    previousCs: String(p.previous_cs ?? 0), bloodGroup: p.blood_group || "",
+    riskLevel: p.risk_level || "low", riskFactors: Array.isArray(p.risk_factors) ? p.risk_factors : [],
+    bookingStatus: p.booking_status || "booked", allergies: p.allergies || "",
+    heightCm: p.height_cm ?? "", prePregWeight: p.pre_preg_weight ?? "",
+    attendantName: p.attendant_name || "", attendantPhone: p.attendant_phone || "",
+    deliveryPlan: p.delivery_plan || "", notes: p.notes || "",
+  } as any;
+}
+
 function gaText(lmp: string) {
   if (!lmp) return "";
   const d = Math.floor((Date.now() - new Date(lmp).getTime()) / 86400000);
@@ -59,19 +82,7 @@ export default function MaternityModal({ inwardId, onClose, defaultTab = "profil
       try {
         const r = await maternityApi.get(inwardId);
         setPatient(r.patient);
-        if (r.profile) {
-          const p = r.profile;
-          setF({
-            lmp: p.lmp || "", edd: p.edd || "",
-            gravida: p.gravida ?? "", para: p.para ?? "", abortions: p.abortions ?? "", living: p.living ?? "",
-            previousCs: String(p.previous_cs ?? 0), bloodGroup: p.blood_group || "",
-            riskLevel: p.risk_level || "low", riskFactors: Array.isArray(p.risk_factors) ? p.risk_factors : [],
-            bookingStatus: p.booking_status || "booked", allergies: p.allergies || "",
-            heightCm: p.height_cm ?? "", prePregWeight: p.pre_preg_weight ?? "",
-            attendantName: p.attendant_name || "", attendantPhone: p.attendant_phone || "",
-            deliveryPlan: p.delivery_plan || "", notes: p.notes || "",
-          } as any);
-        }
+        if (r.profile) setF(profileToForm(r.profile));
       } catch (e: any) { setErr(e.message || "Could not load"); }
       setLoading(false);
     })();
@@ -84,9 +95,9 @@ export default function MaternityModal({ inwardId, onClose, defaultTab = "profil
   async function save() {
     setBusy(true); setErr("");
     try {
-      await maternityApi.save(inwardId, { ...f, previousCs: Number(f.previousCs) || 0 });
+      const saved = await maternityApi.save(inwardId, { ...f, previousCs: Number(f.previousCs) || 0 });
+      if (saved) setF(profileToForm(saved));
       toast.success("Maternity profile saved");
-      onClose();
     } catch (e: any) { setErr(e.message || "Could not save"); }
     setBusy(false);
   }
@@ -194,7 +205,7 @@ export default function MaternityModal({ inwardId, onClose, defaultTab = "profil
 
             {err && <p className="text-sm text-red-600">{err}</p>}
             <div className="flex justify-end gap-2 pt-1">
-              <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg border hover:bg-muted">Cancel</button>
+              <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg border hover:bg-muted">Close</button>
               <button onClick={save} disabled={busy} className="px-4 py-2 text-sm rounded-lg bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50">
                 {busy ? "Saving..." : "Save profile"}
               </button>
