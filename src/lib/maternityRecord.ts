@@ -95,7 +95,7 @@ tr{page-break-inside:avoid}
 </body></html>`;
 }
 
-export async function printMaternityRecord(inwardId: string) {
+export async function printMaternityRecord(inwardId: string, opts: { autoPrint?: boolean } = {}) {
   const d = await maternityApi.record(inwardId);
   const html = maternityRecordHtml(d);
   const name = `maternity_record_${String(d?.patient?.patient_name || "patient").replace(/\W+/g, "_")}.html`;
@@ -103,5 +103,5 @@ export async function printMaternityRecord(inwardId: string) {
   const w = window.open("", "_blank");
   if (!w) { await downloadFile(new Blob([html], { type: "text/html" }), name); return; }
   w.document.open(); w.document.write(html); w.document.close();
-  w.focus(); setTimeout(() => w.print(), 300);
+  w.focus(); if (opts.autoPrint !== false) setTimeout(() => w.print(), 300);
 }

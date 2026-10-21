@@ -5,6 +5,7 @@ import { useRouter } from "../../router/RouterContext";
 import { useLiveRefresh } from "../../hooks/useLiveRefresh";
 import PatientBill from "./PatientBill";
 import PatientInvoice from "./PatientInvoice";
+import PatientReport from "./PatientReport";
 
 const rupee = (n: number) => "₹" + Number(n || 0).toLocaleString("en-IN");
 const fmt = (s?: string | null) => (s ? new Date(s).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "-");
@@ -81,6 +82,7 @@ export default function MyAdmissionPage() {
             {s.diagnosis && <p className="text-xs text-gray-600 border-t pt-2">Reason: {s.diagnosis}</p>}
             {s.daily_rate > 0 && <p className="text-xs text-gray-500 border-t pt-2">Bed charge: {rupee(s.daily_rate)} per day</p>}
             <PatientBill inwardId={s.id} />
+            <PatientReport inwardId={s.id} />
           </div>
         ))}
 
