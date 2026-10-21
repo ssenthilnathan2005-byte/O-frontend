@@ -58,7 +58,7 @@ export default function FloatingAdmissionButton() {
       } catch { /* keep the last known state if the check fails */ }
     };
     check();
-    const t = setInterval(check, 60000);
+    const t = setInterval(check, 15000);
     return () => { stop = true; clearInterval(t); };
   }, [isPatient, user, route.path]);
 

@@ -27,7 +27,7 @@ export default function TopNav() {
       } catch { /* keep the nav unchanged if the check fails */ }
     };
     check();
-    const t = setInterval(check, 60000);
+    const t = setInterval(check, 15000);
     return () => { stop = true; clearInterval(t); };
   }, [user]);
 

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useStore } from "../../context/StoreContext";
 import { inward as inwardApi } from "../../api";
+import { useLiveRefresh } from "../../hooks/useLiveRefresh";
 import { normalizeBookingStatus } from "../../lib/bookingStatus";
 import { useRouter, type Route } from "@/router/RouterContext";
 
@@ -134,6 +135,10 @@ export default function HAAllPatients() {
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, []);
+  useLiveRefresh(async () => {
+    const list = await inwardApi.list();
+    if (Array.isArray(list)) setInwardList(list);
+  }, 8000);
 
   const myDoctorIds = useMemo(
     () => new Set((doctors as any[]).filter(d => d.hospitalId === hospitalId).map(d => d.id)),

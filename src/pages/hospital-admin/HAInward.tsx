@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { BedDouble, Plus, X, Pencil, LogOut, ChevronDown, ChevronUp, Thermometer, HeartPulse, Download, Receipt, Baby, ArrowRightLeft } from "lucide-react";
 import { getToken } from "../../api";
+import { useLiveRefresh } from "../../hooks/useLiveRefresh";
 import HABedRequests from "./HABedRequests";
 import IPDBillModal from "./IPDBillModal";
 import MaternityModal from "./MaternityModal";
@@ -96,6 +97,7 @@ export default function HAInward() {
   }
 
   useEffect(() => { load(); }, []);
+  useLiveRefresh(load, 5000);
 
   const filtered = patients.filter(p =>
     p.status === tab &&

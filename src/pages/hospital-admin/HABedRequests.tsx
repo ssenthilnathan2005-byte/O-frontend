@@ -34,7 +34,7 @@ export default function HABedRequests() {
     } catch { /* ward list is optional here */ }
   }, [isAdmin]);
 
-  useEffect(() => { load(); loadWards(); const t = setInterval(load, 30000); return () => clearInterval(t); }, [load, loadWards]);
+  useEffect(() => { load(); loadWards(); const t = setInterval(load, 10000); return () => clearInterval(t); }, [load, loadWards]);
 
   async function run(id: string, fn: () => Promise<any>, ok: string) {
     setBusy(id);

@@ -6,6 +6,7 @@ import { BedDouble, Plus, X, Trash2, ChevronDown, ChevronUp, Clock, Settings, Pe
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { getToken } from "../../api";
+import { useLiveRefresh } from "../../hooks/useLiveRefresh";
 import MaternityModal from "../hospital-admin/MaternityModal";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
@@ -438,6 +439,13 @@ export default function NurseWards() {
   }
 
   useEffect(() => { if (hospitalId) loadWards(); }, [hospitalId]);
+
+  // keep wards and every opened ward's beds fresh without reopening the page
+  useLiveRefresh(async () => {
+    const w = await api("/wards");
+    if (Array.isArray(w)) setWards(w);
+    await Promise.all(Object.keys(beds).map((id) => loadBeds(id)));
+  }, 5000, !!hospitalId);
 
   async function handleExpand(wardId: string) {
     if (expanded === wardId) { setExpanded(null); return; }

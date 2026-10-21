@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, BedDouble, Loader2, Stethoscope, Calendar, Building2 } from "lucide-react";
 import { bedBookings } from "../../api";
 import { useRouter } from "../../router/RouterContext";
+import { useLiveRefresh } from "../../hooks/useLiveRefresh";
 import PatientBill from "./PatientBill";
 import PatientInvoice from "./PatientInvoice";
 
@@ -27,7 +28,8 @@ export default function MyAdmissionPage() {
     } catch (e: any) { setErr(e.message || "Could not load your admission details"); }
     finally { setLoading(false); }
   }, []);
-  useEffect(() => { load(); const t = setInterval(load, 30000); return () => clearInterval(t); }, [load]);
+  useEffect(() => { load(); }, [load]);
+  useLiveRefresh(load, 8000);
 
   const current = stays.filter((s) => s.status === "admitted");
   const past = stays.filter((s) => s.status !== "admitted");
