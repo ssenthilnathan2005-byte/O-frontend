@@ -50,6 +50,7 @@ import ProfilePage from "./pages/patient/ProfilePage";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ChatbotWidget from "./components/ChatbotWidget";
 import FloatingAdmissionButton from "./components/FloatingAdmissionButton";
+import BedStatusWatcher from "./components/BedStatusWatcher";
 import LocationAlwaysPrompt from "./components/LocationAlwaysPrompt";
 import { RouterProvider, useRouter } from "./router/RouterContext";
 import PrescriptionAlert from "./components/PrescriptionAlert";
@@ -578,6 +579,7 @@ function AppRoutes() {
       <Toaster position="top-right" />
       <ChatbotWidget />
       <FloatingAdmissionButton />
+      <BedStatusWatcher />
       <LocationAlwaysPrompt enabled={user?.role === "patient"} />
       <PrescriptionAlert enabled={user?.role === "patient"} />
     </div>
