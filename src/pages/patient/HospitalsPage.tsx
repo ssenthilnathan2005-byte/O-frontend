@@ -24,7 +24,6 @@ function norm(s: string | null | undefined): string { return (s || "").trim().to
 
 export default function HospitalsPage({ city }: { city?: string }) {
   const [search, setSearch] = useState("");
-  const [locFilter, setLocFilter] = useState("");
   const { navigate, goBack } = useRouter();
   const { hospitals, doctors } = useStore();
   const [mapHospital, setMapHospital] = useState<(typeof hospitals)[0] | null>(null);
@@ -34,14 +33,7 @@ export default function HospitalsPage({ city }: { city?: string }) {
   const baseList = sortedByDistance ?? hospitals;
   const cityScoped = city ? baseList.filter((h) => norm(h.area) === norm(city)) : baseList;
 
-  const locScoped = !city && locFilter ? cityScoped.filter((h) => norm(h.area) === locFilter) : cityScoped;
-  const locOptions = (() => {
-    const m = new Map<string, string>();
-    for (const h of hospitals) { const k = norm(h.area); if (k && !m.has(k)) m.set(k, h.area.trim()); }
-    return Array.from(m.entries()).sort((x, y) => x[1].localeCompare(y[1]));
-  })();
-
-  const filtered = locScoped.filter(
+  const filtered = cityScoped.filter(
     (h) =>
       h.name.toLowerCase().includes(search.toLowerCase()) ||
       h.area.toLowerCase().includes(search.toLowerCase()),
@@ -94,7 +86,6 @@ export default function HospitalsPage({ city }: { city?: string }) {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-            {!city && (<select value={locFilter} onChange={(e) => setLocFilter(e.target.value)} className="w-full sm:w-48 h-10 px-3 rounded-md border border-gray-200 bg-white text-sm text-gray-700" data-ocid="hospitals.location_select"><option value="">All locations</option>{locOptions.map(([k, label]) => (<option key={k} value={k}>{label}</option>))}</select>)}
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
               <Input className="pl-10 bg-white border-gray-200" placeholder="Search hospital or area..." value={search} onChange={(e) => setSearch(e.target.value)} data-ocid="hospitals.search_input" />
