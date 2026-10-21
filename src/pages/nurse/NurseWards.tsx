@@ -30,6 +30,9 @@ type Bed = {
   occupant_notes: string | null;
   occupant_admitted_at: string | null;
   inward_id?: string | null;
+  bill_paid?: boolean | null;
+  bill_balance?: number | null;
+  bill_total?: number | null;
   cleaning_started_at?: string | null;
   cleaning_ends_at?: string | null;
   cleaning_duration_minutes?: number | null;
@@ -680,6 +683,12 @@ export default function NurseWards() {
                             {bed.status === "maintenance" ? "Cleaning" : bed.status}
                           </p>
                           {bed.patient_name && <p className="truncate mt-0.5 font-medium">{bed.patient_name}</p>}
+                          {bed.status === "occupied" && bed.bill_paid === true && (
+                            <p className="mt-0.5 inline-block rounded bg-green-100 px-1 text-[10px] font-semibold text-green-800">{"\u2713"} Bill paid</p>
+                          )}
+                          {bed.status === "occupied" && bed.bill_paid === false && (
+                            <p className="mt-0.5 inline-block rounded bg-white/70 px-1 text-[10px] font-semibold text-red-700">Bill due {"\u20B9"}{Number(bed.bill_balance || 0).toLocaleString("en-IN")}</p>
+                          )}
                           {bed.status === "maintenance" && bed.cleaning_ends_at && (
                             <div className="mt-0.5">
                               <p className="font-medium leading-tight">
@@ -1066,11 +1075,19 @@ export default function NurseWards() {
               )}
             </div>
 
+            {detailsTarget.bed.bill_paid === false && (
+              <p className="mx-6 mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
+                Bill not paid (due {"\u20B9"}{Number(detailsTarget.bed.bill_balance || 0).toLocaleString("en-IN")}). The front desk must collect payment before this patient can be discharged.
+              </p>
+            )}
+            {detailsTarget.bed.bill_paid === true && (
+              <p className="mx-6 mb-3 rounded-lg bg-green-50 px-3 py-2 text-xs text-green-700">{"\u2713"} Bill fully paid. This patient can be discharged.</p>
+            )}
             <div className="px-6 py-4 border-t flex gap-3 justify-end">
               <button onClick={() => setDetailsTarget(null)}
                 className="px-4 py-2 rounded-lg text-sm border hover:bg-gray-50 transition-colors">Close</button>
               <button onClick={() => handleVacate(detailsTarget.wardId, detailsTarget.bed.id)}
-                disabled={bedLoading === detailsTarget.bed.id}
+                disabled={bedLoading === detailsTarget.bed.id || detailsTarget.bed.bill_paid === false}
                 className="px-4 py-2 rounded-lg text-sm bg-orange-500 hover:bg-orange-600 text-white font-medium transition-colors disabled:opacity-50">
                 {bedLoading === detailsTarget.bed.id ? "Discharging..." : "Discharge & Send for Cleaning"}
               </button>

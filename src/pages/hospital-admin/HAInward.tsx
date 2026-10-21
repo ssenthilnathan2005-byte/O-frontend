@@ -180,7 +180,7 @@ export default function HAInward() {
     let note = "";
     try {
       const b = await api.ipdBilling.get(id);
-      note = b.balance > 0 ? "\n\nBalance due: ₹" + Number(b.balance).toLocaleString("en-IN") + ". Collect payment before discharge." : "";
+      if (Number(b.balance) > 0) { alert("Bill not paid. Balance due: ₹" + Number(b.balance).toLocaleString("en-IN") + ". The front desk must collect payment before discharge."); return; }
     } catch (_) {}
     if (!confirm("Mark this patient as discharged?" + note)) return;
     try { await api.inward.discharge(id); await load(); setBillId(id); } catch (e) { alert((e as Error)?.message || "Could not discharge this patient."); await load(); }
