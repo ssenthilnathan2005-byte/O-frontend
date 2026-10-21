@@ -28,11 +28,18 @@ const EMPTY = {
 function normDate(v: any): string {
   if (!v) return "";
   const s = String(v);
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m1 = s.match(/^(\d{4}-\d{2}-\d{2})/); if (m1) return m1[1]; const m2 = s.match(/^(\d{2})-(\d{2})-(\d{4})$/); if (m2) return `${m2[3]}-${m2[2]}-${m2[1]}`;
   const d = new Date(s);
   if (isNaN(d.getTime())) return "";
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+function normPlan(v: any): string {
+  const s = String(v || "").trim();
+  if (!s) return "";
+  if (/c[\s-]?section|caesar|cesar|lscs|\bcs\b/i.test(s)) return "C-section";
+  if (/normal|vaginal|nvd|natural/i.test(s)) return "Normal Delivery";
+  return s;
 }
 function profileToForm(p: any) {
   return {
@@ -43,7 +50,7 @@ function profileToForm(p: any) {
     bookingStatus: p.booking_status || "booked", allergies: p.allergies || "",
     heightCm: p.height_cm ?? "", prePregWeight: p.pre_preg_weight ?? "",
     attendantName: p.attendant_name || "", attendantPhone: p.attendant_phone || "",
-    deliveryPlan: p.delivery_plan || "", notes: p.notes || "",
+    deliveryPlan: normPlan(p.delivery_plan), notes: p.notes || "",
   } as any;
 }
 
@@ -133,10 +140,10 @@ export default function MaternityModal({ inwardId, onClose, defaultTab = "profil
               <h4 className="text-sm font-semibold mb-2">Pregnancy dates</h4>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div><label className={lbl}>LMP (last menstrual period)</label>
-                  <input type="date" className={inp} value={f.lmp} max={new Date().toISOString().slice(0, 10)}
+                  <input type="date" lang="en-GB" className={inp} value={f.lmp} max={new Date().toISOString().slice(0, 10)}
                     onChange={(e) => { set("lmp", e.target.value); set("edd", eddFromLmp(e.target.value)); }} /></div>
                 <div><label className={lbl}>EDD (expected delivery)</label>
-                  <input type="date" className={inp} value={f.edd} onChange={(e) => set("edd", e.target.value)} /></div>
+                  <input type="date" lang="en-GB" className={inp} value={f.edd} onChange={(e) => set("edd", e.target.value)} /></div>
                 <div><label className={lbl}>Gestational age today</label>
                   <div className="px-2 py-1.5 text-sm rounded-lg bg-muted/40 min-h-[34px]">{gaText(f.lmp) || "--"}</div></div>
               </div>
@@ -187,7 +194,7 @@ export default function MaternityModal({ inwardId, onClose, defaultTab = "profil
                     <option value="low">Low risk</option><option value="moderate">Moderate risk</option><option value="high">High risk</option>
                   </select></div>
                 <div><label className={lbl}>Planned mode of delivery</label>
-                  <input className={inp} value={f.deliveryPlan} onChange={(e) => set("deliveryPlan", e.target.value)} placeholder="e.g. Normal, planned C-section" /></div>
+                  <select className={inp} value={f.deliveryPlan} onChange={(e) => set("deliveryPlan", e.target.value)}><option value="">Select...</option><option value="Normal Delivery">Normal Delivery</option><option value="C-section">C-section</option>{f.deliveryPlan && !["Normal Delivery", "C-section"].includes(f.deliveryPlan) && <option value={f.deliveryPlan}>{f.deliveryPlan}</option>}</select></div>
               </div>
             </section>
 
