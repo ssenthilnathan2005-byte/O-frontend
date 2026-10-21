@@ -1,4 +1,4 @@
-﻿import PharmacyAnalytics, { useLabRevenue } from "./PharmacyAnalytics";
+﻿import PharmacyAnalytics, { useLabRevenue, useIpdRevenue } from "./PharmacyAnalytics";
 import { useMemo, useState, useEffect, type ReactNode } from "react";
 import {
   UserCog, Users2, CalendarCheck, Pill, Activity, BedDouble, FlaskConical, Package,
@@ -10,7 +10,7 @@ import { isLiveBookingStatus, normalizeBookingStatus } from "../../lib/bookingSt
 import { useRouter } from "../../router/RouterContext";
 import { toast } from "sonner";
 import { getToken as getAuthToken } from "../../api";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 // Local (not UTC) date as YYYY-MM-DD, so "today" matches the user's calendar day.
 function ymd(d: Date) {
@@ -340,8 +340,12 @@ export default function HADashboard() {
   }, [hospitalId, rangeKey, rangeValid, prevRange.from, prevRange.to]);
   const labNow = useLabRevenue(range.from, range.to);
   const labPrev = useLabRevenue(prevRange.from, prevRange.to);
+  const ipdNow = useIpdRevenue(range.from, range.to);
+  const ipdPrev = useIpdRevenue(prevRange.from, prevRange.to);
   const pharmPrevNow = pharmPrev && pharmPrev.key === rangeKey ? pharmPrev.revenue : null;
-  const totalRev = (kpis.revenue ?? 0) + labNow + (pharmNow ? pharmNow.revenue : 0);
+  const opdRev = (kpis.revenue ?? 0) + labNow + (pharmNow ? pharmNow.revenue : 0); // outpatient: consultations + lab + pharmacy
+  const ipdRev = ipdNow.collected; // inpatient: IPD payments collected (net of refunds)
+  const totalRev = opdRev + ipdRev;
   const pharmSeries = useMemo<{ label: string; amount: number }[]>(() => {
     if (!pharmNow) return [];
     const byMonth = pharmNow.daily.length > 62;
@@ -404,7 +408,7 @@ export default function HADashboard() {
 
   // ---- Financial derived values ----
   const totalRevPrev =
-    kpis.revenuePrevious !== null && pharmPrevNow !== null ? kpis.revenuePrevious + labPrev + pharmPrevNow : null;
+    kpis.revenuePrevious !== null && pharmPrevNow !== null ? kpis.revenuePrevious + labPrev + pharmPrevNow + ipdPrev.collected : null;
   const revChange =
     kpis.revenue !== null && totalRevPrev !== null && totalRevPrev > 0
       ? ((totalRev - totalRevPrev) / totalRevPrev) * 100
@@ -416,7 +420,7 @@ export default function HADashboard() {
   const splitPct = (v: number) => (splitTotal > 0 ? Math.round((v / splitTotal) * 100) : 0);
 
   // ---- Revenue chart: completed visits x doctor fee, per day (per month for long ranges) ----
-  const revenueSeries = useMemo<{ label: string; amount: number }[]>(() => {
+  const revenueSeries = useMemo<{ label: string; amount: number; ipd: number }[]>(() => {
     if (!rangeValid) return [];
     const fee = new Map(myDoctors.map((doc) => [doc.id, Number(doc.doctorFee ?? 0)]));
     const perDay = new Map<string, number>();
@@ -432,14 +436,18 @@ export default function HADashboard() {
       cur.setDate(cur.getDate() + 1);
     }
     const byMonth = days.length > 62;
-    const out = new Map<string, number>();
+    const ipdByDay = new Map(ipdNow.perDay.map((x) => [x.date, x.amount]));
+    const out = new Map<string, { amount: number; ipd: number }>();
     for (const day of days) {
       const key = byMonth ? day.slice(0, 7) : day;
-      out.set(key, (out.get(key) ?? 0) + (perDay.get(day) ?? 0));
+      const cur = out.get(key) ?? { amount: 0, ipd: 0 };
+      cur.amount += perDay.get(day) ?? 0;
+      cur.ipd += ipdByDay.get(day) ?? 0;
+      out.set(key, cur);
     }
-    return Array.from(out, ([key, amount]) => ({ label: byMonth ? key : key.slice(5), amount }));
-  }, [rangeBookings, myDoctors, rangeKey, rangeValid]);
-  const revenueChartTotal = revenueSeries.reduce((s, r) => s + r.amount, 0);
+    return Array.from(out, ([key, v]) => ({ label: byMonth ? key : key.slice(5), amount: v.amount, ipd: v.ipd }));
+  }, [rangeBookings, myDoctors, ipdNow.perDay, rangeKey, rangeValid]);
+  const revenueChartTotal = revenueSeries.reduce((s, r) => s + r.amount + r.ipd, 0);
 
   return (
     <div className="p-4 max-w-5xl mx-auto space-y-3">
@@ -537,7 +545,7 @@ export default function HADashboard() {
       {show("fin") && (
         <Section title="Financial Overview">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <MetricCard label={isToday ? "Today's Revenue" : "Revenue"} icon={IndianRupee} color="text-emerald-600" bg="bg-emerald-50">
+            <MetricCard label={isToday ? "Today's Total Revenue" : "Total Revenue"} icon={IndianRupee} color="text-emerald-600" bg="bg-emerald-50">
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-2xl font-bold text-gray-900">{money(kpis.revenue === null ? null : totalRev)}</span>
@@ -547,6 +555,16 @@ export default function HADashboard() {
                       {Math.abs(revChange).toFixed(0)}% {compareText}
                     </Badge>
                   )}
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <div className="rounded-lg bg-emerald-50 px-2 py-1.5">
+                    <div className="text-[11px] text-emerald-700">Outpatient (OPD)</div>
+                    <div className="text-sm font-semibold text-gray-900">{money(kpis.revenue === null ? null : opdRev)}</div>
+                  </div>
+                  <div className="rounded-lg bg-violet-50 px-2 py-1.5">
+                    <div className="text-[11px] text-violet-700">Inpatient (IPD)</div>
+                    <div className="text-sm font-semibold text-gray-900">{money(ipdRev)}</div>
+                  </div>
                 </div>
                 {split && splitTotal > 0 ? (
                   <div className="mt-3 space-y-2">
@@ -570,17 +588,19 @@ export default function HADashboard() {
             <div className="md:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm p-3 flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-500">Revenue trend</span>
-                <span className="text-xs text-gray-400">{money(revenueChartTotal)} from completed visits</span>
+                <span className="text-xs text-gray-400">{money(revenueChartTotal)} OPD visits + IPD collections</span>
               </div>
-              {revenueSeries.some((r) => r.amount > 0) ? (
+              {revenueSeries.some((r) => r.amount > 0 || r.ipd > 0) ? (
                 <div style={{ width: "100%", height: 130 }}>
                   <ResponsiveContainer>
                     <BarChart data={revenueSeries} margin={{ top: 4, right: 4, left: -8, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                       <XAxis dataKey="label" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
                       <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={44} />
-                      <Tooltip cursor={{ fill: "rgba(0,0,0,0.04)" }} formatter={(v) => [money(Number(v)), "Revenue"]} />
-                      <Bar dataKey="amount" name="Revenue" fill="#10b981" maxBarSize={32} radius={[3, 3, 0, 0]} />
+                      <Tooltip cursor={{ fill: "rgba(0,0,0,0.04)" }} formatter={(v, n) => [money(Number(v)), String(n)]} />
+                      <Legend iconType="circle" wrapperStyle={{ fontSize: 11 }} />
+                      <Bar dataKey="amount" name="Outpatient (OPD)" stackId="rev" fill="#10b981" maxBarSize={32} />
+                      <Bar dataKey="ipd" name="Inpatient (IPD)" stackId="rev" fill="#7c3aed" maxBarSize={32} radius={[3, 3, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>

@@ -85,6 +85,35 @@ export function usePharmacyRx(hospitalId: string, from: string, to: string) {
   return { rows, loading };
 }
 
+export type IpdRevenue = { collected: number; patients: number; perDay: { date: string; amount: number }[] };
+const EMPTY_IPD: IpdRevenue = { collected: 0, patients: 0, perDay: [] };
+
+// IPD (inward) money collected in the period, net of refunds. Uses the existing /ipd-billing/report route.
+export function useIpdRevenue(from: string, to: string): IpdRevenue {
+  const [v, setV] = useState<IpdRevenue>(EMPTY_IPD);
+  useEffect(() => {
+    let off = false;
+    const load = async () => {
+      try {
+        const qs = new URLSearchParams({ from, to });
+        const r = await fetch(`${BASE}/ipd-billing/report?${qs.toString()}`, { headers: { Authorization: `Bearer ${getToken()}` } });
+        if (!r.ok) return;
+        const d = await r.json();
+        if (off || !d) return;
+        setV({
+          collected: Number(d.collected) || 0,
+          patients: Number(d.patients) || 0,
+          perDay: Array.isArray(d.perDay) ? d.perDay.map((x: any) => ({ date: String(x.date), amount: Number(x.amount) || 0 })) : [],
+        });
+      } catch { }
+    };
+    load();
+    const t = setInterval(load, 30000);
+    return () => { off = true; clearInterval(t); };
+  }, [from, to]);
+  return v;
+}
+
 export function useLabRevenue(from: string, to: string) {
   const [v, setV] = useState(0);
   useEffect(() => {
@@ -281,12 +310,14 @@ type Props = {
 export default function PharmacyAnalytics({ hospitalId, from, to, isToday, stats, consultRevenue, prevRevenue }: Props) {
   const { rows } = usePharmacyRx(hospitalId, from, to);
   const lab = useLabRevenue(from, to);
+  const ipd = useIpdRevenue(from, to).collected;
   const [view, setView] = useState<null | "revenue" | "tablets" | "patients">(null);
   const close = () => setView(null);
   const pharmRevenue = stats ? stats.revenue : rows.reduce((s, r) => s + r.amount, 0);
   const slices = [
     { name: "Consultations", value: consultRevenue, color: "#0f766e" },
     { name: "Laboratory", value: lab, color: "#2563eb" },
+    { name: "Inpatient (IPD)", value: ipd, color: "#7c3aed" },
     { name: "Pharmacy", value: pharmRevenue, color: "#f97316" },
   ];
   const total = slices.reduce((s, x) => s + x.value, 0);
@@ -332,7 +363,7 @@ export default function PharmacyAnalytics({ hospitalId, from, to, isToday, stats
         <div className="md:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm p-3 flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-500">Revenue distribution</span>
-            <span className="text-xs text-gray-400">Consultations vs Laboratory vs Pharmacy</span>
+            <span className="text-xs text-gray-400">Consultations vs Laboratory vs IPD vs Pharmacy</span>
           </div>
           {total === 0 ? (
             <p className="text-sm text-gray-400 py-10 text-center">No revenue in this period</p>
