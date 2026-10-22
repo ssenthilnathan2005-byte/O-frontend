@@ -1,4 +1,5 @@
-﻿import PharmacyAnalytics, { useLabRevenue, useIpdRevenue } from "./PharmacyAnalytics";
+import AbdmOptInCard from "../../components/AbdmOptInCard";
+import PharmacyAnalytics, { useLabRevenue, useIpdRevenue } from "./PharmacyAnalytics";
 import { useMemo, useState, useEffect, type ReactNode } from "react";
 import {
   UserCog, Users2, CalendarCheck, Pill, Activity, BedDouble, FlaskConical, Package,
@@ -458,6 +459,9 @@ export default function HADashboard() {
           {hospitalName} &mdash; system stats at a glance
         </p>
       </div>
+
+      {/* ABDM opt-in */}
+      <AbdmOptInCard />
 
       {/* Hospital website */}
       <div className="bg-white border border-gray-200 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center gap-2">
