@@ -6,6 +6,7 @@ import { useRouter } from "../../router/RouterContext";
 import { useNearMe } from "../../hooks/useNearMe";
 import { loadGoogleMaps } from "../../lib/googleMaps";
 import { getToken } from "@/api";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { enablePushNotifications } from "../../lib/push";
 
 function resolvePhotoUrl(url: string | null | undefined): string | null {
@@ -270,6 +271,7 @@ export default function PatientHomePage() {
 
           {/* Greeting */}
           <div className="pt-5 pb-1 lg:pt-4 lg:pb-0">
+            {!user && <div className="flex justify-end mb-2"><LanguageSwitcher /></div>}
             <h1 className="text-4xl lg:text-2xl font-extrabold text-gray-900 leading-tight">{getGreeting()} 👋</h1>
             <p className="text-sm text-gray-400 mt-1 font-medium">Your health matters. We're here to help.</p>
           </div>

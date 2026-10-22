@@ -9,6 +9,7 @@ import { useNearMe } from "./hooks/useNearMe";
 import { loadGoogleMaps } from "./lib/googleMaps";
 import { motion } from "motion/react";
 import TopNav from "./components/layout/TopNav";
+import LanguageSwitcher from "./components/LanguageSwitcher";
 import { StoreProvider, useStore } from "./context/StoreContext";
 import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
@@ -354,7 +355,7 @@ function LandingPage() {
             <div className="flex items-center gap-2">
               <img src="/assets/Logo.jpg" alt="Logo" className="w-10 h-10 rounded-full object-contain"
                 onError={e => { (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='20' fill='%2314b8a6'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='18' font-family='sans-serif'%3EDB%3C/text%3E%3C/svg%3E"; }} />
-              <span className="text-xl font-bold text-gray-800"><span className="text-teal-600">Doctor</span>Booked</span>
+              <span className="text-xl font-bold text-gray-800" translate="no"><span className="text-teal-600">Doctor</span>Booked</span>
             </div>
             <nav className="hidden lg:flex items-center gap-8 text-sm font-medium text-gray-700">
               <button onClick={() => navigate({ path: "/patient/hospitals" })} className="hover:text-teal-600 transition-colors">Find Hospitals</button>
@@ -362,6 +363,7 @@ function LandingPage() {
               <button onClick={() => navigate({ path: "/patient/tokens" })} className="hover:text-teal-600 transition-colors">My Tokens</button>
               <button onClick={() => navigate({ path: "/patient/prescriptions" })} className="hover:text-teal-600 transition-colors">My Prescriptions</button>
             </nav>
+            <div className="ml-auto mr-3 lg:ml-0"><LanguageSwitcher /></div>
             <button type="button" onClick={() => navigate({ path: "/login", tab: "patient", patientMode: "login" })}
               className="flex items-center gap-2 border border-teal-600 text-teal-600 hover:bg-teal-50 px-4 py-1.5 rounded-full font-medium transition-colors">
               Login <User className="w-4 h-4" />

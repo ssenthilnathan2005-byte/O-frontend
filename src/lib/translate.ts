@@ -64,6 +64,7 @@ export async function syncWithServer(
 
 export function initTranslate() {
   if (getLang() !== "ta") return;
+  document.documentElement.classList.add("lang-ta");
   patchDom();
 
   const holder = document.createElement("div");

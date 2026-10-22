@@ -104,3 +104,22 @@ iframe.goog-te-banner-frame,
 .goog-te-balloon-frame { display: none !important; }
 body { top: 0 !important; }
 .goog-text-highlight { background: none !important; box-shadow: none !important; }
+
+
+/* ===== Tamil mode layout fixes ===== */
+html.lang-ta font { background: transparent !important; box-shadow: none !important; }
+
+/* Phone bottom bar: 5 equal columns, labels shrink and truncate */
+html.lang-ta nav.fixed.bottom-0 > div > button { flex: 1 1 0; min-width: 0; padding-left: 2px; padding-right: 2px; }
+html.lang-ta nav.fixed.bottom-0 > div > button > span:last-child { font-size: 9px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Laptop top bar: menu scrolls sideways so language and profile stay visible */
+html.lang-ta header > div { gap: 1rem !important; }
+html.lang-ta header nav { flex: 1 1 0; min-width: 0; overflow-x: auto; gap: 0.75rem !important; font-size: 0.8rem; padding-top: 0.4rem; padding-right: 0.5rem; scrollbar-width: none; }
+html.lang-ta header nav::-webkit-scrollbar { display: none; }
+html.lang-ta header nav > button { white-space: nowrap; flex-shrink: 0; }
+html.lang-ta header nav + .flex-1:empty { display: none; }
+
+
+/* ===== Tamil guest header fixes ===== */
+html.lang-ta header > div > button { white-space: nowrap; flex-shrink: 0; }
