@@ -23,10 +23,15 @@ const cx = (w: Word) => (w.x0 + w.x1) / 2, cy = (w: Word) => (w.y0 + w.y1) / 2, 
 const inRange = (f: Field, v: number) => v >= RANGE[f][0] && v <= RANGE[f][1];
 /** Temperature near a Temp label / unit: degC (30-43) or degF (86-110), also "368" / "986" when the point was lost. Returns degC. */
 function tempC(v: number, hasPoint: boolean): number | null {
-  if (v >= 30 && v <= 43) return v;
-  if (v >= 86 && v <= 110) return ((v - 32) * 5) / 9;
-  if (!hasPoint && v >= 300 && v <= 430) return v / 10;
-  if (!hasPoint && v >= 860 && v <= 1100) return ((v / 10 - 32) * 5) / 9;
+  // Body temperature is printed with a decimal point. A bare integer such as 98 is almost always another vital (SpO2),
+  // so it is NOT taken as a Fahrenheit temperature. Only a 3-digit number whose point was lost (368 / 986) is rescued.
+  if (hasPoint) {
+    if (v >= 30 && v <= 43) return v;
+    if (v >= 86 && v <= 110) return ((v - 32) * 5) / 9;
+    return null;
+  }
+  if (v >= 300 && v <= 430) return v / 10;
+  if (v >= 860 && v <= 1100) return ((v / 10 - 32) * 5) / 9;
   return null;
 }
 
@@ -46,29 +51,51 @@ export function mergeVitals(words: Word[], imgW: number): Record<Field, Result> 
     }
   }
 
-  // 2) Label pass: pair each small label with the nearest number (right or below preferred)
-  const used = new Set<Word>();
-  const pairs: { f: Field; n: Word; score: number; v: number; cv: number }[] = [];
+  // 2) Label pass: pair each small label with the nearest plausible number (right or below preferred).
+  //  * Alarm banners ("PR TOO LOW", "SPO2 LEAD OFF") are messages, not labels: a banner "PR" once claimed the RESP
+  //    number as the pulse after the real heart rate was dropped.
+  //  * A label only claims a number that is plausibly close to it (a few number-heights away).
+  //  * If two DIFFERENT numbers are about equally close, the label claims neither (fail closed). For temperature the
+  //    two are reported as a conflict so the nurse can pick the channel.
+  //  * Two labels for one vital that disagree (HR 154 vs Pulse 153) also end up as a conflict.
+  const ALARM = /^(too|high|low|off|alarm|alarms|lead|leads|probe|check|fail|failure|error|sensor|disconnected|search|artifact|noise|apnea|asystole|limit|limits)$/i;
+  const isBanner = (l: Word) => words.some((w) => w !== l && Math.abs(cy(w) - cy(l)) < 0.8 * Math.max(h(l), 1) && w.x0 - l.x1 >= -2 && w.x0 - l.x1 <= 2.5 * Math.max(h(l), 1) && ALARM.test(w.text.replace(/[^A-Za-z]/g, '')));
+  const sameNum = (a: number, b: number) => Math.abs(a - b) < 0.15;
+  const claims: { f: Field; n: Word; cv: number; score: number }[] = [];
   for (const [f, re] of Object.entries(LABELS) as ['pulse' | 'spo2' | 'rr' | 'temp', RegExp][]) {
     for (const l of words.filter((w) => re.test(w.text.replace(/[^\w₂°\/]/g, '')))) {
+      if (isBanner(l)) continue;
+      const cs: { n: Word; cv: number; score: number }[] = [];
       for (const n of nums) {
         const v = num(n)!;
         const cv = f === 'temp' ? tempC(v, /\./.test(norm(n.text))) : inRange(f, v) ? v : null;
         if (cv === null) continue;
         const dx = cx(n) - cx(l), dy = cy(n) - cy(l);
         const dist = Math.hypot(dx, dy);
-        if (dist > imgW * 0.35) continue;
-        const behind = dx < -(l.x1 - l.x0) && dy < 0 ? 2 : 1; // number left of/above label: penalise
-        pairs.push({ f, n, v, cv, score: (dist * behind) / Math.sqrt(Math.max(h(n), 1)) });
+        // close enough to belong to the label: a few number-heights, or a few label-heights for small digits (temperature)
+        if (dist > Math.min(imgW * 0.35, Math.max(3.5 * h(n), 9 * h(l)))) continue;
+        // a number left of / above the label usually belongs to the PREVIOUS parameter (HR sits above the SpO2 label)
+        const behind = (dx < -(l.x1 - l.x0) && dy < 0) || dy < -Math.max(h(l), 1) ? 2 : 1;
+        cs.push({ n, cv, score: (dist * behind) / Math.sqrt(Math.max(h(n), 1)) });
       }
+      if (!cs.length) continue;
+      cs.sort((a, b) => a.score - b.score);
+      const second = cs.find((c) => !sameNum(c.cv, cs[0].cv));
+      if (second && second.score < 1.5 * cs[0].score) {
+        if (f === 'temp') {
+          cands.push({ field: 'temp', value: cs[0].cv, source: 'label', strong: true }, { field: 'temp', value: second.cv, source: 'label', strong: true });
+        }
+        continue;
+      }
+      claims.push({ f, n: cs[0].n, cv: cs[0].cv, score: cs[0].score });
     }
   }
-  pairs.sort((a, b) => a.score - b.score);
-  const doneField = new Set<Field>();
-  for (const p of pairs) {
-    if (used.has(p.n) || doneField.has(p.f)) continue;
-    used.add(p.n); doneField.add(p.f);
-    cands.push({ field: p.f, value: p.cv, source: 'label', strong: true });
+  claims.sort((a, b) => a.score - b.score);
+  const used = new Set<Word>();
+  for (const c of claims) {
+    if (used.has(c.n)) continue; // one number can serve only one vital
+    used.add(c.n);
+    cands.push({ field: c.f, value: c.cv, source: 'label', strong: true });
   }
 
   // 3) Unit pass: a number directly beside a unit token (%, bpm, /min, °C)

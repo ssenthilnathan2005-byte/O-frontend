@@ -1,3 +1,4 @@
+import FollowUpBox, { followUpStore } from "./FollowUpBox";
 import { searchIcd10 } from "../data/icd10Common";
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -134,6 +135,7 @@ export default function PrescriptionDialog({
 }: Props) {
   const [medicines, setMedicines] = useState<Medicine[]>([{ ...EMPTY_MED }]);
   const [notes, setNotes] = useState("");
+  followUpStore.setVisit((booking as any)?.date);
   const [diagnosis, setDiagnosis] = useState("");
   const [diagnosisCode, setDiagnosisCode] = useState("");
   const [icdOpen, setIcdOpen] = useState(false);
@@ -342,6 +344,16 @@ export default function PrescriptionDialog({
       });
       if (res.ok) {
         ok = true;
+        try {
+          const fd = parseInt(followUpStore.get(), 10);
+          if (fd > 0) {
+            await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000/api"}/doctor/follow-up/${booking.id}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+              body: JSON.stringify({ days: fd }),
+            });
+          }
+        } catch { /* follow-up is best effort */ }
         toast.success("Prescription saved ✓");
       } else {
         const err = await res.json();
@@ -355,7 +367,7 @@ export default function PrescriptionDialog({
     setMedicines([{ ...EMPTY_MED }]);
     setVoiceItems([]);
     setVoicePending([]);
-    setNotes(""); setDiagnosis(""); setDiagnosisCode(""); setIcdOpen(false);
+    setNotes(""); setDiagnosis(""); setDiagnosisCode(""); setIcdOpen(false); followUpStore.set("");
     setCollapsed(new Set());
     setOtherOpen(new Set());
     setMode("voice");
@@ -366,7 +378,7 @@ export default function PrescriptionDialog({
     setMedicines([{ ...EMPTY_MED }]);
     setVoiceItems([]);
     setVoicePending([]);
-    setNotes(""); setDiagnosis(""); setDiagnosisCode(""); setIcdOpen(false);
+    setNotes(""); setDiagnosis(""); setDiagnosisCode(""); setIcdOpen(false); followUpStore.set("");
     setCollapsed(new Set());
     setOtherOpen(new Set());
     setMode("voice");
@@ -712,6 +724,8 @@ export default function PrescriptionDialog({
               rows={3}
             />
           </div>
+
+          <FollowUpBox />
         </div>
 
         <DialogFooter className="flex gap-2 mt-2 max-sm:sticky max-sm:bottom-0 max-sm:bg-white max-sm:pt-2 max-sm:pb-[max(0.5rem,env(safe-area-inset-bottom))]">
