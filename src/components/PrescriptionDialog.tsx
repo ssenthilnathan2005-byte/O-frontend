@@ -1,3 +1,4 @@
+import { searchIcd10 } from "../data/icd10Common";
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -134,6 +135,8 @@ export default function PrescriptionDialog({
   const [medicines, setMedicines] = useState<Medicine[]>([{ ...EMPTY_MED }]);
   const [notes, setNotes] = useState("");
   const [diagnosis, setDiagnosis] = useState("");
+  const [diagnosisCode, setDiagnosisCode] = useState("");
+  const [icdOpen, setIcdOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [suggestions, setSuggestions] = useState<{ name: string; inStock: boolean }[]>([]);
   const [activeMedIdx, setActiveMedIdx] = useState<number | null>(null);
@@ -333,6 +336,7 @@ export default function PrescriptionDialog({
           hospitalName,
           items: validMeds,
           diagnosis: diagnosis.trim() || undefined,
+          diagnosisCode: diagnosisCode.trim() || undefined,
           notes,
         }),
       });
@@ -351,7 +355,7 @@ export default function PrescriptionDialog({
     setMedicines([{ ...EMPTY_MED }]);
     setVoiceItems([]);
     setVoicePending([]);
-    setNotes(""); setDiagnosis("");
+    setNotes(""); setDiagnosis(""); setDiagnosisCode(""); setIcdOpen(false);
     setCollapsed(new Set());
     setOtherOpen(new Set());
     setMode("voice");
@@ -362,7 +366,7 @@ export default function PrescriptionDialog({
     setMedicines([{ ...EMPTY_MED }]);
     setVoiceItems([]);
     setVoicePending([]);
-    setNotes(""); setDiagnosis("");
+    setNotes(""); setDiagnosis(""); setDiagnosisCode(""); setIcdOpen(false);
     setCollapsed(new Set());
     setOtherOpen(new Set());
     setMode("voice");
@@ -405,7 +409,25 @@ export default function PrescriptionDialog({
 
         <div>
           <Label className="text-xs text-gray-500">Diagnosis (optional)</Label>
-          <Input placeholder="e.g. Acute viral fever" value={diagnosis} maxLength={500} onChange={e => setDiagnosis(e.target.value)} />
+          <div className="relative">
+            <Input placeholder="e.g. Acute viral fever" value={diagnosis} maxLength={500}
+              onChange={e => { setDiagnosis(e.target.value); setDiagnosisCode(""); setIcdOpen(true); }}
+              onFocus={() => setIcdOpen(true)}
+              onBlur={() => setTimeout(() => setIcdOpen(false), 150)} />
+            {diagnosisCode && <p className="text-xs text-green-700 mt-1">ICD-10: {diagnosisCode}</p>}
+            {icdOpen && !diagnosisCode && searchIcd10(diagnosis).length > 0 && (
+              <div className="absolute z-20 left-0 right-0 mt-1 max-h-48 overflow-auto rounded-md border bg-white shadow">
+                {searchIcd10(diagnosis).map(e => (
+                  <button type="button" key={e.code}
+                    onMouseDown={ev => ev.preventDefault()}
+                    onClick={() => { setDiagnosis(e.name); setDiagnosisCode(e.code); setIcdOpen(false); }}
+                    className="block w-full text-left px-3 py-2 text-sm hover:bg-blue-50">
+                    <span className="font-mono text-xs text-gray-500 mr-2">{e.code}</span>{e.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <PresetSuggestions
