@@ -60,8 +60,8 @@ export default function AboutUsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto flex items-center gap-3">
+      <header className="bg-white border-b border-gray-200 py-4 sticky top-0 z-10">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-14 flex items-center gap-3">
           <button type="button" onClick={goBack} className="flex items-center gap-2 text-gray-500 hover:text-gray-700 text-sm">
             <ArrowLeft className="w-4 h-4" /> Back
           </button>
@@ -72,7 +72,7 @@ export default function AboutUsPage() {
 
       {/* Hero */}
       <section style={{ background: "linear-gradient(180deg,#ecfdf9 0%,#f9fafb 100%)" }}>
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 lg:py-20 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-14 py-12 lg:py-20 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
           <div>
             <img src={logo} alt="Doctor Booked" className="w-40 lg:w-48 h-auto" />
             <span className="mt-8 inline-block rounded-full bg-teal-50 border border-teal-100 px-4 py-1 text-xs font-semibold tracking-wide text-teal-700 uppercase">
@@ -116,11 +116,11 @@ export default function AboutUsPage() {
         </div>
       </section>
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-12 lg:py-16 space-y-14 lg:space-y-20">
+      <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-14 py-12 lg:py-16 space-y-14 lg:space-y-20">
         {/* Our story */}
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-12">
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-14 items-start">
           <SectionHeading label="Our story" title="Why Doctor Booked exists" />
-          <div className={`lg:col-span-2 ${CARD} p-6 lg:p-8 space-y-4 text-gray-600 leading-relaxed`}>
+          <div className={`${CARD} p-6 lg:p-8 space-y-4 text-gray-600 leading-relaxed`}>
             <p>
               Long waits and uncertainty are a daily reality in many clinics. Patients arrive early, sit for hours and never know when their turn will come, while hospital staff manage the crowd with paper registers and phone calls.
             </p>
@@ -192,15 +192,15 @@ export default function AboutUsPage() {
         </section>
 
         {/* Contact / register your hospital */}
-        <section id="contact" className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-12 scroll-mt-24">
-          <div className="lg:col-span-2">
+        <section id="contact" className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-14 items-start scroll-mt-24">
+          <div>
             <SectionHeading
               label="Get in touch"
               title="Register your hospital or contact us"
               text="Want to bring your clinic or hospital onto Doctor Booked, or have a question? Share your details and our founders will get back to you on the phone number you share."
             />
           </div>
-          <div className={`lg:col-span-3 ${CARD} p-6 lg:p-8`}>
+          <div className={`${CARD} p-6 lg:p-8`}>
             <EnquiryForm />
           </div>
         </section>
