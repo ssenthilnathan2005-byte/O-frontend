@@ -401,6 +401,17 @@ export const patients = {
     patch<{ success: boolean }>("/patients/language", { preferredLanguage }),
 };
 
+// Family members (sub-profiles under one phone-number account)
+export interface FamilyMember { id: string; relation: string; name: string; yearOfBirth: string; age: string; gender: string; bloodGroup: string; }
+export interface FamilyMemberInput { relation: string; name: string; yearOfBirth: string; gender?: string; bloodGroup?: string; }
+export const familyMembers = {
+  list:   () => get<FamilyMember[]>("/family-members"),
+  add:    (data: FamilyMemberInput) => post<FamilyMember>("/family-members", data),
+  update: (id: string, data: FamilyMemberInput) => patch<FamilyMember>(`/family-members/${id}`, data),
+  remove: (id: string) => del<{ success: boolean }>(`/family-members/${id}`),
+};
+
+
 // ── Forgot Password
 export const forgotPassword = (email: string) =>
   post<{ success: boolean; message: string; resetLink?: string }>("/auth/patient/forgot-password", { email });

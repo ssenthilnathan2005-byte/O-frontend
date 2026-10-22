@@ -8,6 +8,7 @@ import { Geolocation } from "@capacitor/geolocation";
 import { enablePushNotifications } from "../../lib/push";
 import { Switch } from "@/components/ui/switch";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import FamilyMembersSection from "@/components/FamilyMembersSection";
 
 type PermStatus = "granted" | "denied" | "prompt" | "gps-off" | "unknown";
 
@@ -339,6 +340,7 @@ export default function ProfilePage() {
         </button>
       </div>
 
+      <FamilyMembersSection />
       {/* Language */}
       <div className="bg-white border border-gray-200 rounded-2xl p-4 mt-4">
         <div className="flex items-center justify-between gap-3">

@@ -7,7 +7,7 @@ import { Activity, AlertCircle, ArrowLeft, Calendar, CheckCircle2, Clock,
          CreditCard, FileText, Hash, IndianRupee, Loader2, MapPin, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { bookings as bookingsApi, payments, patients } from "../../api";
+import { bookings as bookingsApi, payments, patients, familyMembers } from "../../api";
 import { useStore } from "../../context/StoreContext";
 import { useRouter } from "../../router/RouterContext";
 import {
@@ -15,7 +15,7 @@ import {
   isSessionAvailable, isSessionAvailableForDate, makeSessionId,
 } from "../../data/seed";
 import { getSymptomsForSpecialty } from "../../data/doctorSymptoms";
-import type { Doctor, Hospital } from "../../api";
+import type { Doctor, Hospital, FamilyMember } from "../../api";
 import type { SessionType } from "../../types";
 
 let razorpayScriptPromise: Promise<boolean> | null = null;
@@ -78,6 +78,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
   const patientAgeFinal = bookingFor === "other" ? (patientYobValid ? String(bookingYearNow - patientYobNum) : "") : patientAge;
   const [profile, setProfile] = useState<{ name: string; phone: string; age: string; yearOfBirth?: string; isComplete: boolean } | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [family, setFamily] = useState<FamilyMember[]>([]);
   const [paying, setPaying]             = useState(false);
   const [payError, setPayError]         = useState("");
   const [isRazorpayReady, setIsRazorpayReady] = useState(false);
@@ -148,6 +149,12 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
       .finally(() => setProfileLoading(false));
   }, [open]);
 
+  // Fetch family member pills whenever the dialog opens
+  useEffect(() => {
+    if (!open) return;
+    familyMembers.list().then(setFamily).catch(() => setFamily([]));
+  }, [open]);
+
   const availableDates = useMemo(() => getAvailableDates(), []);
   const patientUser = user as { id: string; email: string; name: string; role: "patient" };
 
@@ -205,6 +212,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
 
   // ── Payment via Razorpay ────────────────────────────────────────────────────
   async function handlePay() {
+    if (paying) return;
     setPaying(true);
     setPayError("");
     if (!isRazorpayReady) {
@@ -336,6 +344,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
   // doctor's hospital is actually marked free) and goes straight to the
   // tracking-info step, mirroring the success path of handlePay above.
   async function handleFreeBook() {
+    if (paying) return;
     setPaying(true);
     setPayError("");
     try {
@@ -620,6 +629,30 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
               <p className="text-sm text-gray-400 mt-1">This helps us fill in the right details.</p>
             </div>
             <div className="space-y-3">
+              {family.filter(m => m.relation !== "Self").length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-gray-500 mb-2">Family members</p>
+                  <div className="flex flex-wrap gap-2">
+                    {family.filter(m => m.relation !== "Self").map(m => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => {
+                          setPatientName(m.name);
+                          setPatientPhone(profile?.phone || "");
+                          setPatientAge(m.age);
+                          setPatientYob(m.yearOfBirth || "");
+                          setBookingFor("other");
+                          goToStep("complaint");
+                        }}
+                        className="px-3 py-1.5 rounded-full border border-teal-200 bg-teal-50 text-teal-700 text-sm font-medium hover:bg-teal-100 transition-colors"
+                      >
+                        {m.relation} - {m.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <button
                 type="button"
                 disabled={profileLoading}
