@@ -12,6 +12,7 @@ import TopNav from "./components/layout/TopNav";
 import { StoreProvider, useStore } from "./context/StoreContext";
 import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
+import AboutUsPage from "./pages/AboutUsPage";
 import DeleteAccountPage from "./pages/DeleteAccountPage";
 import LoginPage from "./pages/LoginPage";
 import HospitalAdminLogin from "./pages/HospitalAdminLogin";
@@ -433,7 +434,7 @@ function LandingPage() {
         </main>
         <footer className="border-t border-gray-200 mt-auto bg-white px-4 py-8 lg:py-10">
           <div className="max-w-7xl 2xl:max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-4 gap-8">
-            <div><div className="flex items-center gap-2 mb-2"><span className="font-bold text-gray-900">Doctor</span><span className="font-bold text-teal-500">Booked</span></div><p className="text-gray-400 text-sm">Skip the waiting room. Track your token live.</p></div>
+            <div><div className="flex items-center gap-2 mb-2"><span className="font-bold text-gray-900">Doctor</span><span className="font-bold text-teal-500">Booked</span></div><p className="text-gray-400 text-sm">Skip the waiting room. Track your token live.</p><button onClick={() => navigate({ path: "/about" })} className="mt-3 text-sm font-medium text-gray-600 hover:text-teal-600 transition-colors">About Us</button></div>
             <div className="hidden lg:block">
               <h5 className="text-xs font-semibold text-gray-900 uppercase mb-3">For Patients</h5>
               <div className="flex flex-col gap-2 text-sm text-gray-500">
@@ -464,6 +465,7 @@ function AppRoutes() {
   const { route } = useRouter();
 
   function renderPage() {
+    if (route.path === "/about") return <AboutUsPage />;
     if (!user) {
       if (route.path === "/") return <LandingPage />;
       if (route.path === "/terms") return <TermsPage />;
@@ -547,6 +549,7 @@ function AppRoutes() {
   // hide the nav purely based on route.path when `user` is already set.
   const hideTopNav =
     isAdmin ||
+    route.path === "/about" ||
     (!user && (route.path === "/login" || route.path === "/terms" || route.path === "/privacy" || route.path === "/delete-account" || route.path === "/hospital-admin/login" || route.path === "/pharmacy/login" || route.path === "/nurse/login" || route.path === "/front-office/login" || route.path === "/pharmacy-owner/login" || route.path === "/pharmacy-owner/register" || route.path === "/lab-admin/login")) ||
     (!!user && route.path === "/terms");
 
@@ -590,7 +593,7 @@ export default function App() {
   const [splashDone, setSplashDone] = useState(false);
   const [aboutDone, setAboutDone] = useState(() => {
     try {
-      const publicPaths = ["/terms", "/privacy", "/delete-account"];
+      const publicPaths = ["/terms", "/privacy", "/delete-account", "/about"];
       if (publicPaths.includes(window.location.pathname)) return true;
       return !!localStorage.getItem("db_user") || !!localStorage.getItem("db_about_seen");
     } catch { return false; }
