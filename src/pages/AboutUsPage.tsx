@@ -72,42 +72,40 @@ export default function AboutUsPage() {
 
       {/* Hero */}
       <section style={{ background: "linear-gradient(180deg,#ecfdf9 0%,#f9fafb 100%)" }}>
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-14 py-10 lg:py-14 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
-          <div>
-            <img src={logo} alt="Doctor Booked" className="w-36 lg:w-40 h-auto" />
-            <span className="mt-6 inline-block rounded-full bg-teal-50 border border-teal-100 px-4 py-1 text-xs font-semibold tracking-wide text-teal-700 uppercase">
-              About us
-            </span>
-            <h1 className="mt-4 text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight">
-              Making healthcare <span className="text-teal-600">simpler</span> for patients and hospitals
-            </h1>
-            <p className="mt-4 text-base lg:text-lg text-gray-500 leading-relaxed">
-              Doctor Booked is a healthcare booking and real-time queue management platform built for independent clinics and small hospitals.
-            </p>
-            <div className="mt-8 flex flex-col sm:flex-row gap-3">
-              <button
-                type="button"
-                onClick={() => navigate({ path: "/patient/hospitals" })}
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-teal-600 hover:bg-teal-700 text-white font-semibold px-6 py-3 shadow-lg shadow-teal-600/25 transition-colors"
-              >
-                Find Hospitals <ChevronRight className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })}
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-teal-200 bg-white text-teal-700 font-semibold px-6 py-3 hover:bg-teal-50 transition-colors"
-              >
-                Contact us
-              </button>
-            </div>
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-14 py-10 lg:py-14 flex flex-col items-center text-center">
+          <img src={logo} alt="Doctor Booked" className="w-36 lg:w-44 h-auto" />
+          <span className="mt-5 inline-block rounded-full bg-teal-50 border border-teal-100 px-4 py-1 text-xs font-semibold tracking-wide text-teal-700 uppercase">
+            About us
+          </span>
+          <h1 className="mt-4 text-3xl sm:text-4xl 2xl:text-5xl font-bold text-gray-900 leading-tight xl:whitespace-nowrap">
+            Making healthcare <span className="text-teal-600">simpler</span> for patients and hospitals
+          </h1>
+          <p className="mt-4 text-base lg:text-lg text-gray-500 leading-relaxed max-w-4xl 2xl:max-w-none 2xl:whitespace-nowrap">
+            Doctor Booked is a healthcare booking and real-time queue management platform built for independent clinics and small hospitals.
+          </p>
+          <div className="mt-6 flex flex-col sm:flex-row gap-3">
+            <button
+              type="button"
+              onClick={() => navigate({ path: "/patient/hospitals" })}
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-teal-600 hover:bg-teal-700 text-white font-semibold px-6 py-3 shadow-lg shadow-teal-600/25 transition-colors"
+            >
+              Find Hospitals <ChevronRight className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })}
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-teal-200 bg-white text-teal-700 font-semibold px-6 py-3 hover:bg-teal-50 transition-colors"
+            >
+              Contact us
+            </button>
           </div>
 
-          <div className={`${CARD} p-6 lg:p-8`}>
-            <h2 className="text-lg lg:text-xl font-bold text-gray-900">What we do</h2>
-            <ul className="mt-5 space-y-3">
+          <div className={`${CARD} mt-10 w-full max-w-6xl p-6 lg:p-8 text-left`}>
+            <h2 className="text-lg lg:text-xl font-bold text-gray-900 text-center">What we do</h2>
+            <ul className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-3">
               {offerings.map((o) => (
-                <li key={o} className="flex items-start gap-3 rounded-xl bg-gray-50 border border-gray-100 p-4 text-sm text-gray-700">
-                  <span className="mt-0.5 w-5 h-5 shrink-0 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-bold">&#10003;</span>
+                <li key={o} className="flex items-center gap-3 rounded-xl bg-gray-50 border border-gray-100 p-4 text-sm text-gray-700">
+                  <span className="w-5 h-5 shrink-0 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-bold">&#10003;</span>
                   {o}
                 </li>
               ))}
