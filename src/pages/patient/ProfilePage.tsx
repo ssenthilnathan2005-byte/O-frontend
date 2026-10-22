@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { UserCog, Loader2, Save, CheckCircle2, MapPin, Bell, ExternalLink } from "lucide-react";
+import { UserCog, Loader2, Save, CheckCircle2, MapPin, Bell, ExternalLink, Languages } from "lucide-react";
 import { patients } from "../../api";
 import { useRouter } from "../../router/RouterContext";
 import { Capacitor } from "@capacitor/core";
 import { Geolocation } from "@capacitor/geolocation";
 import { enablePushNotifications } from "../../lib/push";
 import { Switch } from "@/components/ui/switch";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 type PermStatus = "granted" | "denied" | "prompt" | "gps-off" | "unknown";
 
@@ -336,6 +337,22 @@ export default function ProfilePage() {
             <><Save className="w-4 h-4" /> Save Profile</>
           )}
         </button>
+      </div>
+
+      {/* Language */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-4 mt-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-full bg-teal-50 flex items-center justify-center shrink-0">
+              <Languages className="w-4 h-4 text-teal-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-gray-900">Language</p>
+              <p className="text-xs text-gray-400" translate="no">English / தமிழ்</p>
+            </div>
+          </div>
+          <LanguageSwitcher />
+        </div>
       </div>
 
       {/* Permissions */}

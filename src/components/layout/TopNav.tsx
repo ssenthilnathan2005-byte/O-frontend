@@ -4,7 +4,9 @@ import { toast } from "sonner";
 import { useStore } from "../../context/StoreContext";
 import { useRouter } from "../../router/RouterContext";
 import { enablePushNotifications } from "../../lib/push";
-import { bedBookings } from "../../api";
+import { bedBookings, patients } from "../../api";
+import LanguageSwitcher from "../LanguageSwitcher";
+import { syncWithServer } from "../../lib/translate";
 
 export default function TopNav() {
   const { user, logout, doctors, bookings, hasNewPrescription, clearPrescriptionDot } = useStore();
@@ -32,6 +34,21 @@ export default function TopNav() {
   }, [user]);
 
   const desktopMenuRef = useRef<HTMLDivElement>(null);
+
+  // Apply the patient's saved language (follows them across devices)
+  const langKey = user && user.role === "patient"
+    ? String((user as any).id ?? (user as any).email ?? (user as any).name ?? "patient")
+    : "";
+  useEffect(() => {
+    if (!langKey) return;
+    let stop = false;
+    patients.getProfile().then((p) => {
+      if (stop) return;
+      const l = p.preferredLanguage;
+      if (l === "ta" || l === "en") void syncWithServer(langKey, l, patients.updateLanguage);
+    }).catch(() => {});
+    return () => { stop = true; };
+  }, [langKey]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !user || user.role !== "patient") {
@@ -292,6 +309,10 @@ export default function TopNav() {
 
             {/* Menu items — add more here later */}
             <div className="space-y-1">
+              <div className="flex items-center justify-between px-3 py-2">
+                <span className="text-sm font-medium text-gray-700">Language</span>
+                <LanguageSwitcher />
+              </div>
               <button
                 type="button"
                 className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-gray-700 hover:bg-teal-50 transition-colors text-sm font-medium"
@@ -434,6 +455,8 @@ export default function TopNav() {
           </nav>
 
           <div className="flex-1" />
+
+          <LanguageSwitcher />
 
           <div className="relative" ref={desktopMenuRef}>
             <button
