@@ -4,6 +4,7 @@ import {
   BookOpen,
   Building2,
   CalendarCheck,
+  Inbox,
   ClipboardList,
   IndianRupee,
   FlaskConical,
@@ -15,12 +16,14 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { enquiries } from "../../api";
 import { useStore } from "../../context/StoreContext";
 import { useRouter } from "../../router/RouterContext";
 import AdminBookings from "./AdminBookings";
 import AdminAmbulance from "./AdminAmbulance";
 import AdminDashboard from "./AdminDashboard";
+import AdminEnquiries from "./AdminEnquiries";
 import AdminDoctors from "./AdminDoctors";
 import AdminHospitals from "./AdminHospitals";
 import AdminLabs from "./AdminLabs";
@@ -40,6 +43,7 @@ const NAV_ITEMS = [
   { path: "/admin/pharmacies", label: "Pharmacies", icon: Pill },
   { path: "/admin/ambulance", label: "Ambulance", icon: Ambulance },
   { path: "/admin/labs", label: "Labs", icon: FlaskConical },
+  { path: "/admin/enquiries", label: "Enquiries", icon: Inbox },
 ] as const;
 
 export default function AdminPanel() {
@@ -47,6 +51,20 @@ export default function AdminPanel() {
   const { route, navigate } = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
   useBodyScrollLock(drawerOpen);
+
+  const [newEnq, setNewEnq] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    const poll = () =>
+      enquiries.list("new").then((r) => { if (alive) setNewEnq(r?.counts?.new || 0); }).catch(() => {});
+    poll();
+    const id = window.setInterval(poll, 60000);
+    return () => { alive = false; window.clearInterval(id); };
+  }, []);
+  const badge = (path: string) =>
+    path === "/admin/enquiries" && newEnq > 0 ? (
+      <span className="ml-auto rounded-full bg-teal-400 px-2 py-0.5 text-[10px] font-bold text-gray-900">{newEnq}</span>
+    ) : null;
 
   function renderContent() {
     switch (route.path) {
@@ -68,6 +86,8 @@ export default function AdminPanel() {
         return <AdminAmbulance />;
       case "/admin/labs":
         return <AdminLabs />;
+      case "/admin/enquiries":
+        return <AdminEnquiries />;
       default:
         return <AdminDashboard />;
     }
@@ -115,6 +135,7 @@ export default function AdminPanel() {
               >
                 <Icon className="w-4 h-4 shrink-0" />
                 {label}
+                {badge(path)}
               </button>
             );
           })}
@@ -212,6 +233,7 @@ export default function AdminPanel() {
                   >
                     <Icon className="w-4 h-4 shrink-0" />
                     {label}
+                    {badge(path)}
                   </button>
                 );
               })}

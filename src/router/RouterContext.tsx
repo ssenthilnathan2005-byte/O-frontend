@@ -35,6 +35,7 @@ type Route =
   | { path: "/admin/labs" }
   | { path: "/admin/lab-bookings" }
   | { path: "/admin/billing" }
+  | { path: "/admin/enquiries" }
   | { path: "/hospital-admin/login" }
   | { path: "/hospital-admin" }
   | { path: "/hospital-admin/doctors" }
@@ -136,6 +137,7 @@ function getInitialRoute(): Route {
   if (pathname === "/admin/labs") return { path: "/admin/labs" };
   if (pathname === "/admin/lab-bookings") return { path: "/admin/lab-bookings" };
   if (pathname === "/admin/billing") return { path: "/admin/billing" };
+  if (pathname === "/admin/enquiries") return { path: "/admin/enquiries" };
   if (pathname === "/hospital-admin/login") return { path: "/hospital-admin/login" };
   if (pathname === "/hospital-admin/doctors") return { path: "/hospital-admin/doctors" };
   if (pathname === "/hospital-admin/patients") return { path: "/hospital-admin/patients" };
