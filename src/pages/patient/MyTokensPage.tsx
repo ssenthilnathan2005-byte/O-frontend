@@ -9,6 +9,7 @@ import { useStore } from "../../context/StoreContext";
 import { hasSessionEndedForDate, getSessionLabelForDate } from "../../data/seed";
 import { isLiveBookingStatus, normalizeBookingStatus } from "../../lib/bookingStatus";
 import { useRouter } from "../../router/RouterContext";
+import FollowUpReminders from "../../components/FollowUpReminders";
 import type { SessionType } from "../../types";
 
 // Patient history is never hidden: every past booking stays visible until the patient
@@ -240,6 +241,7 @@ export default function MyTokensPage() {
         </div>
       ) : (
         <div className="space-y-8">
+          <FollowUpReminders />
           {/* ── Live hospital bookings ── */}
           <section className="space-y-3">
             <div className="flex items-center justify-between">
