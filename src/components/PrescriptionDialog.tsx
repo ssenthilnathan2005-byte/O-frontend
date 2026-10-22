@@ -1,3 +1,4 @@
+import FollowUpBox, { followUpStore } from "./FollowUpBox";
 import { searchIcd10 } from "../data/icd10Common";
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -134,7 +135,7 @@ export default function PrescriptionDialog({
 }: Props) {
   const [medicines, setMedicines] = useState<Medicine[]>([{ ...EMPTY_MED }]);
   const [notes, setNotes] = useState("");
-  const [followUpDays, setFollowUpDays] = useState("");
+  followUpStore.setVisit((booking as any)?.date);
   const [diagnosis, setDiagnosis] = useState("");
   const [diagnosisCode, setDiagnosisCode] = useState("");
   const [icdOpen, setIcdOpen] = useState(false);
@@ -344,7 +345,7 @@ export default function PrescriptionDialog({
       if (res.ok) {
         ok = true;
         try {
-          const fd = parseInt(followUpDays, 10);
+          const fd = parseInt(followUpStore.get(), 10);
           if (fd > 0) {
             await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000/api"}/doctor/follow-up/${booking.id}`, {
               method: "PUT",
@@ -366,7 +367,7 @@ export default function PrescriptionDialog({
     setMedicines([{ ...EMPTY_MED }]);
     setVoiceItems([]);
     setVoicePending([]);
-    setNotes(""); setDiagnosis(""); setDiagnosisCode(""); setIcdOpen(false); setFollowUpDays("");
+    setNotes(""); setDiagnosis(""); setDiagnosisCode(""); setIcdOpen(false); followUpStore.set("");
     setCollapsed(new Set());
     setOtherOpen(new Set());
     setMode("voice");
@@ -377,7 +378,7 @@ export default function PrescriptionDialog({
     setMedicines([{ ...EMPTY_MED }]);
     setVoiceItems([]);
     setVoicePending([]);
-    setNotes(""); setDiagnosis(""); setDiagnosisCode(""); setIcdOpen(false); setFollowUpDays("");
+    setNotes(""); setDiagnosis(""); setDiagnosisCode(""); setIcdOpen(false); followUpStore.set("");
     setCollapsed(new Set());
     setOtherOpen(new Set());
     setMode("voice");
@@ -466,29 +467,6 @@ export default function PrescriptionDialog({
             ))}
           </div>
         )}
-        <div className="rounded-xl border border-teal-100 bg-teal-50/50 p-3 mb-3">
-          <p className="text-xs font-medium text-teal-800 mb-1.5">Follow-up after (days)</p>
-          <div className="flex flex-wrap items-center gap-1.5">
-            {[3, 5, 7, 15, 30].map(d => (
-              <button
-                key={d}
-                type="button"
-                onClick={() => setFollowUpDays(followUpDays === String(d) ? "" : String(d))}
-                className={`px-2.5 py-1 rounded-full text-xs border ${followUpDays === String(d) ? "bg-teal-600 text-white border-teal-600" : "bg-white text-gray-700 border-gray-200"}`}
-              >{d}</button>
-            ))}
-            <input
-              type="number"
-              min={1}
-              max={365}
-              inputMode="numeric"
-              placeholder="Other"
-              value={followUpDays}
-              onChange={e => setFollowUpDays(e.target.value.replace(/[^0-9]/g, "").slice(0, 3))}
-              className="w-16 px-2 py-1 rounded-md text-xs border border-gray-200"
-            />
-          </div>
-        </div>
         <div className={mode === "voice" ? "" : "hidden"}>
           <VoicePrescription
             saving={saving}
@@ -746,6 +724,8 @@ export default function PrescriptionDialog({
               rows={3}
             />
           </div>
+
+          <FollowUpBox />
         </div>
 
         <DialogFooter className="flex gap-2 mt-2 max-sm:sticky max-sm:bottom-0 max-sm:bg-white max-sm:pt-2 max-sm:pb-[max(0.5rem,env(safe-area-inset-bottom))]">

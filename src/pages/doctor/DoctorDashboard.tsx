@@ -33,6 +33,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import FollowUpsPanel from "../../components/FollowUpsPanel";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Activity,
@@ -1068,7 +1069,8 @@ export default function DoctorDashboard() {
             Profile
           </TabsTrigger>
 
-      <TabsTrigger value="presets" data-ocid="doctor.tab" className="flex h-auto min-w-0 flex-col items-center gap-1 px-1 py-2 text-[11px] leading-tight sm:flex-row sm:justify-center sm:gap-2 sm:px-3 sm:text-sm">
+      <TabsTrigger value="followups" data-ocid="doctor.tab" className="flex h-auto min-w-0 flex-col items-center gap-1 px-1 py-2 text-[11px] leading-tight sm:flex-row sm:justify-center sm:gap-2 sm:px-3 sm:text-sm"><span aria-hidden>🔔</span>Follow-ups</TabsTrigger>
+        <TabsTrigger value="presets" data-ocid="doctor.tab" className="flex h-auto min-w-0 flex-col items-center gap-1 px-1 py-2 text-[11px] leading-tight sm:flex-row sm:justify-center sm:gap-2 sm:px-3 sm:text-sm">
         <ClipboardList className="w-4 h-4" />
         Presets
       </TabsTrigger>
@@ -1588,6 +1590,7 @@ export default function DoctorDashboard() {
         </TabsContent>
 
       {extraNav.map(n => (<TabsContent key={n.key} value={n.key}><ExtraPanel moduleKey={n.key.slice(2)} /></TabsContent>))}
+        <TabsContent value="followups"><FollowUpsPanel /></TabsContent>
         <TabsContent value="presets">
         <PrescriptionPresetsManager doctor={doctor} />
       </TabsContent>

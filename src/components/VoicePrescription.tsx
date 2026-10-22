@@ -1,3 +1,4 @@
+import FollowUpBox from "./FollowUpBox";
 import { useEffect, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { SpeechRecognition } from "@capacitor-community/speech-recognition";
@@ -819,6 +820,8 @@ export default function VoicePrescription({ saving, notes, onNotesChange, onSkip
           rows={2}
         />
       </div>
+
+      <FollowUpBox />
 
       <div className="sticky bottom-0 bg-white pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] border-t space-y-2">
         {totalIssues > 0 && (
