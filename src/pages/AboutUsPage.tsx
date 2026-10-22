@@ -86,13 +86,6 @@ export default function AboutUsPage() {
           <div className="mt-6 flex flex-col sm:flex-row gap-3">
             <button
               type="button"
-              onClick={() => navigate({ path: "/patient/hospitals" })}
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-teal-600 hover:bg-teal-700 text-white font-semibold px-6 py-3 shadow-lg shadow-teal-600/25 transition-colors"
-            >
-              Find Hospitals <ChevronRight className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
               onClick={() => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })}
               className="inline-flex items-center justify-center gap-2 rounded-full border border-teal-200 bg-white text-teal-700 font-semibold px-6 py-3 hover:bg-teal-50 transition-colors"
             >
