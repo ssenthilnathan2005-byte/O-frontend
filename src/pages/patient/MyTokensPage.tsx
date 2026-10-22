@@ -109,14 +109,8 @@ async function loadHospitalLab(): Promise<LabBooking[]> {
     }) as unknown as LabBooking);
   } catch { return []; }
 }
-const LAB_EXPIRE_DAYS = 2;
 function markExpired(b: LabBooking): LabBooking {
-  if (LAB_DONE.has(b.status)) return b;
-  const dt = parseDay(b.slot_date);
-  if (!dt) return b;
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const days = Math.round((today.getTime() - dt.getTime()) / 86400000);
-  return days > LAB_EXPIRE_DAYS ? ({ ...b, status: "cancelled" } as LabBooking) : b;
+  return b;
 }
 function DayHeading({ label }: { label: string }) {
   return <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-400 pt-2">{label}</h3>;
