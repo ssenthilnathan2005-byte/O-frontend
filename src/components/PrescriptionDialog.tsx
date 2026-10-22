@@ -133,6 +133,7 @@ export default function PrescriptionDialog({
 }: Props) {
   const [medicines, setMedicines] = useState<Medicine[]>([{ ...EMPTY_MED }]);
   const [notes, setNotes] = useState("");
+  const [diagnosis, setDiagnosis] = useState("");
   const [saving, setSaving] = useState(false);
   const [suggestions, setSuggestions] = useState<{ name: string; inStock: boolean }[]>([]);
   const [activeMedIdx, setActiveMedIdx] = useState<number | null>(null);
@@ -331,6 +332,7 @@ export default function PrescriptionDialog({
           hospitalId,
           hospitalName,
           items: validMeds,
+          diagnosis: diagnosis.trim() || undefined,
           notes,
         }),
       });
@@ -349,7 +351,7 @@ export default function PrescriptionDialog({
     setMedicines([{ ...EMPTY_MED }]);
     setVoiceItems([]);
     setVoicePending([]);
-    setNotes("");
+    setNotes(""); setDiagnosis("");
     setCollapsed(new Set());
     setOtherOpen(new Set());
     setMode("voice");
@@ -360,7 +362,7 @@ export default function PrescriptionDialog({
     setMedicines([{ ...EMPTY_MED }]);
     setVoiceItems([]);
     setVoicePending([]);
-    setNotes("");
+    setNotes(""); setDiagnosis("");
     setCollapsed(new Set());
     setOtherOpen(new Set());
     setMode("voice");
@@ -399,6 +401,11 @@ export default function PrescriptionDialog({
               <Mic className="w-3.5 h-3.5" /> Speak
             </button>
           )}
+        </div>
+
+        <div>
+          <Label className="text-xs text-gray-500">Diagnosis (optional)</Label>
+          <Input placeholder="e.g. Acute viral fever" value={diagnosis} maxLength={500} onChange={e => setDiagnosis(e.target.value)} />
         </div>
 
         <PresetSuggestions

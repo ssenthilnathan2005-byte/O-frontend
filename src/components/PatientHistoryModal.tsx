@@ -11,6 +11,7 @@ type Visit = {
   hospitalName: string;
   medicines: Medicine[];
   notes: string;
+  diagnosis?: string;
 };
 
 function fmtDate(d: string) {
@@ -116,6 +117,11 @@ export default function PatientHistoryModal({
                       ))}
                     </ul>
                   </div>
+                )}
+                {v.diagnosis && (
+                  <p>
+                    <span className="text-gray-500">Diagnosis:</span> {v.diagnosis}
+                  </p>
                 )}
                 {v.notes && (
                   <p>

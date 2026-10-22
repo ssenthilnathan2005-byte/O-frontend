@@ -24,6 +24,7 @@ interface Prescription {
   hospital_name: string;
   items: { name: string; dosage: string; duration: string; instructions: string; form?: string; quantity?: number; quantityUnit?: string }[];
   notes: string;
+  diagnosis?: string | null;
   status: string;
   created_at: string;
   packed_at: string | null;
@@ -82,6 +83,7 @@ function MedItems({ p, compact }: { p: Prescription; compact?: boolean }) {
           </div>
         );
       })}
+      {p.diagnosis && <p className="text-xs text-gray-600"><span className="text-gray-400">Diagnosis:</span> <span className="font-medium text-gray-700">{p.diagnosis}</span></p>}
       {p.notes && <p className="text-[11px] text-gray-400 italic">Note: {p.notes}</p>}
     </div>
   );
