@@ -700,3 +700,15 @@ export const cto = {
   supabase: () => get<any>("/cto/supabase"),
   vercel: () => get<any>("/cto/vercel"),
 };
+
+// ── Hospital enquiries (public form -> founder inbox) ─────────────────────────
+export const enquiries = {
+  submit: (b: {
+    hospitalName: string; contactName: string; designation?: string; phone: string;
+    email?: string; city?: string; hospitalSize?: string; message?: string; website?: string;
+  }) => post<{ ok: boolean }>("/enquiries", b),
+  list: (status?: string) =>
+    get<any>("/enquiries" + (status ? `?status=${encodeURIComponent(status)}` : "")),
+  update: (id: string, b: { status?: string; notes?: string }) =>
+    patch<{ ok: boolean }>(`/enquiries/${encodeURIComponent(id)}`, b),
+};
