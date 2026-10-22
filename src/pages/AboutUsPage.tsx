@@ -5,9 +5,24 @@ import logo from "../assets/doctorbooked-logo-cropped.png";
 // To add a co-founder, copy an object below and fill in the details.
 const founders = [
   {
-    name: "Senthilnathan",
-    role: "Founder",
-    bio: "Leads product and engineering at Doctor Booked, building practical technology that helps independent clinics and small hospitals run smoother and serve patients faster.",
+    name: "Senthil Nathan",
+    role: "Chief Executive Officer (CEO)",
+    bio: "Leads the company's vision, business strategy, product direction, partnerships and overall growth.",
+  },
+  {
+    name: "Kishore",
+    role: "Chief Technology Officer (CTO)",
+    bio: "Leads technology strategy, software development, hospital ERP architecture and AI integration.",
+  },
+  {
+    name: "Bala Kumaran",
+    role: "Chief Marketing Officer (CMO)",
+    bio: "Leads marketing, branding, customer acquisition, hospital outreach and market expansion.",
+  },
+  {
+    name: "Logesh",
+    role: "Chief Operating Officer (COO)",
+    bio: "Oversees daily operations, team coordination, implementation and hospital onboarding.",
   },
 ];
 
@@ -122,19 +137,19 @@ export default function AboutUsPage() {
         <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:p-10">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center"><Users className="w-5 h-5 text-teal-600" /></div>
-            <h2 className="text-xl lg:text-2xl font-bold text-gray-900">Meet the founders</h2>
+            <h2 className="text-xl lg:text-2xl font-bold text-gray-900">Meet our leadership team</h2>
           </div>
           <p className="mt-4 text-gray-600 leading-relaxed">
-            Doctor Booked was founded by a team of three engineers, all B.E. Mechanical Engineering graduates of Mepco Schlenk Engineering College, Sivakasi. Trained to solve real-world problems with a systems mindset, we apply the same discipline to the everyday challenges of healthcare operations.
+            Doctor Booked is led by a four-member founding team that brings together business, technology, marketing and operations, working closely with hospitals to build technology that fits how they actually run.
           </p>
-          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {founders.map((f) => (
               <div key={f.name} className="rounded-2xl border border-gray-100 bg-gray-50 p-5">
                 <div className="w-14 h-14 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 text-white flex items-center justify-center text-xl font-bold">
                   {f.name.charAt(0)}
                 </div>
                 <h3 className="mt-3 font-semibold text-gray-900">{f.name}</h3>
-                <p className="text-xs font-medium text-teal-700 uppercase tracking-wide">{f.role}</p>
+                <p className="text-xs font-medium text-teal-700 tracking-wide">{f.role}</p>
                 <p className="mt-2 text-sm text-gray-600 leading-relaxed">{f.bio}</p>
               </div>
             ))}
