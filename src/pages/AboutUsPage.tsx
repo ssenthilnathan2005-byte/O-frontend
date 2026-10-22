@@ -43,9 +43,9 @@ const offerings = [
   "Hospital management tools for IPD, labs, billing and staff",
 ];
 
-function SectionHeading({ label, title, text }: { label: string; title: string; text?: string }) {
+function SectionHeading({ label, title, text, center }: { label: string; title: string; text?: string; center?: boolean }) {
   return (
-    <div>
+    <div className={center ? "text-center max-w-2xl mx-auto" : ""}>
       <span className="text-xs font-semibold tracking-wide text-teal-700 uppercase">{label}</span>
       <h2 className="mt-2 text-2xl lg:text-3xl font-bold text-gray-900">{title}</h2>
       {text && <p className="mt-3 text-gray-500 leading-relaxed">{text}</p>}
@@ -118,16 +118,16 @@ export default function AboutUsPage() {
 
       <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-14 py-12 lg:py-16 space-y-14 lg:space-y-20">
         {/* Our story */}
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-14 items-start">
+        <section className="space-y-8">
           <SectionHeading label="Our story" title="Why Doctor Booked exists" />
-          <div className={`${CARD} p-6 lg:p-8 space-y-4 text-gray-600 leading-relaxed`}>
-            <p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-gray-600 leading-relaxed">
+            <p className={`${CARD} p-6`}>
               Long waits and uncertainty are a daily reality in many clinics. Patients arrive early, sit for hours and never know when their turn will come, while hospital staff manage the crowd with paper registers and phone calls.
             </p>
-            <p>
+            <p className={`${CARD} p-6`}>
               Doctor Booked was started to change that. Our platform lets patients book a token, follow their position in the queue live and walk in only when it is their turn. For hospitals, it replaces manual coordination with a clear, real-time view of the day.
             </p>
-            <p>
+            <p className={`${CARD} p-6`}>
               We began with independent clinics and small hospitals, the places that often lack access to modern software, and we continue to grow alongside the hospitals that trust us.
             </p>
           </div>
@@ -192,15 +192,15 @@ export default function AboutUsPage() {
         </section>
 
         {/* Contact / register your hospital */}
-        <section id="contact" className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-14 items-start scroll-mt-24">
+        <section id="contact" className="space-y-8 scroll-mt-24">
           <div>
             <SectionHeading
-              label="Get in touch"
+              center label="Get in touch"
               title="Register your hospital or contact us"
               text="Want to bring your clinic or hospital onto Doctor Booked, or have a question? Share your details and our founders will get back to you on the phone number you share."
             />
           </div>
-          <div className={`${CARD} p-6 lg:p-8`}>
+          <div className={`${CARD} p-6 lg:p-8 max-w-4xl mx-auto`}>
             <EnquiryForm />
           </div>
         </section>
