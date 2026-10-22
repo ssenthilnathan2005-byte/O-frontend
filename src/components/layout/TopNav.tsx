@@ -366,7 +366,7 @@ export default function TopNav() {
       `}</style>
 
       {/* Desktop top nav — md and up only, phones never see this */}
-      <header className="hidden md:block sticky top-0 z-40 bg-white border-b border-gray-200 px-6 py-3">
+      <header className="app-topnav hidden md:block sticky top-0 z-40 bg-white border-b border-gray-200 px-6 py-3">
         <div className="max-w-7xl mx-auto flex items-center gap-8">
           <button
             type="button"
@@ -388,7 +388,7 @@ export default function TopNav() {
             </span>
           </button>
 
-          <nav className="flex items-center gap-6 text-sm font-medium">
+          <nav className="topnav-menu flex items-center gap-6 text-sm font-medium">
             <button
               type="button"
               className={`flex items-center gap-1.5 transition-colors ${isActive(["/patient/hospitals", "/patient/hospital"])} hover:text-teal-600`}

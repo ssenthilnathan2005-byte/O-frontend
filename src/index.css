@@ -123,3 +123,13 @@ html.lang-ta header nav + .flex-1:empty { display: none; }
 
 /* ===== Tamil guest header fixes ===== */
 html.lang-ta header > div > button { white-space: nowrap; flex-shrink: 0; }
+
+
+/* ===== Header fit at every size ===== */
+.app-topnav > div { gap: 1rem; }
+.app-topnav > div > :not(nav) { flex-shrink: 0; }
+.topnav-menu { flex: 1 1 0; min-width: 0; overflow-x: auto; white-space: nowrap; padding: 0.4rem 0.5rem 0.2rem 0; scrollbar-width: none; }
+.topnav-menu::-webkit-scrollbar { display: none; }
+.topnav-menu > button { flex-shrink: 0; white-space: nowrap; }
+.topnav-menu + .flex-1 { display: none; }
+@media (min-width: 1280px) { .app-topnav > div { gap: 2rem; } }

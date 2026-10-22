@@ -486,7 +486,7 @@ export default function PatientHomePage() {
 
   const big = !mapExpanded; // map collapsed => actions panel gets the room and larger sizing
   const desktopView = (
-    <div className="bg-gray-50 overflow-hidden" style={{ height: `calc(100dvh - ${navH}px)` }}>
+    <div className="bg-gray-50 overflow-hidden" style={{ height: `calc(100dvh - var(--nav-h, ${navH}px))` }}>
       <div className="h-full w-full mx-auto px-6 py-4 flex flex-col gap-3">
         {/* Header row */}
         <div className="flex items-end justify-between shrink-0">
