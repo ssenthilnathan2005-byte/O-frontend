@@ -61,7 +61,7 @@ export default function AboutUsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 py-4 sticky top-0 z-10">
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-14 flex items-center gap-3">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-14 flex items-center gap-3">
           <button type="button" onClick={goBack} className="flex items-center gap-2 text-gray-500 hover:text-gray-700 text-sm">
             <ArrowLeft className="w-4 h-4" /> Back
           </button>
@@ -72,10 +72,10 @@ export default function AboutUsPage() {
 
       {/* Hero */}
       <section style={{ background: "linear-gradient(180deg,#ecfdf9 0%,#f9fafb 100%)" }}>
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-14 py-12 lg:py-20 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-14 py-10 lg:py-14 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
           <div>
-            <img src={logo} alt="Doctor Booked" className="w-40 lg:w-48 h-auto" />
-            <span className="mt-8 inline-block rounded-full bg-teal-50 border border-teal-100 px-4 py-1 text-xs font-semibold tracking-wide text-teal-700 uppercase">
+            <img src={logo} alt="Doctor Booked" className="w-36 lg:w-40 h-auto" />
+            <span className="mt-6 inline-block rounded-full bg-teal-50 border border-teal-100 px-4 py-1 text-xs font-semibold tracking-wide text-teal-700 uppercase">
               About us
             </span>
             <h1 className="mt-4 text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight">
@@ -116,18 +116,18 @@ export default function AboutUsPage() {
         </div>
       </section>
 
-      <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-14 py-12 lg:py-16 space-y-14 lg:space-y-20">
+      <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-14 py-10 lg:py-14 space-y-12 lg:space-y-16">
         {/* Our story */}
         <section className="space-y-8">
           <SectionHeading label="Our story" title="Why Doctor Booked exists" />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-gray-600 leading-relaxed">
-            <p className={`${CARD} p-6`}>
+            <p className={`${CARD} p-6 border-t-4 border-t-teal-500`}>
               Long waits and uncertainty are a daily reality in many clinics. Patients arrive early, sit for hours and never know when their turn will come, while hospital staff manage the crowd with paper registers and phone calls.
             </p>
-            <p className={`${CARD} p-6`}>
+            <p className={`${CARD} p-6 border-t-4 border-t-teal-500`}>
               Doctor Booked was started to change that. Our platform lets patients book a token, follow their position in the queue live and walk in only when it is their turn. For hospitals, it replaces manual coordination with a clear, real-time view of the day.
             </p>
-            <p className={`${CARD} p-6`}>
+            <p className={`${CARD} p-6 border-t-4 border-t-teal-500`}>
               We began with independent clinics and small hospitals, the places that often lack access to modern software, and we continue to grow alongside the hospitals that trust us.
             </p>
           </div>
