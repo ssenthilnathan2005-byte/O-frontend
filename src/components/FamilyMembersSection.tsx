@@ -6,7 +6,7 @@ import type { FamilyMember } from "../api";
 
 const GENDERS = ["Male", "Female", "Other"];
 const BLOODS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
-const RELATIONS = ["Amma", "Appa", "Father", "Mother", "Spouse", "Son", "Daughter", "Child", "Brother", "Sister", "Other"];
+const RELATIONS = ["Father", "Mother", "Spouse", "Son", "Daughter", "Brother", "Sister", "Grandfather", "Grandmother", "Other"];
 
 type Form = { id: string; relation: string; name: string; yearOfBirth: string; gender: string; bloodGroup: string };
 const EMPTY: Form = { id: "", relation: "", name: "", yearOfBirth: "", gender: "", bloodGroup: "" };
@@ -114,7 +114,7 @@ export default function FamilyMembersSection() {
                 <div>
                   <label className="text-xs font-medium text-gray-600 mb-1 block">Relation</label>
                   <input list="family-relations" className={input} value={form.relation} disabled={isSelf}
-                    placeholder="e.g. Amma" onChange={e => setForm({ ...form, relation: e.target.value })} />
+                    placeholder="e.g. Mother" onChange={e => setForm({ ...form, relation: e.target.value })} />
                   <datalist id="family-relations">{RELATIONS.map(r => <option key={r} value={r} />)}</datalist>
                 </div>
                 <div>
