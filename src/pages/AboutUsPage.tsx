@@ -43,13 +43,25 @@ const offerings = [
   "Hospital management tools for IPD, labs, billing and staff",
 ];
 
+function SectionHeading({ label, title, text }: { label: string; title: string; text?: string }) {
+  return (
+    <div>
+      <span className="text-xs font-semibold tracking-wide text-teal-700 uppercase">{label}</span>
+      <h2 className="mt-2 text-2xl lg:text-3xl font-bold text-gray-900">{title}</h2>
+      {text && <p className="mt-3 text-gray-500 leading-relaxed">{text}</p>}
+    </div>
+  );
+}
+
+const CARD = "bg-white rounded-2xl shadow-sm border border-gray-100";
+
 export default function AboutUsPage() {
   const { goBack, navigate } = useRouter();
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto flex items-center gap-3">
+      <header className="bg-white border-b border-gray-200 py-4 sticky top-0 z-10">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-14 flex items-center gap-3">
           <button type="button" onClick={goBack} className="flex items-center gap-2 text-gray-500 hover:text-gray-700 text-sm">
             <ArrowLeft className="w-4 h-4" /> Back
           </button>
@@ -60,25 +72,55 @@ export default function AboutUsPage() {
 
       {/* Hero */}
       <section style={{ background: "linear-gradient(180deg,#ecfdf9 0%,#f9fafb 100%)" }}>
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 lg:py-20 text-center">
-          <img src={logo} alt="Doctor Booked" style={{ width: 200, display: "block", margin: "0 auto" }} />
-          <span className="mt-8 inline-block rounded-full bg-teal-50 border border-teal-100 px-4 py-1 text-xs font-semibold tracking-wide text-teal-700 uppercase">
-            About us
-          </span>
-          <h1 className="mt-4 text-3xl lg:text-5xl font-bold text-gray-900 leading-tight">
-            Making healthcare <span className="text-teal-600">simpler</span> for patients and hospitals
-          </h1>
-          <p className="mt-4 text-base lg:text-lg text-gray-500 max-w-2xl mx-auto">
-            Doctor Booked is a healthcare booking and real-time queue management platform built for independent clinics and small hospitals.
-          </p>
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-14 py-12 lg:py-20 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
+          <div>
+            <img src={logo} alt="Doctor Booked" className="w-40 lg:w-48 h-auto" />
+            <span className="mt-8 inline-block rounded-full bg-teal-50 border border-teal-100 px-4 py-1 text-xs font-semibold tracking-wide text-teal-700 uppercase">
+              About us
+            </span>
+            <h1 className="mt-4 text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight">
+              Making healthcare <span className="text-teal-600">simpler</span> for patients and hospitals
+            </h1>
+            <p className="mt-4 text-base lg:text-lg text-gray-500 leading-relaxed">
+              Doctor Booked is a healthcare booking and real-time queue management platform built for independent clinics and small hospitals.
+            </p>
+            <div className="mt-8 flex flex-col sm:flex-row gap-3">
+              <button
+                type="button"
+                onClick={() => navigate({ path: "/patient/hospitals" })}
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-teal-600 hover:bg-teal-700 text-white font-semibold px-6 py-3 shadow-lg shadow-teal-600/25 transition-colors"
+              >
+                Find Hospitals <ChevronRight className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })}
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-teal-200 bg-white text-teal-700 font-semibold px-6 py-3 hover:bg-teal-50 transition-colors"
+              >
+                Contact us
+              </button>
+            </div>
+          </div>
+
+          <div className={`${CARD} p-6 lg:p-8`}>
+            <h2 className="text-lg lg:text-xl font-bold text-gray-900">What we do</h2>
+            <ul className="mt-5 space-y-3">
+              {offerings.map((o) => (
+                <li key={o} className="flex items-start gap-3 rounded-xl bg-gray-50 border border-gray-100 p-4 text-sm text-gray-700">
+                  <span className="mt-0.5 w-5 h-5 shrink-0 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-bold">&#10003;</span>
+                  {o}
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </section>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 lg:py-14 space-y-12">
+      <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-14 py-12 lg:py-16 space-y-14 lg:space-y-20">
         {/* Our story */}
-        <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:p-10">
-          <h2 className="text-xl lg:text-2xl font-bold text-gray-900">Our story</h2>
-          <div className="mt-4 space-y-4 text-gray-600 leading-relaxed">
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-14 items-start">
+          <SectionHeading label="Our story" title="Why Doctor Booked exists" />
+          <div className={`${CARD} p-6 lg:p-8 space-y-4 text-gray-600 leading-relaxed`}>
             <p>
               Long waits and uncertainty are a daily reality in many clinics. Patients arrive early, sit for hours and never know when their turn will come, while hospital staff manage the crowd with paper registers and phone calls.
             </p>
@@ -92,15 +134,15 @@ export default function AboutUsPage() {
         </section>
 
         {/* Mission / Vision */}
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:p-8">
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className={`${CARD} p-6 lg:p-8`}>
             <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center mb-4"><Target className="w-5 h-5 text-teal-600" /></div>
             <h3 className="text-lg font-semibold text-gray-900">Our mission</h3>
             <p className="mt-2 text-gray-600 leading-relaxed">
               To eliminate the waiting room by giving every patient a transparent, real-time view of their care, and every hospital the tools to run efficiently.
             </p>
           </div>
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:p-8">
+          <div className={`${CARD} p-6 lg:p-8`}>
             <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center mb-4"><Eye className="w-5 h-5 text-teal-600" /></div>
             <h3 className="text-lg font-semibold text-gray-900">Our vision</h3>
             <p className="mt-2 text-gray-600 leading-relaxed">
@@ -109,63 +151,58 @@ export default function AboutUsPage() {
           </div>
         </section>
 
-        {/* What we do */}
-        <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:p-10">
-          <h2 className="text-xl lg:text-2xl font-bold text-gray-900">What we do</h2>
-          <ul className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-3">
-            {offerings.map((o) => (
-              <li key={o} className="flex items-start gap-3 rounded-xl bg-gray-50 border border-gray-100 p-4 text-sm text-gray-700">
-                <span className="mt-0.5 w-5 h-5 shrink-0 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-bold">&#10003;</span>
-                {o}
-              </li>
-            ))}
-          </ul>
-        </section>
-
         {/* Values */}
         <section>
-          <h2 className="text-xl lg:text-2xl font-bold text-gray-900">What we stand for</h2>
-          <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <SectionHeading label="Our values" title="What we stand for" />
+          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {values.map((v) => (
-              <div key={v.title} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center mb-3"><v.icon className="w-5 h-5 text-teal-600" /></div>
+              <div key={v.title} className={`${CARD} p-6`}>
+                <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center mb-4"><v.icon className="w-5 h-5 text-teal-600" /></div>
                 <h3 className="font-semibold text-gray-900">{v.title}</h3>
-                <p className="mt-1 text-sm text-gray-500 leading-relaxed">{v.text}</p>
+                <p className="mt-2 text-sm text-gray-500 leading-relaxed">{v.text}</p>
               </div>
             ))}
           </div>
         </section>
 
         {/* Founders */}
-        <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:p-10">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center"><Users className="w-5 h-5 text-teal-600" /></div>
-            <h2 className="text-xl lg:text-2xl font-bold text-gray-900">Meet our leadership team</h2>
+        <section>
+          <div className="flex items-start gap-4">
+            <div className="hidden sm:flex w-12 h-12 shrink-0 rounded-xl bg-teal-50 items-center justify-center"><Users className="w-6 h-6 text-teal-600" /></div>
+            <div className="max-w-3xl">
+              <SectionHeading
+                label="Leadership"
+                title="Meet our leadership team"
+                text="Doctor Booked is led by a four-member founding team that brings together business, technology, marketing and operations, working closely with hospitals to build technology that fits how they actually run."
+              />
+            </div>
           </div>
-          <p className="mt-4 text-gray-600 leading-relaxed">
-            Doctor Booked is led by a four-member founding team that brings together business, technology, marketing and operations, working closely with hospitals to build technology that fits how they actually run.
-          </p>
-          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {founders.map((f) => (
-              <div key={f.name} className="rounded-2xl border border-gray-100 bg-gray-50 p-5">
+              <div key={f.name} className={`${CARD} p-6`}>
                 <div className="w-14 h-14 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 text-white flex items-center justify-center text-xl font-bold">
                   {f.name.charAt(0)}
                 </div>
-                <h3 className="mt-3 font-semibold text-gray-900">{f.name}</h3>
+                <h3 className="mt-4 font-semibold text-gray-900">{f.name}</h3>
                 <p className="text-xs font-medium text-teal-700 tracking-wide">{f.role}</p>
-                <p className="mt-2 text-sm text-gray-600 leading-relaxed">{f.bio}</p>
+                <p className="mt-3 text-sm text-gray-600 leading-relaxed">{f.bio}</p>
               </div>
             ))}
           </div>
         </section>
 
         {/* Contact / register your hospital */}
-        <section id="contact" className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:p-10">
-          <h2 className="text-xl lg:text-2xl font-bold text-gray-900">Register your hospital or contact us</h2>
-          <p className="mt-2 text-gray-500 leading-relaxed">
-            Want to bring your clinic or hospital onto Doctor Booked, or have a question? Share your details and our founders will get back to you.
-          </p>
-          <EnquiryForm />
+        <section id="contact" className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-14 items-start scroll-mt-24">
+          <div>
+            <SectionHeading
+              label="Get in touch"
+              title="Register your hospital or contact us"
+              text="Want to bring your clinic or hospital onto Doctor Booked, or have a question? Share your details and our founders will get back to you on the phone number you share."
+            />
+          </div>
+          <div className={`${CARD} p-6 lg:p-8`}>
+            <EnquiryForm />
+          </div>
         </section>
 
         {/* CTA */}
@@ -190,12 +227,11 @@ export default function AboutUsPage() {
           </div>
         </section>
 
-        <p className="text-center text-xs text-gray-400">2026 Doctor Booked. All rights reserved.</p>
-      </div>
+        <p className="text-center text-xs text-gray-400">&copy; 2026 Doctor Booked. All rights reserved.</p>
+      </main>
     </div>
   );
 }
-
 
 const SIZE_OPTIONS = ["Single-doctor clinic", "Clinic (2 to 5 doctors)", "Hospital up to 30 beds", "Hospital 30 to 100 beds", "Hospital 100+ beds"];
 const FIELD = "w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-base sm:text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500";

@@ -200,7 +200,7 @@ export default function PatientHomePage() {
   const mobileView = (
     <div className="flex flex-col bg-gray-50" style={{ minHeight: "100dvh" }}>
       {/* Map */}
-      <div className="relative shrink-0 transition-all duration-200 lg:w-[calc(100%-3rem)] lg:max-w-6xl lg:mx-auto lg:mt-4 lg:rounded-3xl lg:overflow-hidden lg:border lg:border-gray-200 lg:shadow-md" style={{ height: isDesktop ? 190 : mapHeight }}>
+      <div className="relative shrink-0 transition-all duration-200 lg:w-[calc(100%-3rem)] lg:max-w-none lg:mx-auto lg:mt-4 lg:rounded-3xl lg:overflow-hidden lg:border lg:border-gray-200 lg:shadow-md" style={{ height: isDesktop ? 190 : mapHeight }}>
         <div ref={mapRef} className="w-full h-full" />
         {!mapReady && (
           <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
@@ -248,7 +248,7 @@ export default function PatientHomePage() {
 
       {/* Scrollable content below map */}
       <div className="flex-1 overflow-y-auto bg-white lg:bg-gray-50">
-        <div className="px-4 pb-28 space-y-4 lg:max-w-6xl lg:mx-auto lg:px-6 lg:pb-8 lg:space-y-4">
+        <div className="px-4 pb-28 space-y-4 lg:max-w-none lg:mx-auto lg:px-6 lg:pb-8 lg:space-y-4">
           {/* Notification permission banner */}
           {notifState === "default" && (
             <div className="mt-4 flex items-center gap-3 bg-teal-50 border border-teal-200 rounded-2xl px-4 py-3">
