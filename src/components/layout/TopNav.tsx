@@ -1,5 +1,5 @@
 import FollowUpNavIcon from "@/components/FollowUpNavIcon";
-import { Ambulance, BedDouble, BookOpen, FlaskConical, Hospital, LogOut, Mail, Phone, Pill, User, UserCog, X } from "lucide-react";
+import { Ambulance, BedDouble, BookOpen, CircleUser, FlaskConical, FolderOpen, Home, Hospital, LogOut, Mail, Phone, Pill, Ticket, User, UserCog, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useStore } from "../../context/StoreContext";
@@ -7,6 +7,7 @@ import { useRouter } from "../../router/RouterContext";
 import { enablePushNotifications } from "../../lib/push";
 import { bedBookings, patients } from "../../api";
 import LanguageSwitcher from "../LanguageSwitcher";
+import MobileHeader from "./MobileHeader";
 import { syncWithServer } from "../../lib/translate";
 
 export default function TopNav() {
@@ -234,6 +235,10 @@ export default function TopNav() {
   // ── Patient: bottom nav ──────────────────────────────────────────────────
   const navActive = "text-teal-600";
   const navInactive = "text-gray-400";
+  const isOn = (paths: string[]) => paths.includes(route.path);
+  const tabCls = (on: boolean) => "flex-1 min-w-0 flex flex-col items-center gap-0.5 py-1 transition-colors " + (on ? "text-teal-700" : "text-slate-400");
+  const pillCls = (on: boolean) => "relative flex items-center justify-center w-12 h-7 rounded-full transition-colors " + (on ? "bg-teal-50" : "");
+  const lblCls = (on: boolean) => "text-[10px] leading-tight truncate max-w-full " + (on ? "font-bold" : "font-medium");
 
   function isActive(paths: string[]) {
     return paths.includes(route.path) ? navActive : navInactive;
@@ -366,6 +371,10 @@ export default function TopNav() {
         }
       `}</style>
 
+      {route.path === "/" && (
+        <MobileHeader name={displayName} onAvatar={() => setShowProfileMenu(true)} />
+      )}
+
       {/* Desktop top nav — md and up only, phones never see this */}
       <header className="app-topnav hidden md:block sticky top-0 z-40 bg-white border-b border-gray-200 px-6 py-3">
         <div className="max-w-7xl mx-auto flex items-center gap-8">
@@ -497,81 +506,58 @@ export default function TopNav() {
         </div>
       </header>
 
-      {/* Bottom navigation bar — mobile only, untouched on phones */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 safe-area-inset-bottom">
-        <div className="flex items-end justify-around px-2 pt-1 pb-0.5 max-w-lg mx-auto">
+      {/* Bottom navigation bar (phone) */}
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 shadow-[0_-4px_16px_rgba(15,23,42,0.06)]"
+        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+      >
+        <div className="flex items-stretch justify-around px-1 pt-1.5 pb-1 max-w-lg mx-auto">
+
+          {/* Home */}
+          <button type="button" className={tabCls(isOn(["/"]))} onClick={() => navigate({ path: "/" })} data-ocid="nav.link">
+            <span className={pillCls(isOn(["/"]))}>
+              <Home className="w-5 h-5" strokeWidth={isOn(["/"]) ? 2.4 : 2} />
+            </span>
+            <span className={lblCls(isOn(["/"]))}>Home</span>
+          </button>
 
           {/* Hospitals */}
-          <button
-            type="button"
-            className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-colors ${isActive(["/patient/hospitals", "/patient/hospital"])}`}
-            onClick={() => navigate({ path: "/patient/hospitals" })}
-            data-ocid="nav.link"
-          >
-            <Hospital className="w-5 h-5"  strokeWidth={2} />
-            <span className="text-[10px] font-medium">Hospitals</span>
+          <button type="button" className={tabCls(isOn(["/patient/hospitals", "/patient/hospital"]))} onClick={() => navigate({ path: "/patient/hospitals" })} data-ocid="nav.link">
+            <span className={pillCls(isOn(["/patient/hospitals", "/patient/hospital"]))}>
+              <Hospital className="w-5 h-5" strokeWidth={isOn(["/patient/hospitals", "/patient/hospital"]) ? 2.4 : 2} />
+            </span>
+            <span className={lblCls(isOn(["/patient/hospitals", "/patient/hospital"]))}>Hospitals</span>
           </button>
 
-          {/* My Bookings */}
-          <button
-            type="button"
-            className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-colors ${isActive(["/patient/tokens"])}`}
-            onClick={() => navigate({ path: "/patient/tokens" })}
-            data-ocid="nav.link"
-          >
-            <span className="relative">
-              <BookOpen className="w-5 h-5"  strokeWidth={2} />
+          {/* Bookings (tokens) */}
+          <button type="button" className={tabCls(isOn(["/patient/tokens"]))} onClick={() => navigate({ path: "/patient/tokens" })} data-ocid="nav.link">
+            <span className={pillCls(isOn(["/patient/tokens"]))}>
+              <Ticket className="w-5 h-5" strokeWidth={isOn(["/patient/tokens"]) ? 2.4 : 2} />
               {activeBookingCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-teal-500 rounded-full border border-white" />
+                <span className="absolute top-0.5 right-2.5 w-2 h-2 bg-teal-500 rounded-full border border-white" />
               )}
+              <FollowUpNavIcon className="absolute -top-1 right-0" />
             </span>
-            <span className="relative text-[10px] font-medium">Bookings<FollowUpNavIcon className="absolute -top-1.5 -right-3" /></span>
+            <span className={lblCls(isOn(["/patient/tokens"]))}>Bookings</span>
           </button>
 
-          {/* Centre logo pill */}
-          <button
-            type="button"
-            className="flex flex-col items-center gap-0.5 px-3 py-1 focus:outline-none"
-            onClick={() => navigate({ path: "/" })}
-            data-ocid="nav.link"
-          >
-            <div className="w-14 h-14 -mt-5 rounded-full bg-teal-600 shadow-lg flex items-center justify-center border-4 border-white">
-              <img
-                src="/assets/Logo.jpg"
-                alt="Doctor Booked"
-                className="w-10 h-10 rounded-full object-cover"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src =
-                    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='20' fill='%23ffffff'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' fill='%2314b8a6' font-size='15' font-family='sans-serif' font-weight='bold'%3EDB%3C/text%3E%3C/svg%3E";
-                }}
-              />
-            </div>
-            <span className="text-[10px] font-medium text-teal-600">Home</span>
-          </button>
-
-          {/* Prescriptions */}
-          <button
-            type="button"
-            className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-colors ${isActive(["/patient/prescriptions"])}`}
-            onClick={() => { clearPrescriptionDot(); navigate({ path: "/patient/prescriptions" }); }}
-          >
-            <span className="relative">
-              <Pill className="w-5 h-5"  strokeWidth={2} />
+          {/* Records (prescriptions) */}
+          <button type="button" className={tabCls(isOn(["/patient/prescriptions"]))} onClick={() => { clearPrescriptionDot(); navigate({ path: "/patient/prescriptions" }); }}>
+            <span className={pillCls(isOn(["/patient/prescriptions"]))}>
+              <FolderOpen className="w-5 h-5" strokeWidth={isOn(["/patient/prescriptions"]) ? 2.4 : 2} />
               {hasNewPrescription && (
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full border border-white" />
+                <span className="absolute top-0.5 right-2.5 w-2 h-2 bg-green-500 rounded-full border border-white" />
               )}
             </span>
-            <span className="text-[10px] font-medium">Prescriptions</span>
+            <span className={lblCls(isOn(["/patient/prescriptions"]))}>Records</span>
           </button>
 
-          {/* Profile — opens menu instead of direct logout */}
-          <button
-            type="button"
-            className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-colors ${navInactive} hover:text-teal-500`}
-            onClick={() => setShowProfileMenu(true)}
-          >
-            <User className="w-5 h-5"  strokeWidth={2} />
-            <span className="text-[10px] font-medium truncate max-w-[52px]">{displayName.split(" ")[0]}</span>
+          {/* Account - opens the profile menu */}
+          <button type="button" className={tabCls(false)} onClick={() => setShowProfileMenu(true)}>
+            <span className={pillCls(false)}>
+              <CircleUser className="w-5 h-5" strokeWidth={2} />
+            </span>
+            <span className={lblCls(false)}>Account</span>
           </button>
 
         </div>
