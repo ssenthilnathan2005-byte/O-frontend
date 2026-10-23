@@ -472,6 +472,76 @@ export default function VitalsScanAll({ onApply, include, label, captureAudit }:
           }
         }
       } catch { /* the extra BP check is optional: it must never block the scan */ }
+      // Extra pulse and T1 read: the word boxes for these numbers often include icons or text beside the digits.
+      // Read narrower strips of the same word several ways and let the normal region vote decide.
+      try {
+        const W: any[] = (fin.words || []) as any[];
+        const toOrig = (b: any) => ({
+          ox0: base.sx + b.x0 / base.scale, oy0: base.sy + b.y0 / base.scale,
+          ox1: base.sx + b.x1 / base.scale, oy1: base.sy + b.y1 / base.scale,
+        });
+        const srcs: (HTMLImageElement | HTMLCanvasElement)[] = [imgEl, ...framesRef.current.slice(0, 2)];
+        const readBoxes = async (boxes: any[], whitelist: string) => {
+          const out: { text: string; conf: number; method: string }[] = [];
+          await worker.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_LINE, tessedit_char_whitelist: whitelist } as any);
+          try {
+            for (const b of boxes) {
+              const o = toOrig(b);
+              for (const src of srcs) {
+                for (const zoom of [70, 110]) {
+                  setStage("Checking pulse and temperature"); setProgress(0);
+                  const cv = localDigitCanvas(src, o.ox0, o.oy0, o.ox1, o.oy1, zoom);
+                  const { data } = await worker.recognize(cv);
+                  const text = String(data?.text || "").replace(/\s+/g, "");
+                  if (text) out.push({ text, conf: Number(data?.confidence ?? 0), method: zoom <= 70 ? "normal" : "zoom" });
+                }
+              }
+            }
+          } finally {
+            await worker.setParameters({ tessedit_pageseg_mode: PSM.SPARSE_TEXT, tessedit_char_whitelist: "" } as any);
+          }
+          return out;
+        };
+
+        // Pulse: the tallest 2-3 digit number above the NIBP row, in the same column.
+        const nibp: any = W.find((x: any) => /^(nibp|nbp)$/i.test(String(x.text || "").replace(/[^A-Za-z]/g, "")));
+        if (nibp && !traceRows.some((t: any) => t && t.regionField === "pulse")) {
+          const lw = Math.max(1, nibp.x1 - nibp.x0);
+          const nums = W.filter((x: any) => {
+            const s = String(x.text || ""); const d = s.replace(/\D/g, "");
+            return d.length >= 2 && d.length <= 3 && s.length <= 6 && !/\d[:.]\d/.test(s);
+          });
+          const tallAll = Math.max(0, ...nums.map((x: any) => x.y1 - x.y0));
+          const above = nums
+            .filter((x: any) => x.y1 <= nibp.y0 + 0.5 * (nibp.y1 - nibp.y0) && x.x0 >= nibp.x0 - 0.5 * lw && (x.y1 - x.y0) >= 0.6 * tallAll)
+            .sort((a: any, b: any) => (b.y1 - b.y0) - (a.y1 - a.y0));
+          const p: any = above[0];
+          if (p) {
+            const w = p.x1 - p.x0, h = p.y1 - p.y0;
+            const boxes: any[] = [];
+            for (const fw of [0.4, 0.55, 0.7, 1]) {
+              for (const [vy0, vy1] of [[p.y0, p.y1], [p.y0 + 0.15 * h, p.y1 - 0.15 * h]]) {
+                boxes.push({ x0: p.x0, x1: p.x0 + fw * w, y0: vy0, y1: vy1 });
+              }
+            }
+            const reads = await readBoxes(boxes, "0123456789");
+            traceRows.push({ regionField: "pulse", x: p.x0, y: p.y0, w, h, deep: reads });
+          }
+        }
+
+        // Temperature: the strip to the right of the single "T1" label, on its own row.
+        const t1s = W.filter((x: any) => /^t[1l]$/i.test(String(x.text || "").replace(/[^A-Za-z0-9]/g, "")));
+        if (t1s.length === 1 && !traceRows.some((t: any) => t && t.regionField === "temperature")) {
+          const L: any = t1s[0];
+          const lh = Math.max(1, L.y1 - L.y0), cy = (L.y0 + L.y1) / 2;
+          const boxes: any[] = [];
+          for (const k of [11, 13, 15, 17]) {
+            for (const v of [2.4, 1.8]) boxes.push({ x0: L.x1, x1: L.x1 + k * lh, y0: cy - v * lh, y1: cy + v * lh });
+          }
+          const reads = await readBoxes(boxes, "0123456789.");
+          traceRows.push({ regionField: "temperature", x: L.x1, y: cy - 2.4 * lh, w: 17 * lh, h: 4.8 * lh, deep: reads });
+        }
+      } catch { /* the extra pulse / temperature check is optional: it must never block the scan */ }
       const combined = combineMatches(fin.words, base.raw.width, base.raw.height, MIN_CONF, traceRows);
       const result: MatchOutput = { ...combined.output, notes: [...new Set([...merged.notes, ...fin.notes, ...(combined.output.notes || [])])] };
       // Scan data for the benchmark script: only numbers and monitor labels, so no patient name or other text leaves the phone.
