@@ -2120,6 +2120,7 @@ export default function DoctorDashboard() {
               </div>
             )}
 
+            <div className="flex flex-wrap items-center gap-3">
             {dialogTokenBooking?.patientId && <FollowUpMark bookingId={dialogTokenBooking.id} patientId={dialogTokenBooking.patientId} label />}
 
             {dialogTokenBooking?.patientId && (
@@ -2136,6 +2137,7 @@ export default function DoctorDashboard() {
                 View Full History &rarr;
               </button>
             )}
+            </div>
 
             {/* ── Running-late notice from the patient ── */}
             {dialogTokenBooking?.lateFlag &&
