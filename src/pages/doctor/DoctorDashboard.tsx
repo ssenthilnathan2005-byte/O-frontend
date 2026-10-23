@@ -960,6 +960,7 @@ export default function DoctorDashboard() {
           data-ocid={`tokens.item.${n}`}
         >
           {n}
+          {bookingByToken.get(n) && <FollowUpMark corner bookingId={bookingByToken.get(n) as string} />}
           {lateTokens.has(n) && (st === "red" || st === "yellow") && (
             <span
               className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center shadow ring-2 ring-white"
