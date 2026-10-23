@@ -63,6 +63,11 @@ function getWorker(): Promise<WorkerBundle> {
     workerPromise = (async () => {
       const { createWorker, PSM } = await import("tesseract.js");
       const w = await createWorker("eng", 1, {
+        workerPath: `${window.location.origin}/tesseract/worker.min.js`,
+        corePath: `${window.location.origin}/tesseract`,
+        langPath: `${window.location.origin}/tesseract`,
+        gzip: true,
+        workerBlobURL: false,
         logger: (m: any) => {
           if (m && m.status === "recognizing text") progressCb(m.progress || 0);
         },
