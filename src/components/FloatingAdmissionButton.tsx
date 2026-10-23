@@ -80,7 +80,7 @@ export default function FloatingAdmissionButton() {
   const path = String(route.path);
   const visible =
     isPhone &&
-    state !== "none" && (!user || user.role === "patient") &&
+    (!user || user.role === "patient") &&
     path !== "/login" && !path.endsWith("/login") &&
     path !== "/patient/admission";
   if (!visible) return null;

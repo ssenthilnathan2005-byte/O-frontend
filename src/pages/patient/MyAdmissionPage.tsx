@@ -32,7 +32,7 @@ export default function MyAdmissionPage() {
   useEffect(() => { load(); }, [load]);
   useLiveRefresh(load, 8000);
 
-  const current = stays.filter((s) => s.status === "admitted" && (s.bed_number || s.ward || Number(s.daily_rate) > 0));
+  const current = stays.filter((s) => s.status === "admitted");
   const past = stays.filter((s) => s.status !== "admitted");
   const open = requests.filter((r) => r.status === "requested" || r.status === "confirmed");
 
@@ -69,13 +69,11 @@ export default function MyAdmissionPage() {
               <span className="text-[11px] font-semibold uppercase tracking-wide text-teal-700">Currently admitted</span>
               <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Day {daysBetween(s.admitted_at)}</span>
             </div>
-            {(s.bed_number || s.ward) && (
-              <div>
-                <p className="text-xs text-gray-500">Your bed</p>
-                <p className="text-3xl font-extrabold text-gray-900 leading-tight">{s.bed_number || "Not assigned"}</p>
-                <p className="text-sm text-gray-700">{s.ward || "-"}</p>
-              </div>
-            )}
+            <div>
+              <p className="text-xs text-gray-500">Your bed</p>
+              <p className="text-3xl font-extrabold text-gray-900 leading-tight">{s.bed_number || "Not assigned"}</p>
+              <p className="text-sm text-gray-700">{s.ward || "-"}</p>
+            </div>
             <div className="space-y-1.5 text-sm text-gray-700">
               <p className="flex items-center gap-2"><Building2 className="w-4 h-4 text-gray-400" />{s.hospital_name || "Hospital"}</p>
               <p className="flex items-center gap-2"><Stethoscope className="w-4 h-4 text-gray-400" />{s.admitting_doctor_name ? "Dr. " + String(s.admitting_doctor_name).replace(/^Dr\.?\s*/i, "") : "Doctor not assigned yet"}</p>
