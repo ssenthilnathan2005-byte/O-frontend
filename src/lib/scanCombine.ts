@@ -84,7 +84,7 @@ function isLimitLike(value: string, traces: AnyObj[], ref: number): boolean {
 const FIELD_LABELS: Record<string, RegExp> = {
   pulse: /^(hr|pr|pulse|heart|heartrate|bpm)$/i,
   spo2: /^(spo2|sp02|spo|o2|sat|sao2)$/i,
-  respRate: /^(rr|awrr|resp|rpm|respiration)$/i,
+  respRate: /^(rr|awrr|resp|respiratory|rpm|respiration)$/i,
   temperature: /^(temp|temperature|t1|t2|tperi|tcore|tskin)$/i,
 };
 const CORE_LABELS = /^(hr|pr|pulse|spo2|sp02|resp|rr|awrr|temp|nibp|nbp|etco2|sys|dia)$/i;
@@ -741,6 +741,43 @@ export function combineMatches(words: AnyObj[], width: number, height: number, m
 
 
   dropFragments(); // values created by the rescue step may be fragments too
+  // Second opinion on label-matched vitals: when another BIG number that the digit re-check read with high confidence
+  // sits next to a label of the same vital and disagrees (RR 13 vs "Respiratory Rate" 12), fill neither: leave the field
+  // blank and offer both as tap choices. This only ever blanks a field, it never fills one.
+  try {
+    const reach2 = ref > 0 ? 1.5 * ref : 250;
+    for (const f of ["pulse", "spo2", "respRate"]) {
+      if (regionHandled.has(f)) continue;
+      const lab = labelTraces(f, traces);
+      if (!lab.length) continue;
+      const others = ["pulse", "spo2", "respRate", "temperature"].filter((g) => g !== f).flatMap((g) => labelTraces(g, traces));
+      for (const store of [values, suggestions]) {
+        const r = store[f];
+        if (!r) continue;
+        const ownH = Math.max(0, ...traces.filter((t) => t && t.h > 0 && variantsOf(t).some((v) => same(v, r.text))).map((t) => t.h as number));
+        const taken = new Set([...Object.entries(values), ...Object.entries(suggestions)].filter(([k]) => k !== f).map(([, v]) => v.text));
+        const rivals = new Set<string>();
+        for (const t of traces) {
+          if (!t || t.regionField || typeof t.x !== "number" || !(t.h > 0)) continue;
+          const v = clean(String(t.recheck ?? ""));
+          if (!/^\d{2,3}$/.test(v) || same(v, r.text) || taken.has(v) || !inRange(f, +v)) continue;
+          if (!(Number(t.recheckConf) >= 90)) continue;                  // the digit check must be sure
+          if (!variantsOf(t).every((x) => x === v)) continue;            // and the OCR read must agree with it
+          if (ownH && t.h < 0.6 * ownH) continue;                        // small digits are alarm limits
+          if (!nearAnyLabel(t, lab, reach2)) continue;                   // must sit next to a label of this vital
+          if (others.length && nearAnyLabel(t, others, reach2)) continue; // not one that also sits next to another vital's label
+          rivals.add(v);
+        }
+        if (!rivals.size) continue;
+        const nm = (FIELD_LABEL as AnyObj)[f] ?? f;
+        const list = [r.text, ...rivals];
+        delete store[f];
+        conflictChoices[f] = [...new Set([...(conflictChoices[f] || []), ...list])];
+        notes.push(`${nm}: the screen shows different numbers for it (${list.join(" vs ")}), so it was left empty. Tap the right one or type it from the monitor.`);
+        log.push(`${nm}: ${r.text} was filled, but a big digit-checked number ${[...rivals].join(", ")} sits next to the same label; field left blank for manual choice`);
+      }
+    }
+  } catch { /* optional */ }
 
   // Two temperature channels (T1 / T2): if two DIFFERENT temperatures sit on separate lines next to the temperature label,
   // do not fill either one. Low-confidence reads count here, so a channel the consensus dropped still makes it ambiguous.
