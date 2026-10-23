@@ -750,7 +750,31 @@ export function combineMatches(words: AnyObj[], width: number, height: number, m
         for (const v of variantsOf(t)) { const f = tempDecimal(v) ?? lostPoint(v); if (f !== null) { cands.push({ f, t }); break; } }
       }
       const distinct = (a: { f: number; t: AnyObj }, b: { f: number; t: AnyObj }) => Math.abs(a.f - b.f) >= 0.15 && Math.abs((a.t.y ?? 0) - (b.t.y ?? 0)) > 0.6 * Math.max(a.t.h || 1, b.t.h || 1);
-      if (cands.some((a, i) => cands.slice(i + 1).some((b) => distinct(a, b)))) {
+      const ambiguousT = cands.some((a, i) => cands.slice(i + 1).some((b) => distinct(a, b)));
+      // T1 / T2 monitors: if exactly one "T1" label sits on the same row as one of the values, that value is filled in amber.
+      const t1pick = (() => {
+        if (!ambiguousT) return null;
+        const labs = traces.filter((t) => t && typeof t.y === "number" && /^t[1l]$/i.test(clean(String(t.text ?? ""))));
+        if (labs.length !== 1) return null;
+        const cy = (u: AnyObj) => (u.y ?? 0) + (u.h || 0) / 2;
+        const ranked = cands.map((c) => ({ c, d: Math.abs(cy(c.t) - cy(labs[0])) })).sort((p, q) => p.d - q.d);
+        const best = ranked[0];
+        if (!best) return null;
+        const hh = Math.max(best.c.t.h || 1, 1);
+        if (best.d > 0.6 * hh) return null;
+        const other = ranked.find((r) => distinct(r.c, best.c));
+        if (other && other.d < best.d + hh) return null;
+        return best.c;
+      })();
+      if (ambiguousT && t1pick) {
+        const all = [...new Set(cands.slice().sort((a, b) => a.t.y - b.t.y).map((c) => c.f.toFixed(1)))];
+        const mine = t1pick.f.toFixed(1);
+        delete values.temperature;
+        suggestions.temperature = { text: mine, conf: Math.min(minConf - 1, 59), source: "rescued" };
+        for (let i = notes.length - 1; i >= 0; i--) if (/^Temperature:/.test(notes[i])) notes.splice(i, 1);
+        notes.push(`Temperature: the screen shows two channels. T1 (${mine} \u00B0F) was filled in amber; the other reads ${all.filter((x) => x !== mine).join(" and ")} \u00B0F. Check against the monitor and type the other one if you want it.`);
+        log.push(`Temperature: T1 label matched ${mine}; filled as an amber suggestion (other channel: ${all.filter((x) => x !== mine).join(", ")})`);
+      } else if (ambiguousT) {
         const texts = [...new Set(cands.sort((a, b) => a.t.y - b.t.y).map((c) => c.f.toFixed(1)))];
         delete values.temperature; delete suggestions.temperature;
         conflictChoices.temperature = texts;
