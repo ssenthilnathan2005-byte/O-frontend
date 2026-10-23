@@ -310,6 +310,13 @@ export default function DoctorDashboard() {
   }, [doctor?.hospitalId]);
   const [activeTab, setActiveTab] = useState<DoctorTab>(getInitialDoctorTab);
   const { nav: extraNav } = useExtraNav(["live_patients"]);
+  // Sidebar visibility (shown by default); toggled by the hamburger in TopNav
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  useEffect(() => {
+    const toggle = () => setSidebarOpen((v) => !v);
+    window.addEventListener("doctor-sidebar-toggle", toggle);
+    return () => window.removeEventListener("doctor-sidebar-toggle", toggle);
+  }, []);
 
   // Initial tab is set from getInitialDoctorTab(); persistence handled on user interaction
 
@@ -1044,7 +1051,7 @@ export default function DoctorDashboard() {
   return (
     <div className="flex min-h-screen bg-background">
       {/* Doctor sidebar (desktop) */}
-      <aside className="flex w-[72px] md:w-64 bg-admin-sidebar text-admin-sidebar-fg flex-col shrink-0 sticky top-0 self-start h-screen">
+      <aside className={`${sidebarOpen ? "flex" : "hidden"} w-[72px] md:w-64 bg-admin-sidebar text-admin-sidebar-fg flex-col shrink-0 sticky top-0 self-start h-screen`}>
         <div className="px-2 py-5 md:px-6 border-b border-white/10">
           <div className="flex items-center justify-center md:justify-start gap-3">
             <div className="w-9 h-9 rounded-full bg-teal-500 flex items-center justify-center shrink-0">
@@ -1076,7 +1083,7 @@ export default function DoctorDashboard() {
 
       <div className="flex-1 min-w-0">
 
-      <div className="max-w-5xl mx-auto px-3 sm:px-4 py-6 sm:py-8">
+      <div className={`${sidebarOpen ? "max-w-5xl mx-auto px-3 sm:px-4" : "w-full px-3 sm:px-6"} py-6 sm:py-8`}>
       {/* Title card */}
       <div className="mb-6">
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900">

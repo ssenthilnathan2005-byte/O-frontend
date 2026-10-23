@@ -1,5 +1,5 @@
 import FollowUpNavIcon from "@/components/FollowUpNavIcon";
-import { Ambulance, BedDouble, BookOpen, FlaskConical, Hospital, LogOut, Mail, Phone, Pill, User, UserCog, X } from "lucide-react";
+import { Ambulance, BedDouble, BookOpen, FlaskConical, Hospital, LogOut, Mail, Phone, Pill, User, UserCog, X, Menu as MenuIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useStore } from "../../context/StoreContext";
@@ -187,6 +187,18 @@ export default function TopNav() {
     return (
       <header className="sticky top-0 z-40 bg-white border-b border-gray-200 px-3 sm:px-6 py-3">
         <div className="max-w-7xl mx-auto flex items-center gap-2 sm:gap-6">
+          {isDoctor && (
+            <button
+              type="button"
+              aria-label="Toggle sidebar"
+              title="Toggle sidebar"
+              data-ocid="nav.sidebar_toggle"
+              onClick={() => window.dispatchEvent(new CustomEvent("doctor-sidebar-toggle"))}
+              className="shrink-0 p-2 -ml-1 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors md:absolute md:left-4 md:top-1/2 md:-translate-y-1/2"
+            >
+              <MenuIcon className="w-5 h-5" />
+            </button>
+          )}
           <button
             type="button"
             className="flex items-center gap-1.5 shrink-0"
