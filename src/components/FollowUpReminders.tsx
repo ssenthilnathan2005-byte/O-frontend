@@ -64,7 +64,7 @@ export default function FollowUpReminders() {
           hospital={booking.hospital}
           maxDate={booking.followUpDate}
           open
-          onClose={() => { setBooking(null); load(); }}
+          onClose={() => { setBooking(null); load(); window.dispatchEvent(new Event("followups:changed")); }}
         />
       )}
     </section>

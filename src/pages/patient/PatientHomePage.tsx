@@ -1,3 +1,4 @@
+import FollowUpNavIcon from "@/components/FollowUpNavIcon";
 import { Calendar, ChevronRight, Clock, FileText, FlaskConical, Building2, MapPin, Search, Navigation, Loader2, XCircle, Bell, Hospital, BookOpen, Pill, Ambulance, Maximize2, Minimize2 } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
@@ -573,8 +574,9 @@ export default function PatientHomePage() {
                 <button key={label} type="button"
                   onClick={() => navigate({ path } as any)}
                   className={`bg-white border border-gray-200 rounded-xl text-left hover:border-teal-300 hover:shadow-sm transition-all ${big ? "p-3.5" : "p-2.5"}`}>
-                  <div className={`rounded-lg flex items-center justify-center ${tint} ${big ? "w-10 h-10 mb-2.5" : "w-8 h-8 mb-2"}`}>
+                  <div className={`relative rounded-lg flex items-center justify-center ${tint} ${big ? "w-10 h-10 mb-2.5" : "w-8 h-8 mb-2"}`}>
                     <Icon className={big ? "w-5 h-5" : "w-4 h-4"} />
+                    {label === "Bookings" && <FollowUpNavIcon className="absolute -top-1.5 -right-1.5" />}
                   </div>
                   <p className={`font-semibold text-gray-900 leading-tight truncate ${big ? "text-base" : "text-sm"}`}>{label}</p>
                   <p className={`text-gray-500 truncate ${big ? "text-xs" : "text-[11px]"}`}>{sub}</p>

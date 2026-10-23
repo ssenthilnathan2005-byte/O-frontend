@@ -1,3 +1,4 @@
+import FollowUpNavIcon from "@/components/FollowUpNavIcon";
 import { Ambulance, BedDouble, BookOpen, FlaskConical, Hospital, LogOut, Mail, Phone, Pill, User, UserCog, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -134,7 +135,7 @@ export default function TopNav() {
             data-ocid="nav.link"
           >
             <BookOpen className="w-5 h-5"  strokeWidth={2} />
-            <span className="text-[10px] font-medium">Bookings</span>
+            <span className="relative text-[10px] font-medium">Bookings<FollowUpNavIcon className="absolute -top-1.5 -right-3" /></span>
           </button>
 
           <button
@@ -415,7 +416,8 @@ export default function TopNav() {
               {activeBookingCount > 0 && (
                 <span className="absolute -top-1 -right-2 w-2 h-2 bg-teal-500 rounded-full border border-white" />
               )}
-            </button>
+              <FollowUpNavIcon className="absolute -top-1.5 -right-2" />
+</button>
             {showAdmission && (
               <button
                 type="button"
@@ -523,7 +525,7 @@ export default function TopNav() {
                 <span className="absolute -top-1 -right-1 w-2 h-2 bg-teal-500 rounded-full border border-white" />
               )}
             </span>
-            <span className="text-[10px] font-medium">Bookings</span>
+            <span className="relative text-[10px] font-medium">Bookings<FollowUpNavIcon className="absolute -top-1.5 -right-3" /></span>
           </button>
 
           {/* Centre logo pill */}
