@@ -433,6 +433,45 @@ export default function VitalsScanAll({ onApply, include, label, captureAudit }:
           }
         }
       } catch { /* the extra check is optional: it must never block the scan */ }
+      // Extra BP read: the cuff pressure is printed as one "120/80" strip, but the main pass often splits it into
+// separate numbers and drops the "1" or the "/". Read the whole strip as one line and let voteBp judge it.
+      try {
+        const wordsAll: any[] = (fin.words || []) as any[];
+        const lab: any = wordsAll.find((x: any) => /^(nibp|nbp)$/i.test(String(x.text || "").replace(/[^A-Za-z]/g, "")));
+        if (lab && !traceRows.some((t: any) => t && t.regionField === "bp")) {
+          const lh = Math.max(1, lab.y1 - lab.y0);
+          const cand = wordsAll.filter((x: any) =>
+            /^\d{1,3}$/.test(String(x.text || "").trim()) &&
+            x.x0 >= lab.x0 - 0.5 * (lab.x1 - lab.x0) && x.y0 >= lab.y1 - 0.5 * lh && x.y0 <= lab.y1 + 6 * lh);
+          const tall = Math.max(0, ...cand.map((x: any) => x.y1 - x.y0));
+          const big = cand.filter((x: any) => (x.y1 - x.y0) >= 0.7 * tall).sort((p: any, q: any) => p.x0 - q.x0).slice(0, 2);
+          if (big.length === 2 && Math.abs(big[0].y0 - big[1].y0) <= 0.5 * tall) {
+            const a = big[0], b = big[1];
+            const h = a.y1 - a.y0;
+            const bx0 = Math.max(lab.x0 - 4, a.x0 - 0.9 * h), bx1 = b.x1 + 0.25 * h;
+            const by0 = Math.min(a.y0, b.y0) - 0.15 * h, by1 = Math.max(a.y1, b.y1) + 0.15 * h;
+            const ox0 = base.sx + bx0 / base.scale, oy0 = base.sy + by0 / base.scale;
+            const ox1 = base.sx + bx1 / base.scale, oy1 = base.sy + by1 / base.scale;
+            const bpSources: (HTMLImageElement | HTMLCanvasElement)[] = [imgEl, ...framesRef.current.slice(0, 3)];
+            const bpReads: { text: string; conf: number; method: string }[] = [];
+            await worker.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_LINE, tessedit_char_whitelist: "0123456789/" } as any);
+            try {
+              for (const src of bpSources) {
+                for (const zoom of [70, 110]) {
+                  setStage("Checking blood pressure"); setProgress(0);
+                  const cv = localDigitCanvas(src, ox0, oy0, ox1, oy1, zoom);
+                  const { data } = await worker.recognize(cv);
+                  const text = String(data?.text || "").replace(/\s+/g, "");
+                  if (text) bpReads.push({ text, conf: Number(data?.confidence ?? 0), method: zoom === 70 ? "normal" : "zoom" });
+                }
+              }
+            } finally {
+              await worker.setParameters({ tessedit_pageseg_mode: PSM.SPARSE_TEXT, tessedit_char_whitelist: "" } as any);
+            }
+            traceRows.push({ regionField: "bp", x: bx0, y: by0, w: bx1 - bx0, h: by1 - by0, deep: bpReads });
+          }
+        }
+      } catch { /* the extra BP check is optional: it must never block the scan */ }
       const combined = combineMatches(fin.words, base.raw.width, base.raw.height, MIN_CONF, traceRows);
       const result: MatchOutput = { ...combined.output, notes: [...new Set([...merged.notes, ...fin.notes, ...(combined.output.notes || [])])] };
       // Scan data for the benchmark script: only numbers and monitor labels, so no patient name or other text leaves the phone.
