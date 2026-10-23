@@ -40,23 +40,24 @@ export default function FollowUpMark({ bookingId, patientId, label, corner }: { 
     return () => ctrl.abort();
   }, [bookingId, patientId]);
 
+  useEffect(() => { if (!open) return; const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { e.stopPropagation(); setOpen(false); } }; window.addEventListener("keydown", onKey, true); return () => window.removeEventListener("keydown", onKey, true); }, [open]);
   if (!data?.followUp || !data.previous) return null;
   const prev = data.previous;
   const ok = data.state === "on_time";
 
   const modal = open && createPortal(
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/40" onClick={(e) => { e.stopPropagation(); setOpen(false); }}>
-      <div className="bg-white w-full sm:max-w-md max-h-[85vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-start justify-between gap-3">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm pointer-events-auto" style={{ pointerEvents: "auto" }} onPointerDown={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onFocus={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); setOpen(false); }}>
+      <div className="bg-white w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-start justify-between gap-3">
           <div>
             <p className="font-bold text-gray-900">Follow-up patient</p>
             <p className={`text-xs mt-0.5 ${ok ? "text-emerald-700" : "text-amber-700"}`}>
               {ok ? `Day ${data.daysSince} of ${data.followUpDays}` : `Overdue, was asked to return by ${fmt(data.followUpDate)}`}
             </p>
           </div>
-          <button type="button" aria-label="Close" onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+          <button type="button" aria-label="Close" onClick={(e) => { e.stopPropagation(); setOpen(false); }} className="shrink-0 rounded-full p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100"><X className="w-5 h-5" /></button>
         </div>
-        <div className="px-5 py-4 space-y-3 text-sm text-gray-800">
+        <div className="px-6 py-5 space-y-4 text-sm text-gray-800">
           <p className="text-xs text-gray-500">Previous visit: {fmt(prev.date)} · {prev.session}</p>
           {prev.complaint && <p><span className="font-medium">Complaint:</span> {prev.complaint}</p>}
           {prev.diagnosis && <p><span className="font-medium">Diagnosis:</span> {prev.diagnosis}</p>}
