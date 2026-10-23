@@ -1044,55 +1044,39 @@ export default function DoctorDashboard() {
   return (
     <div className="flex min-h-screen bg-background">
       {/* Doctor sidebar (desktop) */}
-      <aside className="hidden md:flex w-64 bg-admin-sidebar text-admin-sidebar-fg flex-col shrink-0 sticky top-0 self-start h-screen">
-        <div className="px-6 py-5 border-b border-white/10">
-          <div className="flex items-center gap-3">
+      <aside className="flex w-[72px] md:w-64 bg-admin-sidebar text-admin-sidebar-fg flex-col shrink-0 sticky top-0 self-start h-screen">
+        <div className="px-2 py-5 md:px-6 border-b border-white/10">
+          <div className="flex items-center justify-center md:justify-start gap-3">
             <div className="w-9 h-9 rounded-full bg-teal-500 flex items-center justify-center shrink-0">
               <Stethoscope className="w-5 h-5 text-white" />
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 hidden md:block">
               <p className="font-bold text-white text-sm truncate">{doctor?.name}</p>
               <p className="text-[10px] text-white/50 uppercase tracking-wider">Doctor Console</p>
             </div>
           </div>
         </div>
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-1.5 md:px-3 py-4 space-y-1 overflow-y-auto">
           {doctorNavItems.map(({ key, label, icon: Icon }) => (
             <button
               key={key}
               type="button"
               data-ocid="doctor.tab"
               onClick={() => goDoctorTab(key)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              className={`w-full flex flex-col md:flex-row items-center gap-1 md:gap-3 px-1 md:px-3 py-2 md:py-2.5 rounded-lg text-[10px] md:text-sm leading-tight text-center md:text-left font-medium transition-colors ${
                 activeTab === key ? "bg-sky-400/25 text-white" : "text-white/60 hover:bg-white/10 hover:text-white/90"
               }`}
             >
               <Icon className="w-4 h-4 shrink-0" />
-              {label}
+              <span className="break-words max-w-full">{label}</span>
             </button>
           ))}
         </nav>
       </aside>
 
       <div className="flex-1 min-w-0">
-      {/* Doctor menu (mobile) */}
-      <div className="md:hidden bg-admin-sidebar flex gap-1 overflow-x-auto px-2 py-2">
-        {doctorNavItems.map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => goDoctorTab(key)}
-            className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-              activeTab === key ? "bg-sky-400/25 text-white" : "text-white/60"
-            }`}
-          >
-            <Icon className="w-4 h-4 shrink-0" />
-            {label}
-          </button>
-        ))}
-      </div>
 
-      <div className="max-w-5xl mx-auto px-4 py-6 sm:py-8">
+      <div className="max-w-5xl mx-auto px-3 sm:px-4 py-6 sm:py-8">
       {/* Title card */}
       <div className="mb-6">
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
