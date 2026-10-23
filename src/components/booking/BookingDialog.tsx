@@ -156,7 +156,21 @@ export default function BookingDialog({ doctor, hospital, open, onClose, maxDate
     familyMembers.list().then(setFamily).catch(() => setFamily([]));
   }, [open]);
 
-  const availableDates = useMemo(() => getAvailableDates().filter((d: string) => !maxDate || d <= maxDate), [maxDate]);
+  const availableDates = useMemo(() => {
+    const base = getAvailableDates();
+    if (!maxDate) return base;
+    const out: string[] = [];
+    const start = new Date(base[0] + "T00:00:00Z");
+    for (let i = 0; i < 60; i++) {
+      const d = new Date(start);
+      d.setUTCDate(start.getUTCDate() + i);
+      const ds = d.toISOString().slice(0, 10);
+      if (ds > maxDate) break;
+      out.push(ds);
+    }
+    if (out.length && out[out.length - 1] < maxDate) out.push(maxDate);
+    return out.length ? out : base;
+  }, [maxDate]);
   const patientUser = user as { id: string; email: string; name: string; role: "patient" };
 
   // Pre-load token states when dialog opens
