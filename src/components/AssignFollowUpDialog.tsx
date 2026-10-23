@@ -26,9 +26,17 @@ export default function AssignFollowUpDialog({
   open: boolean; bookingId: string; bookingDate?: string; patientName?: string; onDone: () => void;
 }) {
   const [days, setDays] = useState<number | null>(null);
+  const [custom, setCustom] = useState("");
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { if (open) { setDays(null); setSaving(false); } }, [open]);
+  useEffect(() => { if (open) { setDays(null); setCustom(""); setSaving(false); } }, [open]);
+
+  function onCustom(v: string) {
+    const digits = v.replace(/[^0-9]/g, "").slice(0, 3);
+    setCustom(digits);
+    const n = parseInt(digits, 10);
+    setDays(n >= 1 ? Math.min(n, 365) : null);
+  }
 
   async function confirm() {
     if (days === null || saving) return;
@@ -70,9 +78,9 @@ export default function AssignFollowUpDialog({
             <button
               key={o.days}
               type="button"
-              onClick={() => setDays(o.days)}
+              onClick={() => { setDays(o.days); setCustom(""); }}
               className={`rounded-xl border px-3 py-3 text-sm font-medium transition ${
-                days === o.days
+                days === o.days && custom === ""
                   ? o.days === 0 ? "bg-gray-700 text-white border-gray-700" : "bg-teal-600 text-white border-teal-600"
                   : "bg-white text-gray-800 border-gray-200 hover:border-teal-300"
               }`}
@@ -80,6 +88,18 @@ export default function AssignFollowUpDialog({
               {o.label}
             </button>
           ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <label htmlFor="fu-custom" className="text-sm text-gray-600 shrink-0">Other days</label>
+          <input
+            id="fu-custom"
+            type="text"
+            inputMode="numeric"
+            placeholder="e.g. 30"
+            value={custom}
+            onChange={(e) => onCustom(e.target.value)}
+            className={`w-full rounded-xl border px-3 py-2 text-sm outline-none ${custom !== "" ? "border-teal-600 ring-1 ring-teal-600" : "border-gray-200"}`}
+          />
         </div>
         {days !== null && days > 0 && (
           <p className="text-sm font-semibold text-teal-800">Return by {returnDate(bookingDate, days)}</p>
