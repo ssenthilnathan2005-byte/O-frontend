@@ -25,7 +25,7 @@ export default function TopNav() {
       try {
         const [s, r] = await Promise.all([bedBookings.myStays(), bedBookings.mine()]);
         if (stop) return;
-        const active = s.some((x: any) => x.status === "admitted" && (x.bed_number || x.ward || Number(x.daily_rate) > 0)) || r.some((x: any) => x.status === "requested" || x.status === "confirmed");
+        const active = s.some((x: any) => x.status === "admitted") || r.some((x: any) => x.status === "requested" || x.status === "confirmed");
         setAdmission({ show: s.length > 0 || r.length > 0, active });
       } catch { /* keep the nav unchanged if the check fails */ }
     };
