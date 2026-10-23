@@ -779,6 +779,36 @@ export function combineMatches(words: AnyObj[], width: number, height: number, m
     }
   } catch { /* optional */ }
 
+  // BP safety net. (1) The label/unit pass has no ART / IBP check: when the matcher found an invasive pressure and no cuff
+  // pair, a BP number that only that pass produced is not used. (2) Never fill half a BP.
+  try {
+    const pn: string[] = Array.isArray(primary.out?.notes) ? primary.out.notes : [];
+    const invasiveNoCuff = pn.some((n) => /invasive \(ART\/IBP\) pressure/i.test(String(n))) && !primary.out?.values?.bpSystolic && !primary.out?.values?.bpDiastolic;
+    if (invasiveNoCuff) {
+      for (const f of ["bpSystolic", "bpDiastolic"]) {
+        const r = values[f];
+        if (r && extraOnly.has(f)) {
+          delete values[f];
+          notes.push(`${(FIELD_LABEL as AnyObj)[f] ?? f}: ${r.text} was not used because this monitor shows invasive (ART/IBP) pressure and the cuff reading could not be identified.`);
+          log.push(`${(FIELD_LABEL as AnyObj)[f] ?? f} ${r.text} dropped: it came only from the label/unit pass and the screen has an ART/IBP pressure`);
+        }
+      }
+    }
+    if (!regionHandled.has("bpSystolic") && !regionHandled.has("bpDiastolic")) {
+      const hasS = !!(values.bpSystolic || suggestions.bpSystolic), hasD = !!(values.bpDiastolic || suggestions.bpDiastolic);
+      if (hasS !== hasD) {
+        for (const f of ["bpSystolic", "bpDiastolic"]) {
+          for (const store of [values, suggestions]) {
+            if (store[f]) {
+              log.push(`${(FIELD_LABEL as AnyObj)[f] ?? f} ${store[f].text} dropped: only one half of the BP was read`);
+              delete store[f];
+            }
+          }
+        }
+        notes.push("BP: only one of the two numbers was read, so neither was filled. Type both from the monitor.");
+      }
+    }
+  } catch { /* optional */ }
   // Two temperature channels (T1 / T2): if two DIFFERENT temperatures sit on separate lines next to the temperature label,
   // do not fill either one. Low-confidence reads count here, so a channel the consensus dropped still makes it ambiguous.
   try {
