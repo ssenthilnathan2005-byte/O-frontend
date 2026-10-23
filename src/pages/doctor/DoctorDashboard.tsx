@@ -1221,7 +1221,7 @@ export default function DoctorDashboard() {
                       onValueChange={(v) => setRegSession(v as SessionType)}
                     >
                       <SelectTrigger
-                        className="w-full sm:w-52"
+                        className="w-full sm:w-72 [&>span]:truncate"
                         data-ocid="doctor.select"
                       >
                         <SelectValue />
