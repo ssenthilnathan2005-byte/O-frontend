@@ -1,5 +1,5 @@
 import FollowUpMark from "../../components/FollowUpMark";
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, Bell, Stethoscope } from "lucide-react";
 import PrescriptionPresetsManager from "@/components/PrescriptionPresetsManager";
 import {
   AlertDialog,
@@ -1015,8 +1015,84 @@ export default function DoctorDashboard() {
 
   const currentDoctor = doctors.find((d) => d.id === doctorUser.doctorId);
 
+  const doctorNavItems = [
+    { key: "regulator", label: "Regulator", icon: Activity },
+    { key: "livetokens", label: "Live", icon: Clock },
+    { key: "profile", label: "Profile", icon: User },
+    { key: "followups", label: "Follow-ups", icon: Bell },
+    { key: "presets", label: "Presets", icon: ClipboardList },
+    ...extraNav.map((n) => ({ key: n.key, label: n.label, icon: n.icon })),
+  ];
+
+  const goDoctorTab = (value: string) => {
+    const nextTab = value as DoctorTab;
+    setActiveTab(nextTab);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("doctorTab", nextTab);
+      const url = new URL(window.location.href);
+      if (window.location.pathname === "/doctor") {
+        if (nextTab === "regulator") {
+          url.searchParams.delete("doctorTab");
+        } else {
+          url.searchParams.set("doctorTab", nextTab);
+        }
+        window.history.replaceState({}, "", url.toString());
+      }
+    }
+  };
+
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6 sm:py-8">
+    <div className="flex min-h-screen bg-background">
+      {/* Doctor sidebar (desktop) */}
+      <aside className="hidden md:flex w-64 bg-admin-sidebar text-admin-sidebar-fg flex-col shrink-0 sticky top-0 self-start h-screen">
+        <div className="px-6 py-5 border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-teal-500 flex items-center justify-center shrink-0">
+              <Stethoscope className="w-5 h-5 text-white" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-bold text-white text-sm truncate">{doctor?.name}</p>
+              <p className="text-[10px] text-white/50 uppercase tracking-wider">Doctor Console</p>
+            </div>
+          </div>
+        </div>
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+          {doctorNavItems.map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              type="button"
+              data-ocid="doctor.tab"
+              onClick={() => goDoctorTab(key)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === key ? "bg-sky-400/25 text-white" : "text-white/60 hover:bg-white/10 hover:text-white/90"
+              }`}
+            >
+              <Icon className="w-4 h-4 shrink-0" />
+              {label}
+            </button>
+          ))}
+        </nav>
+      </aside>
+
+      <div className="flex-1 min-w-0">
+      {/* Doctor menu (mobile) */}
+      <div className="md:hidden bg-admin-sidebar flex gap-1 overflow-x-auto px-2 py-2">
+        {doctorNavItems.map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => goDoctorTab(key)}
+            className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+              activeTab === key ? "bg-sky-400/25 text-white" : "text-white/60"
+            }`}
+          >
+            <Icon className="w-4 h-4 shrink-0" />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="max-w-5xl mx-auto px-4 py-6 sm:py-8">
       {/* Title card */}
       <div className="mb-6">
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
@@ -1053,30 +1129,7 @@ export default function DoctorDashboard() {
         className="w-full"
       >
 
-      <TabsList className="mb-6 grid h-auto w-full grid-cols-4 gap-1 p-1" data-ocid="doctor.tab">
-
-      <TabsTrigger value="regulator" data-ocid="doctor.tab" className="flex h-auto min-w-0 flex-col items-center gap-1 px-1 py-2 text-[11px] leading-tight sm:flex-row sm:justify-center sm:gap-2 sm:px-3 sm:text-sm">
-            <Activity className="w-4 h-4" />
-            Regulator
-          </TabsTrigger>
-
-      <TabsTrigger value="livetokens" data-ocid="doctor.tab" className="flex h-auto min-w-0 flex-col items-center gap-1 px-1 py-2 text-[11px] leading-tight sm:flex-row sm:justify-center sm:gap-2 sm:px-3 sm:text-sm">
-            <Clock className="w-4 h-4" />
-            Live
-          </TabsTrigger>
-
-      <TabsTrigger value="profile" data-ocid="doctor.tab" className="flex h-auto min-w-0 flex-col items-center gap-1 px-1 py-2 text-[11px] leading-tight sm:flex-row sm:justify-center sm:gap-2 sm:px-3 sm:text-sm">
-            <User className="w-4 h-4" />
-            Profile
-          </TabsTrigger>
-
-      <TabsTrigger value="followups" data-ocid="doctor.tab" className="flex h-auto min-w-0 flex-col items-center gap-1 px-1 py-2 text-[11px] leading-tight sm:flex-row sm:justify-center sm:gap-2 sm:px-3 sm:text-sm"><span aria-hidden>🔔</span>Follow-ups</TabsTrigger>
-        <TabsTrigger value="presets" data-ocid="doctor.tab" className="flex h-auto min-w-0 flex-col items-center gap-1 px-1 py-2 text-[11px] leading-tight sm:flex-row sm:justify-center sm:gap-2 sm:px-3 sm:text-sm">
-        <ClipboardList className="w-4 h-4" />
-        Presets
-      </TabsTrigger>
-        {extraNav.map(n => (<TabsTrigger key={n.key} value={n.key} className="flex h-auto min-w-0 flex-col items-center gap-1 px-1 py-2 text-[11px] leading-tight sm:flex-row sm:justify-center sm:gap-2 sm:px-3 sm:text-sm"><n.icon className="w-4 h-4" />{n.label}</TabsTrigger>))}
-        </TabsList>
+      
 
         {/* Token Regulator Tab */}
 
@@ -2311,6 +2364,8 @@ export default function DoctorDashboard() {
         hospitalId={doctor?.hospitalId ?? ""}
         hospitalName={(user as any)?.hospitalName ?? ""}
       />
+    </div>
+    </div>
     </div>
   );
 }
