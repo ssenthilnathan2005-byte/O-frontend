@@ -472,6 +472,99 @@ export default function VitalsScanAll({ onApply, include, label, captureAudit }:
           }
         }
       } catch { /* the extra BP check is optional: it must never block the scan */ }
+      // Extra reads v2: BP printed as one word ("118/76"), an SpO2 strip, and T1 temperature from the number itself.
+      try {
+        const W2: any[] = (fin.words || []) as any[];
+        const toO = (b: any) => ({
+          ox0: base.sx + b.x0 / base.scale, oy0: base.sy + b.y0 / base.scale,
+          ox1: base.sx + b.x1 / base.scale, oy1: base.sy + b.y1 / base.scale,
+        });
+        const srcs2: (HTMLImageElement | HTMLCanvasElement)[] = [imgEl, ...framesRef.current.slice(0, 2)];
+        const read2 = async (boxes: any[], whitelist: string, fix?: (s: string) => string) => {
+          const out: { text: string; conf: number; method: string }[] = [];
+          await worker.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_LINE, tessedit_char_whitelist: whitelist } as any);
+          try {
+            for (const b of boxes) {
+              const o = toO(b);
+              for (const src of srcs2) {
+                for (const zoom of [70, 110]) {
+                  setStage("Checking the numbers again"); setProgress(0);
+                  const cv = localDigitCanvas(src, o.ox0, o.oy0, o.ox1, o.oy1, zoom);
+                  const { data } = await worker.recognize(cv);
+                  let text = String(data?.text || "").replace(/\s+/g, "");
+                  if (fix) text = fix(text);
+                  if (text) out.push({ text, conf: Number(data?.confidence ?? 0), method: zoom <= 70 ? "normal" : "zoom" });
+                }
+              }
+            }
+          } finally {
+            await worker.setParameters({ tessedit_pageseg_mode: PSM.SPARSE_TEXT, tessedit_char_whitelist: "" } as any);
+          }
+          return out;
+        };
+        const wl = (x: any) => String(x.text || "").replace(/[^A-Za-z0-9]/g, "");
+        const hasRegion = (f: string) => traceRows.some((t: any) => t && t.regionField === f);
+        const pads = (b: any) => {
+          const w = b.x1 - b.x0, h = b.y1 - b.y0;
+          const out: any[] = [];
+          for (const [l, r] of [[-0.03, 0.03], [0, 0.06]]) {
+            for (const [a, d] of [[-0.1, 0.1], [0.05, -0.05]]) out.push({ x0: b.x0 + l * w, x1: b.x1 + r * w, y0: b.y0 + a * h, y1: b.y1 + d * h });
+          }
+          return out;
+        };
+
+        // (a) BP printed as one word such as "118/76" on the NIBP row
+        const nb: any = W2.find((x: any) => /^(nibp|nbp)$/i.test(String(x.text || "").replace(/[^A-Za-z]/g, "")));
+        if (nb && !hasRegion("bp")) {
+          const lcy = (nb.y0 + nb.y1) / 2, lh = Math.max(1, nb.y1 - nb.y0);
+          const one: any = W2
+            .filter((x: any) => x !== nb && x.x0 > nb.x1 && Math.abs((x.y0 + x.y1) / 2 - lcy) <= 3 * lh && /^\d{2,3}\/\d{2,3}$/.test(String(x.text || "").replace(/\s+/g, "")))
+            .sort((p: any, q: any) => (q.y1 - q.y0) - (p.y1 - p.y0))[0];
+          if (one) {
+            const reads = await read2(pads(one), "0123456789/", (s) => s.replace(/^\d+(\d{3}\/)/, "$1"));
+            traceRows.push({ regionField: "bp", x: one.x0, y: one.y0, w: one.x1 - one.x0, h: one.y1 - one.y0, deep: reads });
+          }
+        }
+
+        // (b) SpO2: the biggest number just below / right of an SpO2 label (alarm limits are small and ignored)
+        const sl = W2.filter((x: any) => /^sp[o0]2$/i.test(wl(x)));
+        if (sl.length && !hasRegion("spo2")) {
+          let pick: any = null;
+          for (const L of sl) {
+            const lh = Math.max(1, L.y1 - L.y0), lw = Math.max(1, L.x1 - L.x0);
+            const nums = W2.filter((x: any) => {
+              const s = String(x.text || ""), d = s.replace(/\D/g, "");
+              return d.length >= 2 && d.length <= 3 && s.length <= 4 && x.x0 >= L.x0 - 0.5 * lw && x.x0 <= L.x1 + 14 * lh && x.y0 >= L.y0 - 0.5 * lh && x.y0 <= L.y1 + 8 * lh;
+            });
+            const tall = Math.max(0, ...nums.map((x: any) => x.y1 - x.y0));
+            const big: any = nums.filter((x: any) => x.y1 - x.y0 >= 0.6 * tall).sort((p: any, q: any) => p.y0 - q.y0)[0];
+            if (big && (!pick || big.y1 - big.y0 > pick.y1 - pick.y0)) pick = big;
+          }
+          if (pick) {
+            const w = pick.x1 - pick.x0, h = pick.y1 - pick.y0;
+            const boxes: any[] = [];
+            for (const fw of [0.6, 0.85, 1]) {
+              for (const [a, d] of [[-0.05, 0.05], [0.1, -0.1]]) boxes.push({ x0: pick.x0 - 0.03 * w, x1: pick.x0 + (fw + 0.03) * w, y0: pick.y0 + a * h, y1: pick.y1 + d * h });
+            }
+            const reads = await read2(boxes, "0123456789");
+            traceRows.push({ regionField: "spo2", x: pick.x0, y: pick.y0, w, h, deep: reads });
+          }
+        }
+
+        // (c) Temperature T1: read the actual number word on the T1 row (not a wide strip that can hold limits or T2)
+        const t1s2 = W2.filter((x: any) => /^t[1l]$/i.test(wl(x)));
+        if (t1s2.length === 1 && !hasRegion("temperature")) {
+          const L: any = t1s2[0];
+          const lcy = (L.y0 + L.y1) / 2, lh = Math.max(1, L.y1 - L.y0);
+          const t2: any = W2.find((x: any) => /^t2$/i.test(wl(x)) && x.x0 > L.x1);
+          const nums = W2.filter((x: any) => x.x0 >= L.x1 - 5 && (!t2 || x.x0 < t2.x0) && Math.abs((x.y0 + x.y1) / 2 - lcy) <= 2.5 * lh && /^\D{0,2}\d{2}[.,]?\d?\D{0,2}$/.test(String(x.text || "").replace(/\s+/g, "")));
+          const pick: any = nums.sort((p: any, q: any) => (q.y1 - q.y0) - (p.y1 - p.y0))[0];
+          if (pick) {
+            const reads = await read2(pads(pick), "0123456789.");
+            traceRows.push({ regionField: "temperature", x: pick.x0, y: pick.y0, w: pick.x1 - pick.x0, h: pick.y1 - pick.y0, deep: reads });
+          }
+        }
+      } catch { /* these extra checks are optional: they must never block the scan */ }
       // Extra pulse and T1 read: the word boxes for these numbers often include icons or text beside the digits.
       // Read narrower strips of the same word several ways and let the normal region vote decide.
       try {
