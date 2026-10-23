@@ -752,6 +752,16 @@ export function combineMatches(words: AnyObj[], width: number, height: number, m
       const distinct = (a: { f: number; t: AnyObj }, b: { f: number; t: AnyObj }) => Math.abs(a.f - b.f) >= 0.15 && Math.abs((a.t.y ?? 0) - (b.t.y ?? 0)) > 0.6 * Math.max(a.t.h || 1, b.t.h || 1);
       const tallT = Math.max(0, ...cands.map((c) => c.t.h || 0));
       const bigT = cands.filter((c) => (c.t.h || 0) >= 0.6 * tallT); // alarm limits (small digits) never count as readings
+      // Safety: a temperature equal to a small alarm-limit number (e.g. 35.0 / 42.0) and to no big reading is never kept.
+      const smallT = cands.filter((c) => !bigT.includes(c));
+      for (const bucket of [values, suggestions] as unknown as AnyObj[]) {
+        const cur: any = bucket.temperature;
+        if (!cur) continue;
+        const num = parseFloat(String(typeof cur === "object" ? (cur.text ?? cur.value ?? "") : cur));
+        if (!Number.isFinite(num)) continue;
+        const isLimit = smallT.some((c) => Math.abs(c.f - num) < 0.06) && !bigT.some((c) => Math.abs(c.f - num) < 0.06);
+        if (isLimit) { delete bucket.temperature; log.push(`Temperature: ${num.toFixed(1)} matches a small alarm-limit number on the screen, so it was removed`); }
+      }
       const ambiguousT = bigT.some((a, i) => bigT.slice(i + 1).some((b) => distinct(a, b)));
       // T1 / T2 monitors: if exactly one "T1" label sits on the same row as one of the values, that value is filled in amber.
       const t1pick = (() => {
