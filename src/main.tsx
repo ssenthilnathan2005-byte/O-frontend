@@ -25,3 +25,10 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <App />
   </QueryClientProvider>,
 );
+
+window.addEventListener("vite:preloadError", () => {
+  if (!sessionStorage.getItem("chunk-reloaded")) {
+    sessionStorage.setItem("chunk-reloaded", "1");
+    window.location.reload();
+  }
+});
