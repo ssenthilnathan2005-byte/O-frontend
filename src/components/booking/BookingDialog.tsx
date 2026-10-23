@@ -48,6 +48,7 @@ function loadRazorpay(): Promise<boolean> {
 }
 
 interface Props {
+  maxDate?: string;
   doctor: Doctor;
   hospital: Hospital;
   open: boolean;
@@ -56,7 +57,7 @@ interface Props {
 
 type Step = "date" | "session" | "token" | "for-whom" | "complaint" | "payment" | "tracking-info" | "success";
 
-export default function BookingDialog({ doctor, hospital, open, onClose }: Props) {
+export default function BookingDialog({ doctor, hospital, open, onClose, maxDate }: Props) {
   const { user, bookings, tokenStates, isSessionCancelled, getOrCreateTokenState, addBookingToStore, refreshFromStorage } = useStore();
   const { navigate } = useRouter();
   const [step, setStep]                 = useState<Step>("date");
@@ -155,7 +156,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose }: Props
     familyMembers.list().then(setFamily).catch(() => setFamily([]));
   }, [open]);
 
-  const availableDates = useMemo(() => getAvailableDates(), []);
+  const availableDates = useMemo(() => getAvailableDates().filter((d: string) => !maxDate || d <= maxDate), [maxDate]);
   const patientUser = user as { id: string; email: string; name: string; role: "patient" };
 
   // Pre-load token states when dialog opens

@@ -1,4 +1,4 @@
-import FollowUpBox from "./FollowUpBox";
+
 import { useEffect, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { SpeechRecognition } from "@capacitor-community/speech-recognition";
@@ -821,8 +821,6 @@ export default function VoicePrescription({ saving, notes, onNotesChange, onSkip
         />
       </div>
 
-      <FollowUpBox />
-
       <div className="sticky bottom-0 bg-white pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] border-t space-y-2">
         {totalIssues > 0 && (
           <p className="text-xs text-red-600">Fix the {totalIssues} item{totalIssues > 1 ? "s" : ""} marked in red to continue.</p>
@@ -837,7 +835,7 @@ export default function VoicePrescription({ saving, notes, onNotesChange, onSkip
             onClick={() => onConfirm(meds.map(toPrescriptionItem))}
           >
             <Send className="w-4 h-4 mr-2" />
-            {saving ? "Saving..." : "Confirm Prescription"}
+            {saving ? "Saving..." : "Save Procedure / Prescription"}
           </Button>
         </div>
         <Button variant="ghost" size="sm" onClick={onSkip} disabled={saving}>Skip — No Prescription</Button>

@@ -62,6 +62,7 @@ export default function FollowUpReminders() {
         <BookingDialog
           doctor={booking.doctor}
           hospital={booking.hospital}
+          maxDate={booking.followUpDate}
           open
           onClose={() => { setBooking(null); load(); }}
         />

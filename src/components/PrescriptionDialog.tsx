@@ -1,4 +1,4 @@
-import FollowUpBox, { followUpStore } from "./FollowUpBox";
+import AssignFollowUpDialog from "./AssignFollowUpDialog";
 import { searchIcd10 } from "../data/icd10Common";
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -135,7 +135,7 @@ export default function PrescriptionDialog({
 }: Props) {
   const [medicines, setMedicines] = useState<Medicine[]>([{ ...EMPTY_MED }]);
   const [notes, setNotes] = useState("");
-  followUpStore.setVisit((booking as any)?.date);
+  const [fuFor, setFuFor] = useState<{ id: string; date?: string; name?: string } | null>(null);
   const [diagnosis, setDiagnosis] = useState("");
   const [diagnosisCode, setDiagnosisCode] = useState("");
   const [icdOpen, setIcdOpen] = useState(false);
@@ -343,17 +343,7 @@ export default function PrescriptionDialog({
         }),
       });
       if (res.ok) {
-        ok = true;
-        try {
-          const fd = parseInt(followUpStore.get(), 10);
-          if (fd > 0) {
-            await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000/api"}/doctor/follow-up/${booking.id}`, {
-              method: "PUT",
-              headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
-              body: JSON.stringify({ days: fd }),
-            });
-          }
-        } catch { /* follow-up is best effort */ }
+        ok = true;
         toast.success("Prescription saved ✓");
       } else {
         const err = await res.json();
@@ -364,10 +354,23 @@ export default function PrescriptionDialog({
     }
     setSaving(false);
     if (keepOpenOnError && !ok) return;
+    if (ok && booking) { setFuFor({ id: booking.id, date: (booking as any).date, name: booking.patientName }); return; }
     setMedicines([{ ...EMPTY_MED }]);
     setVoiceItems([]);
     setVoicePending([]);
-    setNotes(""); setDiagnosis(""); setDiagnosisCode(""); setIcdOpen(false); followUpStore.set("");
+    setNotes(""); setDiagnosis(""); setDiagnosisCode(""); setIcdOpen(false); 
+    setCollapsed(new Set());
+    setOtherOpen(new Set());
+    setMode("voice");
+    onConfirm();
+  }
+
+  function finishAfterFollowUp() {
+    setFuFor(null);
+    setMedicines([{ ...EMPTY_MED }]);
+    setVoiceItems([]);
+    setVoicePending([]);
+    setNotes(""); setDiagnosis(""); setDiagnosisCode(""); setIcdOpen(false);
     setCollapsed(new Set());
     setOtherOpen(new Set());
     setMode("voice");
@@ -378,7 +381,7 @@ export default function PrescriptionDialog({
     setMedicines([{ ...EMPTY_MED }]);
     setVoiceItems([]);
     setVoicePending([]);
-    setNotes(""); setDiagnosis(""); setDiagnosisCode(""); setIcdOpen(false); followUpStore.set("");
+    setNotes(""); setDiagnosis(""); setDiagnosisCode(""); setIcdOpen(false); 
     setCollapsed(new Set());
     setOtherOpen(new Set());
     setMode("voice");
@@ -386,7 +389,9 @@ export default function PrescriptionDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <>
+    <AssignFollowUpDialog open={!!fuFor} bookingId={fuFor?.id ?? ""} bookingDate={fuFor?.date} patientName={fuFor?.name} onDone={finishAfterFollowUp} />
+    <Dialog open={open && !fuFor} onOpenChange={onClose}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto max-sm:left-0 max-sm:top-0 max-sm:translate-x-0 max-sm:translate-y-0 max-sm:w-screen max-sm:max-w-none max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:rounded-none">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -724,8 +729,6 @@ export default function PrescriptionDialog({
               rows={3}
             />
           </div>
-
-          <FollowUpBox />
         </div>
 
         <DialogFooter className="flex gap-2 mt-2 max-sm:sticky max-sm:bottom-0 max-sm:bg-white max-sm:pt-2 max-sm:pb-[max(0.5rem,env(safe-area-inset-bottom))]">
@@ -738,11 +741,12 @@ export default function PrescriptionDialog({
             disabled={saving}
           >
             <Send className="w-4 h-4 mr-2" />
-            {saving ? "Saving..." : "Save & Complete"}
+            {saving ? "Saving..." : "Save Procedure / Prescription"}
           </Button>
         </DialogFooter>
         </>)}
       </DialogContent>
     </Dialog>
+    </>
   );
 }
