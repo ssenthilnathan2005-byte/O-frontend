@@ -1,4 +1,4 @@
-import FollowUpBadge from "../../components/FollowUpBadge";
+import FollowUpMark from "../../components/FollowUpMark";
 import { ClipboardList } from "lucide-react";
 import PrescriptionPresetsManager from "@/components/PrescriptionPresetsManager";
 import {
@@ -1565,7 +1565,6 @@ export default function DoctorDashboard() {
                           <p className="text-xs text-teal-700 bg-teal-50 border border-teal-100 rounded-md px-2 py-1 mt-1">{vitalsText(foInfo[b.id].vitals as Vitals)}</p>
                         )}
                         <p className="text-xs text-gray-400 mt-0.5">{b.session} · {b.date}</p>
-                        <FollowUpBadge bookingId={b.id} patientId={b.patientId} />
                         {b.complaint && <p className="text-xs text-gray-500 mt-0.5 italic line-clamp-2">📋 {b.complaint}</p>}
                         {b.patientId && (
                           <button
@@ -1580,6 +1579,7 @@ export default function DoctorDashboard() {
                       <div className="flex items-baseline gap-0.5 shrink-0 ml-3">
                         <span className="text-base font-bold text-teal-500">#</span>
                         <span className="text-2xl font-bold text-teal-600">{b.tokenNumber}</span>
+                        <FollowUpMark bookingId={b.id} patientId={b.patientId} />
                       </div>
                     </div>
                   ))}
@@ -2066,7 +2066,7 @@ export default function DoctorDashboard() {
               </div>
             )}
 
-            {dialogTokenBooking?.patientId && <FollowUpBadge bookingId={dialogTokenBooking.id} patientId={dialogTokenBooking.patientId} />}
+            {dialogTokenBooking?.patientId && <FollowUpMark bookingId={dialogTokenBooking.id} patientId={dialogTokenBooking.patientId} label />}
 
             {dialogTokenBooking?.patientId && (
               <button
