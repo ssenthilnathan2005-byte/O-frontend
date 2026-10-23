@@ -32,7 +32,7 @@ export default function MyAdmissionPage() {
   useEffect(() => { load(); }, [load]);
   useLiveRefresh(load, 8000);
 
-  const current = stays.filter((s) => s.status === "admitted" && (s.bed_number || s.ward || Number(s.daily_rate) > 0));
+  const current = stays.filter((s) => s.status === "admitted");
   const past = stays.filter((s) => s.status !== "admitted");
   const open = requests.filter((r) => r.status === "requested" || r.status === "confirmed");
 
