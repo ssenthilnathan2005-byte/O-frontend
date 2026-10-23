@@ -9,6 +9,7 @@ import { useNearMe } from "./hooks/useNearMe";
 import { loadGoogleMaps } from "./lib/googleMaps";
 import { motion } from "motion/react";
 import TopNav from "./components/layout/TopNav";
+import MobileDesign from "./mobile/MobileDesign";
 import LanguageSwitcher from "./components/LanguageSwitcher";
 import { StoreProvider, useStore } from "./context/StoreContext";
 import TermsPage from "./pages/TermsPage";
@@ -467,6 +468,7 @@ function AppRoutes() {
   const { route } = useRouter();
 
   function renderPage() {
+    if (window.location.pathname === "/mobile-preview") return <MobileDesign />;
     if (route.path === "/about") return <AboutUsPage />;
     if (!user) {
       if (route.path === "/") return <LandingPage />;
@@ -550,6 +552,7 @@ function AppRoutes() {
   // (login state lives in localStorage, not in the URL), so we must not
   // hide the nav purely based on route.path when `user` is already set.
   const hideTopNav =
+    window.location.pathname === "/mobile-preview" ||
     isAdmin ||
     route.path === "/about" ||
     (!user && (route.path === "/login" || route.path === "/terms" || route.path === "/privacy" || route.path === "/delete-account" || route.path === "/hospital-admin/login" || route.path === "/pharmacy/login" || route.path === "/nurse/login" || route.path === "/front-office/login" || route.path === "/pharmacy-owner/login" || route.path === "/pharmacy-owner/register" || route.path === "/lab-admin/login")) ||

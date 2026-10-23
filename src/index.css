@@ -133,3 +133,26 @@ html.lang-ta header > div > button { white-space: nowrap; flex-shrink: 0; }
 .topnav-menu > button { flex-shrink: 0; white-space: nowrap; }
 .topnav-menu + .flex-1 { display: none; }
 @media (min-width: 1280px) { .app-topnav > div { gap: 2rem; } }
+
+
+/* ===== Mobile design (scoped to .mobile-design) ===== */
+@layer base {
+  .mobile-design *,
+  .mobile-design ::before,
+  .mobile-design ::after {
+    border-color: #e5e7eb;
+  }
+}
+
+@layer utilities {
+  .mobile-design .no-scrollbar::-webkit-scrollbar { display: none; }
+  .mobile-design .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .mobile-design .safe-top { padding-top: env(safe-area-inset-top, 16px); }
+  .mobile-design .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 20px); }
+  .mobile-design .ticket-dashed-line {
+    background-image: linear-gradient(to right, #cbd5e1 50%, rgba(255,255,255,0) 0%);
+    background-position: bottom;
+    background-size: 8px 1.5px;
+    background-repeat: repeat-x;
+  }
+}
