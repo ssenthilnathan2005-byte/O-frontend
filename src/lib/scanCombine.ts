@@ -43,6 +43,16 @@ function variantsOf(t: AnyObj): string[] {
   return parts.map(clean).filter(Boolean);
 }
 const seenCount = (t: AnyObj) => String(t.seen ?? "").split(/\s+/).filter((x) => x && x !== "-").length;
+/** True when the re-check read a DIFFERENT 2-3 digit number for this box than the candidate (e.g. "53" vs "633"). */
+function recheckContradicts(t: AnyObj, candidate: string): boolean {
+  const reads: string[] = [];
+  for (const r of (t.deep ?? []) as AnyObj[]) {
+    if (String(r.method ?? "").startsWith("mask:red")) continue; // red = ART / IBP clue, same as deepVote
+    reads.push(String(r.text ?? "").replace(/[^0-9]/g, ""));
+  }
+  if (t.recheck) reads.push(clean(String(t.recheck)).replace(/[^0-9]/g, ""));
+  return reads.some((v) => /^\d{2,3}$/.test(v) && v !== candidate);
+}
 const inRange = (f: string, v: number) => { const r: AnyObj = (FIELD_RANGE as AnyObj)[f]; return !!r && v >= r[0] && v <= r[1]; };
 const inside = (a: AnyObj, b: AnyObj) => b.w > 0 && b.h > 0 && a.x >= b.x && a.x <= b.x + b.w && a.y >= b.y && a.y <= b.y + b.h;
 
@@ -477,7 +487,7 @@ function rescue(traces: AnyObj[], haveVals: Record<string, string>, ref: number)
   const plain = rows
     .filter((t) => !used.has(t) && !isSmall(t, ref) && !rows.some((u) => used.has(u) && inside(t, u)))
     .map((t) => ({ t, vs: variantsOf(t) }))
-    .filter(({ t, vs }) => vs.length > 0 && vs.every((v) => /^\d{2,3}$/.test(v)) && new Set(vs).size === 1 && (seenCount(t) >= 2 || t.status === "confirmed"))
+    .filter(({ t, vs }) => vs.length > 0 && vs.every((v) => /^\d{2,3}$/.test(v)) && new Set(vs).size === 1 && !recheckContradicts(t, vs[0]) && (seenCount(t) >= 2 || t.status === "confirmed"))
     .sort((a, b) => a.t.y - b.t.y);
   for (const { vs } of plain) {
     const n = +vs[0];
