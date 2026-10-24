@@ -267,6 +267,7 @@ export default function PharmacyDashboard() {
           const noteOf = (it: RxItem) => [it.dosage, (it.instructions || "").trim(), it.duration].filter(Boolean).join(" \u00b7 ");
           const sameLen = inv.lines.length === rx.items.length && !inv.lines.some((l: any) => l.manual);
           inv.lines = inv.lines.map((l: any, i: number) => {
+            if (l.note) return l;
             let it: RxItem | undefined = sameLen ? rx.items[i] : undefined;
             if (!it) {
               const ln = String(l.name || "").toLowerCase();
