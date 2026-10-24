@@ -112,8 +112,17 @@ export default function GstInvoice() {
   const detailBody = () => calc.rows.map((r, i) => [String(i + 1), r.name, r.batchNo || "-", billsText(r.billNos || []) || "-", r.qty + " " + r.unit, r.supplier || "-", fmtDate(r.purchasedOn), r.purchaseRate > 0 ? plain(r.purchaseRate) : "-", plain(r.mrp)]);
   const heads = ["#", "Medicine", "HSN / GST %", "Batch", "Expiry", "Qty", "MRP", "Discount", "Taxable value", "CGST", "SGST", "Total"];
 
+  async function issueNo(): Promise<string> {
+    if (!report) return "";
+    try {
+      const r = await pm<{ invoiceNo: string }>("/gst-invoice-no", { method: "POST", body: JSON.stringify({ from: report.from, to: report.to, total: calc.total, bills: report.bills }) });
+      return r.invoiceNo;
+    } catch (e: any) { toast.error(e.message || "Could not issue the invoice number"); return ""; }
+  }
+
   async function downloadPdf() {
     if (!report || needGstin() || needHsn()) return;
+    const invNo = await issueNo(); if (!invNo) return;
     setBusy("pdf");
     try {
       const { default: JsPDF } = await import("jspdf");
@@ -180,12 +189,13 @@ export default function GstInvoice() {
       doc.addPage();
       doc.setFontSize(12); doc.text("Sales and purchase detail (from pharmacy inventory)", 14, 14);
       autoTable(doc, { startY: 18, head: [detailHead], body: detailBody(), styles: { fontSize: 8 }, headStyles: { fillColor: [13, 148, 136] }, columnStyles: { 7: { halign: "right" }, 8: { halign: "right" } } });
-      doc.save(invNo + ".pdf");
+      doc.save(invNo.replace(/\//g, "-") + ".pdf");
     } catch (e: any) { toast.error("Could not create the PDF: " + (e?.message || "error")); } finally { setBusy(""); }
   }
 
   async function downloadExcel() {
     if (!report || needGstin() || needHsn()) return;
+    const invNo = await issueNo(); if (!invNo) return;
     setBusy("xlsx");
     try {
       const ExcelJS: any = await import("exceljs");
@@ -219,7 +229,7 @@ export default function GstInvoice() {
       const buf = await wb.xlsx.writeBuffer();
       const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
       const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob); a.download = invNo + ".xlsx"; a.click();
+      a.href = URL.createObjectURL(blob); a.download = invNo.replace(/\//g, "-") + ".xlsx"; a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 2000);
     } catch (e: any) { toast.error("Could not create the Excel file: " + (e?.message || "error")); } finally { setBusy(""); }
   }
@@ -293,7 +303,7 @@ export default function GstInvoice() {
             </div>
             <div className="text-right">
               <p className="font-bold text-teal-700">GST INVOICE</p>
-              <p className="text-xs text-gray-600">Invoice No: {invNo}</p>
+              <p className="text-xs text-gray-600">Invoice No: issued on download</p>
               <p className="text-xs text-gray-600">Period: {period}</p>
               {billRange && <p className="text-xs text-gray-600">{billRange} ({report.bills} bills)</p>}
             </div>
