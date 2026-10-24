@@ -304,6 +304,16 @@ export default function PharmacyDashboard() {
       return toast.error("Enter the bill amount first (enter 0 if free)");
     const dispense: any[] = [];
     let handoverPayload: any[] = [];
+    const manualItems: any[] = [];
+    if (p.status === "pending") {
+      for (let i = 0; i < p.items.length; i++) {
+        if (getPlan(p, i).itemId) continue;
+        const m = manualLine(p, i);
+        if (!(Number(m.qty) > 0)) continue;
+        if (String(m.price).trim() === "" || !(Number(m.price) >= 0)) return toast.error(`Enter the rate for ${p.items[i].name}`);
+        manualItems.push({ name: p.items[i].name, quantity: Number(m.qty), unitPrice: Number(m.price) });
+      }
+    }
     if (p.status === "pending") {
       for (let i = 0; i < p.items.length; i++) {
         const pl = getPlan(p, i);
@@ -342,7 +352,7 @@ export default function PharmacyDashboard() {
     try {
       if (p.status === "pending") await send("packed", { dispense });
       if (p.status === "pending" || p.status === "packed") await send("ready", {});
-      await send("handed_over", { handover: handoverPayload, billAmount: billTotal, paymentMode: payModes[p.id] || "cash", discountPct: Number(taxes[p.id]?.disc) || 0, cgstPct: Number(taxes[p.id]?.cgst) || 0, sgstPct: Number(taxes[p.id]?.sgst) || 0 });
+      await send("handed_over", { handover: handoverPayload, billAmount: billTotal, paymentMode: payModes[p.id] || "cash", discountPct: Number(taxes[p.id]?.disc) || 0, cgstPct: Number(taxes[p.id]?.cgst) || 0, sgstPct: Number(taxes[p.id]?.sgst) || 0, manualItems });
       toast.success("Marked as given. Patient notified");
       await printInvoiceFor(p.id, true);
     } catch (err: any) {
