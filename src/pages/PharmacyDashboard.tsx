@@ -142,6 +142,7 @@ export default function PharmacyDashboard() {
   const [taxes, setTaxes] = useState<Record<string, { cgst: string; sgst: string; disc: string }>>({});
   const [filter, setFilter] = useState<"received" | "given">("received");
   const [manualDeduct, setManualDeduct] = useState<Record<string, boolean>>({});
+  const [manualLines, setManualLines] = useState<Record<string, Record<number, { qty: string; price: string }>>>({});
   const [query, setQuery] = useState("");
   const [newestFirst, setNewestFirst] = useState(false); // oldest first: patients are served in order
   const [confirmId, setConfirmId] = useState<string | null>(null);
@@ -240,8 +241,20 @@ export default function PharmacyDashboard() {
     if (!pl.itemId) return 0;
     return round2((Number(pl.qty) || 0) * unitPriceFor(p, i));
   }
+  function manualLine(p: Prescription, i: number) {
+    return manualLines[p.id]?.[i] ?? { qty: "", price: "" };
+  }
+  function setManualLine(p: Prescription, i: number, patch: Partial<{ qty: string; price: string }>) {
+    const base = manualLine(p, i);
+    setManualLines(prev => ({ ...prev, [p.id]: { ...(prev[p.id] ?? {}), [i]: { ...base, ...patch } } }));
+  }
+  function manualTotal(p: Prescription, i: number): number {
+    if (getPlan(p, i).itemId) return 0;
+    const m = manualLine(p, i);
+    return round2((Number(m.qty) || 0) * (Number(m.price) || 0));
+  }
   function grandTotal(p: Prescription): number {
-    return round2(p.items.reduce((s, _it, i) => s + lineTotal(p, i), 0));
+    return round2(p.items.reduce((s, _it, i) => s + lineTotal(p, i) + manualTotal(p, i), 0));
   }
   async function printInvoiceFor(id: string, preview = false) {
     try {
@@ -252,7 +265,7 @@ export default function PharmacyDashboard() {
         const rx = prescriptions.find(x => String(x.id) === String(id));
         if (rx && Array.isArray(inv.lines)) {
           const noteOf = (it: RxItem) => [it.dosage, (it.instructions || "").trim(), it.duration].filter(Boolean).join(" \u00b7 ");
-          const sameLen = inv.lines.length === rx.items.length;
+          const sameLen = inv.lines.length === rx.items.length && !inv.lines.some((l: any) => l.manual);
           inv.lines = inv.lines.map((l: any, i: number) => {
             let it: RxItem | undefined = sameLen ? rx.items[i] : undefined;
             if (!it) {
@@ -280,7 +293,7 @@ export default function PharmacyDashboard() {
     if (busy) return;
     const rxLines: any[] = (() => { try { return p.dispensed_items ? JSON.parse(p.dispensed_items) : []; } catch { return []; } })();
     const legacyManual = p.status !== "pending" && rxLines.some(l => l.unitPrice == null);
-    const manualPending = p.status === "pending" && !p.items.some((_it: any, i: number) => !!getPlan(p, i).itemId); const billTotal = manualPending ? (amounts[p.id] === undefined || String(amounts[p.id]).trim() === "" ? NaN : Number(amounts[p.id])) : p.status === "pending"
+    const billTotal = p.status === "pending"
       ? grandTotal(p)
       : legacyManual
         ? Number(amounts[p.id])
@@ -291,6 +304,16 @@ export default function PharmacyDashboard() {
       return toast.error("Enter the bill amount first (enter 0 if free)");
     const dispense: any[] = [];
     let handoverPayload: any[] = [];
+    const manualItems: any[] = [];
+    if (p.status === "pending") {
+      for (let i = 0; i < p.items.length; i++) {
+        if (getPlan(p, i).itemId) continue;
+        const m = manualLine(p, i);
+        if (!(Number(m.qty) > 0)) continue;
+        if (String(m.price).trim() === "" || !(Number(m.price) >= 0)) return toast.error(`Enter the rate for ${p.items[i].name}`);
+        manualItems.push({ name: p.items[i].name, quantity: Number(m.qty), unitPrice: Number(m.price) });
+      }
+    }
     if (p.status === "pending") {
       for (let i = 0; i < p.items.length; i++) {
         const pl = getPlan(p, i);
@@ -329,7 +352,7 @@ export default function PharmacyDashboard() {
     try {
       if (p.status === "pending") await send("packed", { dispense });
       if (p.status === "pending" || p.status === "packed") await send("ready", {});
-      await send("handed_over", { handover: handoverPayload, billAmount: billTotal, paymentMode: payModes[p.id] || "cash", discountPct: Number(taxes[p.id]?.disc) || 0, cgstPct: Number(taxes[p.id]?.cgst) || 0, sgstPct: Number(taxes[p.id]?.sgst) || 0 });
+      await send("handed_over", { handover: handoverPayload, billAmount: billTotal, paymentMode: payModes[p.id] || "cash", discountPct: Number(taxes[p.id]?.disc) || 0, cgstPct: Number(taxes[p.id]?.cgst) || 0, sgstPct: Number(taxes[p.id]?.sgst) || 0, manualItems });
       toast.success("Marked as given. Patient notified");
       await printInvoiceFor(p.id, true);
     } catch (err: any) {
@@ -484,6 +507,20 @@ export default function PharmacyDashboard() {
                 {short && <p className="text-xs text-red-600">Not enough stock: only {bottle ? Math.floor(tabletsAvailable(st!) / packOf(st)) + " bottle(s)" : tabletsAvailable(st!)} available.</p>}
               </div>
             )}
+            {!deduct && (
+              <div className="flex flex-wrap items-center gap-2 pl-6 text-xs">
+                <span className="text-gray-500">Not from stock. Qty</span>
+                <input type="number" min={0} step={1} placeholder="0" value={manualLine(p, i).qty}
+                  onChange={e => setManualLine(p, i, { qty: e.target.value })}
+                  className="w-16 border border-gray-200 rounded-md text-sm px-2 py-1 bg-white" />
+                <span className="text-gray-500">Rate {"\u20b9"}</span>
+                <input type="number" min={0} step="any" placeholder="0" value={manualLine(p, i).price}
+                  onChange={e => setManualLine(p, i, { price: e.target.value })}
+                  className="w-24 border border-gray-200 rounded-md text-sm px-2 py-1 bg-white" />
+                <span className="text-gray-500">=</span>
+                <b className="text-gray-900">{"\u20b9"}{manualTotal(p, i).toFixed(2)}</b>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -498,7 +535,7 @@ export default function PharmacyDashboard() {
     const confirming = confirmId === p.id;
     const showMeds = !isGiven || !!openRx[p.id];
     const legacyManual = !editable && dispensed.some((d: any) => d.unitPrice == null);
-    const hasStockLines = editable && p.items.some((_it: any, i: number) => !!getPlan(p, i).itemId); const autoBill = editable ? hasStockLines : !legacyManual;
+    const autoBill = editable ? true : !legacyManual;
     const billShown = editable
       ? grandTotal(p)
       : round2(dispensed.reduce((s: number, d: any, idx: number) => s + round2((Number(getHo(p.id, idx, d.tablets).qty) || 0) * Number(d.unitPrice)), 0));

@@ -1,6 +1,6 @@
 export type InvoiceData = {
   subtotal?: number | null; discountPct?: number; discountAmount?: number; cgstPct?: number; sgstPct?: number; cgstAmount?: number; sgstAmount?: number; invoiceNo?: string; billNo?: number | null; hospitalName: string; patientId: string; patientName: string; doctorName: string; issuedAt: string | null;
-  paymentMode: string | null; lines: { name: string; tablets: number; unitPrice: number; amount: number; note?: string }[]; total: number | null; status: string;
+  paymentMode: string | null; lines: { name: string; tablets: number; unitPrice: number; amount: number; note?: string; manual?: boolean }[]; total: number | null; status: string;
 };
 const ESC: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
 const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, c => ESC[c]);
@@ -49,7 +49,7 @@ export function printInvoice(inv: InvoiceData): boolean {
   const w = window.open("", "_blank", "width=760,height=900");
   if (!w) return false;
   const rows = inv.lines.map(l => {
-      const pk = packMl(l.name);
+      const pk = l.manual ? 1 : packMl(l.name);
       const qty = pk > 1 ? r2(l.tablets / pk) + " " + packWordOf(l.name) + "(s)" : String(l.tablets);
       const price = pk > 1 ? inr(l.unitPrice * pk) + " / " + packWordOf(l.name) : inr(l.unitPrice);
       const detail = intakeHtml(l.note);
@@ -96,7 +96,7 @@ export function showInvoicePopup(inv: InvoiceData, opts?: { heading?: string }):
   const old = document.getElementById("invoice-popup-root");
   if (old) old.remove();
   const rows = inv.lines.map(l => {
-    const pk = packMl(l.name);
+    const pk = l.manual ? 1 : packMl(l.name);
     const qty = pk > 1 ? r2(l.tablets / pk) + " " + packWordOf(l.name) + "(s)" : String(l.tablets);
     const price = pk > 1 ? inr(l.unitPrice * pk) + " / " + packWordOf(l.name) : inr(l.unitPrice);
     return `<tr><td style="padding:6px 4px;border-bottom:1px solid #eee">${esc(l.name)}</td><td style="padding:6px 4px;border-bottom:1px solid #eee;text-align:right">${esc(qty)}</td><td style="padding:6px 4px;border-bottom:1px solid #eee;text-align:right">${price}</td><td style="padding:6px 4px;border-bottom:1px solid #eee;text-align:right">${inr(l.amount)}</td></tr>`;
