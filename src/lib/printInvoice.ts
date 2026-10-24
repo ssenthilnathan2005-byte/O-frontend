@@ -99,7 +99,7 @@ export function showInvoicePopup(inv: InvoiceData, opts?: { heading?: string }):
     const pk = l.manual ? 1 : packMl(l.name);
     const qty = pk > 1 ? r2(l.tablets / pk) + " " + packWordOf(l.name) + "(s)" : String(l.tablets);
     const price = pk > 1 ? inr(l.unitPrice * pk) + " / " + packWordOf(l.name) : inr(l.unitPrice);
-    return `<tr><td style="padding:6px 4px;border-bottom:1px solid #eee">${esc(l.name)}</td><td style="padding:6px 4px;border-bottom:1px solid #eee;text-align:right">${esc(qty)}</td><td style="padding:6px 4px;border-bottom:1px solid #eee;text-align:right">${price}</td><td style="padding:6px 4px;border-bottom:1px solid #eee;text-align:right">${inr(l.amount)}</td></tr>`;
+    return `<tr><td style="padding:6px 4px;border-bottom:1px solid #eee">${esc(l.name)}${l.note ? '<div style="font-size:11px;color:#666;margin-top:2px">' + esc(l.note) + '</div>' : ""}</td><td style="padding:6px 4px;border-bottom:1px solid #eee;text-align:right">${esc(qty)}</td><td style="padding:6px 4px;border-bottom:1px solid #eee;text-align:right">${price}</td><td style="padding:6px 4px;border-bottom:1px solid #eee;text-align:right">${inr(l.amount)}</td></tr>`;
   }).join("");
   const when = inv.issuedAt ? new Date(inv.issuedAt).toLocaleString() : "";
   const billLabel = inv.billNo != null ? String(inv.billNo) : "-";
