@@ -22,7 +22,7 @@ async function pm<T>(path: string, init?: RequestInit): Promise<T> {
 
 type Row = { billNos: number[]; supplier: string | null; purchasedOn: string | null; purchaseRate: number; name: string; batchNo: string | null; expiryDate: string | null; unit: string; qty: number; mrp: number; gross: number; discount: number; taxable: number; hsn: string | null; gstPercent: number | null };
 type CalcRow = Row & { cgAmt: number; sgAmt: number; total: number };
-type Profile = { name: string; address: string; phone: string; gstin: string; drugLicence: string; defaultHsn: string; gstType: string };
+type Profile = { name: string; address: string; phone: string; gstin: string; drugLicence: string; defaultHsn: string; gstType: string; companyName?: string };
 type Report = { from: string; to: string; bills: number; billNoFrom: number | null; billNoTo: number | null; profile: Profile; rows: Row[] };
 
 const STATES: Record<string, string> = { "01": "Jammu and Kashmir", "02": "Himachal Pradesh", "03": "Punjab", "04": "Chandigarh", "05": "Uttarakhand", "06": "Haryana", "07": "Delhi", "08": "Rajasthan", "09": "Uttar Pradesh", "10": "Bihar", "11": "Sikkim", "12": "Arunachal Pradesh", "13": "Nagaland", "14": "Manipur", "15": "Mizoram", "16": "Tripura", "17": "Meghalaya", "18": "Assam", "19": "West Bengal", "20": "Jharkhand", "21": "Odisha", "22": "Chhattisgarh", "23": "Madhya Pradesh", "24": "Gujarat", "26": "Dadra and Nagar Haveli and Daman and Diu", "27": "Maharashtra", "29": "Karnataka", "30": "Goa", "31": "Lakshadweep", "32": "Kerala", "33": "Tamil Nadu", "34": "Puducherry", "35": "Andaman and Nicobar Islands", "36": "Telangana", "37": "Andhra Pradesh", "38": "Ladakh" };
@@ -303,6 +303,8 @@ export default function GstInvoice() {
       <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
         <p className="font-semibold text-gray-900 text-sm">Pharmacy details (printed on the invoice)</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <label className="text-xs text-gray-600 md:col-span-2">Company name
+            <input className={inp} value={profile.companyName ?? ""} maxLength={120} placeholder="Name as on your GST registration" onChange={e => setProfile({ ...profile, companyName: e.target.value })} /></label>
           <label className="text-xs text-gray-600">GSTIN
             <input className={inp} value={profile.gstin} maxLength={15} placeholder="15-character GSTIN" onChange={e => setProfile({ ...profile, gstin: e.target.value.toUpperCase() })} /></label>
           <label className="text-xs text-gray-600">Drug licence no.
