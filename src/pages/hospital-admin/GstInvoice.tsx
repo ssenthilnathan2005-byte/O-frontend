@@ -25,6 +25,8 @@ type CalcRow = Row & { cgAmt: number; sgAmt: number; total: number };
 type Profile = { name: string; address: string; phone: string; gstin: string; drugLicence: string; defaultHsn: string; gstType: string };
 type Report = { from: string; to: string; bills: number; billNoFrom: number | null; billNoTo: number | null; profile: Profile; rows: Row[] };
 
+const STATES: Record<string, string> = { "01": "Jammu and Kashmir", "02": "Himachal Pradesh", "03": "Punjab", "04": "Chandigarh", "05": "Uttarakhand", "06": "Haryana", "07": "Delhi", "08": "Rajasthan", "09": "Uttar Pradesh", "10": "Bihar", "11": "Sikkim", "12": "Arunachal Pradesh", "13": "Nagaland", "14": "Manipur", "15": "Mizoram", "16": "Tripura", "17": "Meghalaya", "18": "Assam", "19": "West Bengal", "20": "Jharkhand", "21": "Odisha", "22": "Chhattisgarh", "23": "Madhya Pradesh", "24": "Gujarat", "26": "Dadra and Nagar Haveli and Daman and Diu", "27": "Maharashtra", "29": "Karnataka", "30": "Goa", "31": "Lakshadweep", "32": "Kerala", "33": "Tamil Nadu", "34": "Puducherry", "35": "Andaman and Nicobar Islands", "36": "Telangana", "37": "Andhra Pradesh", "38": "Ladakh" };
+const placeOf = (g: string) => { const c = String(g || "").trim().slice(0, 2); return STATES[c] ? STATES[c] + " (" + c + ")" : "-"; };
 export default function GstInvoice() {
   const today = ymd(new Date());
   const [from, setFrom] = useState(today);
@@ -124,7 +126,8 @@ export default function GstInvoice() {
       doc.text(addr, 14, 19);
       const y = 19 + addr.length * 4 + 1;
       doc.text("GSTIN: " + profile.gstin + (profile.drugLicence ? "    Drug Licence: " + profile.drugLicence : ""), 14, y);
-      doc.setFontSize(14); doc.text("GST INVOICE", W - 14, 14, { align: "right" });
+      doc.text("Invoice Date: " + fmtDate(ymd(new Date())) + "    Place of Supply: " + placeOf(profile.gstin) + "    Reverse Charge: No", 14, y + 5);
+      doc.setFontSize(14); doc.text("TAX INVOICE", W - 14, 14, { align: "right" });
       doc.setFontSize(9);
       doc.text("Invoice No: " + invNo, W - 14, 20, { align: "right" });
       doc.text("Period: " + period, W - 14, 25, { align: "right" });
@@ -132,7 +135,7 @@ export default function GstInvoice() {
       const body = calc.rows.map((r, i) => [String(i + 1), r.name, hsnCell(r), r.batchNo || "-", fmtDate(r.expiryDate), r.qty + " " + r.unit, plain(r.mrp), plain(r.discount), plain(r.taxable), plain(r.cgAmt), plain(r.sgAmt), plain(r.total)]);
       const right = { halign: "right" as const };
       autoTable(doc, {
-        startY: Math.max(y + 5, 36),
+        startY: Math.max(y + 10, 36),
         head: [heads.map((h, i) => (i >= 6 ? h + " (Rs.)" : h))],
         body,
         foot: [["", "Total", "", "", "", "", "", plain(calc.discount), plain(calc.taxable), plain(calc.cgst), plain(calc.sgst), plain(calc.total)]],
@@ -155,6 +158,25 @@ export default function GstInvoice() {
       line("Invoice total", "Rs. " + plain(calc.total), true);
       doc.setFont("helvetica", "normal"); doc.setFontSize(8);
       doc.text("Amounts are inclusive of GST. Taxable value = amount paid less GST. CGST and SGST are half of the GST each.", 14, fy + 4);
+      const hsnSum: Record<string, { hsn: string; rate: string; taxable: number; cg: number; sg: number; total: number }> = {};
+      calc.rows.forEach(r => {
+        const k = (r.hsn || "-") + "|" + (r.gstPercent == null ? "-" : r.gstPercent);
+        const e = hsnSum[k] || (hsnSum[k] = { hsn: r.hsn || "-", rate: r.gstPercent == null ? "-" : String(r.gstPercent), taxable: 0, cg: 0, sg: 0, total: 0 });
+        e.taxable += r.taxable; e.cg += r.cgAmt; e.sg += r.sgAmt; e.total += r.total;
+      });
+      autoTable(doc, {
+        startY: fy + 8,
+        head: [["HSN", "GST %", "Taxable value (Rs.)", "CGST (Rs.)", "SGST (Rs.)", "Total (Rs.)"]],
+        body: Object.values(hsnSum).map(e => [e.hsn, e.rate, plain(r2(e.taxable)), plain(r2(e.cg)), plain(r2(e.sg)), plain(r2(e.total))]),
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [13, 148, 136] },
+        columnStyles: { 2: right, 3: right, 4: right, 5: right },
+      });
+      let sy = (doc as any).lastAutoTable.finalY + 14;
+      if (sy > doc.internal.pageSize.getHeight() - 25) { doc.addPage(); sy = 30; }
+      doc.setFontSize(9);
+      doc.text("For " + (profile.name || "Pharmacy"), W - 14, sy, { align: "right" });
+      doc.text("Authorised signatory", W - 14, sy + 14, { align: "right" });
       doc.addPage();
       doc.setFontSize(12); doc.text("Sales and purchase detail (from pharmacy inventory)", 14, 14);
       autoTable(doc, { startY: 18, head: [detailHead], body: detailBody(), styles: { fontSize: 8 }, headStyles: { fillColor: [13, 148, 136] }, columnStyles: { 7: { halign: "right" }, 8: { halign: "right" } } });
