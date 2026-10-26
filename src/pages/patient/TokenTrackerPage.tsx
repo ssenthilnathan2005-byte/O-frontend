@@ -126,11 +126,7 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
   const tokensAheadFromStatuses = ongoingTokenFromStatuses
     ? Object.entries(statuses).filter(([n, s]) => (s === "red" || s === "yellow") && Number(n) < tokenNumber).length
     : 0;
-  const frontDeskWaiting = Object.entries(statuses).filter(([n, s]) => Number(n) >= 1000 && (s === "red" || s === "yellow")).length;
-  const hasFrontDesk = frontDeskWaiting > 0 || (nowSeeingToken !== null && nowSeeingToken >= 1000);
-  const tokensAheadFromCurrent = hasFrontDesk
-    ? Object.entries(statuses).filter(([n, s]) => (s === "red" || s === "yellow") && (Number(n) >= 1000 || Number(n) < tokenNumber)).length
-    : nowSeeingToken !== null ? Math.max(tokenNumber - nowSeeingToken - 1, 0) : null;
+  const tokensAheadFromCurrent = nowSeeingToken !== null ? Math.max(tokenNumber - nowSeeingToken - 1, 0) : null;
   const tokensAhead = myStatus === "green" || myStatus === "orange"
     ? 0
     : (tokensAheadFromCurrent ?? tokensAheadFromStatuses);
@@ -453,7 +449,7 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
         {[
           { icon: <CheckCircle className="w-4 h-4 text-teal-600" />,  bg: "bg-teal-100",   value: totalBookedCount,   label: "Total Booked" },
           { icon: <CheckCircle className="w-4 h-4 text-green-600" />, bg: "bg-green-100",  value: completedCount,     label: "Completed" },
-          { icon: <Clock className="w-4 h-4 text-orange-600" />,      bg: "bg-orange-100", value: nowSeeingToken == null ? "-" : nowSeeingToken >= 1000 ? "F" + (nowSeeingToken - 1000) : nowSeeingToken, label: "Now Seeing" },
+          { icon: <Clock className="w-4 h-4 text-orange-600" />,      bg: "bg-orange-100", value: nowSeeingToken ?? "-", label: "Now Seeing" },
           { icon: <Activity className="w-4 h-4 text-blue-600" />,     bg: "bg-blue-100",   value: tokensAhead,        label: "Tokens Ahead" },
         { icon: <Clock className="w-4 h-4 text-purple-600" />,      bg: "bg-purple-100", value: estimatedWaitLabel,  label: "Est. Wait" },
         ].map((stat) => (

@@ -79,15 +79,15 @@ function RegisterWalkIn() {
       const r = await call("/walkin", "POST", f);
       setDone(r);
       setF({ ...empty, doctorId: f.doctorId, session: f.session, date: f.date });
-      toast.success("Token F" + (r.tokenNumber - 1000) + " created");
+      toast.success("Token " + r.tokenNumber + " created");
     } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
   }
   return (
     <div className="max-w-xl space-y-3">
-      <p className="text-sm text-gray-500">For patients without the app. The patient is called right after the one currently with the doctor.</p>
+      <p className="text-sm text-gray-500">For patients without the app. The patient gets the next token in the doctor's queue.</p>
       {done && (
         <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm">
-          <b>{done.patientName}</b>: token <b>F{done.tokenNumber - 1000}</b>, {done.doctorName} ({done.session}, {done.date})
+          <b>{done.patientName}</b>: token <b>{done.tokenNumber}</b>, {done.doctorName} ({done.session}, {done.date})
         </div>
       )}
       <div><Label>Patient name *</Label><Input value={f.patientName} onChange={(e) => setF({ ...f, patientName: e.target.value })} /></div>
@@ -127,7 +127,7 @@ function Outpatients() {
       "<tr><td>Date</td><td class='r'>" + esc(new Date(b.fee_paid_at as string).toLocaleString()) + "</td></tr>" +
       "<tr><td>Patient</td><td class='r'>" + esc(b.patient_name) + "</td></tr>" +
       "<tr><td>Doctor</td><td class='r'>" + esc(b.doctor_name) + "</td></tr>" +
-      "<tr><td>Token</td><td class='r'>" + esc(b.token_number >= 1000 ? "F" + (b.token_number - 1000) : b.token_number) + "</td></tr>" +
+      "<tr><td>Token</td><td class='r'>" + esc(b.token_number) + "</td></tr>" +
       "<tr><td>Paid by</td><td class='r'>" + esc(String(b.fee_mode).toUpperCase()) + "</td></tr>" +
       "<tr><td><b>Amount</b></td><td class='r'><b>Rs. " + esc(b.fee_amount) + "</b></td></tr></table><hr/><div>Thank you</div></body></html>");
     w.document.close(); w.focus(); w.print();
@@ -206,9 +206,9 @@ function Outpatients() {
           {list.map(b => (
             <div key={b.id} className="px-4 py-3 border-t border-gray-100">
               <div className="flex flex-wrap items-center gap-3">
-                <div className="min-w-[2.25rem] h-9 px-1 rounded-lg bg-teal-50 text-teal-700 font-bold flex items-center justify-center">{b.token_number >= 1000 ? "F" + (b.token_number - 1000) : b.token_number}</div>
+                <div className="min-w-[2.25rem] h-9 px-1 rounded-lg bg-teal-50 text-teal-700 font-bold flex items-center justify-center">{b.token_number}</div>
                 <div className="flex-1 min-w-[140px]">
-                  <p className="font-medium text-gray-900 truncate">{b.patient_name}{b.patient_age != null ? ", " + b.patient_age : ""}{b.token_number >= 1000 && <span className="ml-2 text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded px-1.5 py-0.5">Front desk</span>}</p>
+                  <p className="font-medium text-gray-900 truncate">{b.patient_name}{b.patient_age != null ? ", " + b.patient_age : ""}{b.booking_source === "front_desk" && <span className="ml-2 text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded px-1.5 py-0.5">Front desk</span>}</p>
                   <p className="text-xs text-gray-500 truncate">{b.phone || "No phone"}{b.complaint ? " | " + b.complaint : ""}</p>
                 </div>
                 {(b as any).stage && <span className={"text-xs font-medium rounded-md px-2 py-1 border " + ((b as any).stage === "collected" ? "bg-emerald-50 text-emerald-700 border-emerald-100" : (b as any).stage === "collect_tablets" ? "bg-amber-50 text-amber-700 border-amber-100" : (b as any).stage === "seen" ? "bg-blue-50 text-blue-700 border-blue-100" : "bg-gray-50 text-gray-600 border-gray-200")}>{({ waiting: "Waiting", seen: "Seen doctor", collect_tablets: "Collect tablets", collected: "Tablets collected" } as Record<string, string>)[(b as any).stage]}</span>}

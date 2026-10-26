@@ -1020,7 +1020,7 @@ export default function DoctorDashboard() {
         );
       }
     }
-    const fdTokens = Object.keys(statuses).map(Number).filter((x) => x >= 1000).sort((a, b) => a - b);
+    const fdTokens = Object.keys(statuses).map(Number).filter(() => false).sort((a, b) => a - b);
     if (fdTokens.length > 0) {
       const fdBookings = getBookingsForSession(sessionId);
       elements.push(<div key="fd_hdr" className="col-span-5 sm:col-span-10 mt-2 text-xs font-semibold text-blue-700">Front desk patients (called before online tokens)</div>);
