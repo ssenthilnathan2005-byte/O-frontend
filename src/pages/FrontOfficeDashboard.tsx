@@ -2,7 +2,7 @@ import VitalsScanAll from "@/components/VitalsScanAll";
 import DateInput from "@/components/DateInput";
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { LogOut, RefreshCw, UserCheck, BedDouble, Undo2, ClipboardList, Activity, Receipt, Printer } from "lucide-react";
+import { LogOut, RefreshCw, UserCheck, BedDouble, Undo2, ClipboardList, Activity, Receipt, Printer, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,7 +31,7 @@ async function call(path: string, method = "GET", body?: any) {
 interface OPBooking {
   id: string; patient_name: string; patient_age: number | null; phone: string | null; complaint: string | null;
   doctor_name: string; session: string; token_number: number; status: string; checked_in_at: string | null; vitals?: Vitals | null;
-  fee_amount?: number | null; fee_mode?: string | null; fee_paid_at?: string | null; doctor_fee?: number | null;
+  booking_source?: string | null; fee_amount?: number | null; fee_mode?: string | null; fee_paid_at?: string | null; doctor_fee?: number | null;
 }
 interface Bed { bed_id: string; bed_number: string; ward_id: string; ward_name: string }
 interface Admitted {
@@ -41,6 +41,58 @@ interface Admitted {
 
 const sel = "w-full h-10 rounded-md border border-gray-200 bg-white px-3 text-sm";
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+function RegisterWalkIn() {
+  const today = new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
+  const [docs, setDocs] = useState<{ id: string; name: string; specialty: string }[]>([]);
+  const empty = { patientName: "", phone: "", age: "", complaint: "", doctorId: "", session: "morning", date: today };
+  const [f, setF] = useState(empty);
+  const [saving, setSaving] = useState(false);
+  const [done, setDone] = useState<any>(null);
+  useEffect(() => { call("/walkin/doctors").then((r) => setDocs(r.doctors || [])).catch((e) => toast.error(e.message)); }, []);
+  async function submit() {
+    if (!f.patientName.trim()) return toast.error("Enter patient name");
+    if (!f.doctorId) return toast.error("Choose a doctor");
+    setSaving(true);
+    try {
+      const r = await call("/walkin", "POST", f);
+      setDone(r);
+      setF({ ...empty, doctorId: f.doctorId, session: f.session, date: f.date });
+      toast.success("Token " + r.tokenNumber + " created");
+    } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
+  }
+  return (
+    <div className="max-w-xl space-y-3">
+      <p className="text-sm text-gray-500">For patients without the app. Creates a token in the doctor's queue like an online booking.</p>
+      {done && (
+        <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm">
+          <b>{done.patientName}</b>: token <b>{done.tokenNumber}</b>, {done.doctorName} ({done.session}, {done.date})
+        </div>
+      )}
+      <div><Label>Patient name *</Label><Input value={f.patientName} onChange={(e) => setF({ ...f, patientName: e.target.value })} /></div>
+      <div className="grid grid-cols-2 gap-3">
+        <div><Label>Phone (optional)</Label><Input inputMode="numeric" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></div>
+        <div><Label>Age</Label><Input inputMode="numeric" value={f.age} onChange={(e) => setF({ ...f, age: e.target.value })} /></div>
+      </div>
+      <div><Label>Complaint</Label><Input value={f.complaint} onChange={(e) => setF({ ...f, complaint: e.target.value })} /></div>
+      <div><Label>Doctor *</Label>
+        <select className={sel} value={f.doctorId} onChange={(e) => setF({ ...f, doctorId: e.target.value })}>
+          <option value="">Select doctor</option>
+          {docs.map((d) => <option key={d.id} value={d.id}>{d.name}{d.specialty ? " - " + d.specialty : ""}</option>)}
+        </select>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div><Label>Session</Label>
+          <select className={sel} value={f.session} onChange={(e) => setF({ ...f, session: e.target.value })}>
+            <option value="morning">Morning</option><option value="afternoon">Afternoon</option><option value="evening">Evening</option>
+          </select>
+        </div>
+        <div><Label>Date</Label><input type="date" className={sel} value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} /></div>
+      </div>
+      <Button onClick={submit} disabled={saving}>{saving ? "Saving..." : "Create token"}</Button>
+    </div>
+  );
+}
 
 function Outpatients() {
   const [date, setDate] = useState("");
@@ -336,10 +388,11 @@ export default function FrontOfficeDashboard() {
         <div className="flex flex-wrap gap-2">
           <button className={tabCls(tab === "op")} onClick={() => setTab("op")}><UserCheck className="w-4 h-4" />Today's outpatients</button>
           <button className={tabCls(tab === "admit")} onClick={() => setTab("admit")}><BedDouble className="w-4 h-4" />Admit inpatient</button>
+          <button className={tabCls(tab === "walkin")} onClick={() => setTab("walkin")}><UserPlus className="w-4 h-4" />Register patient</button>
           <button className={tabCls(tab === "beds")} onClick={() => setTab("beds")}><BedDouble className="w-4 h-4" />Bed requests</button>
         {extraNav.map(n => (<button key={n.key} className={tabCls(tab === n.key)} onClick={() => setTab(n.key)}><n.icon className="w-4 h-4" />{n.label}</button>))}
         </div>
-        {tab.startsWith("x:") ? <ExtraPanel moduleKey={tab.slice(2)} /> : tab === "op" ? <Outpatients /> : tab === "beds" ? <HABedRequests /> : <Admit />}
+        {tab.startsWith("x:") ? <ExtraPanel moduleKey={tab.slice(2)} /> : tab === "op" ? <Outpatients /> : tab === "walkin" ? <RegisterWalkIn /> : tab === "beds" ? <HABedRequests /> : <Admit />}
       </main>
     </div>
   );
