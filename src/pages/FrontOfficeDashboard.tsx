@@ -1,4 +1,4 @@
-import { hasSessionEndedForDate } from "../data/seed";
+import { hasSessionEndedForDate, getSessionLabelForDate } from "../data/seed";
 import VitalsScanAll from "@/components/VitalsScanAll";
 import DateInput from "@/components/DateInput";
 import { useState, useEffect, useCallback } from "react";
@@ -75,10 +75,13 @@ function RegisterWalkIn() {
     const [yy, mm, dd] = f.date.split("-").map(Number);
     const dow = new Date(Date.UTC(yy, mm - 1, dd)).getUTCDay();
     const bucket = cfg && cfg[dow === 0 || dow === 6 ? "weekend" : "weekday"];
+    const has = (x: any) => x !== undefined && x !== null && x !== "";
     const raw = bucket ? bucket[sn] : undefined;
     const val = raw && typeof raw === "object" ? raw.count : raw;
-    const bad = val === undefined || val === null || val === "" || !Number.isFinite(Number(val)) || Number(val) < 0;
-    const cap = bad ? Number(selDoc.tokens_per_session) : Number(val);
+    const fb = Number(selDoc.tokens_per_session);
+    const okVal = has(val) && Number.isFinite(Number(val)) && Number(val) >= 0;
+    const listed = bucket && typeof bucket === "object" && ["morning", "afternoon", "evening"].some((k) => has(bucket[k]));
+    const cap = listed ? (!has(raw) ? 0 : (okVal ? Number(val) : fb)) : (okVal ? Number(val) : fb);
     if (!(cap > 0)) return false;
     return !hasSessionEndedForDate(f.date, sn as any, cfg as any, tim as any);
   });
@@ -149,7 +152,7 @@ function RegisterWalkIn() {
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5"><Label className="block">Session</Label>
           <select className={sel} value={f.session} onChange={(e) => setF({ ...f, session: e.target.value })}>
-            {sessionOptions.length === 0 ? <option value="">{f.doctorId ? "No session available" : "Select doctor first"}</option> : sessionOptions.map((sn) => <option key={sn} value={sn}>{sn.charAt(0).toUpperCase() + sn.slice(1)}</option>)}
+            {sessionOptions.length === 0 ? <option value="">{f.doctorId ? "Doctor not available on this date" : "Select doctor first"}</option> : sessionOptions.map((sn) => <option key={sn} value={sn}>{getSessionLabelForDate(f.date, sn as any, parseJ(selDoc?.schedule_config) as any, parseJ(selDoc?.session_timings) as any)}</option>)}
           </select>
         </div>
         <div className="space-y-1.5"><Label className="block">Date (dd-mm-yyyy)</Label>
