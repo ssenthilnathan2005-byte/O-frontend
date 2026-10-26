@@ -98,44 +98,44 @@ function RegisterWalkIn() {
     } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
   }
   return (
-    <div className="max-w-xl space-y-3">
+    <div className="max-w-xl space-y-4">
       <p className="text-sm text-gray-500">For patients without the app. The patient gets the next token in the doctor's queue.</p>
       {done && (
         <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm">
           <b>{done.patientName}</b>: token <b>{done.tokenNumber}</b>, {done.doctorName} ({done.session}, {String(done.date || "").split("-").reverse().join("-")})
         </div>
       )}
-      <div><Label>Patient name *</Label><Input value={f.patientName} onChange={(e) => setF({ ...f, patientName: e.target.value })} /></div>
-      <div className="grid grid-cols-2 gap-3">
-        <div><Label>Phone (optional)</Label><Input inputMode="numeric" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></div>
-        <div><Label>Age</Label><Input inputMode="numeric" value={f.age} onChange={(e) => setF({ ...f, age: e.target.value })} /></div>
+      <div className="space-y-1.5"><Label className="block">Patient name *</Label><Input style={{ height: 40 }} value={f.patientName} onChange={(e) => setF({ ...f, patientName: e.target.value })} /></div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1.5"><Label className="block">Phone (optional)</Label><Input style={{ height: 40 }} inputMode="numeric" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></div>
+        <div className="space-y-1.5"><Label className="block">Age</Label><Input style={{ height: 40 }} inputMode="numeric" value={f.age} onChange={(e) => setF({ ...f, age: e.target.value })} /></div>
       </div>
       
-      <div><Label>Type of doctor</Label>
+      <div className="space-y-1.5"><Label className="block">Type of doctor</Label>
         <select className={sel} value={spec} onChange={(e) => { const v = e.target.value; setSpec(v); if (v && selDoc && selDoc.specialty !== v) setF({ ...f, doctorId: "" }); }}>
           <option value="">All types</option>
           {specialties.map((sp) => <option key={sp} value={sp}>{sp}</option>)}
         </select>
       </div>
-      <div><Label>Doctor *</Label>
+      <div className="space-y-1.5"><Label className="block">Doctor *</Label>
         <select className={sel} value={f.doctorId} onChange={(e) => setF({ ...f, doctorId: e.target.value })}>
           <option value="">Select doctor</option>
           {shownDocs.map((d) => <option key={d.id} value={d.id}>{d.name}{d.specialty ? " - " + d.specialty : ""}</option>)}
         </select>
       </div>
-      <div><Label>Complaint</Label><Input value={f.complaint} onChange={(e) => setF({ ...f, complaint: e.target.value })} /></div>
-      <div><Label>Description</Label>
+      <div className="space-y-1.5"><Label className="block">Complaint</Label><Input style={{ height: 40 }} value={f.complaint} onChange={(e) => setF({ ...f, complaint: e.target.value })} /></div>
+      <div className="space-y-1.5"><Label className="block">Description</Label>
         <textarea rows={3} className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm" placeholder="Symptoms, duration, anything the doctor should know" value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} />
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div><Label>Session</Label>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1.5"><Label className="block">Session</Label>
           <select className={sel} value={f.session} onChange={(e) => setF({ ...f, session: e.target.value })}>
             {sessionOptions.length === 0 ? <option value="">{f.doctorId ? "No session available" : "Select doctor first"}</option> : sessionOptions.map((sn) => <option key={sn} value={sn}>{sn.charAt(0).toUpperCase() + sn.slice(1)}</option>)}
           </select>
         </div>
-        <div><Label>Date (dd-mm-yyyy)</Label>
+        <div className="space-y-1.5"><Label className="block">Date (dd-mm-yyyy)</Label>
           <div className="relative">
-            <Input inputMode="numeric" placeholder="dd-mm-yyyy" maxLength={10} value={dateText} onChange={(e) => onDateText(e.target.value)} />
+            <Input style={{ height: 40 }} inputMode="numeric" placeholder="dd-mm-yyyy" maxLength={10} value={dateText} onChange={(e) => onDateText(e.target.value)} />
             <button type="button" aria-label="Pick date" className="absolute right-0 top-0 h-full w-10 flex items-center justify-center text-gray-500"
               onClick={(e) => { const el = e.currentTarget.nextElementSibling as HTMLInputElement | null; try { el?.showPicker(); } catch { el?.focus(); } }}>
               <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
