@@ -72,17 +72,18 @@ function RegisterWalkIn() {
     if (!selDoc) return false;
     const cfg = parseJ(selDoc.schedule_config);
     const tim = parseJ(selDoc.session_timings);
+    const list = parseJ(selDoc.sessions);
+    if (Array.isArray(list) && list.length) {
+      if (!list.includes(sn)) return false;
+    } else if (!(tim && tim[sn]) && !(cfg && ((cfg.weekday && cfg.weekday[sn]) || (cfg.weekend && cfg.weekend[sn])))) {
+      return false;
+    }
     const [yy, mm, dd] = f.date.split("-").map(Number);
     const dow = new Date(Date.UTC(yy, mm - 1, dd)).getUTCDay();
     const bucket = cfg && cfg[dow === 0 || dow === 6 ? "weekend" : "weekday"];
-    const has = (x: any) => x !== undefined && x !== null && x !== "";
     const raw = bucket ? bucket[sn] : undefined;
-    const val = raw && typeof raw === "object" ? raw.count : raw;
-    const fb = Number(selDoc.tokens_per_session);
-    const okVal = has(val) && Number.isFinite(Number(val)) && Number(val) >= 0;
-    const listed = bucket && typeof bucket === "object" && ["morning", "afternoon", "evening"].some((k) => has(bucket[k]));
-    const cap = listed ? (!has(raw) ? 0 : (okVal ? Number(val) : fb)) : (okVal ? Number(val) : fb);
-    if (!(cap > 0)) return false;
+    const cnt = raw && typeof raw === "object" ? raw.count : raw;
+    if (cnt !== undefined && cnt !== null && cnt !== "" && Number(cnt) === 0) return false;
     return !hasSessionEndedForDate(f.date, sn as any, cfg as any, tim as any);
   });
   useEffect(() => {
