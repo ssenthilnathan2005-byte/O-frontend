@@ -1,3 +1,4 @@
+import { hasSessionEndedForDate } from "../data/seed";
 import VitalsScanAll from "@/components/VitalsScanAll";
 import DateInput from "@/components/DateInput";
 import { useState, useEffect, useCallback } from "react";
@@ -44,15 +45,35 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 function RegisterWalkIn() {
   const today = new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
-  const [docs, setDocs] = useState<{ id: string; name: string; specialty: string }[]>([]);
+  const [docs, setDocs] = useState<any[]>([]);
   const empty = { patientName: "", phone: "", age: "", complaint: "", doctorId: "", session: "morning", date: today };
   const [f, setF] = useState(empty);
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState<any>(null);
+  const selDoc: any = docs.find((d: any) => d.id === f.doctorId);
+  const parseJ = (v: any) => { if (typeof v === "string") { try { return JSON.parse(v); } catch { return null; } } return v ?? null; };
+  const sessionOptions: string[] = ["morning", "afternoon", "evening"].filter((sn) => {
+    if (!selDoc) return false;
+    const cfg = parseJ(selDoc.schedule_config);
+    const tim = parseJ(selDoc.session_timings);
+    const [yy, mm, dd] = f.date.split("-").map(Number);
+    const dow = new Date(Date.UTC(yy, mm - 1, dd)).getUTCDay();
+    const bucket = cfg && cfg[dow === 0 || dow === 6 ? "weekend" : "weekday"];
+    const raw = bucket ? bucket[sn] : undefined;
+    const val = raw && typeof raw === "object" ? raw.count : raw;
+    const bad = val === undefined || val === null || val === "" || !Number.isFinite(Number(val)) || Number(val) < 0;
+    const cap = bad ? Number(selDoc.tokens_per_session) : Number(val);
+    if (!(cap > 0)) return false;
+    return !hasSessionEndedForDate(f.date, sn as any, cfg as any, tim as any);
+  });
+  useEffect(() => {
+    if (sessionOptions.length && !sessionOptions.includes(f.session)) setF((p) => ({ ...p, session: sessionOptions[0] }));
+  }, [f.doctorId, f.date, sessionOptions.join()]);
   useEffect(() => { call("/walkin/doctors").then((r) => setDocs(r.doctors || [])).catch((e) => toast.error(e.message)); }, []);
   async function submit() {
     if (!f.patientName.trim()) return toast.error("Enter patient name");
     if (!f.doctorId) return toast.error("Choose a doctor");
+    if (!sessionOptions.includes(f.session)) return toast.error("No session available for this doctor on this date");
     setSaving(true);
     try {
       const r = await call("/walkin", "POST", f);
@@ -84,7 +105,7 @@ function RegisterWalkIn() {
       <div className="grid grid-cols-2 gap-3">
         <div><Label>Session</Label>
           <select className={sel} value={f.session} onChange={(e) => setF({ ...f, session: e.target.value })}>
-            <option value="morning">Morning</option><option value="afternoon">Afternoon</option><option value="evening">Evening</option>
+            {sessionOptions.length === 0 ? <option value="">{f.doctorId ? "No session available" : "Select doctor first"}</option> : sessionOptions.map((sn) => <option key={sn} value={sn}>{sn.charAt(0).toUpperCase() + sn.slice(1)}</option>)}
           </select>
         </div>
         <div><Label>Date</Label><input type="date" className={sel} value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} /></div>
