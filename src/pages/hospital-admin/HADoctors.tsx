@@ -277,7 +277,7 @@ export default function HADoctors() {
                     onBlur={() => setTimeout(() => setAddSpOpen(false), 150)}
                   />
                   {addSpOpen && (
-                    <div className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto rounded-md border border-border bg-popover shadow-md">
+                    <div className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto overscroll-contain rounded-md border border-border bg-popover shadow-md" onMouseDown={(e) => e.preventDefault()} onWheel={(e) => e.stopPropagation()}>
                       {SPECIALTIES.filter((s) => s.toLowerCase().includes((addSpSearch || addForm.specialty).toLowerCase())).map((s) => (
                         <button key={s} type="button"
                           className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors"
@@ -433,7 +433,7 @@ export default function HADoctors() {
                   onBlur={() => setTimeout(() => setEditSpecialtyOpen(false), 150)}
                 />
                 {editSpecialtyOpen && (
-                  <div className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto rounded-md border border-border bg-popover shadow-md">
+                  <div className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto overscroll-contain rounded-md border border-border bg-popover shadow-md" onMouseDown={(e) => e.preventDefault()} onWheel={(e) => e.stopPropagation()}>
                     {SPECIALTIES.filter((s) => s.toLowerCase().includes((editSpecialtySearch || editForm.specialty).toLowerCase())).map((s) => (
                       <button
                         key={s} type="button"
