@@ -249,6 +249,27 @@ export default function VoicePrescription({ autoStart, saving, notes, onNotesCha
     return () => clearInterval(id);
   }, [phase]);
 
+  const reaskRef = useRef(0);
+  // ask out loud when something was not understood, then listen again (max 2 times)
+  function reask(msg: string, hasMeds: boolean): boolean {
+    if (reaskRef.current >= 2 || deadRef.current) { reaskRef.current = 0; return false; }
+    reaskRef.current += 1;
+    setError(msg);
+    const again = () => setTimeout(() => { if (!deadRef.current) void start(hasMeds); }, 300);
+    try {
+      const sy: any = (window as any).speechSynthesis;
+      if (voiceOutRef.current && sy) {
+        const u = new SpeechSynthesisUtterance(msg);
+        u.lang = "en-IN"; u.rate = 1.05;
+        u.onend = again; u.onerror = again;
+        sy.cancel(); sy.speak(u);
+        return true;
+      }
+    } catch { /* fall through */ }
+    again();
+    return true;
+  }
+
   async function finish(text: string) {
     const t = fixMisheard(text.trim());
     if (skipRef.current) { skipRef.current = false; setPhase(medsRef.current.length ? "review" : "ready"); return; }
@@ -257,6 +278,7 @@ export default function VoicePrescription({ autoStart, saving, notes, onNotesCha
     const backTo: Phase = appendRef.current && hasMeds ? "review" : "ready";
     if (!t) {
       setPhase(backTo);
+      if (reask("Sorry, I didn't catch that. Please say the medicine again.", hasMeds)) return;
       setError("I didn't catch anything. Tap the mic and speak again.");
       return;
     }
@@ -265,9 +287,11 @@ export default function VoicePrescription({ autoStart, saving, notes, onNotesCha
     const parsed = parseTranscript(t);
     if (!parsed.length) {
       setPhase(backTo);
+      if (reask("Sorry, I did not catch a medicine. Please say the medicine name, dose, how often and for how long.", hasMeds)) return;
       setError(`I couldn't find a medicine in: “${t}”. Say the medicine name first, then dose, how often and for how long.`);
       return;
     }
+    reaskRef.current = 0;
     setLowConf(confRef.current < 0.6);
     setHeard(prev => (appendRef.current && prev ? `${prev}\n${t}` : t));
     // show the parsed medicines at once; match their names in the background
