@@ -46,11 +46,24 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 function RegisterWalkIn() {
   const today = new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
   const [docs, setDocs] = useState<any[]>([]);
-  const empty = { patientName: "", phone: "", age: "", complaint: "", doctorId: "", session: "morning", date: today };
+  const empty = { patientName: "", phone: "", age: "", complaint: "", description: "", doctorId: "", session: "morning", date: today };
+  const [spec, setSpec] = useState("");
+  const [dateText, setDateText] = useState(today.split("-").reverse().join("-"));
   const [f, setF] = useState(empty);
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState<any>(null);
   const selDoc: any = docs.find((d: any) => d.id === f.doctorId);
+  const specialties = Array.from(new Set(docs.map((d: any) => d.specialty).filter(Boolean))).sort() as string[];
+  const shownDocs = spec ? docs.filter((d: any) => d.specialty === spec) : docs;
+  const onDateText = (v: string) => {
+    const t = v.replace(/[^\d-]/g, "").slice(0, 10);
+    setDateText(t);
+    const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(t);
+    if (!m) return;
+    const iso = m[3] + "-" + m[2] + "-" + m[1];
+    const d = new Date(iso + "T00:00:00Z");
+    if (!Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === iso) setF((p) => ({ ...p, date: iso }));
+  };
   const parseJ = (v: any) => { if (typeof v === "string") { try { return JSON.parse(v); } catch { return null; } } return v ?? null; };
   const sessionOptions: string[] = ["morning", "afternoon", "evening"].filter((sn) => {
     if (!selDoc) return false;
@@ -73,10 +86,12 @@ function RegisterWalkIn() {
   async function submit() {
     if (!f.patientName.trim()) return toast.error("Enter patient name");
     if (!f.doctorId) return toast.error("Choose a doctor");
+    if (dateText !== f.date.split("-").reverse().join("-")) return toast.error("Enter a valid date as dd-mm-yyyy");
     if (!sessionOptions.includes(f.session)) return toast.error("No session available for this doctor on this date");
     setSaving(true);
     try {
-      const r = await call("/walkin", "POST", f);
+      const { description, ...rest } = f;
+      const r = await call("/walkin", "POST", { ...rest, complaint: [f.complaint.trim(), description.trim()].filter(Boolean).join(" - ") });
       setDone(r);
       setF({ ...empty, doctorId: f.doctorId, session: f.session, date: f.date });
       toast.success("Token " + r.tokenNumber + " created");
@@ -87,7 +102,7 @@ function RegisterWalkIn() {
       <p className="text-sm text-gray-500">For patients without the app. The patient gets the next token in the doctor's queue.</p>
       {done && (
         <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm">
-          <b>{done.patientName}</b>: token <b>{done.tokenNumber}</b>, {done.doctorName} ({done.session}, {done.date})
+          <b>{done.patientName}</b>: token <b>{done.tokenNumber}</b>, {done.doctorName} ({done.session}, {String(done.date || "").split("-").reverse().join("-")})
         </div>
       )}
       <div><Label>Patient name *</Label><Input value={f.patientName} onChange={(e) => setF({ ...f, patientName: e.target.value })} /></div>
@@ -95,12 +110,22 @@ function RegisterWalkIn() {
         <div><Label>Phone (optional)</Label><Input inputMode="numeric" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></div>
         <div><Label>Age</Label><Input inputMode="numeric" value={f.age} onChange={(e) => setF({ ...f, age: e.target.value })} /></div>
       </div>
-      <div><Label>Complaint</Label><Input value={f.complaint} onChange={(e) => setF({ ...f, complaint: e.target.value })} /></div>
+      
+      <div><Label>Type of doctor</Label>
+        <select className={sel} value={spec} onChange={(e) => { const v = e.target.value; setSpec(v); if (v && selDoc && selDoc.specialty !== v) setF({ ...f, doctorId: "" }); }}>
+          <option value="">All types</option>
+          {specialties.map((sp) => <option key={sp} value={sp}>{sp}</option>)}
+        </select>
+      </div>
       <div><Label>Doctor *</Label>
         <select className={sel} value={f.doctorId} onChange={(e) => setF({ ...f, doctorId: e.target.value })}>
           <option value="">Select doctor</option>
-          {docs.map((d) => <option key={d.id} value={d.id}>{d.name}{d.specialty ? " - " + d.specialty : ""}</option>)}
+          {shownDocs.map((d) => <option key={d.id} value={d.id}>{d.name}{d.specialty ? " - " + d.specialty : ""}</option>)}
         </select>
+      </div>
+      <div><Label>Complaint</Label><Input value={f.complaint} onChange={(e) => setF({ ...f, complaint: e.target.value })} /></div>
+      <div><Label>Description</Label>
+        <textarea rows={3} className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm" placeholder="Symptoms, duration, anything the doctor should know" value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div><Label>Session</Label>
@@ -108,7 +133,17 @@ function RegisterWalkIn() {
             {sessionOptions.length === 0 ? <option value="">{f.doctorId ? "No session available" : "Select doctor first"}</option> : sessionOptions.map((sn) => <option key={sn} value={sn}>{sn.charAt(0).toUpperCase() + sn.slice(1)}</option>)}
           </select>
         </div>
-        <div><Label>Date</Label><input type="date" className={sel} value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} /></div>
+        <div><Label>Date (dd-mm-yyyy)</Label>
+          <div className="relative">
+            <Input inputMode="numeric" placeholder="dd-mm-yyyy" maxLength={10} value={dateText} onChange={(e) => onDateText(e.target.value)} />
+            <button type="button" aria-label="Pick date" className="absolute right-0 top-0 h-full w-10 flex items-center justify-center text-gray-500"
+              onClick={(e) => { const el = e.currentTarget.nextElementSibling as HTMLInputElement | null; try { el?.showPicker(); } catch { el?.focus(); } }}>
+              <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
+            </button>
+            <input type="date" tabIndex={-1} aria-hidden="true" className="absolute right-0 bottom-0 h-10 w-10 opacity-0 pointer-events-none" value={f.date}
+              onChange={(e) => { if (e.target.value) { setF({ ...f, date: e.target.value }); setDateText(e.target.value.split("-").reverse().join("-")); } }} />
+          </div>
+        </div>
       </div>
       <Button onClick={submit} disabled={saving}>{saving ? "Saving..." : "Create token"}</Button>
     </div>
