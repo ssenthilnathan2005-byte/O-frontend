@@ -928,8 +928,8 @@ export default function DoctorDashboard() {
     const arrivalRing = (n: number, st: TokenStatus) => {
       const bid = bookingByToken.get(n);
       if (!bid || !foInfo[bid]) return "";
-      if (foInfo[bid].checked_in_at) return "ring-4 ring-emerald-500 ring-offset-2";
-      return st === "red" || st === "yellow" ? "ring-4 ring-red-400 ring-offset-2" : "";
+      if (foInfo[bid].checked_in_at) return "ring-2 ring-emerald-500 ring-offset-1";
+      return st === "red" || st === "yellow" ? "ring-2 ring-red-400 ring-offset-1" : "";
     };
     const lateTokens = new Set<number>(
       getBookingsForSession(sessionId)
@@ -1431,7 +1431,7 @@ export default function DoctorDashboard() {
                           </div>
                         ))}
                       </div>
-                      <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
+                      <div className="grid grid-cols-5 sm:grid-cols-10 gap-3">
                         {renderTokenGrid()}
                       </div>
                     </div>
@@ -1465,7 +1465,7 @@ export default function DoctorDashboard() {
                           </div>
                         ))}
                       </div>
-                      <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
+                      <div className="grid grid-cols-5 sm:grid-cols-10 gap-3">
                         {renderTokenGrid()}
                       </div>
                     </div>
@@ -1513,7 +1513,7 @@ export default function DoctorDashboard() {
                         </div>
                       ))}
                     </div>
-                    <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
+                    <div className="grid grid-cols-5 sm:grid-cols-10 gap-3">
                       {renderTokenGrid()}
                     </div>
                   </>
