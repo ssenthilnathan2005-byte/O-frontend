@@ -1020,29 +1020,6 @@ export default function DoctorDashboard() {
         );
       }
     }
-    const fdTokens = Object.keys(statuses).map(Number).filter(() => false).sort((a, b) => a - b);
-    if (fdTokens.length > 0) {
-      const fdBookings = getBookingsForSession(sessionId);
-      elements.push(<div key="fd_hdr" className="col-span-5 sm:col-span-10 mt-2 text-xs font-semibold text-blue-700">Front desk patients (called before online tokens)</div>);
-      for (const n of fdTokens) {
-        const st: TokenStatus = (statuses[n] as TokenStatus) ?? "white";
-        const clickable = (st === "red" || st === "yellow" || st === "orange" || st === "unvisited") && !isClosed && isSessionAccessibleNow;
-        const bk: any = fdBookings.find((x: any) => x.tokenNumber === n && x.status !== "cancelled");
-        elements.push(
-          <button
-            key={"fd_" + n}
-            type="button"
-            disabled={!clickable}
-            onClick={() => handleTokenClick(n)}
-            title={bk?.patientName || ""}
-            className={`relative h-12 sm:h-14 min-w-[3rem] px-3 rounded-xl flex items-center justify-center gap-1 text-sm font-semibold border-2 transition-all select-none ${TOKEN_CLASSES[st] ?? "token-white"} ${clickable ? "cursor-pointer hover:scale-105" : ""} ${st === "orange" ? "scale-105 shadow-lg" : ""}`}
-          >
-            F{n - 1000}
-            {bk?.patientName && <span className="text-[10px] font-normal truncate max-w-[72px]">{bk.patientName}</span>}
-          </button>,
-        );
-      }
-    }
     return elements;
   }
 
