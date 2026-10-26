@@ -61,6 +61,14 @@ import { COMMON_MEDICINES } from "../lib/commonMedicines";
 import { pickBestAlternative, fixMisheard } from "../lib/voiceHeard";
 
 // Server-side speech-to-text: far better with accents and drug names than the phone's built-in recognizer
+// Whisper invents phrases like "Thank you" from silence or noise; drop them so they never become a medicine
+function cleanTranscript(t: string): string {
+  let x = t.trim();
+  if (/^[\s.,!?]*(thank you( very much)?|thanks( for watching)?|please subscribe|subscribe|bye|good bye|goodbye|you|okay|ok|hmm+|um+|uh+|yes|no)[\s.,!?]*$/i.test(x)) return "";
+  x = x.replace(/[\s.,!?]*\b(thank you( very much)?|thanks|bye)\b[\s.,!?]*$/i, "").trim();
+  return x;
+}
+
 async function transcribeOnServer(blob: Blob, hints: string[]): Promise<{ text: string; confidence: number | null }> {
   const form = new FormData();
   const ext = blob.type.includes("mp4") ? "m4a" : blob.type.includes("ogg") ? "ogg" : "webm";
@@ -78,7 +86,7 @@ async function transcribeOnServer(blob: Blob, hints: string[]): Promise<{ text: 
     });
     if (!res.ok) throw new Error("transcribe failed " + res.status);
     const data = await res.json();
-    return { text: String(data?.text || ""), confidence: typeof data?.confidence === "number" ? data.confidence : null };
+    return { text: cleanTranscript(String(data?.text || "")), confidence: typeof data?.confidence === "number" ? data.confidence : null };
   } finally {
     clearTimeout(timer);
   }
