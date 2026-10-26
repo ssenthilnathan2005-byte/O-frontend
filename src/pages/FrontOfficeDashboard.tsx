@@ -7,6 +7,7 @@ import { LogOut, RefreshCw, UserCheck, BedDouble, Undo2, ClipboardList, Activity
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { getSymptomsForSpecialty } from "@/data/doctorSymptoms";
 import { getToken } from "@/api";
 import { useStore } from "../context/StoreContext";
 import { Vitals, vitalsText } from "@/lib/vitals";
@@ -48,6 +49,7 @@ function RegisterWalkIn() {
   const [docs, setDocs] = useState<any[]>([]);
   const empty = { patientName: "", phone: "", age: "", complaint: "", description: "", doctorId: "", session: "morning", date: today };
   const [spec, setSpec] = useState("");
+  const [syms, setSyms] = useState<string[]>([]);
   const [dateText, setDateText] = useState(today.split("-").reverse().join("-"));
   const [f, setF] = useState(empty);
   const [saving, setSaving] = useState(false);
@@ -55,6 +57,7 @@ function RegisterWalkIn() {
   const selDoc: any = docs.find((d: any) => d.id === f.doctorId);
   const specialties = Array.from(new Set(docs.map((d: any) => d.specialty).filter(Boolean))).sort() as string[];
   const shownDocs = spec ? docs.filter((d: any) => d.specialty === spec) : docs;
+  const symData = selDoc ? getSymptomsForSpecialty(selDoc.specialty || "") : null;
   const onDateText = (v: string) => {
     const t = v.replace(/[^\d-]/g, "").slice(0, 10);
     setDateText(t);
@@ -91,9 +94,10 @@ function RegisterWalkIn() {
     setSaving(true);
     try {
       const { description, ...rest } = f;
-      const r = await call("/walkin", "POST", { ...rest, complaint: [f.complaint.trim(), description.trim()].filter(Boolean).join(" - ") });
+      const r = await call("/walkin", "POST", { ...rest, complaint: [[...syms, f.complaint.trim()].filter(Boolean).join(", "), description.trim()].filter(Boolean).join(" - ") });
       setDone(r);
       setF({ ...empty, doctorId: f.doctorId, session: f.session, date: f.date });
+      setSyms([]);
       toast.success("Token " + r.tokenNumber + " created");
     } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
   }
@@ -112,20 +116,35 @@ function RegisterWalkIn() {
       </div>
       
       <div className="space-y-1.5"><Label className="block">Type of doctor</Label>
-        <select className={sel} value={spec} onChange={(e) => { const v = e.target.value; setSpec(v); if (v && selDoc && selDoc.specialty !== v) setF({ ...f, doctorId: "" }); }}>
+        <select className={sel} value={spec} onChange={(e) => { const v = e.target.value; setSpec(v); if (v && selDoc && selDoc.specialty !== v) { setF({ ...f, doctorId: "" }); setSyms([]); } }}>
           <option value="">All types</option>
           {specialties.map((sp) => <option key={sp} value={sp}>{sp}</option>)}
         </select>
       </div>
       <div className="space-y-1.5"><Label className="block">Doctor *</Label>
-        <select className={sel} value={f.doctorId} onChange={(e) => setF({ ...f, doctorId: e.target.value })}>
+        <select className={sel} value={f.doctorId} onChange={(e) => { setF({ ...f, doctorId: e.target.value }); setSyms([]); }}>
           <option value="">Select doctor</option>
           {shownDocs.map((d) => <option key={d.id} value={d.id}>{d.name}{d.specialty ? " - " + d.specialty : ""}</option>)}
         </select>
       </div>
-      <div className="space-y-1.5"><Label className="block">Complaint</Label><Input style={{ height: 40 }} value={f.complaint} onChange={(e) => setF({ ...f, complaint: e.target.value })} /></div>
-      <div className="space-y-1.5"><Label className="block">Description</Label>
-        <textarea rows={3} className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm" placeholder="Symptoms, duration, anything the doctor should know" value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} />
+      {symData ? (
+        <div className="space-y-1.5"><Label className="block">Symptoms / Reason for visit <span className="text-xs text-gray-400">({symData.label})</span></Label>
+          <div className="rounded-md border border-gray-200 bg-white max-h-52 overflow-y-auto p-1">
+            <p className="text-xs text-gray-400 px-2 pt-1 pb-1">Select all that apply</p>
+            {symData.symptoms.map((sy) => (
+              <label key={sy} className="flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-gray-50 cursor-pointer">
+                <input type="checkbox" checked={syms.includes(sy)} onChange={() => setSyms((p) => p.includes(sy) ? p.filter((x) => x !== sy) : [...p, sy])} />
+                {sy}
+              </label>
+            ))}
+          </div>
+          {syms.length > 0 && <p className="text-xs text-teal-600 font-medium">{syms.length} selected</p>}
+        </div>
+      ) : (
+        <div className="space-y-1.5"><Label className="block">Complaint</Label><Input style={{ height: 40 }} value={f.complaint} onChange={(e) => setF({ ...f, complaint: e.target.value })} /></div>
+      )}
+      <div className="space-y-1.5"><Label className="block">Any other details (optional)</Label>
+        <textarea rows={3} className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm" placeholder="Anything else the doctor should know" value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5"><Label className="block">Session</Label>
