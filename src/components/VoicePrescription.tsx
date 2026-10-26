@@ -22,6 +22,7 @@ export type VoiceItem = {
 };
 
 interface Props {
+  autoStart?: boolean;
   onItemsChange?: (items: VoiceItem[], pending?: string[]) => void;
   saving: boolean;
   notes: string;
@@ -154,7 +155,7 @@ const DURATION_CHIPS = [3, 5, 7, 10, 14];
 const chip = (on: boolean) =>
   `px-3 py-1.5 rounded-full border text-sm transition-colors ${on ? "bg-blue-600 border-blue-600 text-white" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"}`;
 
-export default function VoicePrescription({ saving, notes, onNotesChange, onSkip, onConfirm, onItemsChange }: Props) {
+export default function VoicePrescription({ autoStart, saving, notes, onNotesChange, onSkip, onConfirm, onItemsChange }: Props) {
   const [phase, setPhase] = useState<Phase>("ready");
   const [error, setError] = useState("");
   const [live, setLive] = useState("");
@@ -412,6 +413,12 @@ export default function VoicePrescription({ saving, notes, onNotesChange, onSkip
     if (phaseRef.current === "listening") { skipRef.current = true; stop(); }
     else setPhase(medsRef.current.length ? "review" : "ready");
   }
+
+  useEffect(() => {
+    if (!autoStart) return;
+    const t = setTimeout(() => { void start(); }, 1500);
+    return () => clearTimeout(t);
+  }, []); // eslint-disable-line
 
   async function start(append = false, answering = false) {
     const ph: Phase = phaseRef.current;
