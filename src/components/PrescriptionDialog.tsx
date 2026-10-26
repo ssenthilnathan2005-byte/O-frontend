@@ -31,6 +31,7 @@ interface Medicine {
 
 interface Props {
   open: boolean;
+  autoListen?: boolean;
   onClose: () => void;
   onConfirm: () => void; // called after prescription saved (or skipped)
   booking: {
@@ -131,7 +132,7 @@ function getCustomText(instructions: string): string {
 }
 
 export default function PrescriptionDialog({
-  open, onClose, onConfirm, booking, doctorId, doctorName, hospitalId, hospitalName
+  open, onClose, onConfirm, booking, doctorId, doctorName, hospitalId, hospitalName, autoListen
 }: Props) {
   const [medicines, setMedicines] = useState<Medicine[]>([{ ...EMPTY_MED }]);
   const [notes, setNotes] = useState("");
@@ -474,6 +475,7 @@ export default function PrescriptionDialog({
         )}
         <div className={mode === "voice" ? "" : "hidden"}>
           <VoicePrescription
+            autoStart={autoListen}
             saving={saving}
             notes={notes}
             onNotesChange={setNotes}

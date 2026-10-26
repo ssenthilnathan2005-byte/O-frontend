@@ -449,6 +449,7 @@ export default function DoctorDashboard() {
   const [closeReason, setCloseReason] = useState("");
   const [showPrescription, setShowPrescription] = useState(false);
   const [completionMode, setCompletionMode] = useState<"normal" | "skipped">("normal");
+  const [nurseAuto, setNurseAuto] = useState(false);
 
   // Clock tick (every 30s) so sessions hide / auto-end on time without a refresh
   const [nowTick, setNowTick] = useState(() => Date.now());
@@ -1016,6 +1017,41 @@ export default function DoctorDashboard() {
   }
 
   const currentDoctor = doctors.find((d) => d.id === doctorUser.doctorId);
+
+  const nurseApi = {
+    counts: () => {
+      const v = Object.values(statuses) as string[];
+      const n = (s: string) => v.filter((x) => x === s).length;
+      const waiting = n("red") + n("yellow");
+      const ongoing = n("orange");
+      const seen = n("green");
+      return { arrived: waiting + ongoing + seen, waiting, ongoing, seen, skipped: n("unvisited") };
+    },
+    nextToken: (): number | null => {
+      if (isClosed || cancelled || regDate !== todayStr) return null;
+      return Object.entries(statuses)
+        .filter(([, s]) => s === "red" || s === "yellow")
+        .map(([k]) => Number(k))
+        .sort((a, b) => a - b)[0] ?? null;
+    },
+    ongoingToken: (): number | null => {
+      const e = Object.entries(statuses).find(([, s]) => s === "orange");
+      return e ? Number(e[0]) : null;
+    },
+    nameOf: (num: number): string =>
+      getBookingsForSession(sessionId).find((b) => b.tokenNumber === num)?.patientName || "",
+    call: (num: number) => proceedWithRegulate(num),
+    prescribe: (): string => {
+      const e = Object.entries(statuses).find(([, s]) => s === "orange");
+      if (!e) return "No patient is with you. Say call the next patient first.";
+      if (!hasPharmacy) return "Prescriptions are not enabled for this hospital.";
+      setTokenDialog({ open: false, tokenNum: Number(e[0]) });
+      setCompletionMode("normal");
+      setNurseAuto(true);
+      setShowPrescription(true);
+      return "Token " + e[0] + ". Go ahead.";
+    },
+  };
 
   const doctorNavItems = [
     { key: "regulator", label: "Regulator", icon: Activity },
@@ -1652,7 +1688,7 @@ export default function DoctorDashboard() {
         <PrescriptionPresetsManager doctor={doctor} />
       </TabsContent>
 
-      <TabsContent value="nurse"><NurseTab onNavigate={goDoctorTab} /></TabsContent>
+      <TabsContent value="nurse"><NurseTab onNavigate={goDoctorTab} nurse={nurseApi} /></TabsContent>
       <TabsContent value="profile">
           <div className="space-y-4">
             {/* PHOTO IDENTITY */}
@@ -2349,9 +2385,11 @@ export default function DoctorDashboard() {
 
       <PrescriptionDialog
         open={showPrescription}
-        onClose={() => setShowPrescription(false)}
+        autoListen={nurseAuto}
+        onClose={() => { setShowPrescription(false); setNurseAuto(false); }}
         onConfirm={() => {
           setShowPrescription(false);
+          setNurseAuto(false);
           const pendingToken = (window as any)._pendingRegulateToken;
           if (pendingToken != null) {
             (window as any)._pendingRegulateToken = null;
