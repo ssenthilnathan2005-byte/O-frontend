@@ -53,6 +53,8 @@ import {
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Download } from "lucide-react";
 import PrescriptionDialog from "@/components/PrescriptionDialog";
+import NurseTab from "@/components/NurseTab";
+import { Mic as NurseMic } from "lucide-react";
 import PatientHistoryModal from "@/components/PatientHistoryModal";
 import { toast } from "sonner";
 import { useStore } from "../../context/StoreContext";
@@ -205,7 +207,7 @@ function sanitizeSessionTimings(
   return result;
 }
 
-type DoctorTab = "regulator" | "livetokens" | "profile" | "presets";
+type DoctorTab = "regulator" | "livetokens" | "profile" | "presets" | "nurse";
 
 function getInitialDoctorTab(): DoctorTab {
   if (typeof window === "undefined") return "regulator";
@@ -1021,6 +1023,7 @@ export default function DoctorDashboard() {
     { key: "profile", label: "Profile", icon: User },
     { key: "followups", label: "Follow-ups", icon: Bell },
     { key: "presets", label: "Presets", icon: ClipboardList },
+    { key: "nurse", label: "Nurse", icon: NurseMic },
     ...extraNav.map((n) => ({ key: n.key, label: n.label, icon: n.icon })),
   ];
 
@@ -1649,6 +1652,7 @@ export default function DoctorDashboard() {
         <PrescriptionPresetsManager doctor={doctor} />
       </TabsContent>
 
+      <TabsContent value="nurse"><NurseTab onNavigate={goDoctorTab} /></TabsContent>
       <TabsContent value="profile">
           <div className="space-y-4">
             {/* PHOTO IDENTITY */}
