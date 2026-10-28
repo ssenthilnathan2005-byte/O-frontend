@@ -1,5 +1,5 @@
 import { useBodyScrollLock } from "../../lib/useBodyScrollLock";
-import { ShieldCheck, HeartPulse, Activity, BarChart3, ChevronDown, ShoppingCart, Fingerprint, BedDouble, Building2, ClipboardList, FlaskConical, LayoutDashboard, LogOut, Menu, Package, Pill, Receipt, Stethoscope, UserCog, Users2, Users, X } from "lucide-react";
+import { ShieldCheck, HeartPulse, Activity, BarChart3, ChevronDown, ShoppingCart, Fingerprint, BedDouble, Building2, ClipboardList, FlaskConical, LayoutDashboard, LogOut, Menu, Package, Pill, Receipt, Stethoscope, UserCog, Users2, Users, X, Settings2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useStore } from "../../context/StoreContext";
 import useAdminSession from "../../hooks/useAdminSession";
@@ -15,6 +15,7 @@ import HAHR from "./HAHR";
 import HANurses from "./HANurses";
 import HAFrontOfficeStaff from "./HAFrontOfficeStaff";
 import HAIntakeSettings from "./HAIntakeSettings";
+import HospitalFunctioning from "./HospitalFunctioning";
 import HAFrontDeskCollections from "./HAFrontDeskCollections";
 import HAInventory from "./HAInventory";
 import HALab from "./HALab";
@@ -26,6 +27,7 @@ import useModules from "../../hooks/useModules";
 import { PharmRevenue, PharmInventory, PharmPatients, PharmSold, PharmStockUpdate, usePharmacySocket } from "./PharmacyModule";
 
 const NAV_ITEMS = [
+  { path: "/hospital-admin/functioning", label: "Hospital Functioning", icon: Settings2 },
   { path: "/hospital-admin", label: "Dashboard", icon: LayoutDashboard },
   { path: "/hospital-admin/billing", label: "Revenue", icon: Receipt },
   { path: "/hospital-admin/all-patients", label: "All Patients", icon: Users },
@@ -136,6 +138,7 @@ export default function HospitalAdminPanel() {
     if (route.path === "/hospital-admin/attendance") return <HAAttendance />;
     if (route.path === "/hospital-admin/billing") return <HABilling />;
     if (route.path === "/hospital-admin/permissions") return <HAPermissions />;
+    if (route.path === "/hospital-admin/functioning") return <HospitalFunctioning />;
     return <HADashboard />;
   }
 
