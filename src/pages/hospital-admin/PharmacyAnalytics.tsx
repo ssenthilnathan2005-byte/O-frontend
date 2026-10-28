@@ -1,3 +1,4 @@
+import useModules from "@/hooks/useModules";
 ﻿import { createElement, useEffect, useMemo, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { IndianRupee, Pill, Search, UserCog, X } from "lucide-react";
@@ -91,7 +92,10 @@ const EMPTY_IPD: IpdRevenue = { collected: 0, patients: 0, perDay: [] };
 // IPD (inward) money collected in the period, net of refunds. Uses the existing /ipd-billing/report route.
 export function useIpdRevenue(from: string, to: string): IpdRevenue {
   const [v, setV] = useState<IpdRevenue>(EMPTY_IPD);
+  const { has } = useModules();
+  const ipdOn = has("ipd");
   useEffect(() => {
+    if (!ipdOn) { setV(EMPTY_IPD); return; }
     let off = false;
     const load = async () => {
       try {
@@ -110,7 +114,7 @@ export function useIpdRevenue(from: string, to: string): IpdRevenue {
     load();
     const t = setInterval(load, 30000);
     return () => { off = true; clearInterval(t); };
-  }, [from, to]);
+  }, [from, to, ipdOn]);
   return v;
 }
 
