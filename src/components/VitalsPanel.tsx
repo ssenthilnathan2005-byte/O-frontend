@@ -1,4 +1,5 @@
 import { Thermometer, HeartPulse, Droplets, Scale, Activity } from "lucide-react";
+import { extraVitals } from "@/lib/vitals";
 import type { Vitals } from "@/lib/vitals";
 
 type Level = "ok" | "warn" | "high";
@@ -61,7 +62,8 @@ function Tile({ icon: Icon, label, value, unit, flag }: { icon: any; label: stri
 export default function VitalsPanel({ vitals }: { vitals: Vitals }) {
   const v = vitals;
   const hasBp = v.bpSystolic != null && v.bpDiastolic != null;
-  const any = v.temperature != null || hasBp || v.pulse != null || v.spo2 != null || v.weight != null;
+  const extras = extraVitals(v);
+  const any = v.temperature != null || hasBp || v.pulse != null || v.spo2 != null || v.weight != null || extras.length > 0;
   if (!any && !v.notes) return <p className="text-sm text-gray-400 italic">No vitals recorded</p>;
   return (
     <div className="space-y-2">
@@ -72,6 +74,12 @@ export default function VitalsPanel({ vitals }: { vitals: Vitals }) {
           {v.pulse != null && <Tile icon={HeartPulse} label="Pulse" value={String(v.pulse)} unit="bpm" flag={pulseFlag(v.pulse)} />}
           {v.spo2 != null && <Tile icon={Droplets} label="SpO2" value={String(v.spo2)} unit="%" flag={spo2Flag(v.spo2)} />}
           {v.weight != null && <Tile icon={Scale} label="Weight" value={String(v.weight)} unit="kg" />}
+          {extras.map(([label, value]) => (
+            <div key={label} className="rounded-lg border px-3 py-2 bg-white border-emerald-100 text-gray-900">
+              <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">{label}</span>
+              <p className="mt-0.5 text-lg font-bold leading-tight">{value}</p>
+            </div>
+          ))}
         </div>
       )}
       {v.notes && (

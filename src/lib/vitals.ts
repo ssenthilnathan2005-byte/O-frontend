@@ -2,7 +2,7 @@ export interface Vitals {
   temperature?: number; tempUnit?: "C" | "F"; bpSystolic?: number; bpDiastolic?: number;
   pulse?: number; spo2?: number; weight?: number; notes?: string; [key: string]: any;
 }
-const VITAL_LABELS: Record<string, string> = {
+export const VITAL_LABELS: Record<string, string> = {
   visualAcuityR: "VA R", visualAcuityL: "VA L", iop: "IOP", usesGlasses: "Glasses", dmBpHistory: "DM/BP history",
   affectedSide: "Side", affectedPart: "Area", lmp: "LMP", edd: "EDD", pregnancyNo: "Pregnancy no.",
   injurySite: "Injury", injuryDate: "Injury date", skinDuration: "Duration", ecgDone: "ECG done",
@@ -23,4 +23,14 @@ export function vitalsText(v: Vitals): string {
   }
   if (v.notes) p.push(v.notes);
   return p.join(" | ");
+}
+
+export function extraVitals(v: Vitals): [string, string][] {
+  const SKIP = ["temperature", "tempUnit", "bpSystolic", "bpDiastolic", "pulse", "spo2", "weight", "notes"];
+  const out: [string, string][] = [];
+  for (const k of Object.keys(v)) {
+    if (SKIP.includes(k) || v[k] == null || v[k] === "") continue;
+    out.push([VITAL_LABELS[k] || k, v[k] === true ? "Yes" : v[k] === false ? "No" : String(v[k])]);
+  }
+  return out;
 }
