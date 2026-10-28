@@ -610,9 +610,8 @@ export default function LoginPage({
   // ── Main Screen ───────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
-        <div className="max-w-7xl mx-auto flex items-center gap-2 relative">
-          <div className="absolute right-0 top-1/2 -translate-y-1/2"><LanguageSwitcher /></div>
+      <header className="sticky top-0 z-20 bg-white border-b border-gray-200 px-4 sm:px-6 py-3">
+        <div className="w-full flex items-center justify-between">
           <button
             type="button"
             onClick={handleBackFromLogin}
@@ -627,6 +626,7 @@ export default function LoginPage({
               <span className="font-bold text-teal-500" translate="no"> Booked</span>
             </span>
           </button>
+          <LanguageSwitcher />
         </div>
       </header>
 
