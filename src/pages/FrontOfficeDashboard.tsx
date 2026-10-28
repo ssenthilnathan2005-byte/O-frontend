@@ -12,6 +12,7 @@ import { getToken } from "@/api";
 import { useStore } from "../context/StoreContext";
 import { Vitals, vitalsText } from "@/lib/vitals";
 import { useExtraNav, ExtraPanel } from "@/components/StaffExtras";
+import useModules from "@/hooks/useModules";
 import HABedRequests from "./hospital-admin/HABedRequests";
 import IPDBillModal from "./hospital-admin/IPDBillModal";
 import { maternityApi } from "@/lib/maternityApi";
@@ -477,6 +478,7 @@ export default function FrontOfficeDashboard() {
   const { user, logout } = useStore() as any;
   const [tab, setTab] = useState<string>("op");
   const { nav: extraNav } = useExtraNav(["live_patients", "ipd", "beds_wards"]);
+  const { has } = useModules();
   const tabCls = (on: boolean) => "flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium " + (on ? "bg-teal-500 text-white" : "bg-white border border-gray-200 text-gray-600");
   return (
     <div className="min-h-screen bg-gray-50">
@@ -491,12 +493,12 @@ export default function FrontOfficeDashboard() {
       <main className="max-w-5xl mx-auto p-4 space-y-4">
         <div className="flex flex-wrap gap-2">
           <button className={tabCls(tab === "op")} onClick={() => setTab("op")}><UserCheck className="w-4 h-4" />Today's outpatients</button>
-          <button className={tabCls(tab === "admit")} onClick={() => setTab("admit")}><BedDouble className="w-4 h-4" />Admit inpatient</button>
+          {has("ipd") && <button className={tabCls(tab === "admit")} onClick={() => setTab("admit")}><BedDouble className="w-4 h-4" />Admit inpatient</button>}
           <button className={tabCls(tab === "walkin")} onClick={() => setTab("walkin")}><UserPlus className="w-4 h-4" />Register patient</button>
-          <button className={tabCls(tab === "beds")} onClick={() => setTab("beds")}><BedDouble className="w-4 h-4" />Bed requests</button>
+          {has("bed_bookings") && <button className={tabCls(tab === "beds")} onClick={() => setTab("beds")}><BedDouble className="w-4 h-4" />Bed requests</button>}
         {extraNav.map(n => (<button key={n.key} className={tabCls(tab === n.key)} onClick={() => setTab(n.key)}><n.icon className="w-4 h-4" />{n.label}</button>))}
         </div>
-        {tab.startsWith("x:") ? <ExtraPanel moduleKey={tab.slice(2)} /> : tab === "op" ? <Outpatients /> : tab === "walkin" ? <RegisterWalkIn /> : tab === "beds" ? <HABedRequests /> : <Admit />}
+        {tab.startsWith("x:") ? <ExtraPanel moduleKey={tab.slice(2)} /> : tab === "op" ? <Outpatients /> : tab === "walkin" ? <RegisterWalkIn /> : tab === "beds" && has("bed_bookings") ? <HABedRequests /> : tab === "admit" && has("ipd") ? <Admit /> : <Outpatients />}
       </main>
     </div>
   );
