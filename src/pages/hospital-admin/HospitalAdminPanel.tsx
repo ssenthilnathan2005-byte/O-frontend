@@ -157,7 +157,7 @@ export default function HospitalAdminPanel() {
           </div>
         </div>
 
-        <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 py-4 space-y-1">
+        <nav className="violet-scroll-dark flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 py-4 space-y-1">
           {NAV_ITEMS.filter((n) => has(NAV_MODULE[n.path])).map(({ path, label, icon: Icon }) => {
             if (path === "/hospital-admin/pharmacy") return <PharmacyMenu key={path} />;
             const isActive = route.path === path || (route.path === "/hospital-admin" && path === "/hospital-admin");
@@ -219,7 +219,7 @@ export default function HospitalAdminPanel() {
                 <X className="w-5 h-5 text-white" />
               </button>
             </div>
-            <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y px-3 py-4 space-y-1">
+            <nav className="violet-scroll-dark flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y px-3 py-4 space-y-1">
               {NAV_ITEMS.filter((n) => has(NAV_MODULE[n.path])).map(({ path, label, icon: Icon }) => path === "/hospital-admin/pharmacy" ? <PharmacyMenu key={path} onNavigate={() => setDrawerOpen(false)} /> : (
                 <button
                   key={path}
@@ -246,7 +246,7 @@ export default function HospitalAdminPanel() {
         </>
       )}
 
-      <main className="flex-1 min-w-0 h-full overflow-y-auto overscroll-contain md:pt-0 pt-14">{renderContent()}</main>
+      <main className="violet-scroll flex-1 min-w-0 h-full overflow-y-auto overscroll-contain md:pt-0 pt-14">{renderContent()}</main>
     </div>
   );
 }
