@@ -1,3 +1,4 @@
+import useModules from "@/hooks/useModules";
 import AbdmOptInCard from "../../components/AbdmOptInCard";
 import PharmacyAnalytics, { useLabRevenue, useIpdRevenue } from "./PharmacyAnalytics";
 import { useMemo, useState, useEffect, type ReactNode } from "react";
@@ -164,6 +165,7 @@ export default function HADashboard() {
   const [bedStats, setBedStats] = useState({ occupied: 0, total: 0, maintenance: 0 });
   const [pendingLabOrders, setPendingLabOrders] = useState(0);
   const [activeInward, setActiveInward] = useState(0);
+  const { has: hasMod } = useModules();
   const [lowStockCount, setLowStockCount] = useState(0);
   const [kpisState, setKpisState] = useState<{ key: string; data: Kpis }>({ key: "", data: EMPTY_KPIS });
   // Only show KPI data that belongs to the period currently selected.
@@ -405,7 +407,8 @@ export default function HADashboard() {
       to: "/hospital-admin/inventory",
     },
   ];
-  const visibleStats = stats.filter((s) => show(s.group));
+  const TILE_MODULE: Record<string, string> = { "Bed Occupancy": "wards", "Admitted Patients": "ipd", "Pending Lab Orders": "lab", "Low Stock Items": "inventory", "Pharmacy Staff": "pharmacy" };
+  const visibleStats = stats.filter((s) => show(s.group) && (!TILE_MODULE[s.label] || hasMod(TILE_MODULE[s.label])));
 
   // ---- Financial derived values ----
   const totalRevPrev =
