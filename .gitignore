@@ -27,3 +27,11 @@ dist/
 .env*
 
 build.log
+
+step*.py
+step*.txt
+resolve.py
+convert_mockup.py
+patch_mobile_*.py
+add_enquiries_to_admin.py
+*.bak-*
