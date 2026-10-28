@@ -63,6 +63,7 @@ import { Vitals, vitalsText } from "@/lib/vitals";
 import VitalsPanel from "@/components/VitalsPanel";
 import MonthlyArchiveBanner from "../../components/MonthlyArchiveBanner";
 import { useExtraNav, ExtraPanel } from "../../components/StaffExtras";
+import useModules from "@/hooks/useModules";
 import {
   SESSION_TIMES,
   formatTime12h,
@@ -299,7 +300,9 @@ export default function DoctorDashboard() {
 
   const doctorUser = user as { doctorId: string; code: string };
   const doctor = doctors.find((d) => d.id === doctorUser.doctorId)!;
-  const [hasPharmacy, setHasPharmacy] = useState(false);
+  const [hasPharmacyRaw, setHasPharmacy] = useState(false);
+  const { has: hasModule } = useModules();
+  const hasPharmacy = hasPharmacyRaw && hasModule("pharmacy");
   useEffect(() => {
     const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
     fetch(`${BASE}/hospitals?_=${Date.now()}`)
