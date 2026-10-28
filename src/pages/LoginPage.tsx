@@ -771,15 +771,15 @@ export default function LoginPage({
                   </form>
                 ) : (
                   <form onSubmit={handleLoginSubmit} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="Login method">
+                    <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Login method">
                       <button
                         type="button"
                         role="radio"
                         aria-checked={loginMethod === "phone"}
                         onClick={() => setLoginMethod("phone")}
-                        className={"flex flex-col items-center justify-center gap-1.5 rounded-xl border-2 px-2 py-3 text-center text-xs font-medium leading-tight transition-colors sm:text-sm " + (loginMethod === "phone" ? "border-teal-500 bg-teal-50 text-teal-700" : "border-gray-200 bg-white text-gray-500 hover:border-teal-300")}
+                        className={"flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-center text-[11px] font-medium leading-tight transition-colors sm:text-xs " + (loginMethod === "phone" ? "border-teal-500 bg-teal-50 text-teal-700" : "border-gray-200 bg-white text-gray-500 hover:border-teal-300")}
                       >
-                        <Phone className="w-5 h-5" />
+                        <Phone className="w-3.5 h-3.5 shrink-0" />
                         Login with Phone Number
                       </button>
                       <button
@@ -787,9 +787,9 @@ export default function LoginPage({
                         role="radio"
                         aria-checked={loginMethod === "email"}
                         onClick={() => setLoginMethod("email")}
-                        className={"flex flex-col items-center justify-center gap-1.5 rounded-xl border-2 px-2 py-3 text-center text-xs font-medium leading-tight transition-colors sm:text-sm " + (loginMethod === "email" ? "border-teal-500 bg-teal-50 text-teal-700" : "border-gray-200 bg-white text-gray-500 hover:border-teal-300")}
+                        className={"flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-center text-[11px] font-medium leading-tight transition-colors sm:text-xs " + (loginMethod === "email" ? "border-teal-500 bg-teal-50 text-teal-700" : "border-gray-200 bg-white text-gray-500 hover:border-teal-300")}
                       >
-                        <Mail className="w-5 h-5" />
+                        <Mail className="w-3.5 h-3.5 shrink-0" />
                         Login with Email
                       </button>
                     </div>
