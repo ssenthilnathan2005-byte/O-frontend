@@ -89,6 +89,15 @@ export default function HospitalAdminPanel() {
   const { route, navigate } = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
   useBodyScrollLock(drawerOpen);
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtml = html.style.overflow;
+    const prevBody = body.style.overflow;
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    return () => { html.style.overflow = prevHtml; body.style.overflow = prevBody; };
+  }, []);
   usePharmacySocket(user && user.role === "hospital_admin" ? user.hospitalId : "");
 
   const hospitalName = user && user.role === "hospital_admin" ? user.hospitalName : "Hospital Admin";
@@ -118,7 +127,7 @@ export default function HospitalAdminPanel() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background" style={{ height: "100dvh" }}>
+    <div className="fixed inset-0 flex overflow-hidden bg-background">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex w-64 h-full overflow-hidden bg-admin-sidebar text-admin-sidebar-fg flex-col shrink-0">
         <div className="px-6 py-5 border-b border-white/10">
