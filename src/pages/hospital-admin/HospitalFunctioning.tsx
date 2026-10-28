@@ -4,6 +4,7 @@ import { getToken } from "@/api";
 import { useStore } from "../../context/StoreContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import HAIntakeSettings from "./HAIntakeSettings";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
@@ -116,6 +117,7 @@ export default function HospitalFunctioning() {
           )}
         </CardContent>
       </Card>
+      <HAIntakeSettings key={savedType} hideType />
     </div>
   );
 }

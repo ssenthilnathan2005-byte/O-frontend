@@ -10,7 +10,7 @@ const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/
 interface Field { key: string; label: string; unit?: string }
 interface TypeDef { key: string; label: string; fields: string[] }
 
-export default function HAIntakeSettings() {
+export default function HAIntakeSettings({ hideType = false }: { hideType?: boolean } = {}) {
   const { user } = useStore();
   const hospitalId = user?.role === "hospital_admin" ? user.hospitalId : "";
   const [types, setTypes] = useState<TypeDef[]>([]);
@@ -73,7 +73,7 @@ export default function HAIntakeSettings() {
       <CardContent className="space-y-4">
         {loading ? <p className="text-sm text-gray-400">Loading...</p> : (
           <>
-            <div className="space-y-1">
+            <div className={"space-y-1" + (hideType ? " hidden" : "")}>
               <label className="text-sm font-medium text-gray-700">Hospital type</label>
               <select className="w-full h-10 rounded-md border border-gray-200 bg-white px-3 text-sm" value={type} onChange={(e) => changeType(e.target.value)}>
                 {types.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
