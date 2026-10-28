@@ -118,9 +118,9 @@ export default function HospitalAdminPanel() {
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex h-screen overflow-hidden bg-background" style={{ height: "100dvh" }}>
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex w-64 bg-admin-sidebar text-admin-sidebar-fg flex-col shrink-0">
+      <aside className="hidden md:flex w-64 h-full overflow-hidden bg-admin-sidebar text-admin-sidebar-fg flex-col shrink-0">
         <div className="px-6 py-5 border-b border-white/10">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-teal-500 flex items-center justify-center shrink-0">
@@ -135,7 +135,7 @@ export default function HospitalAdminPanel() {
           </div>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-1">
+        <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 py-4 space-y-1">
           {NAV_ITEMS.map(({ path, label, icon: Icon }) => {
             if (path === "/hospital-admin/pharmacy") return <PharmacyMenu key={path} />;
             const isActive = route.path === path || (route.path === "/hospital-admin" && path === "/hospital-admin");
@@ -155,7 +155,7 @@ export default function HospitalAdminPanel() {
           })}
         </nav>
 
-        <div className="px-3 py-4 border-t border-white/10">
+        <div className="px-3 pt-4 pb-6 border-t border-white/10 shrink-0">
           <button
             type="button"
             onClick={logout}
@@ -210,7 +210,7 @@ export default function HospitalAdminPanel() {
                 </button>
               ))}
             </nav>
-            <div className="px-3 py-4 border-t border-white/10">
+            <div className="px-3 pt-4 pb-6 border-t border-white/10 shrink-0">
               <button
                 type="button"
                 onClick={logout}
@@ -224,7 +224,7 @@ export default function HospitalAdminPanel() {
         </>
       )}
 
-      <main className="flex-1 min-w-0 md:pt-0 pt-14">{renderContent()}</main>
+      <main className="flex-1 min-w-0 h-full overflow-y-auto overscroll-contain md:pt-0 pt-14">{renderContent()}</main>
     </div>
   );
 }

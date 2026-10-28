@@ -380,7 +380,7 @@ export default function TopNav() {
 
       {/* Desktop top nav — md and up only, phones never see this */}
       <header className="app-topnav hidden md:block sticky top-0 z-40 bg-white border-b border-gray-200 px-6 py-3">
-        <div className="max-w-7xl mx-auto flex items-center gap-8">
+        <div className="w-full flex items-center gap-8">
           <button
             type="button"
             className="flex items-center gap-2 shrink-0"

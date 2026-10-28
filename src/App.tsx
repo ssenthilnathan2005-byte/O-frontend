@@ -352,8 +352,8 @@ function LandingPage() {
       <div className="md:hidden"><PatientHomePage /></div>
       <div className="hidden md:flex flex-col min-h-screen bg-gray-50 font-sans">
         <header className="bg-white border-b border-gray-200 sticky top-0 z-20">
-          <div className="max-w-7xl 2xl:max-w-[1600px] mx-auto flex items-center justify-between px-4 py-3">
-            <div className="flex items-center gap-2">
+          <div className="w-full flex items-center justify-between px-6 py-3">
+            <div className="flex items-center gap-2 mr-10">
               <img src="/assets/Logo.jpg" alt="Logo" className="w-10 h-10 rounded-full object-contain"
                 onError={e => { (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='20' fill='%2314b8a6'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='18' font-family='sans-serif'%3EDB%3C/text%3E%3C/svg%3E"; }} />
               <span className="text-xl font-bold text-gray-800" translate="no"><span className="text-teal-600">Doctor</span>Booked</span>
@@ -364,11 +364,12 @@ function LandingPage() {
               <button onClick={() => navigate({ path: "/patient/tokens" })} className="hover:text-teal-600 transition-colors">My Tokens</button>
               <button onClick={() => navigate({ path: "/patient/prescriptions" })} className="hover:text-teal-600 transition-colors">My Prescriptions</button>
             </nav>
-            <div className="ml-auto mr-3 lg:ml-0"><LanguageSwitcher /></div>
+            <div className="ml-auto flex items-center gap-3 pl-8"><LanguageSwitcher />
             <button type="button" onClick={() => navigate({ path: "/login", tab: "patient", patientMode: "login" })}
               className="flex items-center gap-2 border border-teal-600 text-teal-600 hover:bg-teal-50 px-4 py-1.5 rounded-full font-medium transition-colors">
               Login <User className="w-4 h-4" />
             </button>
+            </div>
           </div>
         </header>
         <main className="flex-1 w-full max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 py-6 lg:py-10">
