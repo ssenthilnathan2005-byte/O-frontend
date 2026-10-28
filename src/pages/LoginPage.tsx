@@ -90,6 +90,8 @@ export default function LoginPage({
   const [staffGroup, setStaffGroup] = useState(false);
   const [loading, setLoading]       = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [loginMethod, setLoginMethod] = useState<"phone" | "email">("phone");
+  const [emailTouched, setEmailTouched] = useState(false);
   function isValidEmail(value: string): boolean {
     return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value);
   }
@@ -276,8 +278,9 @@ export default function LoginPage({
 
   async function handleLoginSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const em = email.trim();
-    const ph = phone.trim();
+    // Only the selected login method's field is used
+    const em = loginMethod === "email" ? email.trim() : "";
+    const ph = loginMethod === "phone" ? phone.trim() : "";
     const pw = password;
     if ((!em && !ph) || !pw) { toast.error("Please fill all required fields"); return; }
 
@@ -307,8 +310,11 @@ export default function LoginPage({
     }
 
     const type = identifierType(id);
-    if (type === "unknown") {
-      toast.error("Please enter a valid email address or 10-digit phone number"); return;
+    if (loginMethod === "phone" && type !== "phone") {
+      toast.error("Please enter a valid 10-digit mobile number"); return;
+    }
+    if (loginMethod === "email" && type !== "email") {
+      toast.error("Please enter a valid email address"); return;
     }
 
     setLoading(true);
@@ -765,42 +771,71 @@ export default function LoginPage({
                   </form>
                 ) : (
                   <form onSubmit={handleLoginSubmit} className="space-y-4">
-                    <div className="space-y-1.5">
-                      <Label>Email Address</Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                        <Input
-                          type="email"
-                          inputMode="email"
-                          className="pl-9"
-                          placeholder="you@example.com"
-                          value={email}
-                          onChange={e => setEmail(e.target.value)}
-                          maxLength={50}
-                        />
+                    <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="Login method">
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={loginMethod === "phone"}
+                        onClick={() => setLoginMethod("phone")}
+                        className={"flex flex-col items-center justify-center gap-1.5 rounded-xl border-2 px-2 py-3 text-center text-xs font-medium leading-tight transition-colors sm:text-sm " + (loginMethod === "phone" ? "border-teal-500 bg-teal-50 text-teal-700" : "border-gray-200 bg-white text-gray-500 hover:border-teal-300")}
+                      >
+                        <Phone className="w-5 h-5" />
+                        Login with Phone Number
+                      </button>
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={loginMethod === "email"}
+                        onClick={() => setLoginMethod("email")}
+                        className={"flex flex-col items-center justify-center gap-1.5 rounded-xl border-2 px-2 py-3 text-center text-xs font-medium leading-tight transition-colors sm:text-sm " + (loginMethod === "email" ? "border-teal-500 bg-teal-50 text-teal-700" : "border-gray-200 bg-white text-gray-500 hover:border-teal-300")}
+                      >
+                        <Mail className="w-5 h-5" />
+                        Login with Email
+                      </button>
+                    </div>
+                    {loginMethod === "phone" ? (
+                      <div className="space-y-1.5">
+                        <Label>Phone Number</Label>
+                        <div className="relative">
+                          <Phone className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                          <Input
+                            type="tel"
+                            inputMode="numeric"
+                            autoComplete="tel-national"
+                            className="pl-9"
+                            placeholder="10-digit mobile number"
+                            value={phone}
+                            onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                            maxLength={10}
+                          />
+                        </div>
+                        {phone.length === 10 && !isValidPhone(phone) ? (
+                          <p className="text-xs text-red-500">Indian mobile numbers start with 6, 7, 8 or 9</p>
+                        ) : (
+                          <p className="text-xs text-gray-400">Digits only, 10-digit mobile number</p>
+                        )}
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2 py-0.5">
-                      <div className="flex-1 h-px bg-gray-100" />
-                      <span className="text-[11px] text-gray-300 font-normal">or</span>
-                      <div className="flex-1 h-px bg-gray-100" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Phone Number</Label>
-                      <div className="relative">
-                        <Phone className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                        <Input
-                          type="text"
-                          inputMode="numeric"
-                          className="pl-9"
-                          placeholder="10-digit phone number"
-                          value={phone}
-                          onChange={e => setPhone(e.target.value)}
-                          maxLength={10}
-                        />
+                    ) : (
+                      <div className="space-y-1.5">
+                        <Label>Email Address</Label>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                          <Input
+                            type="email"
+                            inputMode="email"
+                            className="pl-9"
+                            placeholder="you@example.com"
+                            value={email}
+                            onChange={e => setEmail(e.target.value)}
+                            onBlur={() => setEmailTouched(true)}
+                            maxLength={50}
+                          />
+                        </div>
+                        {emailTouched && email.trim() !== "" && !isValidEmail(email.trim()) && !isAdminIdentifier(email) && email.trim().toLowerCase() !== "cto@doctorbooked" && (
+                          <p className="text-xs text-red-500">Please enter a valid email address</p>
+                        )}
                       </div>
-                      <p className="text-xs text-gray-400">Enter the email or phone number registered to your account</p>
-                    </div>
+                    )}
                     <div className="space-y-1.5">
                       <Label>Password</Label>
                       <div className="relative"><Lock className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
