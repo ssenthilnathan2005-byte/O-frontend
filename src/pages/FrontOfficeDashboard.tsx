@@ -201,6 +201,9 @@ function Outpatients() {
   const [feeMode, setFeeMode] = useState("cash");
   const emptyV = { temperature: "", tempUnit: "F", bpSystolic: "", bpDiastolic: "", pulse: "", spo2: "", weight: "", notes: "" };
   const [vf, setVf] = useState(emptyV);
+  const [intake, setIntake] = useState<any>(null);
+  useEffect(() => { call("/intake-config").then(setIntake).catch(() => {}); }, []);
+  const ik = (k: string) => !intake || (intake.fields || []).some((x: any) => x.key === k);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -295,19 +298,41 @@ function Outpatients() {
               {vitalsId === b.id && (
                 <div className="mt-3 space-y-2">
                   <p className="text-xs text-gray-500">All fields are optional. Fill only what was measured.</p>
-                  <div className="mb-2"><VitalsScanAll include={["temperature", "bpSystolic", "bpDiastolic", "pulse", "spo2"]} onApply={v => setVf(f => ({ ...f, ...v }))} /></div>
+                  {(ik("temperature") || ik("bp") || ik("pulse") || ik("spo2")) && <div className="mb-2"><VitalsScanAll include={["temperature", "bpSystolic", "bpDiastolic", "pulse", "spo2"]} onApply={v => setVf(f => ({ ...f, ...v }))} /></div>}
 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    <div className="flex gap-1 min-w-0">
-                      <Input className="min-w-0" placeholder="Temp" value={vf.temperature} onChange={e => setVf({ ...vf, temperature: e.target.value })} />
-                      <select className="h-10 rounded-md border border-gray-200 bg-white px-1 text-sm" value={vf.tempUnit} onChange={e => setVf({ ...vf, tempUnit: e.target.value })}><option value="F">F</option><option value="C">C</option></select>
-                    </div>
-                    <div className="flex gap-1 min-w-0">
-                      <Input className="min-w-0" placeholder="BP high" value={vf.bpSystolic} onChange={e => setVf({ ...vf, bpSystolic: e.target.value })} />
-                      <Input className="min-w-0" placeholder="BP low" value={vf.bpDiastolic} onChange={e => setVf({ ...vf, bpDiastolic: e.target.value })} />
-                    </div>
-                    <Input placeholder="Pulse" value={vf.pulse} onChange={e => setVf({ ...vf, pulse: e.target.value })} />
-                    <Input placeholder="SpO2 %" value={vf.spo2} onChange={e => setVf({ ...vf, spo2: e.target.value })} />
-                    <Input placeholder="Weight kg" value={vf.weight} onChange={e => setVf({ ...vf, weight: e.target.value })} />
+                    {ik("temperature") && (
+                      <div className="flex gap-1 min-w-0">
+                        <Input className="min-w-0" placeholder="Temp" value={vf.temperature} onChange={e => setVf({ ...vf, temperature: e.target.value })} />
+                        <select className="h-10 rounded-md border border-gray-200 bg-white px-1 text-sm" value={vf.tempUnit} onChange={e => setVf({ ...vf, tempUnit: e.target.value })}><option value="F">F</option><option value="C">C</option></select>
+                      </div>
+                    )}
+                    {ik("bp") && (
+                      <div className="flex gap-1 min-w-0">
+                        <Input className="min-w-0" placeholder="BP high" value={vf.bpSystolic} onChange={e => setVf({ ...vf, bpSystolic: e.target.value })} />
+                        <Input className="min-w-0" placeholder="BP low" value={vf.bpDiastolic} onChange={e => setVf({ ...vf, bpDiastolic: e.target.value })} />
+                      </div>
+                    )}
+                    {ik("pulse") && <Input placeholder="Pulse" value={vf.pulse} onChange={e => setVf({ ...vf, pulse: e.target.value })} />}
+                    {ik("spo2") && <Input placeholder="SpO2 %" value={vf.spo2} onChange={e => setVf({ ...vf, spo2: e.target.value })} />}
+                    {ik("weight") && <Input placeholder="Weight kg" value={vf.weight} onChange={e => setVf({ ...vf, weight: e.target.value })} />}
+                    {(intake?.fields || []).filter((x: any) => !["bp", "pulse", "temperature", "spo2", "weight"].includes(x.key)).map((x: any) => {
+                      const val = String((vf as any)[x.key] ?? "");
+                      const set = (s: string) => setVf({ ...vf, [x.key]: s } as any);
+                      return (
+                        <div key={x.key} className="min-w-0">
+                          <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">{x.label}{x.unit ? " (" + x.unit + ")" : ""}</label>
+                          {x.kind === "bool" ? (
+                            <select className={sel} value={val} onChange={e => set(e.target.value)}><option value="">-</option><option value="true">Yes</option><option value="false">No</option></select>
+                          ) : x.kind === "select" ? (
+                            <select className={sel} value={val} onChange={e => set(e.target.value)}><option value="">-</option>{(x.options || []).map((o: string) => <option key={o} value={o}>{o}</option>)}</select>
+                          ) : x.kind === "date" ? (
+                            <Input type="date" value={val} onChange={e => set(e.target.value)} />
+                          ) : (
+                            <Input inputMode={x.kind === "number" ? "decimal" : undefined} value={val} onChange={e => set(e.target.value)} />
+                          )}
+                        </div>
+                      );
+                    })}
                     <Input className="col-span-2" placeholder="Note" value={vf.notes} onChange={e => setVf({ ...vf, notes: e.target.value })} />
                   </div>
                   <div className="flex gap-2">

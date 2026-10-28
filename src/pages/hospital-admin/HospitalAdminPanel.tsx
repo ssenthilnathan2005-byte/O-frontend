@@ -14,6 +14,7 @@ import HAWards from "./HAWards";
 import HAHR from "./HAHR";
 import HANurses from "./HANurses";
 import HAFrontOfficeStaff from "./HAFrontOfficeStaff";
+import HAIntakeSettings from "./HAIntakeSettings";
 import HAFrontDeskCollections from "./HAFrontDeskCollections";
 import HAInventory from "./HAInventory";
 import HALab from "./HALab";
@@ -109,7 +110,7 @@ export default function HospitalAdminPanel() {
     if (route.path === "/hospital-admin/inventory") return <HAInventory />;
     if (route.path === "/hospital-admin/hr") return <HAHR />;
     if (route.path === "/hospital-admin/nurses") return <HANurses />;
-    if (route.path === "/hospital-admin/front-desk") return <div className="p-4 max-w-3xl space-y-4"><HAFrontDeskCollections /><HAFrontOfficeStaff /></div>;
+    if (route.path === "/hospital-admin/front-desk") return <div className="p-4 max-w-3xl space-y-4"><HAIntakeSettings /><HAFrontDeskCollections /><HAFrontOfficeStaff /></div>;
     if (route.path === "/hospital-admin/attendance") return <HAAttendance />;
     if (route.path === "/hospital-admin/billing") return <HABilling />;
     if (route.path === "/hospital-admin/permissions") return <HAPermissions />;
