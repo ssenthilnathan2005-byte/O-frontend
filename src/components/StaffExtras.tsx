@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { BedDouble, ClipboardList, FlaskConical, IndianRupee, Loader2, Package, Stethoscope, type LucideIcon } from "lucide-react";
 import usePermissions from "../hooks/usePermissions";
+import useModules from "../hooks/useModules";
 import { getToken } from "../api";
 import { useStore } from "../context/StoreContext";
 import ErrorBoundary from "./ErrorBoundary";
@@ -123,9 +124,12 @@ const EXTRAS: Record<string, Extra> = {
 };
 const EXTRA_KEYS = Object.keys(EXTRAS);
 
+const EXTRA_MODULE: Record<string, string> = { ipd: "ipd", lab: "lab", beds_wards: "wards", inventory: "inventory", pharmacy: "pharmacy" };
+
 export function useExtraNav(native: string[]) {
   const { can, loading } = usePermissions();
-  const nav = EXTRA_KEYS.filter(k => can(k) && !native.includes(k))
+  const { has } = useModules();
+  const nav = EXTRA_KEYS.filter(k => can(k) && !native.includes(k) && has(EXTRA_MODULE[k]))
     .map(k => ({ key: "x:" + k, label: EXTRAS[k].label, icon: EXTRAS[k].icon }));
   return { nav, can, loading };
 }
