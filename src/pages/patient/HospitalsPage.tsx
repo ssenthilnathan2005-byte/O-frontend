@@ -22,8 +22,12 @@ function formatDistance(km: number): string {
 
 function norm(s: string | null | undefined): string { return (s || "").trim().toLowerCase(); }
 
+const TYPE_LABELS: Record<string, string> = { general: "General Hospital", eye: "Eye Hospital", ent: "ENT Hospital", dental: "Dental Clinic", pediatrics: "Children's Hospital", gynecology: "Women's Hospital", orthopedics: "Orthopedic Hospital", dermatology: "Skin Clinic", cardiology: "Heart Hospital", diabetology: "Diabetes Centre", clinic: "Clinic" };
+const typeOf = (h: any): string => h?.hospitalType || "general";
+
 export default function HospitalsPage({ city }: { city?: string }) {
   const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   const { navigate, goBack } = useRouter();
   const { hospitals, doctors } = useStore();
   const [mapHospital, setMapHospital] = useState<(typeof hospitals)[0] | null>(null);
@@ -31,7 +35,9 @@ export default function HospitalsPage({ city }: { city?: string }) {
   const { state: nearState, locate, clear, sorted: sortedByDistance } = useNearMe(hospitals);
 
   const baseList = sortedByDistance ?? hospitals;
-  const cityScoped = city ? baseList.filter((h) => norm(h.area) === norm(city)) : baseList;
+  const cityScoped0 = city ? baseList.filter((h) => norm(h.area) === norm(city)) : baseList;
+  const typeList = Array.from(new Set(cityScoped0.map((h) => typeOf(h))));
+  const cityScoped = typeFilter === "all" ? cityScoped0 : cityScoped0.filter((h) => typeOf(h) === typeFilter);
 
   const filtered = cityScoped.filter(
     (h) =>
@@ -145,6 +151,7 @@ export default function HospitalsPage({ city }: { city?: string }) {
         );
       })()}
 
+      {typeList.length > 1 && (<div className="flex flex-wrap gap-2 mb-4">{["all", ...typeList].map((t) => (<button key={t} type="button" onClick={() => setTypeFilter(t)} className={"px-3 py-1.5 rounded-full text-xs font-medium border " + (typeFilter === t ? "bg-teal-500 text-white border-teal-500" : "bg-white text-gray-600 border-gray-200")}>{t === "all" ? "All" : TYPE_LABELS[t] || t}</button>))}</div>)}
       {filtered.length === 0 ? (
         <div className="text-center py-16 text-gray-400" data-ocid="hospitals.empty_state">
           <Search className="w-12 h-12 mx-auto mb-3 opacity-30" />
@@ -183,6 +190,7 @@ export default function HospitalsPage({ city }: { city?: string }) {
                       <div className="relative">
                         <p className="text-white font-bold text-sm leading-tight">{hospital.name}</p>
                         <p className="text-white/80 text-xs flex items-center gap-1 mt-0.5"><MapPin className="w-3 h-3" />{hospital.area}</p>
+                        {typeOf(hospital) !== "general" && <p className="text-white text-[10px] font-semibold uppercase tracking-wide mt-1">{TYPE_LABELS[typeOf(hospital)] || typeOf(hospital)}</p>}
                       </div>
                     </div>
                   ) : (
@@ -202,6 +210,7 @@ export default function HospitalsPage({ city }: { city?: string }) {
                       <div>
                         <p className="text-white font-bold text-sm leading-tight">{hospital.name}</p>
                         <p className="text-white/80 text-xs flex items-center gap-1 mt-0.5"><MapPin className="w-3 h-3" />{hospital.area}</p>
+                        {typeOf(hospital) !== "general" && <p className="text-white text-[10px] font-semibold uppercase tracking-wide mt-1">{TYPE_LABELS[typeOf(hospital)] || typeOf(hospital)}</p>}
                       </div>
                     </div>
                   )}

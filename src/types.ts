@@ -15,6 +15,7 @@ export interface Hospital {
   hasPharmacy?: boolean;
   plan?: "basic" | "premium";
   ratePerToken?: number;
+  hospitalType?: string;
 }
 
 export type SessionType = "morning" | "afternoon" | "evening";

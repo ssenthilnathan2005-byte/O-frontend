@@ -467,7 +467,7 @@ export interface Hospital {
   id: string; name: string; area: string; address?: string;
   phone?: string; rating: number; gradient: string;
   photoUrl?: string | null; website?: string | null; doctorCount: number; isFree?: boolean; hasPharmacy?: boolean;
-  plan?: "basic" | "premium"; ratePerToken?: number;
+  plan?: "basic" | "premium"; ratePerToken?: number; hospitalType?: string;
 }
 export interface Doctor {
   id: string; hospitalId: string; code?: string; name: string;
