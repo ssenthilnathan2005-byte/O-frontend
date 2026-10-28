@@ -22,6 +22,7 @@ import HAAttendance from "./HAAttendance";
 import HABilling from "./HABilling";
 import HAPermissions from "./HAPermissions";
 import GstInvoice from "./GstInvoice";
+import useModules from "../../hooks/useModules";
 import { PharmRevenue, PharmInventory, PharmPatients, PharmSold, PharmStockUpdate, usePharmacySocket } from "./PharmacyModule";
 
 const NAV_ITEMS = [
@@ -41,6 +42,15 @@ const NAV_ITEMS = [
   { path: "/hospital-admin/permissions", label: "Permissions", icon: ShieldCheck },
   { path: "/hospital-admin/pharmacy", label: "Pharmacy", icon: Pill },
 ] as const;
+
+const NAV_MODULE: Record<string, string | undefined> = {
+  "/hospital-admin/wards": "wards",
+  "/hospital-admin/ipd": "ipd",
+  "/hospital-admin/inventory": "inventory",
+  "/hospital-admin/lab": "lab",
+  "/hospital-admin/nurses": "nursing",
+  "/hospital-admin/pharmacy": "pharmacy",
+};
 
 const PHARMACY_SUB = [
   { path: "/hospital-admin/pharmacy/inventory", label: "Inventory Management", icon: Package },
@@ -85,6 +95,7 @@ function PharmacyMenu({ onNavigate }: { onNavigate?: () => void }) {
 
 export default function HospitalAdminPanel() {
   const { user, logout } = useStore();
+  const { has } = useModules();
   useAdminSession(logout);
   const { route, navigate } = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -103,6 +114,8 @@ export default function HospitalAdminPanel() {
   const hospitalName = user && user.role === "hospital_admin" ? user.hospitalName : "Hospital Admin";
 
   function renderContent() {
+    const need = route.path.startsWith("/hospital-admin/pharmacy") ? "pharmacy" : NAV_MODULE[route.path];
+    if (!has(need)) return <div className="p-6 text-sm text-gray-500">This module is not enabled for your hospital type.</div>;
     if (route.path === "/hospital-admin/ipd") return <HAInward />;
     if (route.path === "/hospital-admin/patients") return <HAPatients />;
     if (route.path === "/hospital-admin/all-patients") return <HAAllPatients />;
@@ -145,7 +158,7 @@ export default function HospitalAdminPanel() {
         </div>
 
         <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 py-4 space-y-1">
-          {NAV_ITEMS.map(({ path, label, icon: Icon }) => {
+          {NAV_ITEMS.filter((n) => has(NAV_MODULE[n.path])).map(({ path, label, icon: Icon }) => {
             if (path === "/hospital-admin/pharmacy") return <PharmacyMenu key={path} />;
             const isActive = route.path === path || (route.path === "/hospital-admin" && path === "/hospital-admin");
             return (
@@ -207,7 +220,7 @@ export default function HospitalAdminPanel() {
               </button>
             </div>
             <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y px-3 py-4 space-y-1">
-              {NAV_ITEMS.map(({ path, label, icon: Icon }) => path === "/hospital-admin/pharmacy" ? <PharmacyMenu key={path} onNavigate={() => setDrawerOpen(false)} /> : (
+              {NAV_ITEMS.filter((n) => has(NAV_MODULE[n.path])).map(({ path, label, icon: Icon }) => path === "/hospital-admin/pharmacy" ? <PharmacyMenu key={path} onNavigate={() => setDrawerOpen(false)} /> : (
                 <button
                   key={path}
                   type="button"
