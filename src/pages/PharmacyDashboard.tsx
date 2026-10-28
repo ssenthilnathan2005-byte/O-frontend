@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { useExtraNav, ExtraPanel } from "@/components/StaffExtras";
+import useModules from "@/hooks/useModules";
 import GstInvoice from "./hospital-admin/GstInvoice";
 import { PharmRevenue, PharmInventory, PharmPatients, PharmSold, PharmStockUpdate, usePharmacySocket } from "./hospital-admin/PharmacyModule";
 import {
@@ -150,6 +151,7 @@ export default function PharmacyDashboard() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [tab, setTab] = useState<string>("rx");
   const { nav: extraNav } = useExtraNav(["pharmacy", "inventory"]);
+  const { has } = useModules();
   usePharmacySocket(hospitalId);
   const headers = { Authorization: `Bearer ${getToken()}` };
 
@@ -830,6 +832,7 @@ export default function PharmacyDashboard() {
       ))}
     </div>
   );
+  if (!has("pharmacy")) return (<div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-gray-50 p-6 text-center"><p className="text-lg font-semibold text-gray-800">Pharmacy is not enabled for this hospital.</p><p className="text-sm text-gray-500">Ask your hospital admin to turn it on in Hospital Functioning.</p><button type="button" onClick={logout} className="px-4 py-2 rounded-lg bg-teal-500 text-white text-sm font-medium">Logout</button></div>);
   if (tab !== "rx") {
     return (
       <div className="flex min-h-screen bg-gray-50">
