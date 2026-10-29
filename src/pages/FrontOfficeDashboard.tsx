@@ -340,7 +340,16 @@ function Outpatients() {
                       );
                     };
                     return (
-                      <div className="space-y-3">
+                      <div className="space-y-3" data-enter-next="ENTER_NEXT_V1" onKeyDown={(e) => {
+                        if (e.key !== "Enter") return;
+                        const t = e.target as HTMLElement;
+                        if (!(t instanceof HTMLInputElement || t instanceof HTMLSelectElement)) return;
+                        e.preventDefault();
+                        const els = Array.from(e.currentTarget.querySelectorAll<HTMLElement>("input, select")).filter((el: any) => !el.disabled && el.type !== "file" && el.type !== "hidden" && !el.dataset.skipEnter && el.offsetParent !== null);
+                        const i = els.indexOf(t);
+                        if (i >= 0 && i < els.length - 1) els[i + 1].focus();
+                        else saveVitals(b.id);
+                      }}>
                         {hasCore && (
                           <div>
                             <p className="text-xs font-semibold text-gray-700 mb-1.5">Vitals</p>
@@ -349,7 +358,7 @@ function Outpatients() {
                               {ik("temperature") && (
                                 <div className="flex gap-1 min-w-0">
                                   <Input className="min-w-0" placeholder="Temp" value={vf.temperature} onChange={e => setVf({ ...vf, temperature: e.target.value })} />
-                                  <select className="h-10 rounded-md border border-gray-200 bg-white px-1 text-sm" value={vf.tempUnit} onChange={e => setVf({ ...vf, tempUnit: e.target.value })}><option value="F">F</option><option value="C">C</option></select>
+                                  <select data-skip-enter="1" className="h-10 rounded-md border border-gray-200 bg-white px-1 text-sm" value={vf.tempUnit} onChange={e => setVf({ ...vf, tempUnit: e.target.value })}><option value="F">F</option><option value="C">C</option></select>
                                 </div>
                               )}
                               {ik("bp") && (
