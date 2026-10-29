@@ -231,6 +231,26 @@ function Outpatients() {
     catch (e: any) { toast.error(e.message); }
   }
 
+  // NO_SHOW_V1
+  const pj = (v: any) => { if (typeof v === "string") { try { return JSON.parse(v); } catch { return null; } } return v ?? null; };
+  const sessionOver = (b: any) => !!date && hasSessionEndedForDate(date, String(b.session), pj(b.schedule_config) as any, pj(b.session_timings) as any);
+  async function markNoShow(b: OPBooking) {
+    if (!window.confirm("Mark " + b.patient_name + " (token " + b.token_number + ") as no-show?")) return;
+    try { await call("/bookings/" + b.id + "/no-show", "POST", {}); toast.success("Marked as no-show"); load(); }
+    catch (e: any) { toast.error(e.message); }
+  }
+  async function reopenNoShow(id: string) {
+    try { await call("/bookings/" + id + "/reopen", "POST", {}); toast.success("Reopened"); load(); }
+    catch (e: any) { toast.error(e.message); }
+  }
+  async function markAllNoShow(list: OPBooking[]) {
+    if (!window.confirm("Mark " + list.length + " pending patient(s) as no-show?")) return;
+    let failed = 0;
+    for (const b of list) { try { await call("/bookings/" + b.id + "/no-show", "POST", {}); } catch { failed++; } }
+    if (failed) toast.error(failed + " could not be marked (the doctor may have started them)"); else toast.success("Marked as no-show");
+    load();
+  }
+
   function startVitals(b: OPBooking) {
     setEditId(null); setVitalsId(b.id);
     const v: any = b.vitals || {};
@@ -261,6 +281,15 @@ function Outpatients() {
         <Button variant="outline" onClick={load} disabled={loading}><RefreshCw className={"w-4 h-4 " + (loading ? "animate-spin" : "")} /></Button>
       </div>
       <p className="text-sm text-gray-500">{arrived} of {rows.length} patients checked in</p>
+      {(() => {
+        const pending = shown.filter(b => b.status === "confirmed" && sessionOver(b) && (b as any).rx_status == null);
+        return pending.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+            <p className="flex-1 min-w-[180px] text-sm text-amber-800">{pending.length} patient{pending.length > 1 ? "s" : ""} still pending after the session ended.</p>
+            <Button size="sm" variant="outline" className="text-orange-700 border-orange-200" onClick={() => markAllNoShow(pending)}>Mark all as no-show</Button>
+          </div>
+        ) : null;
+      })()}
       {Object.keys(groups).length === 0 && <p className="text-sm text-gray-400 py-8 text-center">No bookings for this date.</p>}
       {Object.entries(groups).map(([k, list]) => (
         <div key={k} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
@@ -280,7 +309,12 @@ function Outpatients() {
                   ))}
                 </div>
                 {b.status !== "confirmed" ? (
-                  <span className="text-xs text-gray-500">{cap(b.status)}</span>
+                  (b.status === "unvisited" ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-orange-700 bg-orange-50 border border-orange-100 rounded-md px-2 py-1">No-show</span>
+                    {(b as any).no_show_at && <Button size="sm" variant="ghost" onClick={() => reopenNoShow(b.id)}>Reopen</Button>}
+                  </div>
+                ) : <span className="text-xs text-gray-500">{cap(b.status)}</span>)
                 ) : b.checked_in_at ? (
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-md px-2 py-1">Checked in</span>
@@ -290,9 +324,13 @@ function Outpatients() {
                       : <Button size="sm" variant="outline" onClick={() => startFee(b)}>Collect fee{b.doctor_fee != null ? " \u20B9" + b.doctor_fee : ""}</Button>}
                     {b.fee_paid_at && <Button size="sm" variant="outline" onClick={() => printReceipt(b)}>Receipt</Button>}
                     <Button size="sm" variant="ghost" onClick={() => undo(b.id)}><Undo2 className="w-4 h-4" /></Button>
+                    {sessionOver(b) && (b as any).rx_status == null && <Button size="sm" variant="outline" className="text-orange-700 border-orange-200" onClick={() => markNoShow(b)}>No-show</Button>}
                   </div>
                 ) : (
-                  <Button size="sm" onClick={() => startEdit(b)}><UserCheck className="w-4 h-4 mr-1" />Check in</Button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button size="sm" onClick={() => startEdit(b)}><UserCheck className="w-4 h-4 mr-1" />Check in</Button>
+                    <Button size="sm" variant="outline" className="text-orange-700 border-orange-200" onClick={() => markNoShow(b)}>No-show</Button>
+                  </div>
                 )}
               </div>
               {b.vitals && vitalsId !== b.id && <p className="mt-2 text-xs text-teal-700 bg-teal-50 border border-teal-100 rounded-md px-2 py-1">{vitalsText(b.vitals)}</p>}
