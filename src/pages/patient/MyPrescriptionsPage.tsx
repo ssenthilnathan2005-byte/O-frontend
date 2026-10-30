@@ -25,6 +25,7 @@ interface Prescription {
   items: { name: string; dosage: string; duration: string; instructions: string; form?: string; quantity?: number; quantityUnit?: string }[];
   notes: string;
   diagnosis?: string | null;
+  patient_type?: string | null;
   status: string;
   created_at: string;
   packed_at: string | null;
@@ -235,7 +236,7 @@ export default function MyPrescriptionsPage() {
                     <p className="text-[9px] text-teal-500 leading-none">{d.getFullYear()}</p>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-800 truncate">Dr. {p.doctor_name}</p>
+                    <p className="text-sm font-semibold text-gray-800 truncate">Dr. {p.doctor_name}{p.patient_type === "IP" && <span className="ml-2 align-middle text-[10px] bg-purple-50 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded-full font-medium">Inpatient</span>}</p>
                     <p className="text-[11px] text-gray-400 truncate">
                       {n} medicine{n === 1 ? "" : "s"}{p.hospital_name ? " \u00b7 " + p.hospital_name : ""}
                     </p>
@@ -280,7 +281,7 @@ export default function MyPrescriptionsPage() {
           return (
             <div key={p.id} className="bg-white rounded-2xl shadow-sm border overflow-hidden">
               <div className="px-4 py-3 border-b bg-gray-50">
-                <p className="font-semibold text-sm">Dr. {p.doctor_name}</p>
+                <p className="font-semibold text-sm">Dr. {p.doctor_name}{p.patient_type === "IP" && <span className="ml-2 align-middle text-[10px] bg-purple-50 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded-full font-medium">Inpatient</span>}</p>
                 <p className="text-xs text-gray-400">{p.hospital_name} {"\u00b7"} {new Date(p.created_at).toLocaleDateString()}</p>
               </div>
 

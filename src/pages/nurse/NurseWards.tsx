@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { getToken } from "../../api";
 import { useLiveRefresh } from "../../hooks/useLiveRefresh";
 import MaternityModal from "../hospital-admin/MaternityModal";
+import PrescriptionDialog from "@/components/PrescriptionDialog";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
@@ -193,6 +194,8 @@ export default function NurseWards() {
   useEffect(() => { setDutyMode(false); }, [occupyTarget]);
   const [detailsTarget, setDetailsTarget] = useState<{ wardId: string; bed: Bed } | null>(null);
   const [matObsId, setMatObsId] = useState<string | null>(null);
+  const [rxList, setRxList] = useState<any[]>([]);
+  const [rxOpen, setRxOpen] = useState(false);
   const [vitals, setVitals] = useState<Vitals[]>([]);
   const [notes, setNotes] = useState<NoteEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -511,8 +514,22 @@ export default function NurseWards() {
     } catch {} finally { setBedLoading(null); }
   }
 
+  async function refreshRx(inwardId?: string | null) {
+    if (!inwardId) return;
+    try { const rx = await api(`/prescriptions/inward/${inwardId}`); setRxList(Array.isArray(rx) ? rx : []); } catch {}
+  }
+
+  // prescriptions written by the doctor appear here on their own while the bed panel is open
+  useEffect(() => {
+    const id = detailsTarget?.bed.inward_id;
+    if (!id) return;
+    const t = setInterval(() => refreshRx(id), 10000);
+    return () => clearInterval(t);
+  }, [detailsTarget]);
+
   async function loadHistory(bed: Bed) {
-    if (!bed.inward_id) { setVitals([]); setNotes([]); return; }
+    if (!bed.inward_id) { setVitals([]); setNotes([]); setRxList([]); return; }
+    refreshRx(bed.inward_id);
     setHistoryLoading(true);
     try {
       const [v, n] = await Promise.all([
@@ -1029,6 +1046,48 @@ export default function NurseWards() {
                     </div>
                   ))}
                 </div>
+              )}
+            </div>
+
+            <div className="px-6 pb-3 space-y-3 border-t pt-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-gray-700">Prescription</h3>
+                {detailsTarget.bed.inward_id && (
+                  <button onClick={() => setRxOpen(true)} className="text-xs text-teal-600 font-medium hover:underline">+ Write</button>
+                )}
+              </div>
+              {rxList.length === 0 ? (
+                <p className="text-xs text-gray-400">No prescriptions yet.</p>
+              ) : (
+                <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                  {rxList.slice(0, 5).map((rx: any) => (
+                    <div key={rx.id} className="text-xs bg-gray-50 rounded px-2 py-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium text-gray-700">Dr. {rx.doctor_name}</span>
+                        <span className="text-[10px] uppercase rounded bg-teal-100 text-teal-700 px-1.5 py-0.5">{String(rx.status).replace("_", " ")}</span>
+                      </div>
+                      {rx.diagnosis && <p className="text-gray-500">{rx.diagnosis}</p>}
+                      {(rx.items || []).map((it: any, i: number) => (
+                        <p key={i} className="text-gray-600">{it.name}{it.dosage ? ` · ${it.dosage}` : ""}{it.duration ? ` · ${it.duration}` : ""}{it.instructions ? ` · ${it.instructions}` : ""}</p>
+                      ))}
+                      <p className="text-[10px] text-gray-400 mt-0.5">{new Date(rx.created_at).toLocaleString()}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {detailsTarget.bed.inward_id && (
+                <PrescriptionDialog
+                  open={rxOpen}
+                  onClose={() => setRxOpen(false)}
+                  onConfirm={() => { setRxOpen(false); refreshRx(detailsTarget.bed.inward_id); }}
+                  booking={{ id: detailsTarget.bed.inward_id as string, patientName: detailsTarget.bed.occupant_name ?? detailsTarget.bed.patient_name ?? undefined, patientAge: detailsTarget.bed.occupant_age ?? undefined }}
+                  inwardId={detailsTarget.bed.inward_id as string}
+                  doctorOptions={availableDoctors.map((d: any) => ({ id: d.id, name: d.name }))}
+                  doctorId=""
+                  doctorName=""
+                  hospitalId={hospitalId}
+                  hospitalName=""
+                />
               )}
             </div>
 

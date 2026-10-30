@@ -10,8 +10,8 @@ export interface Preset {
   minAge: number | null; maxAge: number | null;
 }
 
-export async function fetchPresets(): Promise<Preset[]> {
-  const res = await fetch(PRESET_API, { headers: { Authorization: `Bearer ${getToken()}` } });
+export async function fetchPresets(doctorId?: string): Promise<Preset[]> {
+  const res = await fetch(doctorId ? `${PRESET_API}?doctorId=${encodeURIComponent(doctorId)}` : PRESET_API, { headers: { Authorization: `Bearer ${getToken()}` } });
   if (!res.ok) return [];
   return res.json();
 }
@@ -41,21 +41,24 @@ interface Props {
   complaint?: string;
   age?: number;
   onApply: (items: PresetItem[]) => void;
+  doctorId?: string; // Nurse Console: load this doctor's presets
+  inpatient?: boolean;
 }
 
-export default function PresetSuggestions({ complaint, age, onApply }: Props) {
+export default function PresetSuggestions({ complaint, age, onApply, doctorId, inpatient }: Props) {
   const [presets, setPresets] = useState<Preset[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [showAll, setShowAll] = useState(false);
   useEffect(() => {
-    fetchPresets().then(setPresets).catch(() => setPresets([])).finally(() => setLoaded(true));
+    if (inpatient && !doctorId) { setLoaded(true); return; }
+    fetchPresets(inpatient ? doctorId : undefined).then(setPresets).catch(() => setPresets([])).finally(() => setLoaded(true));
   }, []);
 
   if (!loaded) return null;
   if (!presets.length) {
     return (
       <p className="text-[11px] text-gray-400">
-        No presets yet. Add them in the Presets tab of your dashboard to get one-tap suggestions here.
+        {inpatient ? (doctorId ? "This doctor has no presets yet." : "Select the prescribing doctor to see their presets.") : "No presets yet. Add them in the Presets tab of your dashboard to get one-tap suggestions here."}
       </p>
     );
   }

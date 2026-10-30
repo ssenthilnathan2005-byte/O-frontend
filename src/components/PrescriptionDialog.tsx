@@ -30,6 +30,8 @@ interface Medicine {
 }
 
 interface Props {
+  inwardId?: string; // set when prescribing for an admitted patient from the Nurse Console
+  doctorOptions?: { id: string; name: string }[];
   open: boolean;
   autoListen?: boolean;
   onClose: () => void;
@@ -132,7 +134,7 @@ function getCustomText(instructions: string): string {
 }
 
 export default function PrescriptionDialog({
-  open, onClose, onConfirm, booking, doctorId, doctorName, hospitalId, hospitalName, autoListen
+  open, onClose, onConfirm, booking, doctorId: doctorIdProp, doctorName: doctorNameProp, hospitalId, hospitalName, autoListen, inwardId, doctorOptions
 }: Props) {
   const [medicines, setMedicines] = useState<Medicine[]>([{ ...EMPTY_MED }]);
   const [notes, setNotes] = useState("");
@@ -146,11 +148,12 @@ export default function PrescriptionDialog({
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
   const [otherOpen, setOtherOpen] = useState<Set<number>>(new Set());
   const [mode, setMode] = useState<"manual" | "voice">("voice");
+  const [pickedDoctorId, setPickedDoctorId] = useState("");
   const [voiceItems, setVoiceItems] = useState<VoiceItem[]>([]);
   const [voicePending, setVoicePending] = useState<string[]>([]);
 
   // always start in Speak mode when the dialog is opened again
-  useEffect(() => { if (!open) setMode("voice"); }, [open]);
+  useEffect(() => { if (!open) { setMode("voice"); setPickedDoctorId(""); } }, [open]);
 
   function updateMed(idx: number, field: keyof Medicine, value: string) {
     setMedicines(prev => prev.map((m, i) => i === idx ? { ...m, [field]: value } : m));
@@ -323,10 +326,14 @@ export default function PrescriptionDialog({
   // save never throws away the reviewed prescription.
   async function submitPrescription(validMeds: VoiceItem[], keepOpenOnError = false) {
     if (!booking?.id) { onConfirm(); return; }
+    const pickedDoc = inwardId ? (doctorOptions || []).find(d => d.id === pickedDoctorId) : undefined;
+    if (inwardId && !pickedDoc) { toast.error("Select the prescribing doctor first"); return; }
+    const doctorId = pickedDoc ? pickedDoc.id : doctorIdProp;
+    const doctorName = pickedDoc ? pickedDoc.name : doctorNameProp;
     setSaving(true);
     let ok = false;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000/api"}/prescriptions`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000/api"}/prescriptions${inwardId ? `/inward/${inwardId}` : ""}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
         body: JSON.stringify({
@@ -355,7 +362,7 @@ export default function PrescriptionDialog({
     }
     setSaving(false);
     if (keepOpenOnError && !ok) return;
-    if (ok && booking) { setFuFor({ id: booking.id, date: (booking as any).date, name: booking.patientName }); return; }
+    if (ok && booking && !inwardId) { setFuFor({ id: booking.id, date: (booking as any).date, name: booking.patientName }); return; }
     setMedicines([{ ...EMPTY_MED }]);
     setVoiceItems([]);
     setVoicePending([]);
@@ -407,6 +414,17 @@ export default function PrescriptionDialog({
           )}
         </DialogHeader>
 
+        {inwardId && (
+          <div>
+            <Label className="text-xs text-gray-500">Prescribing doctor</Label>
+            <select value={pickedDoctorId} onChange={e => setPickedDoctorId(e.target.value)}
+              className="w-full border rounded-md px-3 py-2 text-sm bg-white">
+              <option value="">Select doctor</option>
+              {(doctorOptions || []).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+          </div>
+        )}
+
         <div className="absolute top-4 right-12 z-10">
           {mode === "voice" ? (
             <button
@@ -451,6 +469,9 @@ export default function PrescriptionDialog({
         <PresetSuggestions
           complaint={booking?.complaint ?? ""}
           age={booking?.patientAge}
+          doctorId={inwardId ? pickedDoctorId : undefined}
+          inpatient={!!inwardId}
+          key={inwardId ? pickedDoctorId : "doctor"}
           onApply={applyPreset}
         />
 

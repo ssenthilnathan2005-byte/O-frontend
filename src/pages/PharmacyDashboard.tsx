@@ -22,10 +22,16 @@ type PrescStatus = "pending" | "packed" | "ready" | "handed_over";
 interface RxItem { name: string; dosage: string; duration: string; instructions: string; form?: string; quantity?: number; quantityUnit?: string }
 interface Prescription {
   id: string; patient_name: string; doctor_name: string; items: RxItem[];
-  notes: string; status: PrescStatus; created_at: string; dispensed_items?: string | null;
+  notes: string; status: PrescStatus; created_at: string; dispensed_items?: string | null; patient_type?: "IP" | "OP";
 }
 interface StockItem { id: string; name: string; unit: string; quantity: number; pack_size: number; selling_price?: number | null; med_category?: string | null; pack_unit?: string | null }
 interface Plan { itemId: string; qty: string; reason: string; price?: string }
+
+// IP = inpatient (admitted when the prescription was written), OP = outpatient
+function TypeBadge({ type }: { type?: string }) {
+  const ip = type === "IP";
+  return <span className={"shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold border mr-1 " + (ip ? "bg-purple-50 text-purple-700 border-purple-200" : "bg-gray-50 text-gray-600 border-gray-200")}>{ip ? "IP" : "OP"}</span>;
+}
 
 const LIQUID_RE = /bottle|vial|syrup|tonic|suspension|elixir|drops|liquid|ointment|cream|lotion/i;
 const isBottle = (item?: RxItem, st?: StockItem): boolean => {
@@ -547,7 +553,7 @@ export default function PharmacyDashboard() {
         <div className="flex items-center justify-between gap-2 text-xs text-gray-500">
           <span className="flex items-center gap-1 min-w-0 truncate">
             <Clock className="w-3 h-3 shrink-0" />
-            Dr. {p.doctor_name} {"\u00b7"} <span title={exactLabel(p.created_at)}>{agoLabel(p.created_at)}</span>
+            <TypeBadge type={p.patient_type} />Dr. {p.doctor_name} {"\u00b7"} <span title={exactLabel(p.created_at)}>{agoLabel(p.created_at)}</span>
           </span>
           <span className={`shrink-0 rounded-full px-2 py-0.5 font-medium border ${isGiven
             ? "bg-gray-100 text-gray-500 border-gray-200"
@@ -709,7 +715,7 @@ export default function PharmacyDashboard() {
           <div className="min-w-0 flex-1">
             <p className="font-semibold text-sm truncate">{p.patient_name}</p>
             <p className="text-xs text-gray-500 truncate">
-              {exactLabel(p.created_at)} {"\u00b7"} {p.items.length} medicine{p.items.length === 1 ? "" : "s"}{billAmt != null && <>{" "}{"\u00b7"}{" "}<b className="text-gray-800">{"\u20b9"}{billAmt.toFixed(2)}</b></>}
+              <TypeBadge type={p.patient_type} />{exactLabel(p.created_at)} {"\u00b7"} {p.items.length} medicine{p.items.length === 1 ? "" : "s"}{billAmt != null && <>{" "}{"\u00b7"}{" "}<b className="text-gray-800">{"\u20b9"}{billAmt.toFixed(2)}</b></>}
             </p>
           </div>
           <Button variant="outline" className="h-9 px-3 text-xs shrink-0"
@@ -724,7 +730,7 @@ export default function PharmacyDashboard() {
                 <div className="min-w-0">
                   <p className="font-semibold text-sm truncate">{p.patient_name}</p>
                   <p className="text-xs text-gray-500">
-                    Dr. {p.doctor_name} {"\u00b7"} {exactLabel(p.created_at)}
+                    <TypeBadge type={p.patient_type} />Dr. {p.doctor_name} {"\u00b7"} {exactLabel(p.created_at)}
                   </p>
                 </div>
                 <button type="button" onClick={() => setDetailId(null)}
