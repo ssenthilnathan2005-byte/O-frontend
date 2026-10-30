@@ -299,7 +299,7 @@ export default function PharmacyDashboard() {
   }
 
   // One tap: runs packed -> ready -> handed_over in order, skipping steps already done.
-  async function markGiven(p: Prescription) { if (p.inward_id && p.patient_type === "IP" && chargeIp[p.id] === undefined) { toast.error("Choose: Paid at Pharmacy Counter or Charge to IP Main Bill"); return; }
+  async function markGiven(p: Prescription) { if (!(p.inward_id && p.patient_type === "IP" && chargeIp[p.id] === true) && !payModes[p.id]) { toast.error("Select the payment mode collected at the counter"); return; } if (p.inward_id && p.patient_type === "IP" && chargeIp[p.id] === undefined) { toast.error("Choose: Paid at Pharmacy Counter or Charge to IP Main Bill"); return; }
     if (busy) return;
     const rxLines: any[] = (() => { try { return p.dispensed_items ? JSON.parse(p.dispensed_items) : []; } catch { return []; } })();
     const legacyManual = p.status !== "pending" && rxLines.some(l => l.unitPrice == null);
@@ -640,9 +640,9 @@ export default function PharmacyDashboard() {
               readOnly={autoBill}
               onChange={e => setAmounts(prev => ({ ...prev, [p.id]: e.target.value }))}
               className="flex-1 border border-gray-200 rounded-md text-sm px-2 py-1.5 bg-white" />
-            <select hidden={!!(p.inward_id && p.patient_type === "IP" && chargeIp[p.id])} value={payModes[p.id] ?? "cash"} onChange={e => setPayModes(prev => ({ ...prev, [p.id]: e.target.value }))}
+            <select hidden={!!(p.inward_id && p.patient_type === "IP" && chargeIp[p.id])} value={payModes[p.id] ?? ""} onChange={e => setPayModes(prev => ({ ...prev, [p.id]: e.target.value }))}
               className="border border-gray-200 rounded-md text-sm px-2 py-1.5 bg-white">
-              <option value="cash">Cash</option><option value="upi">UPI</option><option value="insurance">Insurance / TPA</option>
+              <option value="" disabled>Select payment mode</option><option value="cash">Cash</option><option value="upi">UPI</option><option value="insurance">Insurance / TPA</option>
             </select>
           </div>
         )}
