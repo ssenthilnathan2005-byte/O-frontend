@@ -464,6 +464,9 @@ function Admit() {
   const [doctors, setDoctors] = useState<{ id: string; name: string; specialty: string }[]>([]);
   const [beds, setBeds] = useState<Bed[]>([]);
   const [inward, setInward] = useState<Admitted[]>([]);
+  const [aq, setAq] = useState(""); // ADMIT_SEARCH_V1
+  const aql = aq.trim().toLowerCase();
+  const inwardShown = inward.filter(p => !aql || [p.patient_name, p.phone, p.ward, p.bed_number, p.admitting_doctor_name, p.diagnosis].some(v => (v || "").toLowerCase().includes(aql)));
   const empty = { patientName: "", phone: "", age: "", gender: "", admittingDoctorId: "", bed: "", diagnosis: "", notes: "" };
   const [f, setF] = useState(empty);
   const [saving, setSaving] = useState(false);
@@ -527,9 +530,11 @@ function Admit() {
           <h2 className="font-semibold text-gray-900">Currently admitted ({inward.length})</h2>
           <Button size="sm" variant="outline" onClick={load}><RefreshCw className="w-4 h-4" /></Button>
         </div>
+        {inward.length > 0 && <Input className="mb-3" placeholder="Search admitted patients (name, phone, ward, bed, doctor)" value={aq} onChange={e => setAq(e.target.value)} />}
         {inward.length === 0 && <p className="text-sm text-gray-400 py-6 text-center">No admitted patients.</p>}
+        {inward.length > 0 && inwardShown.length === 0 && <p className="text-sm text-gray-400 py-6 text-center">No admitted patient matches "{aq}".</p>}
         <div className="space-y-2">
-          {inward.map(p => (
+          {inwardShown.map(p => (
             <div key={p.id} className="border border-gray-100 rounded-lg px-3 py-2">
               <div className="flex items-start justify-between gap-2">
                 <p className="font-medium text-gray-900">{p.patient_name}{p.age != null ? ", " + p.age : ""}</p>
