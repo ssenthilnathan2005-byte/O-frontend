@@ -1,4 +1,7 @@
-﻿import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+const _si = window.setInterval.bind(window);
+(window as any).setInterval = (fn: any, ms?: number, ...a: any[]) =>
+  _si(typeof fn === "function" ? (...x: any[]) => { if (!document.hidden) fn(...x); } : fn, ms, ...a);
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./index.css";
