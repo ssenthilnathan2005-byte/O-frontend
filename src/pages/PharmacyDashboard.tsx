@@ -218,7 +218,7 @@ export default function PharmacyDashboard() {
       fetchPrescriptions(true);
       fetchStats();
     };
-    const t = setInterval(tick, 8000);
+    const t = setInterval(tick, 5000);
     const onVisible = () => { if (document.visibilityState === "visible") tick(); };
     document.addEventListener("visibilitychange", onVisible);
     return () => { clearInterval(t); document.removeEventListener("visibilitychange", onVisible); };
