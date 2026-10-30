@@ -22,7 +22,7 @@ type PrescStatus = "pending" | "packed" | "ready" | "handed_over";
 interface RxItem { name: string; dosage: string; duration: string; instructions: string; form?: string; quantity?: number; quantityUnit?: string }
 interface Prescription {
   id: string; patient_name: string; doctor_name: string; items: RxItem[];
-  notes: string; status: PrescStatus; created_at: string; dispensed_items?: string | null; patient_type?: "IP" | "OP";
+  notes: string; status: PrescStatus; created_at: string; dispensed_items?: string | null; patient_type?: "IP" | "OP"; inward_id?: string | null;
 }
 interface StockItem { id: string; name: string; unit: string; quantity: number; pack_size: number; selling_price?: number | null; med_category?: string | null; pack_unit?: string | null }
 interface Plan { itemId: string; qty: string; reason: string; price?: string }
@@ -146,6 +146,7 @@ export default function PharmacyDashboard() {
   const [busy, setBusy] = useState<string | null>(null);
   const [handover, setHandover] = useState<Record<string, Record<number, { qty: string; reason: string }>>>({});
   const [payModes, setPayModes] = useState<Record<string, string>>({});
+  const [chargeIp, setChargeIp] = useState<Record<string, boolean>>({});
   const [taxes, setTaxes] = useState<Record<string, { cgst: string; sgst: string; disc: string }>>({});
   const [filter, setFilter] = useState<"received" | "given">("received");
   const [manualDeduct, setManualDeduct] = useState<Record<string, boolean>>({});
@@ -361,7 +362,7 @@ export default function PharmacyDashboard() {
     try {
       if (p.status === "pending") await send("packed", { dispense });
       if (p.status === "pending" || p.status === "packed") await send("ready", {});
-      await send("handed_over", { handover: handoverPayload, billAmount: billTotal, paymentMode: payModes[p.id] || "cash", discountPct: Number(taxes[p.id]?.disc) || 0, cgstPct: Number(taxes[p.id]?.cgst) || 0, sgstPct: Number(taxes[p.id]?.sgst) || 0, manualItems });
+      await send("handed_over", { handover: handoverPayload, billAmount: billTotal, paymentMode: payModes[p.id] || "cash", chargeToIpBill: !!(p.inward_id && p.patient_type === "IP" && chargeIp[p.id]), discountPct: Number(taxes[p.id]?.disc) || 0, cgstPct: Number(taxes[p.id]?.cgst) || 0, sgstPct: Number(taxes[p.id]?.sgst) || 0, manualItems });
       toast.success("Marked as given. Patient notified");
       await printInvoiceFor(p.id, true);
     } catch (err: any) {
@@ -639,13 +640,29 @@ export default function PharmacyDashboard() {
               readOnly={autoBill}
               onChange={e => setAmounts(prev => ({ ...prev, [p.id]: e.target.value }))}
               className="flex-1 border border-gray-200 rounded-md text-sm px-2 py-1.5 bg-white" />
-            <select value={payModes[p.id] ?? "cash"} onChange={e => setPayModes(prev => ({ ...prev, [p.id]: e.target.value }))}
+            <select hidden={!!(p.inward_id && p.patient_type === "IP" && chargeIp[p.id])} value={payModes[p.id] ?? "cash"} onChange={e => setPayModes(prev => ({ ...prev, [p.id]: e.target.value }))}
               className="border border-gray-200 rounded-md text-sm px-2 py-1.5 bg-white">
               <option value="cash">Cash</option><option value="upi">UPI</option><option value="insurance">Insurance / TPA</option>
             </select>
           </div>
         )}
-        {!isGiven && (() => {
+        {!isGiven && p.inward_id && p.patient_type === "IP" && (
+            <div className="rounded-lg border border-purple-200 bg-purple-50 p-2 space-y-1.5">
+              <p className="text-xs font-semibold text-purple-800">Inpatient prescription: how is this paid?</p>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setChargeIp(prev => ({ ...prev, [p.id]: false }))}
+                  className={"flex-1 rounded-md border px-2 py-1.5 text-xs font-medium " + (!chargeIp[p.id] ? "bg-teal-600 text-white border-teal-600" : "bg-white text-gray-700 border-gray-200")}>
+                  Paid at Pharmacy Counter
+                </button>
+                <button type="button" onClick={() => setChargeIp(prev => ({ ...prev, [p.id]: true }))}
+                  className={"flex-1 rounded-md border px-2 py-1.5 text-xs font-medium " + (chargeIp[p.id] ? "bg-purple-600 text-white border-purple-600" : "bg-white text-gray-700 border-gray-200")}>
+                  Charge to IP Main Bill
+                </button>
+              </div>
+              {chargeIp[p.id] && <p className="text-[11px] text-purple-700">No cash is collected here. This amount is added to the patient's IP bill.</p>}
+            </div>
+          )}
+          {!isGiven && (() => {
           const t = taxes[p.id] ?? { cgst: "", sgst: "", disc: "" };
           const setT = (patch: Partial<{ cgst: string; sgst: string; disc: string }>) => setTaxes(prev => ({ ...prev, [p.id]: { ...t, ...patch } }));
           const sub = autoBill ? billShown : Number(amounts[p.id]);

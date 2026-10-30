@@ -63,7 +63,7 @@ export default function IPDBillModal({ inwardId, onClose }: { inwardId: string; 
   const dirty = !!bill && (discType !== (bill.discountType || "amount") || Number(disc || 0) !== Number(bill.discountValue ?? bill.discount ?? 0) || cgstNum !== Number(bill.cgstRate || 0) || sgstNum !== Number(bill.sgstRate || 0));
   const live = bill
     ? (dirty
-        ? calcTotals(Number(bill.subtotal || 0), discType, Number(disc) || 0, cgstNum, sgstNum)
+        ? (() => { const c = calcTotals(Number(bill.subtotal || 0), discType, Number(disc) || 0, cgstNum, sgstNum); return { ...c, total: round2(c.total + Number(bill.pharmacyTotal || 0)) }; })()
         : { discount: Number(bill.discount || 0), taxable: Number(bill.taxable ?? round2(Number(bill.subtotal || 0) - Number(bill.discount || 0))), cgst: Number(bill.cgst || 0), sgst: Number(bill.sgst || 0), total: Number(bill.total || 0) })
     : null;
   const liveTotal = live ? live.total : 0;
@@ -196,7 +196,14 @@ export default function IPDBillModal({ inwardId, onClose }: { inwardId: string; 
               </div>
             </div>
 
-            {/* Discount & tax */}
+            {Number(bill.pharmacyTotal) > 0 && (
+              <div className="border rounded-xl p-3 flex items-center justify-between text-sm">
+                <span className="font-medium">Pharmacy (GST included)</span>
+                <span className="font-semibold">{inr(bill.pharmacyTotal)}</span>
+              </div>
+            )}
+
+              {/* Discount & tax */}
             <div className="border rounded-xl p-3 space-y-2">
               <div className="flex items-center justify-between text-sm"><span>Subtotal</span><span>{inr(bill.subtotal)}</span></div>
               <div>
