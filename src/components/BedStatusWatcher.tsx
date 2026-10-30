@@ -79,7 +79,7 @@ export default function BedStatusWatcher() {
   }
 
   useEffect(() => { if (isPatient) check().catch(() => {}); }, [isPatient, KEY]); // eslint-disable-line react-hooks/exhaustive-deps
-  useLiveRefresh(check, 10000, isPatient);
+  useLiveRefresh(check, 30000, isPatient);
 
   const ev = queue[0];
   useEffect(() => {

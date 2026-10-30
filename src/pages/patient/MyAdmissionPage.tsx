@@ -30,7 +30,7 @@ export default function MyAdmissionPage() {
     finally { setLoading(false); }
   }, []);
   useEffect(() => { load(); }, [load]);
-  useLiveRefresh(load, 8000);
+  useLiveRefresh(load, 30000);
 
   const current = stays.filter((s) => s.status === "admitted");
   const past = stays.filter((s) => s.status !== "admitted");
