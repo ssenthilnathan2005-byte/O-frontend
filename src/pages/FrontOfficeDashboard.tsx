@@ -577,12 +577,31 @@ export default function FrontOfficeDashboard() {
         <Button variant="outline" size="sm" onClick={() => logout()}><LogOut className="w-4 h-4 mr-1" />Sign out</Button>
       </header>
       <main className="max-w-5xl mx-auto p-4 space-y-4">
-        <div className="flex flex-wrap gap-2">
-          <button className={tabCls(tab === "op")} onClick={() => setTab("op")}><UserCheck className="w-4 h-4" />Today's outpatients</button>
-          {has("ipd") && <button className={tabCls(tab === "admit")} onClick={() => setTab("admit")}><BedDouble className="w-4 h-4" />Admit inpatient</button>}
-          <button className={tabCls(tab === "walkin")} onClick={() => setTab("walkin")}><UserPlus className="w-4 h-4" />Register patient</button>
-          {has("bed_bookings") && <button className={tabCls(tab === "beds")} onClick={() => setTab("beds")}><BedDouble className="w-4 h-4" />Bed requests</button>}
-        {extraNav.map(n => (<button key={n.key} className={tabCls(tab === n.key)} onClick={() => setTab(n.key)}><n.icon className="w-4 h-4" />{n.label}</button>))}
+        {/* TAB_GROUPS_V1 */}
+        <div className="flex flex-wrap items-start gap-3">
+          {(() => {
+            const exBtn = (n: any) => <button key={n.key} className={tabCls(tab === n.key)} onClick={() => setTab(n.key)}><n.icon className="w-4 h-4" />{n.label}</button>;
+            const searchNav = extraNav.filter((n: any) => n.key === "x:all_patients");
+            const moreNav = extraNav.filter((n: any) => n.key !== "x:all_patients");
+            const groups: { title: string; items: any[] }[] = [
+              { title: "Outpatient", items: [
+                <button key="op" className={tabCls(tab === "op")} onClick={() => setTab("op")}><UserCheck className="w-4 h-4" />Today's outpatients</button>,
+                <button key="walkin" className={tabCls(tab === "walkin")} onClick={() => setTab("walkin")}><UserPlus className="w-4 h-4" />Register patient</button>,
+              ] },
+              { title: "Inpatient", items: [
+                has("ipd") ? <button key="admit" className={tabCls(tab === "admit")} onClick={() => setTab("admit")}><BedDouble className="w-4 h-4" />Admit inpatient</button> : null,
+                has("bed_bookings") ? <button key="beds" className={tabCls(tab === "beds")} onClick={() => setTab("beds")}><BedDouble className="w-4 h-4" />Bed requests</button> : null,
+              ] },
+              { title: "Search", items: searchNav.map(exBtn) },
+              { title: "More", items: moreNav.map(exBtn) },
+            ];
+            return groups.filter(g => g.items.some(Boolean)).map(g => (
+              <div key={g.title} className="rounded-xl border border-gray-200 bg-white/70 p-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 px-1 mb-1.5">{g.title}</p>
+                <div className="flex flex-wrap gap-2">{g.items}</div>
+              </div>
+            ));
+          })()}
         </div>
         {tab.startsWith("x:") ? <ExtraPanel moduleKey={tab.slice(2)} /> : tab === "op" ? <Outpatients /> : tab === "walkin" ? <RegisterWalkIn /> : tab === "beds" && has("bed_bookings") ? <HABedRequests /> : tab === "admit" && has("ipd") ? <Admit /> : <Outpatients />}
       </main>
