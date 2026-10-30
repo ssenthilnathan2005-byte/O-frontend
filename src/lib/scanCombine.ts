@@ -131,7 +131,7 @@ const knownLabelCount = (traces: AnyObj[]) => traces.filter((t) => t && CORE_LAB
 
 /** A temperature-looking decimal ("37.5" degC or "99.5" degF) as text, or null. */
 const tempDecimal = (v: string): number | null => {
-  const m = /^(\d{2,3})[.,](\d)$/.exec(v.trim());
+  const m = /^(\d{2,3})[.,](\d)[.,]?$/.exec(v.trim());
   if (!m) return null;
   const n = +`${m[1]}.${m[2]}`;
   return n >= 34 && n <= 42.5 ? n * 9 / 5 + 32 : n >= 93 && n <= 108.5 ? n : null;
@@ -876,10 +876,21 @@ export function combineMatches(words: AnyObj[], width: number, height: number, m
 
   // Tap-to-pick: fields that are still empty get the big, unreliable numbers printed next to their label.
   const choices: Record<string, string[]> = {};
+  // A "PROBE OFF" / "LEADS FAIL" message means the vital behind it has no valid reading: offer no tap choice for it.
+  const bannerWord = (t: AnyObj) => clean(String(t.text ?? "")).replace(/[^A-Za-z]/g, "").toUpperCase();
+  const bannerPair = (first: RegExp, second: RegExp) => traces.some((a) => a && typeof a.x === "number" && first.test(bannerWord(a)) &&
+    traces.some((b) => b && b !== a && typeof b.x === "number" && second.test(bannerWord(b)) && Math.abs(b.y - a.y) <= 24 && b.x - a.x > 0 && b.x - a.x <= 300));
+  const probeOff = bannerPair(/^(PROBE|SENSOR)$/, /^(OFF|DISCONNECTED)$/);
+  const leadsOff = bannerPair(/^(LEAD|LEADS)$/, /^(FAIL|OFF)$/);
   for (const f of ["pulse", "spo2", "respRate", "temperature", "bpSystolic", "bpDiastolic"]) {
     if (values[f] || suggestions[f]) continue;
     const list = [...new Set([...(regionChoices[f] || []), ...(conflictChoices[f] || []), ...(deepChoices[f] || []), ...(f === "temperature" ? [] : choicesFor(f, traces, ref))])];
-    if (list.length) choices[f] = list;
+    const shown = ["pulse", "spo2", "respRate"].includes(f) ? list.filter((v) => !isLimitLike(v, traces, ref)) : list;
+    if (shown.length && ((f === "spo2" && probeOff) || ((f === "pulse" || f === "respRate") && leadsOff))) {
+      notes.push(`${(FIELD_LABEL as AnyObj)[f] ?? f}: the screen shows a probe / leads warning, so no number was offered for it. Type it from the monitor if it is valid.`);
+      continue;
+    }
+    if (shown.length) choices[f] = shown;
   }
   if (Object.keys(choices).length) notes.push("Some numbers on the screen could not be read reliably. Tap the matching choice under the field, or type the value.");
 
