@@ -299,7 +299,7 @@ export default function PharmacyDashboard() {
   }
 
   // One tap: runs packed -> ready -> handed_over in order, skipping steps already done.
-  async function markGiven(p: Prescription) {
+  async function markGiven(p: Prescription) { if (p.inward_id && p.patient_type === "IP" && chargeIp[p.id] === undefined) { toast.error("Choose: Paid at Pharmacy Counter or Charge to IP Main Bill"); return; }
     if (busy) return;
     const rxLines: any[] = (() => { try { return p.dispensed_items ? JSON.parse(p.dispensed_items) : []; } catch { return []; } })();
     const legacyManual = p.status !== "pending" && rxLines.some(l => l.unitPrice == null);
@@ -362,7 +362,7 @@ export default function PharmacyDashboard() {
     try {
       if (p.status === "pending") await send("packed", { dispense });
       if (p.status === "pending" || p.status === "packed") await send("ready", {});
-      await send("handed_over", { handover: handoverPayload, billAmount: billTotal, paymentMode: payModes[p.id] || "cash", chargeToIpBill: !!(p.inward_id && p.patient_type === "IP" && chargeIp[p.id]), discountPct: Number(taxes[p.id]?.disc) || 0, cgstPct: Number(taxes[p.id]?.cgst) || 0, sgstPct: Number(taxes[p.id]?.sgst) || 0, manualItems });
+      await send("handed_over", { handover: handoverPayload, billAmount: billTotal, paymentMode: payModes[p.id] || "cash", chargeToIpBill: !!(p.inward_id && p.patient_type === "IP" && chargeIp[p.id]), billingMode: (p.inward_id && p.patient_type === "IP" && chargeIp[p.id] === true) ? "IP_BILL" : "COUNTER", discountPct: Number(taxes[p.id]?.disc) || 0, cgstPct: Number(taxes[p.id]?.cgst) || 0, sgstPct: Number(taxes[p.id]?.sgst) || 0, manualItems });
       toast.success("Marked as given. Patient notified");
       await printInvoiceFor(p.id, true);
     } catch (err: any) {
@@ -651,7 +651,7 @@ export default function PharmacyDashboard() {
               <p className="text-xs font-semibold text-purple-800">Inpatient prescription: how is this paid?</p>
               <div className="flex gap-2">
                 <button type="button" onClick={() => setChargeIp(prev => ({ ...prev, [p.id]: false }))}
-                  className={"flex-1 rounded-md border px-2 py-1.5 text-xs font-medium " + (!chargeIp[p.id] ? "bg-teal-600 text-white border-teal-600" : "bg-white text-gray-700 border-gray-200")}>
+                  className={"flex-1 rounded-md border px-2 py-1.5 text-xs font-medium " + (chargeIp[p.id] === false ? "bg-teal-600 text-white border-teal-600" : "bg-white text-gray-700 border-gray-200")}>
                   Paid at Pharmacy Counter
                 </button>
                 <button type="button" onClick={() => setChargeIp(prev => ({ ...prev, [p.id]: true }))}

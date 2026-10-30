@@ -70,7 +70,7 @@ export function usePharmacyRx(hospitalId: string, from: string, to: string) {
         if (off || !Array.isArray(data)) return;
         setRows(
           data
-            .filter((p: any) => p.status === "handed_over")
+            .filter((p: any) => p.status === "handed_over" && !(p.ip_billed === true || p.ipBilled === true))
             .map(toRow)
             .filter((r) => { const d = localYmd(r.at); return d >= from && d <= to; })
             .sort((a, b) => (a.at < b.at ? 1 : -1)),
