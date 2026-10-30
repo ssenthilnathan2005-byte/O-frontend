@@ -75,7 +75,7 @@ export function useStore(): Store {
   return c;
 }
 
-const REFRESH_MS = 10_000; // 10 seconds
+const REFRESH_MS = 45_000; // 45 seconds
 let _bkDeniedAt = 0;
 let _bkLastAt = 0;
 
