@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { useStore } from "../context/StoreContext";
 import { useRouter } from "../router/RouterContext";
@@ -87,7 +87,7 @@ export default function PrescriptionAlert({ enabled }: { enabled: boolean }) {
         } catch {}
       };
     } catch {}
-    const timer = setInterval(check, 15000);
+    const timer = setInterval(check, 60000);
     const onVisible = () => { if (!document.hidden) check(); };
     document.addEventListener("visibilitychange", onVisible);
 
