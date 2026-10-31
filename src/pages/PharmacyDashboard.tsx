@@ -11,8 +11,7 @@ import useModules from "@/hooks/useModules";
 import GstInvoice from "./hospital-admin/GstInvoice";
 import { PharmRevenue, PharmInventory, PharmPatients, PharmSold, PharmStockUpdate, usePharmacySocket } from "./hospital-admin/PharmacyModule";
 import {
-  Pill, LogOut, RefreshCw, HandMetal, Search, Inbox, ArrowUpDown, Clock, CheckCircle2, Package, BarChart3, ShoppingCart, Users, FileText,
-} from "lucide-react";
+  Pill, LogOut, RefreshCw, HandMetal, Search, Inbox, ArrowUpDown, Clock, CheckCircle2, Package, BarChart3, ShoppingCart, Users, FileText, Menu as HamburgerIcon, X as CloseIcon } from "lucide-react";
 
 // pharmacy-layout-v3
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
@@ -157,6 +156,7 @@ export default function PharmacyDashboard() {
   const [openRx, setOpenRx] = useState<Record<string, boolean>>({});
   const [detailId, setDetailId] = useState<string | null>(null);
   const [tab, setTab] = useState<string>("rx");
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const { nav: extraNav } = useExtraNav(["pharmacy", "inventory"]);
   const { has } = useModules();
   usePharmacySocket(hospitalId);
@@ -846,14 +846,37 @@ export default function PharmacyDashboard() {
     </aside>
   );
   const mobileTabs = (
-    <div className="md:hidden flex gap-2 overflow-x-auto bg-admin-sidebar px-3 py-2">
-      {ALL_NAV.map(({ key, label }) => (
-        <button key={key} type="button" onClick={() => setTab(key)}
-          className={"whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium " + (tab === key ? "bg-white/20 text-white" : "text-white/60")}>
-          {label}
+    <>
+      <div className="md:hidden sticky top-0 z-[60] h-14 bg-admin-sidebar text-white flex items-center gap-3 px-3 border-b border-white/10">
+        <button type="button" aria-label={drawerOpen ? "Close menu" : "Open menu"} onClick={() => setDrawerOpen(o => !o)}
+          className="p-2 rounded-lg hover:bg-white/10 transition-colors">
+          {drawerOpen ? <CloseIcon className="w-5 h-5" /> : <HamburgerIcon className="w-5 h-5" />}
         </button>
-      ))}
-    </div>
+        <Pill className="w-5 h-5 shrink-0 text-teal-300" />
+        <span className="font-bold text-sm truncate">{(user as any)?.hospitalName ?? "Pharmacy"}</span>
+      </div>
+      <div onClick={() => setDrawerOpen(false)}
+        className={"md:hidden fixed inset-0 z-40 bg-black/50 transition-opacity duration-300 " + (drawerOpen ? "opacity-100" : "opacity-0 pointer-events-none")} />
+      <div aria-hidden={!drawerOpen} style={{ height: "100dvh" }}
+        className={"md:hidden fixed left-0 top-0 bottom-0 w-72 z-50 bg-admin-sidebar text-admin-sidebar-fg flex flex-col pt-14 shadow-xl transform transition-transform duration-300 ease-in-out " + (drawerOpen ? "translate-x-0" : "-translate-x-full")}>
+        <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 py-4 space-y-1">
+          {ALL_NAV.map(({ key, label, icon: Icon }) => (
+            <button key={key} type="button" onClick={() => { setTab(key); setDrawerOpen(false); }}
+              className={"w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors " + (tab === key ? "bg-white/15 text-white border-l-2 border-teal-400" : "text-white/60 hover:bg-white/8 hover:text-white/90")}>
+              <Icon className="w-4 h-4 shrink-0" />
+              <span className="text-left leading-tight">{label}</span>
+            </button>
+          ))}
+        </nav>
+        <div className="px-3 py-4 border-t border-white/10">
+          <button type="button" onClick={logout}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white/60 hover:bg-white/8 hover:text-white transition-colors">
+            <LogOut className="w-4 h-4" />
+            Logout
+          </button>
+        </div>
+      </div>
+    </>
   );
   if (!has("pharmacy")) return (<div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-gray-50 p-6 text-center"><p className="text-lg font-semibold text-gray-800">Pharmacy is not enabled for this hospital.</p><p className="text-sm text-gray-500">Ask your hospital admin to turn it on in Hospital Functioning.</p><button type="button" onClick={logout} className="px-4 py-2 rounded-lg bg-teal-500 text-white text-sm font-medium">Logout</button></div>);
   if (tab !== "rx") {
@@ -874,7 +897,7 @@ export default function PharmacyDashboard() {
       <div className="flex-1 min-w-0">
       {mobileTabs}
     <div className="min-h-screen bg-gray-50">
-      <div className="sticky top-0 z-10 bg-white border-b px-4 py-3 flex items-center justify-between">
+      <div className="sticky top-14 md:top-0 z-10 bg-white border-b px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Pill className="w-5 h-5 text-teal-600" />
           <div>
