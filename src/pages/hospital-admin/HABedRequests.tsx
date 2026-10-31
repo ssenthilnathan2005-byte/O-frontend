@@ -15,7 +15,7 @@ export default function HABedRequests() {
   const [wards, setWards] = useState<any[]>([]);
   const [rates, setRates] = useState<Record<string, string>>({});
   const [open, setOpen] = useState<string | null>(null);
-  const [pick, setPick] = useState({ bedId: "", hold: "24" });
+  const [pick, setPick] = useState({ wardId: "", bedId: "", hold: "24" });
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState("");
 
@@ -46,15 +46,17 @@ export default function HABedRequests() {
   function startConfirm(b: any) {
     setOpen(b.id);
     const same = beds.find((x) => x.ward_id === b.ward_id);
-    setPick({ bedId: b.bed_id || (same ? same.bed_id : ""), hold: "24" });
+    setPick({ wardId: b.ward_id, bedId: b.bed_id || (same ? same.bed_id : ""), hold: "24" });
   }
 
   const requested = rows.filter((r) => r.status === "requested");
   const confirmed = rows.filter((r) => r.status === "confirmed");
 
   function Card({ b }: { b: any }) {
-    const wardBeds = beds.filter((x) => x.ward_id === b.ward_id);
-    const otherBeds = beds.filter((x) => x.ward_id !== b.ward_id);
+    const wardMap = new Map<string, string>();
+    wardMap.set(b.ward_id, b.ward_name);
+    beds.forEach((x) => wardMap.set(x.ward_id, x.ward_name));
+    const wardBeds = beds.filter((x) => x.ward_id === pick.wardId);
     return (
       <div className="border border-gray-200 rounded-xl p-3 bg-white space-y-2">
         <div className="flex items-start justify-between gap-2">
@@ -72,10 +74,12 @@ export default function HABedRequests() {
 
         {open === b.id ? (
           <div className="flex flex-wrap items-center gap-2 pt-1">
+            <select className={sel} value={pick.wardId} onChange={(e) => setPick({ ...pick, wardId: e.target.value, bedId: "" })}>
+              {Array.from(wardMap.entries()).map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+            </select>
             <select className={sel} value={pick.bedId} onChange={(e) => setPick({ ...pick, bedId: e.target.value })}>
-              <option value="">Select bed</option>
-              {wardBeds.length > 0 && <optgroup label={b.ward_name}>{wardBeds.map((x) => <option key={x.bed_id} value={x.bed_id}>{x.bed_number}</option>)}</optgroup>}
-              {otherBeds.length > 0 && <optgroup label="Other wards">{otherBeds.map((x) => <option key={x.bed_id} value={x.bed_id}>{x.ward_name} / {x.bed_number}</option>)}</optgroup>}
+              <option value="">{wardBeds.length ? "Select bed" : "No free beds"}</option>
+              {wardBeds.map((x) => <option key={x.bed_id} value={x.bed_id}>{x.bed_number}</option>)}
             </select>
             <select className={sel} value={pick.hold} onChange={(e) => setPick({ ...pick, hold: e.target.value })}>
               {["6", "12", "24", "48", "72"].map((h) => <option key={h} value={h}>Hold {h}h</option>)}
