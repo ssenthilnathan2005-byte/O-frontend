@@ -91,6 +91,8 @@ export default function LoginPage({
   const [loading, setLoading]       = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [loginMethod, setLoginMethod] = useState<"phone" | "email">("phone");
+  const [signupMethod, setSignupMethod] = useState<"phone" | "email">("phone");
+  const [signupEmailTouched, setSignupEmailTouched] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
   function isValidEmail(value: string): boolean {
     return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value);
@@ -241,9 +243,9 @@ export default function LoginPage({
   // ── Signup ───────────────────────────────────────────────────────────────────
   async function handleSignupSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const em = email.trim();
-    const ph = phone.trim();
-    if (!name.trim() || !password || (!em && !ph)) {
+    const em = signupMethod === "email" ? email.trim() : "";
+    const ph = signupMethod === "phone" ? phone.trim() : "";
+    if (!name.trim() || !password || (signupMethod === "email" ? !em : !ph)) {
       toast.error("Please fill all required fields"); return;
     }
     if (em && !isValidEmail(em)) {
@@ -699,49 +701,76 @@ export default function LoginPage({
 
                 {patientMode === "signup" ? (
                   <form onSubmit={handleSignupSubmit} className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Sign-up method">
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={signupMethod === "phone"}
+                        onClick={() => setSignupMethod("phone")}
+                        className={"flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-center text-[11px] font-medium leading-tight transition-colors sm:text-xs " + (signupMethod === "phone" ? "border-teal-500 bg-teal-50 text-teal-700" : "border-gray-200 bg-white text-gray-500 hover:border-teal-300")}
+                      >
+                        <Phone className="w-3.5 h-3.5 shrink-0" />
+                        Sign up with Phone Number
+                      </button>
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={signupMethod === "email"}
+                        onClick={() => setSignupMethod("email")}
+                        className={"flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-center text-[11px] font-medium leading-tight transition-colors sm:text-xs " + (signupMethod === "email" ? "border-teal-500 bg-teal-50 text-teal-700" : "border-gray-200 bg-white text-gray-500 hover:border-teal-300")}
+                      >
+                        <Mail className="w-3.5 h-3.5 shrink-0" />
+                        Sign up with Email
+                      </button>
+                    </div>
                     <div className="space-y-1.5">
                       <Label>Full Name</Label>
                       <div className="relative"><User className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
                         <Input className="pl-9" placeholder="Your full name" value={name} onChange={e => setName(e.target.value)} /></div>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label>Email Address</Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                        <Input
-                          type="email"
-                          inputMode="email"
-                          className="pl-9"
-                          placeholder="you@example.com"
-                          value={email}
-                          onChange={e => setEmail(e.target.value)}
-                          maxLength={50}
-                        />
+                    {signupMethod === "phone" ? (
+                      <div className="space-y-1.5">
+                        <Label>Phone Number</Label>
+                        <div className="relative">
+                          <Phone className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                          <Input
+                            type="tel"
+                            inputMode="numeric"
+                            autoComplete="tel-national"
+                            className="pl-9"
+                            placeholder="10-digit mobile number"
+                            value={phone}
+                            onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                            maxLength={10}
+                          />
+                        </div>
+                        {phone.length === 10 && !isValidPhone(phone) ? (
+                          <p className="text-xs text-red-500">Indian mobile numbers start with 6, 7, 8 or 9</p>
+                        ) : (
+                          <p className="text-xs text-gray-400">Digits only, 10-digit mobile number</p>
+                        )}
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2 py-0.5">
-                      <div className="flex-1 h-px bg-gray-100" />
-                      <span className="text-[11px] text-gray-300 font-normal">or</span>
-                      <div className="flex-1 h-px bg-gray-100" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Phone Number</Label>
-                      <div className="relative">
-                        <Phone className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                        <Input
-                          type="text"
-                          inputMode="numeric"
-                          className="pl-9"
-                          placeholder="10-digit phone number"
-                          value={phone}
-                          onChange={e => setPhone(e.target.value)}
-                          maxLength={10}
-                        />
+                    ) : (
+                      <div className="space-y-1.5">
+                        <Label>Email Address</Label>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                          <Input
+                            type="email"
+                            inputMode="email"
+                            className="pl-9"
+                            placeholder="you@example.com"
+                            value={email}
+                            onChange={e => setEmail(e.target.value)}
+                            onBlur={() => setSignupEmailTouched(true)}
+                            maxLength={50}
+                          />
+                        </div>
+                        {signupEmailTouched && email.trim() !== "" && !isValidEmail(email.trim()) && (
+                          <p className="text-xs text-red-500">Please enter a valid email address</p>
+                        )}
                       </div>
-                      <p className="text-xs text-gray-400">
-                        Provide at least one of email or phone (e.g. 9876543210)
-                      </p>
-                    </div>
+                    )}
                     <div className="space-y-1.5">
                       <Label>Password</Label>
                       <div className="relative"><Lock className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
