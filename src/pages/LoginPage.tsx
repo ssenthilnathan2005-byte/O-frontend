@@ -90,7 +90,8 @@ export default function LoginPage({
   const [staffGroup, setStaffGroup] = useState(false);
   const [loading, setLoading]       = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [loginMethod, setLoginMethod] = useState<"phone" | "email">("phone");
+  const [loginMethod, setLoginMethod] = useState<"phone" | "email" | "uhid">("phone");
+  const [uhidInput, setUhidInput] = useState("");
   const [signupMethod, setSignupMethod] = useState<"phone" | "email">("phone");
   const [signupEmailTouched, setSignupEmailTouched] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
@@ -100,7 +101,8 @@ export default function LoginPage({
   function isValidPhone(value: string): boolean {
     return /^[6-9]\d{9}$/.test(value.replace(/\s/g, ""));
   }
-  function identifierType(value: string): "email" | "phone" | "unknown" {
+  function identifierType(value: string): "email" | "phone" | "uhid" | "unknown" {
+    if (/^DB\d{2,}$/i.test(value.trim())) return "uhid";
     const v = value.trim();
     if (isValidEmail(v)) return "email";
     if (isValidPhone(v)) return "phone";
@@ -264,7 +266,7 @@ export default function LoginPage({
       );
       if (res.token && res.user) {
         login(res.user, res.token);
-        toast.success("Account created! Welcome to Doctor Booked.");
+        toast.success("Account created! " + ((res.user as any)?.uhid ? "Your UHID is " + (res.user as any).uhid + ". " : "") + "Welcome to Doctor Booked.", { duration: 8000 });
         await routeAfterLogin();
         return;
       }
@@ -283,11 +285,12 @@ export default function LoginPage({
     // Only the selected login method's field is used
     const em = loginMethod === "email" ? email.trim() : "";
     const ph = loginMethod === "phone" ? phone.trim() : "";
+    const uh = loginMethod === "uhid" ? uhidInput.trim().toUpperCase() : "";
     const pw = password;
-    if ((!em && !ph) || !pw) { toast.error("Please fill all required fields"); return; }
+    if ((!em && !ph && !uh) || !pw) { toast.error("Please fill all required fields"); return; }
 
     // Prefer email when both are provided
-    const id = em || ph;
+    const id = em || ph || uh;
 
     // CTO login (credentials are verified on the server only)
     if (em.toLowerCase() === "cto@doctorbooked") {
@@ -312,6 +315,9 @@ export default function LoginPage({
     }
 
     const type = identifierType(id);
+    if (loginMethod === "uhid" && type !== "uhid") {
+      toast.error("Please enter a valid UHID (for example DB01)"); return;
+    }
     if (loginMethod === "phone" && type !== "phone") {
       toast.error("Please enter a valid 10-digit mobile number"); return;
     }
@@ -800,7 +806,7 @@ export default function LoginPage({
                   </form>
                 ) : (
                   <form onSubmit={handleLoginSubmit} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Login method">
+                    <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Login method">
                       <button
                         type="button"
                         role="radio"
@@ -821,8 +827,34 @@ export default function LoginPage({
                         <Mail className="w-3.5 h-3.5 shrink-0" />
                         Login with Email
                       </button>
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={loginMethod === "uhid"}
+                        onClick={() => setLoginMethod("uhid")}
+                        className={"flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-center text-[11px] font-medium leading-tight transition-colors sm:text-xs " + (loginMethod === "uhid" ? "border-teal-500 bg-teal-50 text-teal-700" : "border-gray-200 bg-white text-gray-500 hover:border-teal-300")}
+                      >
+                        <KeyRound className="w-3.5 h-3.5 shrink-0" />
+                        Login with UHID
+                      </button>
                     </div>
-                    {loginMethod === "phone" ? (
+                    {loginMethod === "uhid" ? (
+                      <div className="space-y-1.5">
+                        <Label>UHID</Label>
+                        <div className="relative">
+                          <KeyRound className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                          <Input
+                            className="pl-9 uppercase"
+                            placeholder="e.g. DB01"
+                            value={uhidInput}
+                            onChange={e => setUhidInput(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12))}
+                            maxLength={12}
+                            autoCapitalize="characters"
+                          />
+                        </div>
+                        <p className="text-xs text-gray-400">Your Unique Health ID, for example DB01</p>
+                      </div>
+                    ) : loginMethod === "phone" ? (
                       <div className="space-y-1.5">
                         <Label>Phone Number</Label>
                         <div className="relative">

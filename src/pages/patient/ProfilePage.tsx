@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { UserCog, Loader2, Save, CheckCircle2, MapPin, Bell, ExternalLink, Languages } from "lucide-react";
+import { UserCog, Loader2, Save, CheckCircle2, MapPin, Bell, ExternalLink, Languages, Copy } from "lucide-react";
 import { patients } from "../../api";
 import { useRouter } from "../../router/RouterContext";
 import { Capacitor } from "@capacitor/core";
@@ -21,6 +21,8 @@ export default function ProfilePage() {
   const [phone, setPhone] = useState("");
   const [yearOfBirth, setYearOfBirth] = useState("");
   const [legacyAge, setLegacyAge] = useState("");
+  const [uhid, setUhid] = useState("");
+  const [uhidCopied, setUhidCopied] = useState(false);
   const [locStatus, setLocStatus] = useState<PermStatus>("unknown");
   const [notifStatus, setNotifStatus] = useState<PermStatus>("unknown");
 
@@ -205,6 +207,7 @@ export default function ProfilePage() {
         if (cancelled) return;
         setName(data.name || "");
         setPhone(data.phone || "");
+        setUhid(data.uhid || "");
         setYearOfBirth(data.yearOfBirth || "");
         setLegacyAge(data.yearOfBirth ? "" : (data.age || ""));
         setWasComplete(data.isComplete);
@@ -216,6 +219,16 @@ export default function ProfilePage() {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  async function copyUhid() {
+    try {
+      await navigator.clipboard.writeText(uhid);
+      setUhidCopied(true);
+      setTimeout(() => setUhidCopied(false), 1500);
+    } catch {
+      toast.error("Could not copy. Your UHID is " + uhid);
+    }
+  }
 
   function isValidPhone(value: string): boolean {
     return /^\d{10}$/.test(value.trim());
@@ -287,6 +300,28 @@ export default function ProfilePage() {
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
           />
         </div>
+        {uhid && (
+          <div>
+            <label className="text-xs font-medium text-gray-600 mb-1 block">UHID (Unique Health ID)</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={uhid}
+                readOnly
+                tabIndex={-1}
+                className="w-full border border-gray-200 bg-gray-50 text-gray-800 font-semibold tracking-wide rounded-lg px-3 py-2 text-sm cursor-default focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={copyUhid}
+                aria-label="Copy UHID"
+                className="shrink-0 border border-gray-200 rounded-lg p-2 text-gray-500 hover:bg-gray-50"
+              >
+                {uhidCopied ? <CheckCircle2 className="w-4 h-4 text-teal-600" /> : <Copy className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+        )}
         <div>
           <label className="text-xs font-medium text-gray-600 mb-1 block">Phone Number <span className="text-red-500">*</span></label>
           <input
