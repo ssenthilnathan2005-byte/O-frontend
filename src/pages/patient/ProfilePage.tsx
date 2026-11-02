@@ -405,7 +405,7 @@ export default function ProfilePage() {
                 else setShowPw(v => !v);
               }}
               aria-label={(pwEditing ? showPw : savedNote) ? "Hide password" : "Show password"}
-              className="absolute right-3 top-1/2 -translate-y-1/2 z-10 flex items-center gap-1 whitespace-nowrap shrink-0 text-xs font-medium text-gray-600 hover:text-gray-800"
+              className={pwEditing ? "absolute right-3 top-1/2 -translate-y-1/2 z-10 flex items-center gap-1 whitespace-nowrap shrink-0 text-xs font-medium text-gray-600 hover:text-gray-800" : "hidden"}
             >
               {(pwEditing ? showPw : savedNote) ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               {(pwEditing ? showPw : savedNote) ? "Hide" : "Show"}
