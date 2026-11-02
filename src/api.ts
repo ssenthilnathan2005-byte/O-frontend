@@ -394,8 +394,8 @@ export const payments = {
 export const patients = {
   list: () => get<PatientRecord[]>("/patients"),
   getProfile: () =>
-    get<{ name: string; phone: string; age: string; yearOfBirth: string; isComplete: boolean; preferredLanguage?: string; uhid?: string }>("/patients/profile"),
-  updateProfile: (data: { name: string; phone: string; yearOfBirth: string }) =>
+    get<{ name: string; phone: string; age: string; yearOfBirth: string; isComplete: boolean; preferredLanguage?: string; uhid?: string; area?: string; bloodGroup?: string }>("/patients/profile"),
+  updateProfile: (data: { name: string; phone: string; yearOfBirth: string; area?: string; bloodGroup?: string }) =>
     patch<{ success: boolean }>("/patients/profile", data),
   updateLanguage: (preferredLanguage: "en" | "ta") =>
     patch<{ success: boolean }>("/patients/language", { preferredLanguage }),

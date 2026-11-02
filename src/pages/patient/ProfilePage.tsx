@@ -12,6 +12,8 @@ import FamilyMembersSection from "@/components/FamilyMembersSection";
 
 type PermStatus = "granted" | "denied" | "prompt" | "gps-off" | "unknown";
 
+const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "Unknown"];
+
 export default function ProfilePage() {
   const { navigate, replace } = useRouter();
   const [loading, setLoading] = useState(true);
@@ -21,6 +23,8 @@ export default function ProfilePage() {
   const [phone, setPhone] = useState("");
   const [yearOfBirth, setYearOfBirth] = useState("");
   const [legacyAge, setLegacyAge] = useState("");
+  const [area, setArea] = useState("");
+  const [bloodGroup, setBloodGroup] = useState("");
   const [uhid, setUhid] = useState("");
   const [uhidCopied, setUhidCopied] = useState(false);
   const [locStatus, setLocStatus] = useState<PermStatus>("unknown");
@@ -209,6 +213,8 @@ export default function ProfilePage() {
         setPhone(String(data.phone || "").replace(/\D/g, "").slice(-10));
         setUhid(data.uhid || "");
         setYearOfBirth(data.yearOfBirth || "");
+        setArea(data.area || "");
+        setBloodGroup(data.bloodGroup || "");
         setLegacyAge(data.yearOfBirth ? "" : (data.age || ""));
         setWasComplete(data.isComplete);
       } catch (err: any) {
@@ -251,7 +257,7 @@ export default function ProfilePage() {
 
     setSaving(true);
     try {
-      await patients.updateProfile({ name: name.trim(), phone: phone.trim(), yearOfBirth: yearOfBirth.trim() });
+      await patients.updateProfile({ name: name.trim(), phone: phone.trim(), yearOfBirth: yearOfBirth.trim(), area: area.trim(), bloodGroup });
       toast.success("Profile saved");
       setWasComplete(true);
       replace({ path: "/" });
@@ -332,6 +338,28 @@ export default function ProfilePage() {
             onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
           />
+        </div>
+        <div>
+          <label className="text-xs font-medium text-gray-600 mb-1 block">Area / Landmark</label>
+          <input
+            type="text"
+            placeholder="e.g. Anna Nagar, near bus stand"
+            value={area}
+            onChange={e => setArea(e.target.value)}
+            maxLength={60}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
+          />
+        </div>
+        <div>
+          <label className="text-xs font-medium text-gray-600 mb-1 block">Blood Group</label>
+          <select
+            value={bloodGroup}
+            onChange={e => setBloodGroup(e.target.value)}
+            className="w-full border border-gray-200 bg-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
+          >
+            <option value="">Select blood group</option>
+            {BLOOD_GROUPS.map(bg => <option key={bg} value={bg}>{bg}</option>)}
+          </select>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
