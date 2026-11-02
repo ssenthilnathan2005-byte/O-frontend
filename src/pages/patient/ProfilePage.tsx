@@ -383,7 +383,7 @@ export default function ProfilePage() {
           )}
 
           {hasPassword && pwOpen && (
-            <input type="password" placeholder="Current password" value={currentPw}
+            <input type={showPw ? "text" : "password"} placeholder="Current password" value={currentPw}
               onChange={e => setCurrentPw(e.target.value)} autoComplete="current-password"
               className="w-full mt-2 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" />
           )}
