@@ -654,7 +654,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose, maxDate
                         type="button"
                         onClick={() => {
                           setPatientName(m.name);
-                          setPatientPhone(profile?.phone || "");
+                          setPatientPhone(String(profile?.phone || "").replace(/\D/g, "").slice(-10));
                           setPatientAge(m.age);
                           setPatientYob(m.yearOfBirth || "");
                           setBookingFor("other");
@@ -678,7 +678,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose, maxDate
                     return;
                   }
                   setPatientName(profile.name);
-                  setPatientPhone(profile.phone);
+                  setPatientPhone(String(profile.phone || "").replace(/\D/g, "").slice(-10));
                   setPatientAge(profile.age);
                   setPatientYob(profile.yearOfBirth || "");
                   setBookingFor("self");
@@ -757,7 +757,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose, maxDate
                       inputMode="numeric"
                       placeholder="Enter 10-digit phone number"
                       value={patientPhone}
-                      onChange={e => setPatientPhone(e.target.value)}
+                      onChange={e => setPatientPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
                       className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
                     />
                   </div>

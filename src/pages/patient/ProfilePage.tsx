@@ -206,7 +206,7 @@ export default function ProfilePage() {
         const data = await patients.getProfile();
         if (cancelled) return;
         setName(data.name || "");
-        setPhone(data.phone || "");
+        setPhone(String(data.phone || "").replace(/\D/g, "").slice(-10));
         setUhid(data.uhid || "");
         setYearOfBirth(data.yearOfBirth || "");
         setLegacyAge(data.yearOfBirth ? "" : (data.age || ""));
@@ -329,7 +329,7 @@ export default function ProfilePage() {
             inputMode="numeric"
             placeholder="Enter 10-digit phone number"
             value={phone}
-            onChange={e => setPhone(e.target.value)}
+            onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
           />
         </div>
