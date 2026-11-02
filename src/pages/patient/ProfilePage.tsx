@@ -397,17 +397,18 @@ export default function ProfilePage() {
               autoComplete="new-password"
               className={"w-full border border-gray-200 rounded-lg pl-3 pr-20 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300 " + (pwEditing ? "" : "bg-gray-50 text-gray-500")}
             />
-            {pwEditing && (
-              <button
-                type="button"
-                onClick={() => setShowPw(v => !v)}
-                aria-label={showPw ? "Hide password" : "Show password"}
-                className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700"
-              >
-                {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                {showPw ? "Hide" : "Show"}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => {
+                if (!pwEditing) { setPwOpen(true); setShowPw(true); }
+                else setShowPw(v => !v);
+              }}
+              aria-label={pwEditing && showPw ? "Hide password" : "Show password"}
+              className="absolute right-3 top-1/2 -translate-y-1/2 z-10 flex items-center gap-1 whitespace-nowrap shrink-0 text-xs font-medium text-gray-600 hover:text-gray-800"
+            >
+              {pwEditing && showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              {pwEditing && showPw ? "Hide" : "Show"}
+            </button>
           </div>
 
           {pwEditing && (
