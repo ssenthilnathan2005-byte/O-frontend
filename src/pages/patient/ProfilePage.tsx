@@ -8,6 +8,8 @@ import { Geolocation } from "@capacitor/geolocation";
 import { enablePushNotifications } from "../../lib/push";
 import { Switch } from "@/components/ui/switch";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { KeyRound, Info } from "lucide-react";
+import { setPatientPassword, changePatientPassword } from "../../api";
 import FamilyMembersSection from "@/components/FamilyMembersSection";
 
 type PermStatus = "granted" | "denied" | "prompt" | "gps-off" | "unknown";
@@ -27,6 +29,13 @@ export default function ProfilePage() {
   const [bloodGroup, setBloodGroup] = useState("");
   const [uhid, setUhid] = useState("");
   const [uhidCopied, setUhidCopied] = useState(false);
+  const [hasPassword, setHasPassword] = useState(true);
+  const [pwOpen, setPwOpen] = useState(false);
+  const [pwInfoOpen, setPwInfoOpen] = useState(false);
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
   const [locStatus, setLocStatus] = useState<PermStatus>("unknown");
   const [notifStatus, setNotifStatus] = useState<PermStatus>("unknown");
 
@@ -212,6 +221,7 @@ export default function ProfilePage() {
         setName(data.name || "");
         setPhone(String(data.phone || "").replace(/\D/g, "").slice(-10));
         setUhid(data.uhid || "");
+        setHasPassword((data as any).hasPassword !== false);
         setYearOfBirth(data.yearOfBirth || "");
         setArea(data.area || "");
         setBloodGroup(data.bloodGroup || "");
@@ -233,6 +243,28 @@ export default function ProfilePage() {
       setTimeout(() => setUhidCopied(false), 1500);
     } catch {
       toast.error("Could not copy. Your UHID is " + uhid);
+    }
+  }
+
+  async function handlePasswordSubmit() {
+    if (hasPassword && !currentPw) { toast.error("Enter your current password"); return; }
+    if (newPw.length < 6) { toast.error("Password must be at least 6 characters"); return; }
+    if (newPw !== confirmPw) { toast.error("Passwords do not match"); return; }
+    setPwSaving(true);
+    try {
+      if (hasPassword) {
+        await changePatientPassword(currentPw, newPw);
+        toast.success("Password changed");
+      } else {
+        await setPatientPassword(newPw);
+        setHasPassword(true);
+        toast.success("Password set. You can now log in with your UHID and password.");
+      }
+      setCurrentPw(""); setNewPw(""); setConfirmPw(""); setPwOpen(false);
+    } catch (err: any) {
+      toast.error(err.message || "Could not update password");
+    } finally {
+      setPwSaving(false);
     }
   }
 
@@ -328,6 +360,66 @@ export default function ProfilePage() {
             </div>
           </div>
         )}
+        {/* Password - always visible, directly below UHID */}
+        <div className="mt-4">
+          <div className="flex items-center gap-2">
+            <KeyRound className="w-4 h-4 text-teal-600" />
+            <span className="text-xs font-medium text-gray-600">Password</span>
+            <button
+              type="button"
+              aria-label="Password info"
+              onClick={() => setPwInfoOpen(v => !v)}
+              className="w-5 h-5 rounded-full border border-gray-300 text-gray-500 hover:bg-gray-50 flex items-center justify-center"
+            >
+              <Info className="w-3 h-3" />
+            </button>
+          </div>
+          {pwInfoOpen && (
+            <p className="mt-2 text-xs text-teal-700 bg-teal-50 rounded-lg px-3 py-2">
+              You can login with your UHID and password.
+            </p>
+          )}
+          <p className="text-xs text-gray-400 mt-2">
+            {hasPassword ? "Password is set." : "You have not set a password yet."}
+          </p>
+
+          {(!hasPassword || pwOpen) && (
+            <div className="space-y-3 mt-3">
+              {hasPassword && (
+                <input type="password" placeholder="Current password" value={currentPw}
+                  onChange={e => setCurrentPw(e.target.value)} autoComplete="current-password"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" />
+              )}
+              <input type="password" placeholder="New password (min 6 characters)" value={newPw}
+                onChange={e => setNewPw(e.target.value)} autoComplete="new-password"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" />
+              <input type="password" placeholder="Confirm new password" value={confirmPw}
+                onChange={e => setConfirmPw(e.target.value)} autoComplete="new-password"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" />
+              <div className="flex gap-2">
+                <button type="button" onClick={handlePasswordSubmit} disabled={pwSaving}
+                  className="flex-1 h-10 bg-teal-500 hover:bg-teal-600 disabled:opacity-60 text-white rounded-full text-sm font-semibold flex items-center justify-center gap-2 transition-colors">
+                  {pwSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  {hasPassword ? "Save New Password" : "Set Password"}
+                </button>
+                {hasPassword && (
+                  <button type="button"
+                    onClick={() => { setPwOpen(false); setCurrentPw(""); setNewPw(""); setConfirmPw(""); }}
+                    className="h-10 px-4 border border-gray-200 rounded-full text-sm text-gray-600 hover:bg-gray-50">
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {hasPassword && !pwOpen && (
+            <button type="button" onClick={() => setPwOpen(true)}
+              className="w-full h-10 mt-3 border border-teal-500 text-teal-600 hover:bg-teal-50 rounded-full text-sm font-semibold transition-colors">
+              Change Password
+            </button>
+          )}
+        </div>
         <div>
           <label className="text-xs font-medium text-gray-600 mb-1 block">Phone Number <span className="text-red-500">*</span></label>
           <input
