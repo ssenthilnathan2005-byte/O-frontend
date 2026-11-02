@@ -37,6 +37,7 @@ export default function ProfilePage() {
   const [, setConfirmPw] = useState("");
   const [pwSaving, setPwSaving] = useState(false);
   const [showPw, setShowPw] = useState(false);
+  const [savedNote, setSavedNote] = useState(false);
   const pwEditing = !hasPassword || pwOpen;
   const [locStatus, setLocStatus] = useState<PermStatus>("unknown");
   const [notifStatus, setNotifStatus] = useState<PermStatus>("unknown");
@@ -400,17 +401,22 @@ export default function ProfilePage() {
             <button
               type="button"
               onClick={() => {
-                if (!pwEditing) { setPwOpen(true); setShowPw(true); }
+                if (!pwEditing) setSavedNote(v => !v);
                 else setShowPw(v => !v);
               }}
-              aria-label={pwEditing && showPw ? "Hide password" : "Show password"}
+              aria-label={(pwEditing ? showPw : savedNote) ? "Hide password" : "Show password"}
               className="absolute right-3 top-1/2 -translate-y-1/2 z-10 flex items-center gap-1 whitespace-nowrap shrink-0 text-xs font-medium text-gray-600 hover:text-gray-800"
             >
-              {pwEditing && showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              {pwEditing && showPw ? "Hide" : "Show"}
+              {(pwEditing ? showPw : savedNote) ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              {(pwEditing ? showPw : savedNote) ? "Hide" : "Show"}
             </button>
           </div>
 
+          {!pwEditing && savedNote && (
+            <p className="mt-2 text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
+              Your password is saved securely and cannot be displayed. Use Change Password to set a new one.
+            </p>
+          )}
           {pwEditing && (
             <div className="flex gap-2 mt-3">
               <button type="button" onClick={handlePasswordSubmit} disabled={pwSaving}
@@ -429,7 +435,7 @@ export default function ProfilePage() {
           )}
 
           {hasPassword && !pwOpen && (
-            <button type="button" onClick={() => setPwOpen(true)}
+            <button type="button" onClick={() => { setSavedNote(false); setPwOpen(true); }}
               className="w-full h-10 mt-3 border border-teal-500 text-teal-600 hover:bg-teal-50 rounded-full text-sm font-semibold transition-colors">
               Change Password
             </button>
