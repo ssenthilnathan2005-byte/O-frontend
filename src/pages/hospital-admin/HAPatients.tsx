@@ -279,7 +279,7 @@ export default function HAPatients() {
                 <TableCell>
                   <p className="font-medium">{b.patientName || "—"}</p>
                   {b.patientAge != null && (
-                    <p className="text-xs text-muted-foreground">{b.patientAge} yrs</p>
+                    <p className="text-xs text-muted-foreground">{b.patientAge} yrs{b.patientArea ? ` · ${b.patientArea}` : ""}{b.patientBloodGroup ? ` · ${b.patientBloodGroup}` : ""}</p>
                   )}
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">

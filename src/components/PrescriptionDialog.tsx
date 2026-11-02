@@ -41,6 +41,8 @@ interface Props {
     patientId?: string;
     patientName?: string;
     patientAge?: number;
+  patientArea?: string;
+  patientBloodGroup?: string;
     complaint?: string | null;
   } | null;
   doctorId: string;
@@ -409,7 +411,7 @@ export default function PrescriptionDialog({
           {booking && (
             <p className="text-sm text-gray-500">
               {booking.patientName ?? "Walk-in"}
-              {booking.patientAge != null && ` · ${booking.patientAge} yrs`}
+              {booking.patientAge != null && ` · ${booking.patientAge} yrs`}{booking.patientBloodGroup && ` · ${booking.patientBloodGroup}`}
             </p>
           )}
         </DialogHeader>
