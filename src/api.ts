@@ -725,3 +725,10 @@ export const enquiries = {
   update: (id: string, b: { status?: string; notes?: string }) =>
     patch<{ ok: boolean }>(`/enquiries/${encodeURIComponent(id)}`, b),
 };
+
+// -- Patient password (Google users set one; others change it)
+export const setPatientPassword = (newPassword: string) =>
+  post<{ success: boolean }>("/auth/patient/set-password", { newPassword });
+
+export const changePatientPassword = (currentPassword: string, newPassword: string) =>
+  post<{ success: boolean }>("/auth/patient/change-password", { currentPassword, newPassword });
