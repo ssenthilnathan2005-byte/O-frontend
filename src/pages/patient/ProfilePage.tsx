@@ -383,9 +383,12 @@ export default function ProfilePage() {
           )}
 
           {hasPassword && pwOpen && (
-            <input type={showPw ? "text" : "password"} placeholder="Current password" value={currentPw}
+            <div className="relative mt-2">
+<input type={showPw ? "text" : "password"} placeholder="Current password" value={currentPw}
               onChange={e => setCurrentPw(e.target.value)} autoComplete="current-password"
-              className="w-full mt-2 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" />
+              className="w-full border border-gray-200 rounded-lg pl-3 pr-20 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" />
+<button type="button" onClick={() => setShowPw(v => !v)} aria-label="Show or hide current password" className="absolute right-3 top-1/2 -translate-y-1/2 z-10 flex items-center gap-1 whitespace-nowrap shrink-0 text-xs font-medium text-gray-600 hover:text-gray-800">{showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}{showPw ? "Hide" : "Show"}</button>
+</div>
           )}
 
           <div className="relative mt-2">
