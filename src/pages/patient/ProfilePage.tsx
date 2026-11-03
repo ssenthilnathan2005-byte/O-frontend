@@ -384,16 +384,16 @@ export default function ProfilePage() {
 
           {hasPassword && pwOpen && (
             <div className="relative mt-2">
-<input type={showPw ? "text" : "password"} placeholder="Current password" value={currentPw}
+<input type="password" placeholder="Current password" value={currentPw}
               onChange={e => setCurrentPw(e.target.value)} autoComplete="current-password"
               className="w-full border border-gray-200 rounded-lg pl-3 pr-20 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" />
-<button type="button" onClick={() => setShowPw(v => !v)} aria-label="Show or hide current password" className="absolute right-3 top-1/2 -translate-y-1/2 z-10 flex items-center gap-1 whitespace-nowrap shrink-0 text-xs font-medium text-gray-600 hover:text-gray-800">{showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}{showPw ? "Hide" : "Show"}</button>
+
 </div>
           )}
 
           <div className="relative mt-2">
             <input
-              type={pwEditing && showPw ? "text" : "password"}
+              type="password"
               value={pwEditing ? newPw : "••••••••"}
               readOnly={!pwEditing}
               onChange={e => setNewPw(e.target.value)}
@@ -403,15 +403,12 @@ export default function ProfilePage() {
             />
             <button
               type="button"
-              onClick={() => {
-                if (!pwEditing) setSavedNote(v => !v);
-                else setShowPw(v => !v);
-              }}
-              aria-label={(pwEditing ? showPw : savedNote) ? "Hide password" : "Show password"}
-              className={pwEditing ? "absolute right-3 top-1/2 -translate-y-1/2 z-10 flex items-center gap-1 whitespace-nowrap shrink-0 text-xs font-medium text-gray-600 hover:text-gray-800" : "hidden"}
+              onClick={() => setSavedNote(v => !v)}
+              aria-label={savedNote ? "Hide password" : "Show password"}
+              className={!pwEditing ? "absolute right-3 top-1/2 -translate-y-1/2 z-10 flex items-center gap-1 whitespace-nowrap shrink-0 text-xs font-medium text-gray-600 hover:text-gray-800" : "hidden"}
             >
-              {(pwEditing ? showPw : savedNote) ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              {(pwEditing ? showPw : savedNote) ? "Hide" : "Show"}
+              {savedNote ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              {savedNote ? "Hide" : "Show"}
             </button>
           </div>
 
