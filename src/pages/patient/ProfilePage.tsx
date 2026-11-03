@@ -230,6 +230,7 @@ export default function ProfilePage() {
         setBloodGroup(data.bloodGroup || "");
         setLegacyAge(data.yearOfBirth ? "" : (data.age || ""));
         setWasComplete(data.isComplete);
+        if (sessionStorage.getItem("db_after_profile") && (!data.area || !data.bloodGroup)) toast.info("Please add your Area and Blood Group to continue your booking.");
       } catch (err: any) {
         toast.error(err.message || "Could not load your profile");
       } finally {
@@ -283,6 +284,8 @@ export default function ProfilePage() {
       toast.error("Please enter a valid 10-digit phone number");
       return;
     }
+    if (!area.trim()) { toast.error("Please enter your area / locality"); return; }
+    if (!bloodGroup) { toast.error("Please select your blood group"); return; }
     const yearNum = Number(yearOfBirth);
     if (!/^\d{4}$/.test(yearOfBirth.trim()) || yearNum < new Date().getFullYear() - 120 || yearNum > new Date().getFullYear()) {
       toast.error("Please enter a valid 4-digit year of birth");
@@ -294,7 +297,9 @@ export default function ProfilePage() {
       await patients.updateProfile({ name: name.trim(), phone: phone.trim(), yearOfBirth: yearOfBirth.trim(), area: area.trim(), bloodGroup });
       toast.success("Profile saved");
       setWasComplete(true);
-      replace({ path: "/" });
+      let back: any = { path: "/" };
+      try { const raw = sessionStorage.getItem("db_after_profile"); if (raw) { back = JSON.parse(raw); sessionStorage.removeItem("db_after_profile"); } } catch {}
+      replace(back);
     } catch (err: any) {
       toast.error(err.message || "Could not save your profile");
     } finally {
@@ -456,10 +461,10 @@ export default function ProfilePage() {
           />
         </div>
         <div>
-          <label className="text-xs font-medium text-gray-600 mb-1 block">Area / Landmark</label>
+          <label className="text-xs font-medium text-gray-600 mb-1 block">Area / Locality <span className="text-red-500">*</span></label>
           <input
             type="text"
-            placeholder="e.g. Anna Nagar, near bus stand"
+            placeholder="e.g. Anna Nagar (area name only)"
             value={area}
             onChange={e => setArea(e.target.value)}
             maxLength={60}
@@ -467,7 +472,7 @@ export default function ProfilePage() {
           />
         </div>
         <div>
-          <label className="text-xs font-medium text-gray-600 mb-1 block">Blood Group</label>
+          <label className="text-xs font-medium text-gray-600 mb-1 block">Blood Group <span className="text-red-500">*</span></label>
           <select
             value={bloodGroup}
             onChange={e => setBloodGroup(e.target.value)}
