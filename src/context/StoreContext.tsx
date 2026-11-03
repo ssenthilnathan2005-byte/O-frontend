@@ -399,16 +399,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       api.hospitals.list(true).then(setHospitals).catch(() => {});
       return true;
     } catch (e: any) {
-      const msg = e.message || "";
-      if (
-        msg.includes("assigned doctors") ||
-        msg.includes("Cannot delete") ||
-        msg.includes("doctor")
-      ) return false;
-      // For any other error, still remove from local state if it was a network fluke
-      // and re-fetch to reconcile
       api.hospitals.list(true).then(setHospitals).catch(() => {});
-      return false;
+      throw e; // let the page show the real server message
     }
   }, []);
 
