@@ -77,7 +77,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose, maxDate
   const patientYobValid = /^\d{4}$/.test(patientYob) && patientYobNum >= bookingYearNow - 120 && patientYobNum <= bookingYearNow;
   // Someone else: age is worked out from the year of birth. Myself: age comes from the saved profile.
   const patientAgeFinal = bookingFor === "other" ? (patientYobValid ? String(bookingYearNow - patientYobNum) : "") : patientAge;
-  const [profile, setProfile] = useState<{ name: string; phone: string; age: string; yearOfBirth?: string; isComplete: boolean } | null>(null);
+  const [profile, setProfile] = useState<{ name: string; phone: string; age: string; yearOfBirth?: string; area?: string; bloodGroup?: string; isComplete: boolean } | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [family, setFamily] = useState<FamilyMember[]>([]);
   const [paying, setPaying]             = useState(false);
@@ -145,7 +145,14 @@ export default function BookingDialog({ doctor, hospital, open, onClose, maxDate
     if (!open) return;
     setProfileLoading(true);
     patients.getProfile()
-      .then(p => setProfile(p))
+      .then(p => {
+          setProfile(p);
+          if (!p.area || !p.bloodGroup) {
+            try { sessionStorage.setItem("db_after_profile", JSON.stringify({ path: "/patient/hospital", id: hospital.id })); } catch {}
+            handleClose();
+            navigate({ path: "/patient/profile" });
+          }
+        })
       .catch(() => setProfile(null))
       .finally(() => setProfileLoading(false));
   }, [open]);
