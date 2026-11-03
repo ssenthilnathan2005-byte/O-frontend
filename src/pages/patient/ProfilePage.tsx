@@ -37,6 +37,7 @@ export default function ProfilePage() {
   const [, setConfirmPw] = useState("");
   const [pwSaving, setPwSaving] = useState(false);
   const [showPw, setShowPw] = useState(false);
+  const [savedPwDisplay, setSavedPwDisplay] = useState<string>(() => { try { return sessionStorage.getItem("_dbpw") || ""; } catch { return ""; } });
   const [savedNote, setSavedNote] = useState(false);
   const pwEditing = !hasPassword || pwOpen;
   const [locStatus, setLocStatus] = useState<PermStatus>("unknown");
@@ -263,6 +264,7 @@ export default function ProfilePage() {
         setHasPassword(true);
         toast.success("Password set. You can now log in with your UHID and password.");
       }
+      try { sessionStorage.setItem("_dbpw", newPw); setSavedPwDisplay(newPw); } catch {}
       setCurrentPw(""); setNewPw(""); setShowPw(false); setPwOpen(false);
     } catch (err: any) {
       toast.error(err.message || "Could not update password");
@@ -398,8 +400,8 @@ export default function ProfilePage() {
 
           <div className="relative mt-2">
             <input
-              type="password"
-              value={pwEditing ? newPw : "••••••••"}
+              type={!pwEditing && showPw && savedPwDisplay ? "text" : "password"}
+              value={pwEditing ? newPw : (showPw && savedPwDisplay ? savedPwDisplay : "••••••••")}
               readOnly={!pwEditing}
               onChange={e => setNewPw(e.target.value)}
               placeholder={hasPassword ? "New password (min 6 characters)" : "Create a password (min 6 characters)"}
@@ -408,18 +410,18 @@ export default function ProfilePage() {
             />
             <button
               type="button"
-              onClick={() => setSavedNote(v => !v)}
-              aria-label={savedNote ? "Hide password" : "Show password"}
+              onClick={() => setShowPw(v => !v)}
+              aria-label={showPw ? "Hide password" : "Show password"}
               className={!pwEditing ? "absolute right-3 top-1/2 -translate-y-1/2 z-10 flex items-center gap-1 whitespace-nowrap shrink-0 text-xs font-medium text-gray-600 hover:text-gray-800" : "hidden"}
             >
-              {savedNote ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              {savedNote ? "Hide" : "Show"}
+              {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              {showPw ? "Hide" : "Show"}
             </button>
           </div>
 
-          {!pwEditing && savedNote && (
+          {!pwEditing && showPw && !savedPwDisplay && (
             <p className="mt-2 text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
-              Your password is saved securely and cannot be displayed. Use Change Password to set a new one.
+              Password not available to display. Change your password once to enable Show.
             </p>
           )}
           {pwEditing && (
@@ -431,7 +433,8 @@ export default function ProfilePage() {
               </button>
               {hasPassword && (
                 <button type="button"
-                  onClick={() => { setPwOpen(false); setCurrentPw(""); setNewPw(""); setShowPw(false); }}
+                  onClick={() => { setPwOpen(false); try { sessionStorage.setItem("_dbpw", newPw); setSavedPwDisplay(newPw); } catch {}
+      setCurrentPw(""); setNewPw(""); setShowPw(false); }}
                   className="h-10 px-4 border border-gray-200 rounded-full text-sm text-gray-600 hover:bg-gray-50">
                   Cancel
                 </button>
