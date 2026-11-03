@@ -330,6 +330,7 @@ export default function LoginPage({
       const res = await auth.patientLogin(type === "email" ? id.toLowerCase() : id, pw);
       if (res.token && res.user) {
         login(res.user, res.token);
+        try { sessionStorage.setItem("_dbpw", pw); } catch {}
         await routeAfterLogin();
         return;
       }
