@@ -94,8 +94,6 @@ export default function TopNav() {
       ? (user as { name: string }).name
       : user?.role === "doctor"
         ? (doctors.find((d) => d.code === (user as { code: string }).code)?.name ?? "Doctor")
-        : user?.role === ("cto" as string)
-          ? "CTO"
           : "Admin";
 
   const isPatient = user?.role === "patient";

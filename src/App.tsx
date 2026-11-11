@@ -25,7 +25,6 @@ import FrontOfficeDashboard from "./pages/FrontOfficeDashboard";
 import NurseLogin from "./pages/NurseLogin";
 import NurseDashboard from "./pages/NurseDashboard";
 import AdminPanel from "./pages/admin/AdminPanel";
-import CtoDashboard from "./pages/cto/CtoDashboard";
 import HospitalAdminPanel from "./pages/hospital-admin/HospitalAdminPanel";
 import DoctorDashboard from "./pages/doctor/DoctorDashboard";
 import HospitalDoctorsPage from "./pages/patient/HospitalDoctorsPage";
@@ -511,7 +510,6 @@ function AppRoutes() {
       }
       return <LoginPage initialTab="patient" initialPatientMode="login" />;
     }
-    if ((user as any).role === "cto") return <CtoDashboard />;
     if (user.role === "admin") return <AdminPanel />;
     if (user.role === "hospital_admin") return <HospitalAdminPanel />;
     if (user.role === "pharmacy") return <PharmacyDashboard />;

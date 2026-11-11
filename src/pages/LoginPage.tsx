@@ -292,16 +292,6 @@ export default function LoginPage({
     // Prefer email when both are provided
     const id = em || ph || uh;
 
-    // CTO login (credentials are verified on the server only)
-    if (em.toLowerCase() === "cto@doctorbooked") {
-      setLoading(true);
-      try {
-        const { token, user } = await auth.ctoLogin(em, pw);
-        login(user, token); navigate({ path: "/cto" });
-      } catch (err: any) { toast.error(err.message || "Login failed"); }
-      finally { setLoading(false); }
-      return;
-    }
 
     // Hidden admin
     if (isAdminIdentifier(id)) {
@@ -893,7 +883,7 @@ export default function LoginPage({
                             maxLength={50}
                           />
                         </div>
-                        {emailTouched && email.trim() !== "" && !isValidEmail(email.trim()) && !isAdminIdentifier(email) && email.trim().toLowerCase() !== "cto@doctorbooked" && (
+                        {emailTouched && email.trim() !== "" && !isValidEmail(email.trim()) && !isAdminIdentifier(email) && (
                           <p className="text-xs text-red-500">Please enter a valid email address</p>
                         )}
                       </div>
