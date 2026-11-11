@@ -40,12 +40,14 @@ export function presetItemToMedicine(i: PresetItem) {
 interface Props {
   complaint?: string;
   age?: number;
-  onApply: (items: PresetItem[]) => void;
-  doctorId?: string; // Nurse Console: load this doctor's presets
+  onApply: (items: PresetItem[], presetId: string) => void;
+  onRemove?: (presetId: string) => void;
+  appliedPresets?: Map<string, string[]>;
+  doctorId?: string;
   inpatient?: boolean;
 }
 
-export default function PresetSuggestions({ complaint, age, onApply, doctorId, inpatient }: Props) {
+export default function PresetSuggestions({ complaint, age, onApply, onRemove, appliedPresets, doctorId, inpatient }: Props) {
   const [presets, setPresets] = useState<Preset[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [showAll, setShowAll] = useState(false);
@@ -78,15 +80,19 @@ export default function PresetSuggestions({ complaint, age, onApply, doctorId, i
         {showAll ? "All your presets" : matches.length ? "Your presets for this patient's symptoms" : "No preset matches this patient's symptoms"}
       </p>
       <div className="flex flex-wrap gap-2">
-        {shown.map(p => (
-          <button
-            key={p.id}
-            onClick={() => onApply(p.items)}
-            className="rounded-full border border-blue-300 bg-white px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
-          >
-            {p.name} ? {p.items.length} med{p.items.length > 1 ? "s" : ""}
-          </button>
-        ))}
+        {shown.map(p => {
+          const applied = appliedPresets?.has(p.id);
+          return (
+            <span key={p.id} className="inline-flex items-center gap-1">
+              <button
+                onClick={() => applied ? onRemove?.(p.id) : onApply(p.items, p.id)}
+                className={"rounded-full border px-3 py-1 text-xs font-medium " + (applied ? "border-green-400 bg-green-50 text-green-700 hover:bg-red-50 hover:text-red-600 hover:border-red-300" : "border-blue-300 bg-white text-blue-700 hover:bg-blue-100")}
+              >
+                {applied ? "✓ " : ""}{p.name} · {p.items.length} med{p.items.length > 1 ? "s" : ""}{applied ? " ×" : ""}
+              </button>
+            </span>
+          );
+        })}
       </div>
       <div className="mt-2 flex items-center justify-between gap-2">
         <p className="text-[11px] text-gray-500">Tap to fill the prescription. You can review and edit before saving.</p>

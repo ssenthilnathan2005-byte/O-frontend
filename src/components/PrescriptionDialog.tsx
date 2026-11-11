@@ -265,6 +265,8 @@ export default function PrescriptionDialog({
     setMedicines(prev => [...prev, { ...EMPTY_MED }]);
   }
 
+  const [appliedPresets, setAppliedPresets] = useState<Map<string, string[]>>(new Map());
+
   function removeMed(idx: number) {
     setMedicines(prev => prev.filter((_, i) => i !== idx));
     const shift = (prev: Set<number>) => {
@@ -284,8 +286,9 @@ export default function PrescriptionDialog({
     });
   }
 
-  // Fill the manual form from a preset: keeps medicines already entered, skips duplicates by name
-  function applyPreset(items: PresetItem[]) {
+  function applyPreset(items: PresetItem[], presetId: string) {
+    const addedNames = items.map(i => i.name.trim().toLowerCase());
+    setAppliedPresets(prev => new Map(prev).set(presetId, addedNames));
     setMedicines(prev => {
       const existing = prev.filter(m => m.name.trim());
       const have = new Set(existing.map(m => m.name.trim().toLowerCase()));
@@ -353,7 +356,8 @@ export default function PrescriptionDialog({
         }),
       });
       if (res.ok) {
-        ok = true;
+        ok = true;
+
         toast.success("Prescription saved ✓");
       } else {
         const err = await res.json();
@@ -475,6 +479,12 @@ export default function PrescriptionDialog({
           inpatient={!!inwardId}
           key={inwardId ? pickedDoctorId : "doctor"}
           onApply={applyPreset}
+          appliedPresets={appliedPresets}
+          onRemove={(presetId) => {
+            const names = appliedPresets.get(presetId) || [];
+            setMedicines(prev => prev.filter(m => !names.includes(m.name.trim().toLowerCase())));
+            setAppliedPresets(prev => { const n = new Map(prev); n.delete(presetId); return n; });
+          }}
         />
 
         {mode === "voice" && medicines.some(m => m.name.trim()) && (
