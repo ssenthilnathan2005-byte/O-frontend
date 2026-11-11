@@ -300,7 +300,7 @@ function Outpatients() {
                 <div className="min-w-[2.25rem] h-9 px-1 rounded-lg bg-teal-50 text-teal-700 font-bold flex items-center justify-center">{b.token_number}</div>
                 <div className="flex-1 min-w-[140px]">
                   <p className="font-medium text-gray-900 truncate">{b.patient_name}{b.patient_age != null ? ", " + b.patient_age : ""}{b.booking_source === "front_desk" && <span className="ml-2 text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded px-1.5 py-0.5">Front desk</span>}</p>
-                  <p className="text-xs text-gray-500 truncate">{b.phone || "No phone"}{b.patientArea ? " | " + b.patientArea : ""}{b.complaint ? " | " + b.complaint : ""}</p>
+                  <p className="text-xs text-gray-500 truncate">{b.phone || "No phone"}{b.patient_area ? " | " + b.patient_area : ""}{b.complaint ? " | " + b.complaint : ""}</p>
                 </div>
                 {(b as any).stage && <span className={"text-xs font-medium rounded-md px-2 py-1 border " + ((b as any).stage === "collected" ? "bg-emerald-50 text-emerald-700 border-emerald-100" : (b as any).stage === "collect_tablets" ? "bg-amber-50 text-amber-700 border-amber-100" : (b as any).stage === "seen" ? "bg-blue-50 text-blue-700 border-blue-100" : "bg-gray-50 text-gray-600 border-gray-200")}>{({ waiting: "Waiting", seen: "Seen doctor", collect_tablets: "Collect tablets", collected: "Tablets collected" } as Record<string, string>)[(b as any).stage]}</span>}
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
