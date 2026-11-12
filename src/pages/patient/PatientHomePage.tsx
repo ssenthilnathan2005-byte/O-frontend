@@ -666,7 +666,8 @@ function TealOverscroll() {
     const els = [document.documentElement, document.body];
     const prev = els.map((e) => e.style.backgroundColor);
     els.forEach((e) => { e.style.backgroundColor = "#042f2e"; });
-    return () => { els.forEach((e, i) => { e.style.backgroundColor = prev[i]; }); };
+    document.documentElement.style.setProperty("--pull-gap-bg", "linear-gradient(to right, #042f2e, #115e59)");
+    return () => { els.forEach((e, i) => { e.style.backgroundColor = prev[i]; }); document.documentElement.style.removeProperty("--pull-gap-bg"); };
   }, []);
   return null;
 }
