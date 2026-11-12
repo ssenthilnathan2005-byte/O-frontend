@@ -32,7 +32,7 @@ async function call(path: string, method = "GET", body?: any) {
 }
 
 interface OPBooking {
-  id: string; patient_name: string; patient_age: number | null; phone: string | null; complaint: string | null;
+  id: string; patient_name: string; patient_age: number | null; phone: string | null; complaint: string | null; patient_area?: string | null;
   doctor_name: string; session: string; token_number: number; status: string; checked_in_at: string | null; vitals?: Vitals | null;
   booking_source?: string | null; fee_amount?: number | null; fee_mode?: string | null; fee_paid_at?: string | null; doctor_fee?: number | null;
 }
