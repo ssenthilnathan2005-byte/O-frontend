@@ -215,15 +215,7 @@ export default function PatientHomePage() {
           })()}
         </h1>
         <p className="relative text-sm text-teal-100 mt-1.5 font-medium">Your health matters. We're here to help.</p>
-        <button
-          type="button"
-          aria-label="Search hospitals and doctors"
-          onClick={() => navigate({ path: "/patient/hospitals" } as any)}
-          className="relative mt-4 w-full flex items-center gap-3 rounded-xl bg-white px-4 py-3 text-left shadow-md active:scale-[0.99] transition-transform"
-        >
-          <svg className="w-5 h-5 text-teal-700 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
-          <span className="text-sm text-gray-400 truncate">Search hospitals, doctors or areas</span>
-        </button>
+        <HeaderSearch />
       </div>
 
       {/* Content sheet */}
@@ -677,4 +669,31 @@ function TealOverscroll() {
     return () => { els.forEach((e, i) => { e.style.backgroundColor = prev[i]; }); };
   }, []);
   return null;
+}
+
+// Header search: type a hospital name or city, then press Enter / Search to open the results.
+function HeaderSearch() {
+  const { navigate } = useRouter();
+  const [q, setQ] = useState("");
+  const go = () => navigate({ path: "/patient/hospitals", q: q.trim() } as any);
+  return (
+    <form
+      onSubmit={(e) => { e.preventDefault(); go(); }}
+      className="relative mt-4 flex items-center gap-2 rounded-xl bg-white py-1.5 pl-4 pr-1.5 shadow-md"
+    >
+      <svg className="w-5 h-5 text-teal-700 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+      <input
+        type="search"
+        enterKeyHint="search"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Search hospital name or city"
+        aria-label="Search hospitals by name or city"
+        className="flex-1 min-w-0 bg-transparent py-1.5 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none"
+      />
+      <button type="submit" className="shrink-0 rounded-lg bg-teal-700 px-3.5 py-2 text-sm font-semibold text-white active:scale-95 transition-transform">
+        Search
+      </button>
+    </form>
+  );
 }

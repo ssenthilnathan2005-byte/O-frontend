@@ -25,8 +25,8 @@ function norm(s: string | null | undefined): string { return (s || "").trim().to
 const TYPE_LABELS: Record<string, string> = { general: "General Hospital", eye: "Eye Hospital", ent: "ENT Hospital", dental: "Dental Clinic", pediatrics: "Children's Hospital", gynecology: "Women's Hospital", orthopedics: "Orthopedic Hospital", dermatology: "Skin Clinic", cardiology: "Heart Hospital", diabetology: "Diabetes Centre", clinic: "Clinic" };
 const typeOf = (h: any): string => h?.hospitalType || "general";
 
-export default function HospitalsPage({ city }: { city?: string }) {
-  const [search, setSearch] = useState("");
+export default function HospitalsPage({ city, q }: { city?: string; q?: string }) {
+  const [search, setSearch] = useState(q ?? "");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const { navigate, goBack } = useRouter();
   const { hospitals, doctors } = useStore();
