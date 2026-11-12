@@ -201,10 +201,9 @@ export default function PatientHomePage() {
   const mobileView = (
     <div className="flex flex-col bg-gray-50" style={{ minHeight: "100dvh" }}>
       {/* Greeting (top) */}
-      <div className="bg-white px-4 pt-4 pb-4 border-b border-gray-200">
+      <div className="bg-white px-4 pt-5 pb-4 border-b border-gray-200">
         {!user && <div className="flex justify-end mb-2"><LanguageSwitcher /></div>}
-        <p className="text-sm font-medium text-gray-500">{getGreeting()}</p>
-        <h1 className="mt-0.5 text-2xl font-bold tracking-tight text-gray-900 truncate">{(((user as any)?.name as string) || "").split(" ")[0] || "Welcome"}</h1>
+        <h1 className="text-[24px] min-[380px]:text-[26px] font-extrabold text-gray-900 leading-tight tracking-tight">{getGreeting()}{(((user as any)?.name as string) || "").split(" ")[0] ? "," : ""}{" "}<span className="whitespace-nowrap">{(((user as any)?.name as string) || "").split(" ")[0]}{" "}👋</span></h1>
         <p className="mt-1.5 text-sm text-gray-500 leading-snug">Book appointments, track your token and access your records.</p>
       </div>
       {/* Content below map */}
