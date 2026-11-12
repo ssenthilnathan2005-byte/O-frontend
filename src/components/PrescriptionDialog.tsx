@@ -268,7 +268,7 @@ export default function PrescriptionDialog({
   const [appliedPresets, setAppliedPresets] = useState<Map<string, string[]>>(new Map());
 
   function removeMed(idx: number) {
-    setMedicines(prev => prev.filter((_, i) => i !== idx));
+    setMedicines(prev => { const next = prev.filter((_, i) => i !== idx); return next.length ? next : [{ ...EMPTY_MED }]; });
     const shift = (prev: Set<number>) => {
       const next = new Set<number>();
       prev.forEach(i => { if (i < idx) next.add(i); else if (i > idx) next.add(i - 1); });
@@ -581,11 +581,9 @@ export default function PrescriptionDialog({
                         <Check className="w-4 h-4" />
                       </button>
                     )}
-                    {medicines.length > 1 && (
-                      <button onClick={() => removeMed(idx)} className="text-red-400 hover:text-red-600">
+                    <button onClick={() => removeMed(idx)} className="text-red-400 hover:text-red-600">
                         <Trash2 className="w-4 h-4" />
                       </button>
-                    )}
                   </div>
                 </div>
 
