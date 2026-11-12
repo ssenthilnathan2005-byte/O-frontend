@@ -203,8 +203,15 @@ export default function PatientHomePage() {
       {/* Greeting (top) */}
       <div className="bg-white px-4 pt-5 pb-4 border-b border-gray-200">
         {!user && <div className="flex justify-end mb-2"><LanguageSwitcher /></div>}
-        <h1 className="text-[24px] min-[380px]:text-[26px] font-extrabold text-gray-900 leading-tight tracking-tight">{getGreeting()}{(((user as any)?.name as string) || "").split(" ")[0] ? "," : ""}{" "}<span className="whitespace-nowrap">{(((user as any)?.name as string) || "").split(" ")[0]}{" "}👋</span></h1>
-        <p className="mt-1.5 text-sm text-gray-500 leading-snug">Book appointments, track your token and access your records.</p>
+        <h1 className="text-4xl font-extrabold text-gray-900 leading-tight">
+          {(() => {
+            const n = (((user as any)?.name as string) || "").split(" ")[0];
+            return n
+              ? (<><span className="block">{getGreeting()}</span><span className="block whitespace-nowrap">{n} 👋</span></>)
+              : (<>{getGreeting()} 👋</>);
+          })()}
+        </h1>
+        <p className="text-sm text-gray-400 mt-1 font-medium">Your health matters. We're here to help.</p>
       </div>
       {/* Content below map */}
       <div className="flex-1">
