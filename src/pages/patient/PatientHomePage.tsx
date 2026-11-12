@@ -200,10 +200,12 @@ export default function PatientHomePage() {
 
   const mobileView = (
     <div className="flex flex-col bg-gray-50" style={{ minHeight: "100dvh" }}>
-      {/* Greeting (top) */}
-      <div className="bg-white px-4 pt-5 pb-4 border-b border-gray-200">
-        {!user && <div className="flex justify-end mb-2"><LanguageSwitcher /></div>}
-        <h1 className="text-4xl font-extrabold text-gray-900 leading-tight">
+      {/* Header: continuous teal band, content sheet slides over it */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-teal-950 via-teal-800 to-teal-700 px-4 pt-5 pb-12 text-white">
+        <div className="absolute -right-12 -top-12 w-48 h-48 rounded-full bg-teal-400/10 pointer-events-none" />
+        <div className="absolute right-8 -bottom-10 w-36 h-36 rounded-full bg-white/5 pointer-events-none" />
+        {!user && <div className="relative flex justify-end mb-2"><LanguageSwitcher /></div>}
+        <h1 className="relative text-4xl font-extrabold leading-tight">
           {(() => {
             const n = (((user as any)?.name as string) || "").split(" ")[0];
             return n
@@ -211,11 +213,12 @@ export default function PatientHomePage() {
               : (<>{getGreeting()} 👋</>);
           })()}
         </h1>
-        <p className="text-sm text-gray-400 mt-1 font-medium">Your health matters. We're here to help.</p>
+        <p className="relative text-sm text-teal-100 mt-1.5 font-medium">Your health matters. We're here to help.</p>
       </div>
-      {/* Content below map */}
-      <div className="flex-1">
-        <div className="px-4 pb-28 pt-1 space-y-4">
+
+      {/* Content sheet */}
+      <div className="relative z-10 flex-1 -mt-6 rounded-t-[28px] bg-gray-50 shadow-[0_-6px_20px_-8px_rgba(4,47,46,0.35)]">
+        <div className="px-4 pb-28 pt-5 space-y-4">
           {/* Notification permission banner */}
           {notifState === "default" && (
             <div className="flex items-center gap-3 bg-teal-50 border border-teal-200 rounded-2xl px-4 py-3">
