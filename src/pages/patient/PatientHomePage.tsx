@@ -202,6 +202,7 @@ export default function PatientHomePage() {
     <div className="flex flex-col bg-gray-50" style={{ minHeight: "100dvh" }}>
       {/* Header: continuous teal band, content sheet slides over it */}
       <div className="relative overflow-hidden bg-gradient-to-br from-teal-950 via-teal-800 to-teal-700 px-4 pt-5 pb-12 text-white">
+        <TealOverscroll />
         <div className="absolute -right-12 -top-12 w-48 h-48 rounded-full bg-teal-400/10 pointer-events-none" />
         <div className="absolute right-8 -bottom-10 w-36 h-36 rounded-full bg-white/5 pointer-events-none" />
         {!user && <div className="relative flex justify-end mb-2"><LanguageSwitcher /></div>}
@@ -664,4 +665,16 @@ export default function PatientHomePage() {
   );
 
   return isDesktop ? desktopView : mobileView;
+}
+
+// Phone only: paint the page behind the header dark teal so pull-to-refresh / overscroll never shows a white strip.
+function TealOverscroll() {
+  useEffect(() => {
+    if (!window.matchMedia("(max-width: 1023px)").matches) return;
+    const els = [document.documentElement, document.body];
+    const prev = els.map((e) => e.style.backgroundColor);
+    els.forEach((e) => { e.style.backgroundColor = "#042f2e"; });
+    return () => { els.forEach((e, i) => { e.style.backgroundColor = prev[i]; }); };
+  }, []);
+  return null;
 }
