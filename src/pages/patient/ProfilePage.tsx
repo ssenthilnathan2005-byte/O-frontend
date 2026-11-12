@@ -28,6 +28,11 @@ export default function ProfilePage() {
   const [area, setArea] = useState("");
   const [bloodGroup, setBloodGroup] = useState("");
   const [uhid, setUhid] = useState("");
+  const [abhaId, setAbhaId] = useState("");
+  const [abhaOtpSent, setAbhaOtpSent] = useState(false);
+  const [abhaOtp, setAbhaOtp] = useState("");
+  const [abhaLoading, setAbhaLoading] = useState(false);
+  const [abhaTxnId, setAbhaTxnId] = useState("");
   const [uhidCopied, setUhidCopied] = useState(false);
   const [hasPassword, setHasPassword] = useState(true);
   const [pwOpen, setPwOpen] = useState(false);
@@ -322,6 +327,41 @@ export default function ProfilePage() {
     );
   }
 
+  async function handleAbhaSendOtp() {
+    setAbhaLoading(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000/api"}/abdm/abha/generate-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("token")}` },
+        body: JSON.stringify({ mobile: phone }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast.error(data.error || "Failed to send OTP"); return; }
+      setAbhaTxnId(data.txnId);
+      setAbhaOtpSent(true);
+      toast.success("OTP sent to your mobile");
+    } catch { toast.error("Network error"); }
+    finally { setAbhaLoading(false); }
+  }
+
+  async function handleAbhaVerifyOtp() {
+    setAbhaLoading(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000/api"}/abdm/abha/verify-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("token")}` },
+        body: JSON.stringify({ txnId: abhaTxnId, otp: abhaOtp }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast.error(data.error || "Invalid OTP"); return; }
+      setAbhaId(data.abhaId);
+      setAbhaOtpSent(false);
+      setAbhaOtp("");
+      toast.success("ABHA linked successfully!");
+    } catch { toast.error("Network error"); }
+    finally { setAbhaLoading(false); }
+  }
+
   return (
     <div className="max-w-md mx-auto px-4 py-6">
       <div className="text-center pb-4">
@@ -582,6 +622,55 @@ export default function ProfilePage() {
             className="shrink-0"
           />
         </div>
+      </div>
+
+      {/* ABHA Linking */}
+      <div className="rounded-2xl border border-gray-100 bg-white p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+            <span className="text-blue-600 font-bold text-xs">AB</span>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-900">ABHA Health ID</p>
+            <p className="text-xs text-gray-400">Link your Ayushman Bharat Health Account</p>
+          </div>
+        </div>
+        {abhaId ? (
+          <div className="rounded-lg bg-green-50 border border-green-200 px-3 py-2">
+            <p className="text-xs text-green-700 font-medium">✓ Linked</p>
+            <p className="text-sm font-mono text-green-800">{abhaId}</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {!abhaOtpSent ? (
+              <button
+                onClick={handleAbhaSendOtp}
+                disabled={abhaLoading}
+                className="w-full rounded-lg bg-blue-600 text-white text-sm font-medium py-2 hover:bg-blue-700 disabled:opacity-50"
+              >
+                {abhaLoading ? "Sending OTP..." : "Link ABHA via Mobile OTP"}
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs text-gray-500">OTP sent to your registered mobile number</p>
+                <input
+                  type="number"
+                  placeholder="Enter 6-digit OTP"
+                  value={abhaOtp}
+                  onChange={e => setAbhaOtp(e.target.value)}
+                  className="w-full border rounded-lg px-3 py-2 text-sm"
+                />
+                <button
+                  onClick={handleAbhaVerifyOtp}
+                  disabled={abhaLoading || abhaOtp.length < 6}
+                  className="w-full rounded-lg bg-green-600 text-white text-sm font-medium py-2 hover:bg-green-700 disabled:opacity-50"
+                >
+                  {abhaLoading ? "Verifying..." : "Verify & Link ABHA"}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
