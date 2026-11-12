@@ -207,56 +207,6 @@ export default function PatientHomePage() {
         <p className="text-sm text-gray-500 mt-1">Your health matters. We're here to help.</p>
       </div>
 
-      {/* Map (below the greeting) */}
-      <div className="px-4 pt-4 shrink-0">
-        <div className="relative rounded-2xl overflow-hidden border border-gray-200 shadow-card bg-gray-100" style={{ height: mapHeight }}>
-          <div ref={mapRef} className="w-full h-full" />
-          {!mapReady && (
-            <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
-              <Loader2 className="w-6 h-6 text-teal-500 animate-spin" />
-            </div>
-          )}
-        <div className="absolute top-3 left-3 right-3 z-10 flex gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-            <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search hospitals, doctors or areas"
-              className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-medium shadow-md placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-600" />
-          </div>
-          {nearState.status === "done" ? (
-            <button onClick={clear} className="flex items-center gap-1 bg-teal-500 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap">
-              <XCircle className="w-3.5 h-3.5" /> Clear
-            </button>
-          ) : nearState.status === "gps-off" ? (
-            <button onClick={() => { import("@capacitor/core").then(({ Capacitor }) => { if (Capacitor.isNativePlatform()) { import("capacitor-native-settings").then(({ NativeSettings, AndroidSettings }) => NativeSettings.openAndroid({ option: AndroidSettings.Location }).catch(() => {})); } }); }} className="flex items-center gap-1 bg-orange-50 border border-orange-300 text-orange-600 text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap">
-              <Navigation className="w-3.5 h-3.5" /> Go to Settings
-            </button>
-          ) : nearState.status === "denied" ? (
-            <button onClick={() => { import("@capacitor/core").then(({ Capacitor }) => { if (Capacitor.isNativePlatform()) { import("capacitor-native-settings").then(({ NativeSettings, AndroidSettings }) => NativeSettings.openAndroid({ option: AndroidSettings.ApplicationDetails }).catch(() => {})); } else { locate(); } }); }} className="flex items-center gap-1 bg-red-50 border border-red-300 text-red-600 text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap">
-              <Navigation className="w-3.5 h-3.5" /> Allow location
-            </button>
-          ) : (
-            <button onClick={locate} disabled={nearState.status === "loading"}
-              className="flex items-center gap-1 bg-white border border-teal-300 text-teal-700 text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap disabled:opacity-60">
-              {nearState.status === "loading" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Navigation className="w-3.5 h-3.5" />}
-              Near me
-            </button>
-          )}
-        </div>
-
-        </div>
-      </div>
-
-      {/* Drag handle */}
-      <div
-        className="shrink-0 flex flex-col items-center justify-center cursor-row-resize touch-none"
-        style={{ height: 22 }}
-        onMouseDown={e => { onDragStart(e.clientY); const mm = (ev: MouseEvent) => onDragMove(ev.clientY); const mu = (ev: MouseEvent) => { onDragEnd(ev.clientY); window.removeEventListener("mousemove", mm); window.removeEventListener("mouseup", mu); }; window.addEventListener("mousemove", mm); window.addEventListener("mouseup", mu); }}
-        onTouchStart={e => { onDragStart(e.touches[0].clientY); const tm = (ev: TouchEvent) => onDragMove(ev.touches[0].clientY); const te = (ev: TouchEvent) => { onDragEnd(ev.changedTouches[0].clientY); window.removeEventListener("touchmove", tm); window.removeEventListener("touchend", te); }; window.addEventListener("touchmove", tm); window.addEventListener("touchend", te); }}
-      >
-        <div className="w-10 h-1 bg-gray-300 rounded-full" />
-      </div>
-
       {/* Content below map */}
       <div className="flex-1">
         <div className="px-4 pb-28 pt-1 space-y-4">
@@ -353,6 +303,56 @@ export default function PatientHomePage() {
               </div>
             </motion.div>
           </div>
+
+      {/* Map (between Track token and Lab Tests) */}
+      <div className="shrink-0">
+        <div className="relative rounded-2xl overflow-hidden border border-gray-200 shadow-card bg-gray-100" style={{ height: mapHeight }}>
+          <div ref={mapRef} className="w-full h-full" />
+          {!mapReady && (
+            <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
+              <Loader2 className="w-6 h-6 text-teal-500 animate-spin" />
+            </div>
+          )}
+        <div className="absolute top-3 left-3 right-3 z-10 flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+            <input value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Search hospitals, doctors or areas"
+              className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-medium shadow-md placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-600" />
+          </div>
+          {nearState.status === "done" ? (
+            <button onClick={clear} className="flex items-center gap-1 bg-teal-500 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap">
+              <XCircle className="w-3.5 h-3.5" /> Clear
+            </button>
+          ) : nearState.status === "gps-off" ? (
+            <button onClick={() => { import("@capacitor/core").then(({ Capacitor }) => { if (Capacitor.isNativePlatform()) { import("capacitor-native-settings").then(({ NativeSettings, AndroidSettings }) => NativeSettings.openAndroid({ option: AndroidSettings.Location }).catch(() => {})); } }); }} className="flex items-center gap-1 bg-orange-50 border border-orange-300 text-orange-600 text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap">
+              <Navigation className="w-3.5 h-3.5" /> Go to Settings
+            </button>
+          ) : nearState.status === "denied" ? (
+            <button onClick={() => { import("@capacitor/core").then(({ Capacitor }) => { if (Capacitor.isNativePlatform()) { import("capacitor-native-settings").then(({ NativeSettings, AndroidSettings }) => NativeSettings.openAndroid({ option: AndroidSettings.ApplicationDetails }).catch(() => {})); } else { locate(); } }); }} className="flex items-center gap-1 bg-red-50 border border-red-300 text-red-600 text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap">
+              <Navigation className="w-3.5 h-3.5" /> Allow location
+            </button>
+          ) : (
+            <button onClick={locate} disabled={nearState.status === "loading"}
+              className="flex items-center gap-1 bg-white border border-teal-300 text-teal-700 text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap disabled:opacity-60">
+              {nearState.status === "loading" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Navigation className="w-3.5 h-3.5" />}
+              Near me
+            </button>
+          )}
+        </div>
+
+        </div>
+      </div>
+
+      {/* Drag handle */}
+      <div
+        className="shrink-0 flex flex-col items-center justify-center cursor-row-resize touch-none"
+        style={{ height: 22 }}
+        onMouseDown={e => { onDragStart(e.clientY); const mm = (ev: MouseEvent) => onDragMove(ev.clientY); const mu = (ev: MouseEvent) => { onDragEnd(ev.clientY); window.removeEventListener("mousemove", mm); window.removeEventListener("mouseup", mu); }; window.addEventListener("mousemove", mm); window.addEventListener("mouseup", mu); }}
+        onTouchStart={e => { onDragStart(e.touches[0].clientY); const tm = (ev: TouchEvent) => onDragMove(ev.touches[0].clientY); const te = (ev: TouchEvent) => { onDragEnd(ev.changedTouches[0].clientY); window.removeEventListener("touchmove", tm); window.removeEventListener("touchend", te); }; window.addEventListener("touchmove", tm); window.addEventListener("touchend", te); }}
+      >
+        <div className="w-10 h-1 bg-gray-300 rounded-full" />
+      </div>
 
           {/* Lab Tests — full width, matches Book an appointment style */}
           <motion.div
