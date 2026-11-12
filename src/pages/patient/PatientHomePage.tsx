@@ -201,12 +201,12 @@ export default function PatientHomePage() {
   const mobileView = (
     <div className="flex flex-col bg-gray-50" style={{ minHeight: "100dvh" }}>
       {/* Greeting (top) */}
-      <div className="bg-white px-4 pt-5 pb-4 border-b border-gray-100">
+      <div className="bg-white px-4 pt-4 pb-4 border-b border-gray-200">
         {!user && <div className="flex justify-end mb-2"><LanguageSwitcher /></div>}
-        <h1 className="text-[28px] font-extrabold text-gray-900 leading-tight tracking-tight">{getGreeting()}{(((user as any)?.name as string) || "").split(" ")[0] ? `, ${(((user as any)?.name as string) || "").split(" ")[0]}` : ""} <span className="inline-block">👋</span></h1>
-        <p className="text-sm text-gray-500 mt-1">Your health matters. We're here to help.</p>
+        <p className="text-sm font-medium text-gray-500">{getGreeting()}</p>
+        <h1 className="mt-0.5 text-2xl font-bold tracking-tight text-gray-900 truncate">{(((user as any)?.name as string) || "").split(" ")[0] || "Welcome"}</h1>
+        <p className="mt-1.5 text-sm text-gray-500 leading-snug">Book appointments, track your token and access your records.</p>
       </div>
-
       {/* Content below map */}
       <div className="flex-1">
         <div className="px-4 pb-28 pt-1 space-y-4">
@@ -314,27 +314,27 @@ export default function PatientHomePage() {
             </div>
           )}
         <div className="absolute top-3 left-3 right-3 z-10 flex gap-2">
-          <div className="relative flex-1">
+          <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
             <input value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Search hospitals, doctors or areas"
               className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-medium shadow-md placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-600" />
           </div>
           {nearState.status === "done" ? (
-            <button onClick={clear} className="flex items-center gap-1 bg-teal-500 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap">
+            <button onClick={clear} className="flex items-center gap-1 bg-teal-500 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap shrink-0">
               <XCircle className="w-3.5 h-3.5" /> Clear
             </button>
           ) : nearState.status === "gps-off" ? (
-            <button onClick={() => { import("@capacitor/core").then(({ Capacitor }) => { if (Capacitor.isNativePlatform()) { import("capacitor-native-settings").then(({ NativeSettings, AndroidSettings }) => NativeSettings.openAndroid({ option: AndroidSettings.Location }).catch(() => {})); } }); }} className="flex items-center gap-1 bg-orange-50 border border-orange-300 text-orange-600 text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap">
+            <button onClick={() => { import("@capacitor/core").then(({ Capacitor }) => { if (Capacitor.isNativePlatform()) { import("capacitor-native-settings").then(({ NativeSettings, AndroidSettings }) => NativeSettings.openAndroid({ option: AndroidSettings.Location }).catch(() => {})); } }); }} className="flex items-center gap-1 bg-orange-50 border border-orange-300 text-orange-600 text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap shrink-0">
               <Navigation className="w-3.5 h-3.5" /> Go to Settings
             </button>
           ) : nearState.status === "denied" ? (
-            <button onClick={() => { import("@capacitor/core").then(({ Capacitor }) => { if (Capacitor.isNativePlatform()) { import("capacitor-native-settings").then(({ NativeSettings, AndroidSettings }) => NativeSettings.openAndroid({ option: AndroidSettings.ApplicationDetails }).catch(() => {})); } else { locate(); } }); }} className="flex items-center gap-1 bg-red-50 border border-red-300 text-red-600 text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap">
+            <button onClick={() => { import("@capacitor/core").then(({ Capacitor }) => { if (Capacitor.isNativePlatform()) { import("capacitor-native-settings").then(({ NativeSettings, AndroidSettings }) => NativeSettings.openAndroid({ option: AndroidSettings.ApplicationDetails }).catch(() => {})); } else { locate(); } }); }} className="flex items-center gap-1 bg-red-50 border border-red-300 text-red-600 text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap shrink-0">
               <Navigation className="w-3.5 h-3.5" /> Allow location
             </button>
           ) : (
             <button onClick={locate} disabled={nearState.status === "loading"}
-              className="flex items-center gap-1 bg-white border border-teal-300 text-teal-700 text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap disabled:opacity-60">
+              className="flex items-center gap-1 bg-white border border-teal-300 text-teal-700 text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap shrink-0 disabled:opacity-60">
               {nearState.status === "loading" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Navigation className="w-3.5 h-3.5" />}
               Near me
             </button>
