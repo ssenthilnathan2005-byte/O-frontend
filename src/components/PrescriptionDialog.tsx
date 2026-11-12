@@ -495,13 +495,16 @@ export default function PrescriptionDialog({
               </span>
               <button onClick={() => setMode("manual")} className="text-xs text-blue-700 underline">Edit in Manual</button>
             </div>
-            {medicines.filter(m => m.name.trim()).map((m, i) => (
-              <div key={"ms" + i} className="flex items-start gap-2 text-sm bg-white border rounded-lg px-3 py-2">
+            {medicines.map((m, realIdx) => !m.name.trim() ? null : (
+              <div key={"ms" + realIdx} className="flex items-start gap-2 text-sm bg-white border rounded-lg px-3 py-2">
                 <Check className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <div className="font-medium">{m.name}</div>
                   <div className="text-xs text-gray-500">{[dosageText(m), formatDuration(m.durationAmount, m.durationUnit), m.instructions].filter(Boolean).join(", ")}</div>
                 </div>
+                <button onClick={() => removeMed(realIdx)} className="text-red-400 hover:text-red-600 ml-1 shrink-0">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
               </div>
             ))}
           </div>
