@@ -4,7 +4,7 @@ import { useStore } from "../context/StoreContext";
 import { useRouter } from "../router/RouterContext";
 import { bedBookings } from "../api";
 
-const KEY = "db_bed_fab_pos";
+const KEY = "db_bed_fab_pos_v2";
 const SIZE = 52;           // button is a SIZE x SIZE rounded square
 const MARGIN = 8;          // gap kept from every screen edge
 const BOTTOM_SAFE = 88;    // keeps it above the bottom navigation bar
@@ -70,7 +70,7 @@ export default function FloatingAdmissionButton() {
   // initial position: saved spot, otherwise right edge above the chat button
   useEffect(() => {
     const saved = readPos();
-    const start = saved || { x: window.innerWidth - SIZE - 14, y: window.innerHeight - 192 };
+    const start = saved || { x: window.innerWidth - SIZE - 14, y: window.innerHeight - 204 };
     setPos(clamp(start.x, start.y));
     const onResize = () => setPos((p) => (p ? clamp(p.x, p.y) : p));
     window.addEventListener("resize", onResize);
@@ -131,7 +131,7 @@ export default function FloatingAdmissionButton() {
       onPointerCancel={() => { drag.current = null; }}
       style={{ left: pos?.x ?? -999, top: pos?.y ?? -999, width: SIZE, height: SIZE, touchAction: "none" }}
       className={
-        "fixed z-40 flex items-center justify-center rounded-2xl shadow-lg active:scale-95 select-none transition-colors " +
+        "fixed z-30 flex items-center justify-center rounded-2xl shadow-lg active:scale-95 select-none transition-colors " +
         (active ? "bg-teal-600 text-white" : "bg-gray-200 text-gray-400")
       }
     >
