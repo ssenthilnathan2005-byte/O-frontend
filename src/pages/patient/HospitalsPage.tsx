@@ -70,16 +70,16 @@ export default function HospitalsPage({ city, q }: { city?: string; q?: string }
       )}
 
       {/* Header band (matches the patient home page) */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-teal-50 to-emerald-100 border border-teal-100 px-4 pt-4 pb-5 text-gray-900 shadow-sm">
-        <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-teal-300/30 pointer-events-none" />
-        <button type="button" onClick={goBack} className="relative flex items-center gap-1 text-sm font-medium text-teal-700 hover:text-teal-900 transition-colors -ml-1 mb-3" data-ocid="hospitals.back_button">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-teal-200 to-emerald-300 border border-teal-300 px-4 pt-4 pb-5 text-gray-900 shadow-sm">
+        <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-white/30 pointer-events-none" />
+        <button type="button" onClick={goBack} className="relative flex items-center gap-1 text-sm font-medium text-teal-900 hover:text-teal-950 transition-colors -ml-1 mb-3" data-ocid="hospitals.back_button">
           <ChevronLeft className="w-4 h-4" />
           Back
         </button>
         <h1 className="relative text-2xl font-extrabold leading-tight">
           {city ? `Hospitals in ${city}` : "Find a Hospital"}
         </h1>
-        <p className="relative text-sm text-teal-700 mt-1">
+        <p className="relative text-sm text-teal-900 mt-1">
           {isNearMeActive
             ? "Showing hospitals within 20 km of your location"
             : city
