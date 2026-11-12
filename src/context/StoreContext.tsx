@@ -358,6 +358,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     import("../lib/push").then(({ disablePushNotifications }) => {
       disablePushNotifications();
     });
+    try {
+      const t = api.getToken?.() || localStorage.getItem("db_token");
+      if (t) fetch((import.meta.env.VITE_API_URL || "http://localhost:4000/api") + "/auth/logout", {
+        method: "POST", headers: { Authorization: "Bearer " + t, "Content-Type": "application/json" }
+      }).catch(() => {});
+    } catch (_) {}
     api.clearToken();
     localStorage.removeItem("db_user");
     setUser(null); setBookings([]); setPatients([]); setTokenStates({});
