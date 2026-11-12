@@ -200,20 +200,28 @@ export default function PatientHomePage() {
 
   const mobileView = (
     <div className="flex flex-col bg-gray-50" style={{ minHeight: "100dvh" }}>
-      {/* Map */}
-      <div className="relative shrink-0 transition-all duration-200 lg:w-[calc(100%-3rem)] lg:max-w-none lg:mx-auto lg:mt-4 lg:rounded-3xl lg:overflow-hidden lg:border lg:border-gray-200 lg:shadow-md" style={{ height: isDesktop ? 190 : mapHeight }}>
-        <div ref={mapRef} className="w-full h-full" />
-        {!mapReady && (
-          <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
-            <Loader2 className="w-6 h-6 text-teal-500 animate-spin" />
-          </div>
-        )}
-        <div className="absolute bottom-5 left-3 right-3 z-10 flex gap-2 lg:right-auto lg:left-4 lg:bottom-4 lg:w-[420px]">
+      {/* Greeting (top) */}
+      <div className="bg-white px-4 pt-5 pb-4 border-b border-gray-100">
+        {!user && <div className="flex justify-end mb-2"><LanguageSwitcher /></div>}
+        <h1 className="text-[28px] font-extrabold text-gray-900 leading-tight tracking-tight">{getGreeting()}{(((user as any)?.name as string) || "").split(" ")[0] ? `, ${(((user as any)?.name as string) || "").split(" ")[0]}` : ""} <span className="inline-block">👋</span></h1>
+        <p className="text-sm text-gray-500 mt-1">Your health matters. We're here to help.</p>
+      </div>
+
+      {/* Map (below the greeting) */}
+      <div className="px-4 pt-4 shrink-0">
+        <div className="relative rounded-2xl overflow-hidden border border-gray-200 shadow-card bg-gray-100" style={{ height: mapHeight }}>
+          <div ref={mapRef} className="w-full h-full" />
+          {!mapReady && (
+            <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
+              <Loader2 className="w-6 h-6 text-teal-500 animate-spin" />
+            </div>
+          )}
+        <div className="absolute top-3 left-3 right-3 z-10 flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
             <input value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Search hospitals, doctors or areas"
-              className="w-full pl-9 pr-3 py-2.5 rounded-xl border-2 border-teal-600 bg-white text-sm font-medium shadow-xl focus:outline-none focus:ring-2 focus:ring-teal-400" />
+              className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-medium shadow-md placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-600" />
           </div>
           {nearState.status === "done" ? (
             <button onClick={clear} className="flex items-center gap-1 bg-teal-500 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap">
@@ -235,24 +243,26 @@ export default function PatientHomePage() {
             </button>
           )}
         </div>
+
+        </div>
       </div>
 
       {/* Drag handle */}
       <div
-        className="shrink-0 flex flex-col items-center justify-center bg-white z-10 cursor-row-resize lg:hidden"
-        style={{ height: 26, borderRadius: "16px 16px 0 0", marginTop: -10, boxShadow: "0 -2px 8px rgba(0,0,0,0.08)" }}
+        className="shrink-0 flex flex-col items-center justify-center cursor-row-resize touch-none"
+        style={{ height: 22 }}
         onMouseDown={e => { onDragStart(e.clientY); const mm = (ev: MouseEvent) => onDragMove(ev.clientY); const mu = (ev: MouseEvent) => { onDragEnd(ev.clientY); window.removeEventListener("mousemove", mm); window.removeEventListener("mouseup", mu); }; window.addEventListener("mousemove", mm); window.addEventListener("mouseup", mu); }}
         onTouchStart={e => { onDragStart(e.touches[0].clientY); const tm = (ev: TouchEvent) => onDragMove(ev.touches[0].clientY); const te = (ev: TouchEvent) => { onDragEnd(ev.changedTouches[0].clientY); window.removeEventListener("touchmove", tm); window.removeEventListener("touchend", te); }; window.addEventListener("touchmove", tm); window.addEventListener("touchend", te); }}
       >
-        <div className="w-8 h-1 bg-gray-300 rounded-full" />
+        <div className="w-10 h-1 bg-gray-300 rounded-full" />
       </div>
 
-      {/* Scrollable content below map */}
-      <div className="flex-1 overflow-y-auto bg-white lg:bg-gray-50">
-        <div className="px-4 pb-28 space-y-4 lg:max-w-none lg:mx-auto lg:px-6 lg:pb-8 lg:space-y-4">
+      {/* Content below map */}
+      <div className="flex-1">
+        <div className="px-4 pb-28 pt-1 space-y-4">
           {/* Notification permission banner */}
           {notifState === "default" && (
-            <div className="mt-4 flex items-center gap-3 bg-teal-50 border border-teal-200 rounded-2xl px-4 py-3">
+            <div className="flex items-center gap-3 bg-teal-50 border border-teal-200 rounded-2xl px-4 py-3">
               <div className="w-9 h-9 rounded-xl bg-teal-100 flex items-center justify-center shrink-0">
                 <Bell className="w-4 h-4 text-teal-600" />
               </div>
@@ -269,13 +279,6 @@ export default function PatientHomePage() {
               </button>
             </div>
           )}
-
-          {/* Greeting */}
-          <div className="pt-5 pb-1 lg:pt-4 lg:pb-0">
-            {!user && <div className="flex justify-end mb-2"><LanguageSwitcher /></div>}
-            <h1 className="text-4xl lg:text-2xl font-extrabold text-gray-900 leading-tight">{getGreeting()} 👋</h1>
-            <p className="text-sm text-gray-400 mt-1 font-medium">Your health matters. We're here to help.</p>
-          </div>
 
           {/* Action cards (3 columns on desktop) */}
           <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-3 lg:gap-4">
