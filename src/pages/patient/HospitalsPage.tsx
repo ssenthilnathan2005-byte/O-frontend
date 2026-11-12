@@ -70,16 +70,16 @@ export default function HospitalsPage({ city, q }: { city?: string; q?: string }
       )}
 
       {/* Header band (matches the patient home page) */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-teal-200 to-emerald-300 border border-teal-300 px-4 pt-4 pb-5 text-gray-900 shadow-sm">
-        <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-white/30 pointer-events-none" />
-        <button type="button" onClick={goBack} className="relative flex items-center gap-1 text-sm font-medium text-teal-900 hover:text-teal-950 transition-colors -ml-1 mb-3" data-ocid="hospitals.back_button">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-teal-800 via-teal-700 to-teal-600 px-4 pt-4 pb-5 text-white shadow-sm">
+        <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-teal-300/10 pointer-events-none" />
+        <button type="button" onClick={goBack} className="relative flex items-center gap-1 text-sm font-medium text-teal-50 hover:text-white transition-colors -ml-1 mb-3" data-ocid="hospitals.back_button">
           <ChevronLeft className="w-4 h-4" />
           Back
         </button>
         <h1 className="relative text-2xl font-extrabold leading-tight">
           {city ? `Hospitals in ${city}` : "Find a Hospital"}
         </h1>
-        <p className="relative text-sm text-teal-900 mt-1">
+        <p className="relative text-sm text-teal-50 mt-1">
           {isNearMeActive
             ? "Showing hospitals within 20 km of your location"
             : city
@@ -90,7 +90,7 @@ export default function HospitalsPage({ city, q }: { city?: string; q?: string }
         <div className="relative flex gap-2 mt-4">
           <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-            <Input className="h-11 pl-10 pr-9 rounded-xl bg-white border border-teal-100 text-base text-gray-900 shadow-md placeholder:text-gray-400" placeholder="Search hospital or area..." value={search} onChange={(e) => setSearch(e.target.value)} data-ocid="hospitals.search_input" />
+            <Input className="h-11 pl-10 pr-9 rounded-xl bg-white border-0 text-base text-gray-900 shadow-md placeholder:text-gray-400" placeholder="Search hospital or area..." value={search} onChange={(e) => setSearch(e.target.value)} data-ocid="hospitals.search_input" />
             {search && (
               <button type="button" onClick={() => setSearch("")} aria-label="Clear search" className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600">
                 <XCircle className="w-4 h-4" />
@@ -105,7 +105,7 @@ export default function HospitalsPage({ city, q }: { city?: string; q?: string }
               <span className="hidden sm:inline">Clear Near Me</span>
             </button>
           ) : (
-            <button type="button" onClick={locate} disabled={nearState.status === "loading"} className="shrink-0 h-11 flex items-center justify-center gap-1.5 px-3.5 rounded-xl bg-white border border-teal-200 text-teal-800 text-sm font-semibold hover:bg-teal-50 active:scale-95 transition-all whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed" data-ocid="hospitals.near_me_button">
+            <button type="button" onClick={locate} disabled={nearState.status === "loading"} className="shrink-0 h-11 flex items-center justify-center gap-1.5 px-3.5 rounded-xl bg-white/15 border border-white/30 text-white text-sm font-semibold hover:bg-white/25 active:scale-95 transition-all whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed" data-ocid="hospitals.near_me_button">
               {nearState.status === "loading" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Navigation className="w-4 h-4" />}
               <span className="sm:hidden">{nearState.status === "loading" ? "Locating…" : "Near me"}</span>
               <span className="hidden sm:inline">{nearState.status === "loading" ? "Locating…" : "Hospitals Near Me"}</span>
