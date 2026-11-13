@@ -382,6 +382,15 @@ export default function TopNav() {
       `}</style>
 
       {/* Desktop top nav — md and up only, phones never see this */}
+      {route.path !== "/" && (
+        <div className="md:hidden sticky top-0 z-30 flex items-center justify-between bg-white border-b border-gray-200 px-4 py-2">
+          <div className="flex items-center gap-2">
+            <img src="/assets/Logo.jpg" alt="Doctor Booked" className="w-7 h-7 rounded-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+            <span className="text-sm font-bold text-gray-800" translate="no">Doctor Booked</span>
+          </div>
+          <LanguageSwitcher />
+        </div>
+      )}
       <header className="app-topnav hidden md:block sticky top-0 z-40 bg-white border-b border-gray-200 px-6 py-3">
         <div className="w-full flex items-center gap-8">
           <button
