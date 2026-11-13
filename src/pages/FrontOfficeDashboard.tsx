@@ -48,13 +48,24 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 function RegisterWalkIn() {
   const today = new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
   const [docs, setDocs] = useState<any[]>([]);
-  const empty = { patientName: "", phone: "", age: "", patientGender: "", complaint: "", description: "", doctorId: "", session: "morning", date: today };
+  const empty = { patientName: "", phone: "", age: "", patientGender: "", complaint: "", description: "", doctorId: "", session: "morning", date: today, uhid: "" };
   const [spec, setSpec] = useState("");
   const [syms, setSyms] = useState<string[]>([]);
   const [dateText, setDateText] = useState(today.split("-").reverse().join("-"));
   const [f, setF] = useState(empty);
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState<any>(null);
+  const [found, setFound] = useState<any>(null);
+  async function lookup() {
+    if (!f.uhid.trim()) { toast.error("Enter the patient's UHID"); return; }
+    if (!f.phone.trim()) { toast.error("Enter the patient's phone number first"); return; }
+    try {
+      const r = await call("/patient-lookup?uhid=" + encodeURIComponent(f.uhid.trim()) + "&phone=" + encodeURIComponent(f.phone.trim()));
+      setFound({ ...r, uhid: f.uhid.trim() });
+      const g = ["Male", "Female", "Other"].find((x) => x.toLowerCase() === String(r.gender || "").toLowerCase()) || "";
+      setF((p) => ({ ...p, patientName: r.name || p.patientName, age: r.age != null ? String(r.age) : p.age, patientGender: g || p.patientGender }));
+    } catch (e: any) { setFound(null); toast.error(e.message); }
+  }
   const selDoc: any = docs.find((d: any) => d.id === f.doctorId);
   const specialties = Array.from(new Set(docs.map((d: any) => d.specialty).filter(Boolean))).sort() as string[];
   const shownDocs = spec ? docs.filter((d: any) => d.specialty === spec) : docs;
@@ -91,7 +102,8 @@ function RegisterWalkIn() {
     if (sessionOptions.length && !sessionOptions.includes(f.session)) setF((p) => ({ ...p, session: sessionOptions[0] }));
   }, [f.doctorId, f.date, sessionOptions.join()]);
   useEffect(() => { call("/walkin/doctors").then((r) => setDocs(r.doctors || [])).catch((e) => toast.error(e.message)); }, []);
-  async function submit() {
+  async function submit(confirmNew = false) {
+    if (f.uhid.trim() && !found) return toast.error("Look up the UHID first, or clear it for a new patient");
     if (!f.patientName.trim()) return toast.error("Enter patient name");
     if (!f.patientGender) return toast.error("Select the patient's gender");
     if (!f.doctorId) return toast.error("Choose a doctor");
@@ -100,12 +112,16 @@ function RegisterWalkIn() {
     setSaving(true);
     try {
       const { description, ...rest } = f;
-      const r = await call("/walkin", "POST", { ...rest, complaint: [[...syms, f.complaint.trim()].filter(Boolean).join(", "), description.trim()].filter(Boolean).join(" - ") });
+      const r = await call("/walkin", "POST", { ...rest, uhid: found ? found.uhid : undefined, confirmNew, complaint: [[...syms, f.complaint.trim()].filter(Boolean).join(", "), description.trim()].filter(Boolean).join(" - ") });
       setDone(r);
       setF({ ...empty, doctorId: f.doctorId, session: f.session, date: f.date });
       setSyms([]);
+      setFound(null);
       toast.success("Token " + r.tokenNumber + " created");
-    } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
+    } catch (e: any) {
+      if (!confirmNew && /different person/i.test(e.message || "") && window.confirm(e.message)) { return await submit(true); }
+      toast.error(e.message);
+    } finally { setSaving(false); }
   }
   return (
     <div className="max-w-xl space-y-4">
@@ -113,8 +129,17 @@ function RegisterWalkIn() {
       {done && (
         <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm">
           <b>{done.patientName}</b>: token <b>{done.tokenNumber}</b>, {done.doctorName} ({done.session}, {String(done.date || "").split("-").reverse().join("-")})
+          {done.uhid && <div className="mt-1">UHID: <span className="font-mono font-bold">{done.uhid}</span>{done.newAccount ? " (new patient). Write it on the patient's slip." : ""}</div>}
         </div>
       )}
+      <div className="space-y-1.5"><Label className="block">Existing patient UHID (optional)</Label>
+        <div className="flex gap-2">
+          <Input style={{ height: 40 }} placeholder="e.g. DB09" value={f.uhid} onChange={(e) => { setF({ ...f, uhid: e.target.value }); setFound(null); }} />
+          <Button type="button" variant="outline" onClick={lookup}>Look up</Button>
+        </div>
+        {found && <p className="text-xs text-emerald-700">{found.name}{found.age != null ? ", " + found.age : ""}{found.gender ? " · " + found.gender : ""}. Confirm this is the patient.</p>}
+        <p className="text-[11px] text-gray-400">Enter the phone below first. Leave the UHID blank for a new patient, who gets a UHID after the token is created.</p>
+      </div>
       <div className="space-y-1.5"><Label className="block">Patient name *</Label><Input style={{ height: 40 }} value={f.patientName} onChange={(e) => setF({ ...f, patientName: e.target.value })} /></div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5"><Label className="block">Phone (optional)</Label><Input style={{ height: 40 }} inputMode="numeric" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></div>
@@ -171,7 +196,7 @@ function RegisterWalkIn() {
           </div>
         </div>
       </div>
-      <Button onClick={submit} disabled={saving}>{saving ? "Saving..." : "Create token"}</Button>
+      <Button onClick={() => submit()} disabled={saving}>{saving ? "Saving..." : "Create token"}</Button>
     </div>
   );
 }
