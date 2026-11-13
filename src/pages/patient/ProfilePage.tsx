@@ -1,3 +1,4 @@
+import { getToken } from "@/api";
 import { useStore } from "@/context/StoreContext";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -335,7 +336,7 @@ export default function ProfilePage() {
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000/api"}/abdm/abha/generate-otp`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("token")}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
         body: JSON.stringify({ mobile: phone }),
       });
       const data = await res.json();
@@ -352,7 +353,7 @@ export default function ProfilePage() {
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000/api"}/abdm/abha/verify-otp`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("token")}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
         body: JSON.stringify({ txnId: abhaTxnId, otp: abhaOtp }),
       });
       const data = await res.json();
