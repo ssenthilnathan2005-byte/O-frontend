@@ -129,7 +129,7 @@ function RegisterWalkIn() {
       {done && (
         <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm">
           <b>{done.patientName}</b>: token <b>{done.tokenNumber}</b>, {done.doctorName} ({done.session}, {String(done.date || "").split("-").reverse().join("-")})
-          {done.uhid && <div className="mt-1">UHID: <span className="font-mono font-bold">{done.uhid}</span>{done.newAccount ? " (new patient). Write it on the patient's slip." : ""}{done.newAccount && done.uhid && <ClaimCodeButton uhid={done.uhid} />}</div>}
+          {done.uhid && <div className="mt-1">UHID: <span className="font-mono font-bold">{done.uhid}</span>{done.newAccount ? " (new patient). Write it on the patient's slip." : ""}</div>}
         </div>
       )}
       <div className="space-y-1.5"><Label className="block">Existing patient UHID (optional)</Label>
@@ -550,7 +550,7 @@ function Admit() {
             <p className="font-semibold text-emerald-800">{slip.name} admitted to {slip.where}</p>
             <p className="text-emerald-700">UHID: <span className="font-mono font-bold">{slip.uhid || "-"}</span>{slip.isNew ? " (new patient)" : ""}</p>
             <p className="text-xs text-emerald-700/80">Write the UHID on the patient's slip.</p>
-            {slip.isNew && <ClaimCodeButton uhid={slip.uhid} />}
+            
             <button type="button" className="text-xs underline text-emerald-800 mt-1" onClick={() => setSlip(null)}>Dismiss</button>
           </div>
         )}
