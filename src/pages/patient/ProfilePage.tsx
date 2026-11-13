@@ -30,6 +30,7 @@ export default function ProfilePage() {
   const [legacyAge, setLegacyAge] = useState("");
   const [area, setArea] = useState("");
   const [bloodGroup, setBloodGroup] = useState("");
+  const [gender, setGender] = useState("");
   const [uhid, setUhid] = useState("");
   const [abhaId, setAbhaId] = useState("");
   const [abhaOtpSent, setAbhaOtpSent] = useState(false);
@@ -237,9 +238,10 @@ export default function ProfilePage() {
         setYearOfBirth(data.yearOfBirth || "");
         setArea(data.area || "");
         setBloodGroup(data.bloodGroup || "");
+        setGender(data.gender || "");
         setLegacyAge(data.yearOfBirth ? "" : (data.age || ""));
         setWasComplete(data.isComplete);
-        if (sessionStorage.getItem("db_after_profile") && (!data.area || !data.bloodGroup)) toast.info("Please add your Area and Blood Group to continue your booking.");
+        if (sessionStorage.getItem("db_after_profile") && (!data.area || !data.bloodGroup || !data.gender)) toast.info("Please add your Area, Blood Group and Gender to continue your booking.");
       } catch (err: any) {
         toast.error(err.message || "Could not load your profile");
       } finally {
@@ -296,6 +298,7 @@ export default function ProfilePage() {
     }
     if (!area.trim()) { toast.error("Please enter your area / locality"); return; }
     if (!bloodGroup) { toast.error("Please select your blood group"); return; }
+    if (!gender) { toast.error("Please select your gender"); return; }
     const yearNum = Number(yearOfBirth);
     if (!/^\d{4}$/.test(yearOfBirth.trim()) || yearNum < new Date().getFullYear() - 120 || yearNum > new Date().getFullYear()) {
       toast.error("Please enter a valid 4-digit year of birth");
@@ -304,9 +307,9 @@ export default function ProfilePage() {
 
     setSaving(true);
     try {
-      await patients.updateProfile({ name: name.trim(), phone: phone.trim(), yearOfBirth: yearOfBirth.trim(), area: area.trim(), bloodGroup });
+      await patients.updateProfile({ name: name.trim(), phone: phone.trim(), yearOfBirth: yearOfBirth.trim(), area: area.trim(), bloodGroup, gender });
       toast.success("Profile saved");
-      updateUser({ name: name.trim(), phone: phone.trim() } as any);
+      updateUser({ name: name.trim(), phone: phone.trim(), gender } as any);
       setWasComplete(true);
       let back: any = { path: "/" };
       try { const raw = sessionStorage.getItem("db_after_profile"); if (raw) { back = JSON.parse(raw); sessionStorage.removeItem("db_after_profile"); } } catch {}
@@ -525,6 +528,17 @@ export default function ProfilePage() {
           >
             <option value="">Select blood group</option>
             {BLOOD_GROUPS.map(bg => <option key={bg} value={bg}>{bg}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs font-medium text-gray-600 mb-1 block">Gender <span className="text-red-500">*</span></label>
+          <select
+            value={gender}
+            onChange={e => setGender(e.target.value)}
+            className="w-full border border-gray-200 bg-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
+          >
+            <option value="">Select gender</option>
+            {["Male", "Female", "Other"].map(g => <option key={g} value={g}>{g}</option>)}
           </select>
         </div>
         <div className="grid grid-cols-2 gap-3">

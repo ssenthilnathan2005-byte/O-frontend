@@ -68,6 +68,8 @@ export default function BookingDialog({ doctor, hospital, open, onClose, maxDate
   const [complaint, setComplaint]       = useState("");
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
   const [patientName, setPatientName]   = useState("");
+  const [patientGender, setPatientGender] = useState("");
+  const [patientBloodGroup, setPatientBloodGroup] = useState("");
   const [patientPhone, setPatientPhone] = useState("");
   const [patientAge, setPatientAge]     = useState("");
   const [bookingFor, setBookingFor]     = useState<"self" | "other" | "">("");
@@ -77,7 +79,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose, maxDate
   const patientYobValid = /^\d{4}$/.test(patientYob) && patientYobNum >= bookingYearNow - 120 && patientYobNum <= bookingYearNow;
   // Someone else: age is worked out from the year of birth. Myself: age comes from the saved profile.
   const patientAgeFinal = bookingFor === "other" ? (patientYobValid ? String(bookingYearNow - patientYobNum) : "") : patientAge;
-  const [profile, setProfile] = useState<{ name: string; phone: string; age: string; yearOfBirth?: string; area?: string; bloodGroup?: string; isComplete: boolean } | null>(null);
+  const [profile, setProfile] = useState<{ name: string; phone: string; age: string; yearOfBirth?: string; area?: string; bloodGroup?: string; gender?: string; isComplete: boolean } | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [family, setFamily] = useState<FamilyMember[]>([]);
   const [paying, setPaying]             = useState(false);
@@ -147,7 +149,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose, maxDate
     patients.getProfile()
       .then(p => {
           setProfile(p);
-          if (!p.area || !p.bloodGroup) {
+          if (!p.area || !p.bloodGroup || !p.gender) {
             try { sessionStorage.setItem("db_after_profile", JSON.stringify({ path: "/patient/hospital", id: hospital.id })); } catch {}
             handleClose();
             navigate({ path: "/patient/profile" });
@@ -199,7 +201,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose, maxDate
 
   function handleClose() {
     pushedRef.current = 0; setStep("date"); setSelectedDate(""); setSelectedSession("");
-    setTokenNumber(0); setComplaint(""); setSelectedSymptoms([]); setPatientName(""); setPatientPhone(""); setPatientAge(""); setPatientYob(""); setBookingFor(""); setPayError("");
+    setTokenNumber(0); setComplaint(""); setSelectedSymptoms([]); setPatientGender(""); setPatientBloodGroup(""); setPatientName(""); setPatientPhone(""); setPatientAge(""); setPatientYob(""); setBookingFor(""); setPayError("");
     setTrackerSessionId("");
     setPrefetchedOrder(null); setPrefetchingOrder(false);
     onClose();
@@ -259,6 +261,9 @@ export default function BookingDialog({ doctor, hospital, open, onClose, maxDate
         complaint: complaint.trim() || undefined,
         phone: patientPhone.trim(),
         patientName: patientName.trim() || undefined,
+        patientGender: patientGender || undefined,
+        patientBloodGroup: patientBloodGroup || undefined,
+        patientArea: profile?.area || undefined,
         patientAge: patientAgeFinal.trim() || undefined,
         patientYearOfBirth: patientYob.trim() || undefined,
       });
@@ -377,6 +382,9 @@ export default function BookingDialog({ doctor, hospital, open, onClose, maxDate
         complaint: complaint.trim() || undefined,
         phone: patientPhone.trim(),
         patientName: patientName.trim() || undefined,
+        patientGender: patientGender || undefined,
+        patientBloodGroup: patientBloodGroup || undefined,
+        patientArea: profile?.area || undefined,
         patientAge: patientAgeFinal.trim() || undefined,
         patientYearOfBirth: patientYob.trim() || undefined,
       });
@@ -474,6 +482,9 @@ export default function BookingDialog({ doctor, hospital, open, onClose, maxDate
           complaint: complaint.trim() || undefined,
           phone: patientPhone.trim(),
           patientName: patientName.trim() || undefined,
+        patientGender: patientGender || undefined,
+        patientBloodGroup: patientBloodGroup || undefined,
+        patientArea: profile?.area || undefined,
           patientAge: patientAgeFinal.trim() || undefined,
           patientYearOfBirth: patientYob.trim() || undefined,
         });
@@ -661,6 +672,8 @@ export default function BookingDialog({ doctor, hospital, open, onClose, maxDate
                         type="button"
                         onClick={() => {
                           setPatientName(m.name);
+                          setPatientGender(m.gender || "");
+                          setPatientBloodGroup(m.bloodGroup || "");
                           setPatientPhone(String(profile?.phone || "").replace(/\D/g, "").slice(-10));
                           setPatientAge(m.age);
                           setPatientYob(m.yearOfBirth || "");
@@ -685,6 +698,8 @@ export default function BookingDialog({ doctor, hospital, open, onClose, maxDate
                     return;
                   }
                   setPatientName(profile.name);
+                  setPatientGender(profile.gender || "");
+                  setPatientBloodGroup(profile.bloodGroup || "");
                   setPatientPhone(String(profile.phone || "").replace(/\D/g, "").slice(-10));
                   setPatientAge(profile.age);
                   setPatientYob(profile.yearOfBirth || "");
@@ -705,7 +720,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose, maxDate
               <button
                 type="button"
                 onClick={() => {
-                  setPatientName(""); setPatientPhone(""); setPatientAge(""); setPatientYob("");
+                  setPatientGender(""); setPatientBloodGroup(""); setPatientName(""); setPatientPhone(""); setPatientAge(""); setPatientYob("");
                   setBookingFor("other");
                   goToStep("complaint");
                 }}

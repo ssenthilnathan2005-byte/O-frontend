@@ -347,7 +347,7 @@ export const bookings = {
       return get<Booking[]>(`/hospital/bookings?hospitalId=${encodeURIComponent(hospitalId)}`);
     }
   },
-  create:     (data: { doctorId: string; date: string; session: string; complaint?: string; phone: string; patientName?: string; patientAge?: string | number; patientYearOfBirth?: string | number }) =>
+  create:     (data: { doctorId: string; date: string; session: string; complaint?: string; phone: string; patientName?: string; patientAge?: string | number; patientYearOfBirth?: string | number; patientArea?: string; patientGender?: string; patientBloodGroup?: string }) =>
     post<Booking>("/bookings", data),
   updateStatus: (id: string, status: string)  => patch<Booking>(`/bookings/${id}/status`, { status }),
   markLate:   (id: string, etaMinutes: number) => post<{ success: boolean; etaMinutes: number }>(`/bookings/${id}/mark-late`, { etaMinutes }),
@@ -375,6 +375,7 @@ export const payments = {
   createOrder: (data: {
     doctorId: string; date: string; session: string; complaint?: string; phone: string;
     patientName?: string; patientAge?: string | number; patientYearOfBirth?: string | number;
+    patientArea?: string; patientGender?: string; patientBloodGroup?: string;
   }) => post<{
     orderId: string; amount: number; amountRupees: number;
     currency: string; keyId: string; doctorName: string; hospitalName: string;
@@ -392,8 +393,8 @@ export const payments = {
 export const patients = {
   list: () => get<PatientRecord[]>("/patients"),
   getProfile: () =>
-    get<{ name: string; phone: string; age: string; yearOfBirth: string; isComplete: boolean; preferredLanguage?: string; uhid?: string; area?: string; bloodGroup?: string }>("/patients/profile"),
-  updateProfile: (data: { name: string; phone: string; yearOfBirth: string; area?: string; bloodGroup?: string }) =>
+    get<{ name: string; phone: string; age: string; yearOfBirth: string; isComplete: boolean; preferredLanguage?: string; uhid?: string; area?: string; bloodGroup?: string; gender?: string }>("/patients/profile"),
+  updateProfile: (data: { name: string; phone: string; yearOfBirth: string; area?: string; bloodGroup?: string; gender?: string }) =>
     patch<{ success: boolean }>("/patients/profile", data),
   updateLanguage: (preferredLanguage: "en" | "ta") =>
     patch<{ success: boolean }>("/patients/language", { preferredLanguage }),
@@ -487,7 +488,7 @@ export interface Booking {
   doctorId: string; doctorName: string; hospitalName: string;
   date: string; session: string; tokenNumber: number; sessionId: string;
   paymentDone: boolean; status: "confirmed" | "completed" | "unvisited" | "cancelled";
-  phone: string; complaint?: string; patientAge?: number | null; createdAt: string;
+  phone: string; complaint?: string; patientAge?: number | null; patientArea?: string | null; patientGender?: string | null; patientBloodGroup?: string | null; createdAt: string;
   closeReason?: string | null;
   lateFlag?: boolean; lateEtaMinutes?: number | null;
 }
