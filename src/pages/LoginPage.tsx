@@ -44,7 +44,8 @@ type Screen =
   | "forgot-link-sent"
   | "forgot-new-password"
   | "claim-start"
-  | "claim-otp";
+  | "claim-otp"
+  | "setup-password";
 
 interface LoginPageProps {
   initialTab?: "patient" | "doctor";
@@ -108,6 +109,9 @@ export default function LoginPage({
   const [claimId, setClaimId] = useState("");
   const [claimPhone, setClaimPhone] = useState("");
   const [claimOtp, setClaimOtp] = useState("");
+  const [setupUhid, setSetupUhid] = useState("");
+  const [setupPw, setSetupPw] = useState("");
+  const [setupBusy, setSetupBusy] = useState(false);
   const [claimPw, setClaimPw] = useState("");
   const [claimBusy, setClaimBusy] = useState(false);
   const [signupMethod, setSignupMethod] = useState<"phone" | "email">("phone");
@@ -336,6 +340,7 @@ export default function LoginPage({
     setLoading(true);
     try {
       const res = await auth.patientLogin(type === "email" ? id.toLowerCase() : id, pw);
+      if ((res as any).needsPassword) { setSetupUhid((res as any).uhid || uh); setScreen("setup-password"); return; }
       if (res.token && res.user) {
         login(res.user, res.token);
         try { sessionStorage.setItem("_dbpw", pw); } catch {}
@@ -509,6 +514,37 @@ export default function LoginPage({
       </div>
     </div>
   ) : null;
+
+  // ── First-time UHID login: set password ─────────────────────────────────────
+  if (screen === "setup-password") {
+    async function doSetup() {
+      if (setupPw.length < 6) { toast.error("Password must be at least 6 characters"); return; }
+      setSetupBusy(true);
+      try {
+        const d = await apiPost("/api/auth/patient/setup-password", { uhid: setupUhid, password: setupPw });
+        if (d.token) {
+          localStorage.setItem("db_jwt", d.token);
+          toast.success("Password set! Welcome.");
+          window.location.href = "/";
+        }
+      } catch (e: any) { toast.error(e.message); }
+      finally { setSetupBusy(false); }
+    }
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div className="w-full max-w-sm space-y-4 rounded-2xl bg-white p-6 shadow-sm border">
+          <h2 className="text-lg font-semibold text-gray-900">Set your password</h2>
+          <p className="text-sm text-gray-500">This is your first login with UHID <span className="font-mono font-semibold">{setupUhid}</span>. Choose a password to secure your account.</p>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-gray-700">New password</label>
+            <input type="password" className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400" placeholder="At least 6 characters" value={setupPw} onChange={e => setSetupPw(e.target.value)} />
+          </div>
+          <button type="button" disabled={setupBusy} onClick={doSetup} className="w-full rounded-full bg-teal-500 py-2.5 text-sm font-semibold text-white hover:bg-teal-600 disabled:opacity-50">{setupBusy ? "Saving…" : "Set password & continue"}</button>
+          <button type="button" className="w-full text-xs text-gray-400 hover:text-gray-600 text-center" onClick={() => setScreen("patient-form")}>← Back to Login</button>
+        </div>
+      </div>
+    );
+  }
 
   // ── Claim account: step 1 — UHID + claim code ───────────────────────────────
   if (screen === "claim-start") {
