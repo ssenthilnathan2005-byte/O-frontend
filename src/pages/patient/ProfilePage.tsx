@@ -389,6 +389,7 @@ export default function ProfilePage() {
             onChange={e => setName(e.target.value)}
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
           />
+          <p className="text-[11px] text-gray-400 mt-1">Enter your name as on your Aadhaar / ABHA card.</p>
         </div>
         {uhid && (
           <div>

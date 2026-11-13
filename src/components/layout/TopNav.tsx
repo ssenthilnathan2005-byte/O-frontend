@@ -10,7 +10,7 @@ import LanguageSwitcher from "../LanguageSwitcher";
 import { syncWithServer } from "../../lib/translate";
 
 export default function TopNav() {
-  const { user, logout, doctors, bookings, hasNewPrescription, clearPrescriptionDot } = useStore();
+  const { user, logout, doctors, bookings, hasNewPrescription, clearPrescriptionDot, updateUser } = useStore();
   const { navigate, route } = useRouter();
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -45,6 +45,11 @@ export default function TopNav() {
     let stop = false;
     patients.getProfile().then((p) => {
       if (stop) return;
+      const pn = String(p.name || "").trim();
+      const pp = String(p.phone || "").trim();
+      if ((pn && pn !== (user as any)?.name) || (pp && pp !== (user as any)?.phone)) {
+        updateUser({ ...(pn ? { name: pn } : {}), ...(pp ? { phone: pp } : {}) } as any);
+      }
       const l = p.preferredLanguage;
       if (l === "ta" || l === "en") void syncWithServer(langKey, l, patients.updateLanguage);
     }).catch(() => {});
