@@ -39,14 +39,25 @@ declare global {
 }
 
 type Screen =
-  | "patient-form"   // signup or login form
-  | "forgot-email"   // forgot password: request reset email
-  | "forgot-link-sent" // forgot password: email sent acknowledgement
-  | "forgot-new-password"; // forgot password: set new password
+  | "patient-form"
+  | "forgot-email"
+  | "forgot-link-sent"
+  | "forgot-new-password"
+  | "claim-start"
+  | "claim-otp";
 
 interface LoginPageProps {
   initialTab?: "patient" | "doctor";
   initialPatientMode?: "login" | "signup";
+}
+
+async function apiPost(url: string, body: object) {
+  const r = await fetch((import.meta.env.VITE_API_URL || "") + url, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || "Request failed");
+  return d;
 }
 
 function loadGoogleScript(): Promise<void> {
@@ -92,6 +103,13 @@ export default function LoginPage({
   const [googleLoading, setGoogleLoading] = useState(false);
   const [loginMethod, setLoginMethod] = useState<"phone" | "email" | "uhid">("phone");
   const [uhidInput, setUhidInput] = useState("");
+  const [claimUhid, setClaimUhid] = useState("");
+  const [claimCode, setClaimCode] = useState("");
+  const [claimId, setClaimId] = useState("");
+  const [claimPhone, setClaimPhone] = useState("");
+  const [claimOtp, setClaimOtp] = useState("");
+  const [claimPw, setClaimPw] = useState("");
+  const [claimBusy, setClaimBusy] = useState(false);
   const [signupMethod, setSignupMethod] = useState<"phone" | "email">("phone");
   const [signupEmailTouched, setSignupEmailTouched] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
@@ -492,6 +510,77 @@ export default function LoginPage({
     </div>
   ) : null;
 
+  // ── Claim account: step 1 — UHID + claim code ───────────────────────────────
+  if (screen === "claim-start") {
+    async function startClaim() {
+      const u = claimUhid.trim().toUpperCase();
+      const c = claimCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+      if (!/^DB\d{2,}$/.test(u)) { toast.error("Enter a valid UHID (e.g. DB09)"); return; }
+      if (c.length !== 8) { toast.error("The claim code is 8 characters (shown on your hospital slip)"); return; }
+      setClaimBusy(true);
+      try {
+        const d = await apiPost("/api/auth/patient/claim/start", { uhid: u, code: c });
+        setClaimId(d.claimId); setClaimPhone(d.phoneHint || "");
+        setScreen("claim-otp");
+      } catch (e: any) { toast.error(e.message); }
+      finally { setClaimBusy(false); }
+    }
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div className="w-full max-w-sm space-y-4 rounded-2xl bg-white p-6 shadow-sm border">
+          <h2 className="text-lg font-semibold text-gray-900">Claim your hospital account</h2>
+          <p className="text-sm text-gray-500">Enter the UHID and 8-character claim code from your hospital slip.</p>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-gray-700">UHID</label>
+            <input className="w-full rounded-lg border px-3 py-2 text-sm uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-teal-400" placeholder="e.g. DB09" maxLength={12} value={claimUhid} onChange={e => setClaimUhid(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-gray-700">Claim code (from hospital slip)</label>
+            <input className="w-full rounded-lg border px-3 py-2 text-sm uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-teal-400" placeholder="XXXX-XXXX" maxLength={9} value={claimCode} onChange={e => setClaimCode(e.target.value.toUpperCase())} />
+          </div>
+          <button type="button" disabled={claimBusy} onClick={startClaim} className="w-full rounded-full bg-teal-500 py-2.5 text-sm font-semibold text-white hover:bg-teal-600 disabled:opacity-50">{claimBusy ? "Checking…" : "Continue"}</button>
+          <button type="button" className="w-full text-xs text-gray-400 hover:text-gray-600 text-center" onClick={() => setScreen("patient-form")}>← Back to Login</button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Claim account: step 2 — OTP + new password ───────────────────────────────
+  if (screen === "claim-otp") {
+    async function finishClaim() {
+      if (!/^\d{6}$/.test(claimOtp.trim())) { toast.error("Enter the 6-digit OTP"); return; }
+      if (claimPw.length < 6) { toast.error("Password must be at least 6 characters"); return; }
+      setClaimBusy(true);
+      try {
+        const d = await apiPost("/api/auth/patient/claim/finish", { claimId, otp: claimOtp.trim(), password: claimPw });
+        if (d.token) {
+          localStorage.setItem("db_jwt", d.token);
+          toast.success("Account claimed! Welcome, " + (d.user?.name || "") + ".");
+          window.location.href = "/";
+        }
+      } catch (e: any) { toast.error(e.message); }
+      finally { setClaimBusy(false); }
+    }
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div className="w-full max-w-sm space-y-4 rounded-2xl bg-white p-6 shadow-sm border">
+          <h2 className="text-lg font-semibold text-gray-900">Verify and set password</h2>
+          <p className="text-sm text-gray-500">An OTP was sent to the number ending in <span className="font-mono font-semibold">{claimPhone}</span>. Enter it below and choose a password.</p>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-gray-700">OTP</label>
+            <input className="w-full rounded-lg border px-3 py-2 text-sm tracking-widest focus:outline-none focus:ring-2 focus:ring-teal-400" placeholder="6-digit OTP" maxLength={6} inputMode="numeric" value={claimOtp} onChange={e => setClaimOtp(e.target.value.replace(/\D/g, "").slice(0, 6))} />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-gray-700">New password</label>
+            <input type="password" className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400" placeholder="At least 6 characters" value={claimPw} onChange={e => setClaimPw(e.target.value)} />
+          </div>
+          <button type="button" disabled={claimBusy} onClick={finishClaim} className="w-full rounded-full bg-teal-500 py-2.5 text-sm font-semibold text-white hover:bg-teal-600 disabled:opacity-50">{claimBusy ? "Claiming…" : "Claim account"}</button>
+          <button type="button" className="w-full text-xs text-gray-400 hover:text-gray-600 text-center" onClick={() => setScreen("claim-start")}>← Back</button>
+        </div>
+      </div>
+    );
+  }
+
   // ── Forgot Password: Email Screen ────────────────────────────────────────────
   if (screen === "forgot-email") {
     return (
@@ -844,6 +933,7 @@ export default function LoginPage({
                           />
                         </div>
                         <p className="text-xs text-gray-400">Your Unique Health ID, for example DB01</p>
+                        <button type="button" className="text-xs text-teal-600 underline mt-0.5" onClick={() => { setClaimUhid(uhidInput); setScreen("claim-start"); }}>Admitted at a hospital? Claim your account →</button>
                       </div>
                     ) : loginMethod === "phone" ? (
                       <div className="space-y-1.5">
