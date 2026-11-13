@@ -1,4 +1,4 @@
-﻿import { getToken, patients } from "@/api";
+import { getToken, patients } from "@/api";
 import { getLang, setLang, type Lang } from "@/lib/translate";
 
 export default function LanguageSwitcher() {
@@ -15,7 +15,7 @@ export default function LanguageSwitcher() {
     <select
       value={lang}
       onChange={(e) => void change(e.target.value as Lang)}
-      className="notranslate rounded-md border border-gray-200 px-2 py-1 text-sm bg-white"
+      className="notranslate rounded-md border border-gray-200 px-2 py-1 text-sm font-medium bg-white text-gray-900"
       translate="no"
       aria-label="Language"
     >
