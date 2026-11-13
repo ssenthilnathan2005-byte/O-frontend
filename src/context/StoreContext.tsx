@@ -23,6 +23,7 @@ interface Store {
   user: AppUser | null;
   serverStatus: "ok" | "waking" | "offline";
   login: (u: AppUser, token: string) => void;
+  updateUser: (patch: Partial<AppUser>) => void;
   logout: () => void;
   hospitals: Hospital[];
   addHospital: (data: Partial<Hospital>) => Promise<void>;
@@ -294,6 +295,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [bookings, user, subscribe]);
 
   // ── Auth ──────────────────────────────────────────────────────────────────
+  const updateUser = useCallback((patch: Partial<AppUser>) => {
+    setUser(prev => {
+      if (!prev) return prev;
+      const nu = { ...prev, ...patch } as AppUser;
+      try { localStorage.setItem("db_user", JSON.stringify(nu)); } catch {}
+      return nu;
+    });
+  }, []);
+
   const login = useCallback((u: AppUser, token: string) => {
     api.setToken(token);
     localStorage.setItem("db_user", JSON.stringify(u));
@@ -725,7 +735,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [bookings, tokenStates, user]);
 
   const value: Store = {
-    user, serverStatus, login, logout,
+    user, serverStatus, login, logout, updateUser,
     hospitals, addHospital, updateHospital, updateHospitalPhoto, deleteHospital,
     doctors, addDoctor, updateDoctor, deleteDoctor,
     bookings, addBooking, addBookingToStore, getBookingsForPatient, getBookingsForSession,

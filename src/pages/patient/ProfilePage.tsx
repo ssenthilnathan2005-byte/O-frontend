@@ -1,3 +1,4 @@
+import { useStore } from "@/context/StoreContext";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { UserCog, Loader2, Save, CheckCircle2, MapPin, Bell, ExternalLink, Languages, Copy } from "lucide-react";
@@ -18,6 +19,7 @@ const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "Unknown
 
 export default function ProfilePage() {
   const { navigate, replace } = useRouter();
+  const { updateUser } = useStore();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [wasComplete, setWasComplete] = useState(false);
@@ -303,6 +305,7 @@ export default function ProfilePage() {
     try {
       await patients.updateProfile({ name: name.trim(), phone: phone.trim(), yearOfBirth: yearOfBirth.trim(), area: area.trim(), bloodGroup });
       toast.success("Profile saved");
+      updateUser({ name: name.trim(), phone: phone.trim() } as any);
       setWasComplete(true);
       let back: any = { path: "/" };
       try { const raw = sessionStorage.getItem("db_after_profile"); if (raw) { back = JSON.parse(raw); sessionStorage.removeItem("db_after_profile"); } } catch {}
