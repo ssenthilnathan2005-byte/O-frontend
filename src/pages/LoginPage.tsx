@@ -43,6 +43,7 @@ type Screen =
   | "forgot-email"
   | "forgot-link-sent"
   | "forgot-new-password"
+  | "uhid-start"
   | "claim-start"
   | "claim-otp"
   | "setup-password";
@@ -114,6 +115,7 @@ export default function LoginPage({
   const [setupBusy, setSetupBusy] = useState(false);
   const [claimPw, setClaimPw] = useState("");
   const [claimBusy, setClaimBusy] = useState(false);
+  const [setupName, setSetupName] = useState("");
   const [signupMethod, setSignupMethod] = useState<"phone" | "email">("phone");
   const [signupEmailTouched, setSignupEmailTouched] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
@@ -341,7 +343,7 @@ export default function LoginPage({
     setLoading(true);
     try {
       const res = await auth.patientLogin(type === "email" ? id.toLowerCase() : id, pw);
-      if ((res as any).needsPassword) { setSetupUhid((res as any).uhid || uh); setScreen("setup-password"); return; }
+      if ((res as any).needsPassword) { setSetupUhid((res as any).uhid || uh); setSetupName((res as any).name || (res as any).patientName || ""); setScreen("setup-password"); return; }
       if (res.token && res.user) {
         login(res.user, res.token);
         try { sessionStorage.setItem("_dbpw", pw); } catch {}
@@ -535,6 +537,7 @@ export default function LoginPage({
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
         <div className="w-full max-w-sm space-y-4 rounded-2xl bg-white p-6 shadow-sm border">
           <h2 className="text-lg font-semibold text-gray-900">Set your password</h2>
+          {setupName && <p className="text-sm font-medium text-gray-800">Welcome, {setupName}</p>}
           <p className="text-sm text-gray-500">This is your first login with UHID <span className="font-mono font-semibold">{setupUhid}</span>. Choose a password to secure your account.</p>
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-gray-700">New password</label>
@@ -548,6 +551,41 @@ export default function LoginPage({
   }
 
   // ── Claim account: step 1 — UHID + claim code ───────────────────────────────
+  if (screen === "uhid-start") {
+    async function continueUhid() {
+      const u = claimUhid.trim().toUpperCase();
+      if (!/^DB\d{2,}$/.test(u)) { toast.error("Please enter a valid UHID (for example DB21)"); return; }
+      setClaimBusy(true);
+      try {
+        const res: any = await auth.patientLogin(u, "");
+        if (res.needsPassword) {
+          setSetupUhid(res.uhid || u);
+          setSetupName(res.name || res.patientName || res.user?.name || "");
+          setScreen("setup-password");
+          return;
+        }
+        toast.error("This UHID already has a password. Please log in from the login page.");
+        setScreen("patient-form");
+      } catch (e: any) {
+        toast.error(e.message || "Could not find this UHID. If you already have a password, go back and log in.");
+      } finally { setClaimBusy(false); }
+    }
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div className="w-full max-w-sm space-y-4 rounded-2xl bg-white p-6 shadow-sm border">
+          <h2 className="text-lg font-semibold text-gray-900">Set up your account</h2>
+          <p className="text-sm text-gray-500">Enter the UHID written on your hospital slip.</p>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-gray-700">UHID</label>
+            <input className="w-full rounded-lg border px-3 py-2 text-sm uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-teal-400" placeholder="e.g. DB21" maxLength={12} value={claimUhid} onChange={e => setClaimUhid(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} />
+          </div>
+          <button type="button" disabled={claimBusy} onClick={continueUhid} className="w-full rounded-full bg-teal-500 py-2.5 text-sm font-semibold text-white hover:bg-teal-600 disabled:opacity-50">{claimBusy ? "Checking…" : "Continue"}</button>
+          <button type="button" className="w-full text-xs text-gray-400 hover:text-gray-600 text-center" onClick={() => setScreen("patient-form")}>← Back to Login</button>
+        </div>
+      </div>
+    );
+  }
+
   if (screen === "claim-start") {
     async function startClaim() {
       const u = claimUhid.trim().toUpperCase();
@@ -968,6 +1006,7 @@ export default function LoginPage({
                             maxLength={12}
                             autoCapitalize="characters"
                           />
+                          <button type="button" className="text-xs text-teal-600 underline mt-1" onClick={() => { setClaimUhid(uhidInput); setScreen("uhid-start"); }}>New patient? Admitted at a hospital? Set up your account →</button>
                         </div>
                         <p className="text-xs text-gray-400">Your Unique Health ID, for example DB01</p>
                       </div>
