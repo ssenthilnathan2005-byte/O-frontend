@@ -550,6 +550,7 @@ function Admit() {
             <p className="font-semibold text-emerald-800">{slip.name} admitted to {slip.where}</p>
             <p className="text-emerald-700">UHID: <span className="font-mono font-bold">{slip.uhid || "-"}</span>{slip.isNew ? " (new patient)" : ""}</p>
             <p className="text-xs text-emerald-700/80">Write the UHID on the patient's slip.</p>
+            {slip.isNew && <ClaimCodeButton uhid={slip.uhid} />}
             <button type="button" className="text-xs underline text-emerald-800 mt-1" onClick={() => setSlip(null)}>Dismiss</button>
           </div>
         )}
@@ -669,6 +670,34 @@ export default function FrontOfficeDashboard() {
         </div>
         {tab.startsWith("x:") ? <ExtraPanel moduleKey={tab.slice(2)} /> : tab === "op" ? <Outpatients /> : tab === "walkin" ? <RegisterWalkIn /> : tab === "beds" && has("bed_bookings") ? <HABedRequests /> : tab === "admit" && has("ipd") ? <Admit /> : <Outpatients />}
       </main>
+    </div>
+  );
+}
+
+function ClaimCodeButton({ uhid }: { uhid: string }) {
+  const [phone, setPhone] = useState("");
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function issue() {
+    if (phone.replace(/\D/g, "").length !== 10) { alert("Enter a 10-digit phone number"); return; }
+    setBusy(true);
+    try {
+      const r = await fetch((import.meta.env.VITE_API_URL || "") + "/api/front-office/claim-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + localStorage.getItem("db_jwt") },
+        body: JSON.stringify({ uhid, phone: phone.replace(/\D/g, "") }),
+      });
+      const d = await r.json();
+      if (!r.ok) { alert(d.error || "Failed"); return; }
+      setCode(d.code);
+    } catch { alert("Network error"); }
+    finally { setBusy(false); }
+  }
+  if (code) return <p className="mt-1 text-sm font-mono font-bold text-emerald-900 bg-emerald-100 rounded px-2 py-1">Claim code: {code} — write this on the slip. It expires in 7 days.</p>;
+  return (
+    <div className="mt-1 flex gap-2 items-center">
+      <input className="rounded border px-2 py-1 text-xs w-32" placeholder="Patient phone" maxLength={10} value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0,10))} />
+      <button type="button" disabled={busy} onClick={issue} className="text-xs bg-emerald-700 text-white rounded px-2 py-1 disabled:opacity-50">{busy ? "…" : "Issue claim code"}</button>
     </div>
   );
 }
