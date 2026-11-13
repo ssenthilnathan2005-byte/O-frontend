@@ -29,8 +29,19 @@ export default function BedBookingDialog({ hospitalId, hospitalName, open, onClo
   const [saving, setSaving] = useState(false);
   const [f, setF] = useState({
     wardId: "", patientName: user?.name || "", phone: (user?.phone || "").replace(/^91/, ""),
-    age: "", gender: "", doctorId: "", reason: "", expectedAdmitAt: new Date().toLocaleDateString("en-CA"),
+    age: "", gender: (user as any)?.gender || "", doctorId: "", reason: "", expectedAdmitAt: new Date().toLocaleDateString("en-CA"),
   });
+  // Fill name, phone and gender from the saved profile once it loads
+  useEffect(() => {
+    const u: any = user;
+    if (!u) return;
+    setF(p => ({
+      ...p,
+      patientName: p.patientName || u.name || "",
+      phone: p.phone || String(u.phone || "").replace(/^91/, ""),
+      gender: p.gender || u.gender || "",
+    }));
+  }, [(user as any)?.name, (user as any)?.phone, (user as any)?.gender]);
   const hospDoctors = (doctors || []).filter((d: any) => d.hospitalId === hospitalId);
 
   async function loadAll() {
