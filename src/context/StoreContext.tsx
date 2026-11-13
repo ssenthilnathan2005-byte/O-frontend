@@ -304,6 +304,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // Keep user name/phone in sync with the saved profile
+  useEffect(() => {
+    if (!user || (user as any).role !== "patient") return;
+    let cancelled = false;
+    api.patients.getProfile().then((p) => {
+      if (cancelled || !p) return;
+      const patch: any = {};
+      if (p.name && p.name !== (user as any).name) patch.name = p.name;
+      if (p.phone && p.phone !== (user as any).phone) patch.phone = p.phone;
+      if (Object.keys(patch).length) updateUser(patch);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, (user as any)?.role]);
+
   const login = useCallback((u: AppUser, token: string) => {
     api.setToken(token);
     localStorage.setItem("db_user", JSON.stringify(u));
