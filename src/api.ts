@@ -650,7 +650,7 @@ export const labs = {
   book: (data: {
     patientName: string; phone: string; labId: string; testId: string;
     slotDate: string; slotTime: string; collectionType?: "home" | "walk_in";
-    address?: string; notes?: string;
+    address?: string; notes?: string; patientGender?: string;
   }) => post<LabBooking>("/labs/bookings", data),
 
   myBookings: () => get<LabBooking[]>("/labs/bookings/my"),

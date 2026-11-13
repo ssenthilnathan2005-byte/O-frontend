@@ -313,6 +313,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const patch: any = {};
       if (p.name && p.name !== (user as any).name) patch.name = p.name;
       if (p.phone && p.phone !== (user as any).phone) patch.phone = p.phone;
+      if ((p as any).gender && (p as any).gender !== (user as any).gender) patch.gender = (p as any).gender;
       if (Object.keys(patch).length) updateUser(patch);
     }).catch(() => {});
     return () => { cancelled = true; };

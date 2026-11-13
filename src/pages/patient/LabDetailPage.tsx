@@ -137,6 +137,7 @@ function LabBookingDialog({
   const [collectionType, setCollectionType] = useState<"home" | "walk_in">("walk_in");
   const [address, setAddress] = useState("");
   const [patientName, setPatientName] = useState("");
+  const [patientGender, setPatientGender] = useState("");
   const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -218,6 +219,7 @@ function LabBookingDialog({
     try {
       const booking = await api.labs.book({
         patientName: patientName.trim(),
+        patientGender: bookingFor === "self" ? (patientGender || undefined) : undefined,
         phone: phone.trim(),
         labId: lab.id,
         testId: test.id,
@@ -258,6 +260,7 @@ function LabBookingDialog({
                   return;
                 }
                 setPatientName(profile.name);
+                setPatientGender((profile as any).gender || "");
                 setPhone((profile.phone || "").replace(/\D/g, "").slice(-10));
                 setBookingFor("self");
                 setStep("form");
