@@ -481,7 +481,7 @@ function AppRoutes() {
       if (route.path === "/pharmacy/login") return <PharmacyLogin />;
       if (route.path === "/front-office/login") return <FrontOfficeLogin />;
       if (route.path === "/nurse/login") return <NurseLogin />;
-      if (route.path === "/patient/hospitals") return <HospitalsPage city={(route as { city?: string }).city} />;
+      if (route.path === "/patient/hospitals") return <HospitalsPage city={(route as { city?: string }).city} q={(route as { q?: string }).q} />;
       if (route.path === "/patient/hospital") return <HospitalDoctorsPage id={(route as { id: string }).id} />;
       if (route.path === "/pharmacies") return <ComingSoonPage title="Pharmacies" />; // was: <PharmaciesPage />
       if (route.path === "/pharmacy/detail") return <PharmacyDetailPage id={(route as any).id} />;
@@ -518,7 +518,7 @@ function AppRoutes() {
     if ((user as any).role === "hospital_lab") return <HospitalLabDashboard />;
     if (user.role === "lab_admin") return <LabDashboard />;
     if (user.role === "doctor") return <DoctorDashboard />;
-    if (route.path === "/patient/hospitals") return <HospitalsPage city={(route as { city?: string }).city} />;
+    if (route.path === "/patient/hospitals") return <HospitalsPage city={(route as { city?: string }).city} q={(route as { q?: string }).q} />;
     if (route.path === "/patient/hospital")
       return <HospitalDoctorsPage id={(route as { id: string }).id} />;
     if (route.path === "/pharmacies") return <ComingSoonPage title="Pharmacies" />; // was: <PharmaciesPage />

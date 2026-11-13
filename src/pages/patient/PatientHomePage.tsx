@@ -200,59 +200,36 @@ export default function PatientHomePage() {
 
   const mobileView = (
     <div className="flex flex-col bg-gray-50" style={{ minHeight: "100dvh" }}>
-      {/* Map */}
-      <div className="relative shrink-0 transition-all duration-200 lg:w-[calc(100%-3rem)] lg:max-w-none lg:mx-auto lg:mt-4 lg:rounded-3xl lg:overflow-hidden lg:border lg:border-gray-200 lg:shadow-md" style={{ height: isDesktop ? 190 : mapHeight }}>
-        <div ref={mapRef} className="w-full h-full" />
-        {!mapReady && (
-          <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
-            <Loader2 className="w-6 h-6 text-teal-500 animate-spin" />
+      {/* Header: continuous teal band, content sheet slides over it */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-teal-800 via-teal-700 to-teal-600 px-4 pt-5 pb-12 text-white">
+        <TealOverscroll />
+        <div className="absolute -right-12 -top-12 w-48 h-48 rounded-full bg-teal-300/10 pointer-events-none" />
+        <div className="absolute right-8 -bottom-10 w-36 h-36 rounded-full bg-white/10 pointer-events-none" />
+        <div className="relative flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <img src="/assets/Logo.jpg" alt="Doctor Booked" className="w-8 h-8 rounded-full object-cover ring-2 ring-white/40" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+            <span className="text-sm font-bold tracking-wide text-white" translate="no">Doctor Booked</span>
           </div>
-        )}
-        <div className="absolute bottom-5 left-3 right-3 z-10 flex gap-2 lg:right-auto lg:left-4 lg:bottom-4 lg:w-[420px]">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-            <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search hospitals, doctors or areas"
-              className="w-full pl-9 pr-3 py-2.5 rounded-xl border-2 border-teal-600 bg-white text-sm font-medium shadow-xl focus:outline-none focus:ring-2 focus:ring-teal-400" />
-          </div>
-          {nearState.status === "done" ? (
-            <button onClick={clear} className="flex items-center gap-1 bg-teal-500 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap">
-              <XCircle className="w-3.5 h-3.5" /> Clear
-            </button>
-          ) : nearState.status === "gps-off" ? (
-            <button onClick={() => { import("@capacitor/core").then(({ Capacitor }) => { if (Capacitor.isNativePlatform()) { import("capacitor-native-settings").then(({ NativeSettings, AndroidSettings }) => NativeSettings.openAndroid({ option: AndroidSettings.Location }).catch(() => {})); } }); }} className="flex items-center gap-1 bg-orange-50 border border-orange-300 text-orange-600 text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap">
-              <Navigation className="w-3.5 h-3.5" /> Go to Settings
-            </button>
-          ) : nearState.status === "denied" ? (
-            <button onClick={() => { import("@capacitor/core").then(({ Capacitor }) => { if (Capacitor.isNativePlatform()) { import("capacitor-native-settings").then(({ NativeSettings, AndroidSettings }) => NativeSettings.openAndroid({ option: AndroidSettings.ApplicationDetails }).catch(() => {})); } else { locate(); } }); }} className="flex items-center gap-1 bg-red-50 border border-red-300 text-red-600 text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap">
-              <Navigation className="w-3.5 h-3.5" /> Allow location
-            </button>
-          ) : (
-            <button onClick={locate} disabled={nearState.status === "loading"}
-              className="flex items-center gap-1 bg-white border border-teal-300 text-teal-700 text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap disabled:opacity-60">
-              {nearState.status === "loading" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Navigation className="w-3.5 h-3.5" />}
-              Near me
-            </button>
-          )}
+          {!user && <LanguageSwitcher />}
         </div>
+        <h1 className="relative text-4xl font-extrabold leading-tight">
+          {(() => {
+            const n = (((user as any)?.name as string) || "").split(" ")[0];
+            return n
+              ? (<><span className="block">{getGreeting()}</span><span className="block whitespace-nowrap">{n} 👋</span></>)
+              : (<>{getGreeting()} 👋</>);
+          })()}
+        </h1>
+        <p className="relative text-sm text-teal-50 mt-1.5 font-medium">Your health matters. We're here to help.</p>
+        <HeaderSearch />
       </div>
 
-      {/* Drag handle */}
-      <div
-        className="shrink-0 flex flex-col items-center justify-center bg-white z-10 cursor-row-resize lg:hidden"
-        style={{ height: 26, borderRadius: "16px 16px 0 0", marginTop: -10, boxShadow: "0 -2px 8px rgba(0,0,0,0.08)" }}
-        onMouseDown={e => { onDragStart(e.clientY); const mm = (ev: MouseEvent) => onDragMove(ev.clientY); const mu = (ev: MouseEvent) => { onDragEnd(ev.clientY); window.removeEventListener("mousemove", mm); window.removeEventListener("mouseup", mu); }; window.addEventListener("mousemove", mm); window.addEventListener("mouseup", mu); }}
-        onTouchStart={e => { onDragStart(e.touches[0].clientY); const tm = (ev: TouchEvent) => onDragMove(ev.touches[0].clientY); const te = (ev: TouchEvent) => { onDragEnd(ev.changedTouches[0].clientY); window.removeEventListener("touchmove", tm); window.removeEventListener("touchend", te); }; window.addEventListener("touchmove", tm); window.addEventListener("touchend", te); }}
-      >
-        <div className="w-8 h-1 bg-gray-300 rounded-full" />
-      </div>
-
-      {/* Scrollable content below map */}
-      <div className="flex-1 overflow-y-auto bg-white lg:bg-gray-50">
-        <div className="px-4 pb-28 space-y-4 lg:max-w-none lg:mx-auto lg:px-6 lg:pb-8 lg:space-y-4">
+      {/* Content sheet */}
+      <div className="relative z-10 flex-1 -mt-6 rounded-t-[28px] bg-gray-50 shadow-[0_-6px_20px_-8px_rgba(4,47,46,0.28)]">
+        <div className="px-4 pb-28 pt-5 space-y-4">
           {/* Notification permission banner */}
           {notifState === "default" && (
-            <div className="mt-4 flex items-center gap-3 bg-teal-50 border border-teal-200 rounded-2xl px-4 py-3">
+            <div className="flex items-center gap-3 bg-teal-50 border border-teal-200 rounded-2xl px-4 py-3">
               <div className="w-9 h-9 rounded-xl bg-teal-100 flex items-center justify-center shrink-0">
                 <Bell className="w-4 h-4 text-teal-600" />
               </div>
@@ -269,13 +246,6 @@ export default function PatientHomePage() {
               </button>
             </div>
           )}
-
-          {/* Greeting */}
-          <div className="pt-5 pb-1 lg:pt-4 lg:pb-0">
-            {!user && <div className="flex justify-end mb-2"><LanguageSwitcher /></div>}
-            <h1 className="text-4xl lg:text-2xl font-extrabold text-gray-900 leading-tight">{getGreeting()} 👋</h1>
-            <p className="text-sm text-gray-400 mt-1 font-medium">Your health matters. We're here to help.</p>
-          </div>
 
           {/* Action cards (3 columns on desktop) */}
           <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-3 lg:gap-4">
@@ -350,6 +320,56 @@ export default function PatientHomePage() {
               </div>
             </motion.div>
           </div>
+
+      {/* Map (between Track token and Lab Tests) */}
+      <div className="shrink-0">
+        <div className="relative rounded-2xl overflow-hidden border border-gray-200 shadow-card bg-gray-100" style={{ height: mapHeight, minHeight: 220 }}>
+          <div ref={mapRef} className="w-full h-full" />
+          {!mapReady && (
+            <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
+              <Loader2 className="w-6 h-6 text-teal-500 animate-spin" />
+            </div>
+          )}
+        <div className="absolute top-3 left-3 right-3 z-10 flex gap-2">
+          <div className="relative flex-1 min-w-0">
+            <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+            <input value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Search hospitals, doctors or areas"
+              className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-medium shadow-md placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-600" />
+          </div>
+          {nearState.status === "done" ? (
+            <button onClick={clear} className="flex items-center gap-1 bg-teal-500 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap shrink-0">
+              <XCircle className="w-3.5 h-3.5" /> Clear
+            </button>
+          ) : nearState.status === "gps-off" ? (
+            <button onClick={() => { import("@capacitor/core").then(({ Capacitor }) => { if (Capacitor.isNativePlatform()) { import("capacitor-native-settings").then(({ NativeSettings, AndroidSettings }) => NativeSettings.openAndroid({ option: AndroidSettings.Location }).catch(() => {})); } }); }} className="flex items-center gap-1 bg-orange-50 border border-orange-300 text-orange-600 text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap shrink-0">
+              <Navigation className="w-3.5 h-3.5" /> Go to Settings
+            </button>
+          ) : nearState.status === "denied" ? (
+            <button onClick={() => { import("@capacitor/core").then(({ Capacitor }) => { if (Capacitor.isNativePlatform()) { import("capacitor-native-settings").then(({ NativeSettings, AndroidSettings }) => NativeSettings.openAndroid({ option: AndroidSettings.ApplicationDetails }).catch(() => {})); } else { locate(); } }); }} className="flex items-center gap-1 bg-red-50 border border-red-300 text-red-600 text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap shrink-0">
+              <Navigation className="w-3.5 h-3.5" /> Allow location
+            </button>
+          ) : (
+            <button onClick={locate} disabled={nearState.status === "loading"}
+              className="flex items-center gap-1 bg-white border border-teal-300 text-teal-700 text-xs font-semibold px-3 py-2 rounded-xl shadow-md whitespace-nowrap shrink-0 disabled:opacity-60">
+              {nearState.status === "loading" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Navigation className="w-3.5 h-3.5" />}
+              Near me
+            </button>
+          )}
+        </div>
+
+        </div>
+      </div>
+
+      {/* Drag handle */}
+      <div
+        className="shrink-0 flex flex-col items-center justify-center cursor-row-resize touch-none"
+        style={{ height: 22 }}
+        onMouseDown={e => { onDragStart(e.clientY); const mm = (ev: MouseEvent) => onDragMove(ev.clientY); const mu = (ev: MouseEvent) => { onDragEnd(ev.clientY); window.removeEventListener("mousemove", mm); window.removeEventListener("mouseup", mu); }; window.addEventListener("mousemove", mm); window.addEventListener("mouseup", mu); }}
+        onTouchStart={e => { onDragStart(e.touches[0].clientY); const tm = (ev: TouchEvent) => onDragMove(ev.touches[0].clientY); const te = (ev: TouchEvent) => { onDragEnd(ev.changedTouches[0].clientY); window.removeEventListener("touchmove", tm); window.removeEventListener("touchend", te); }; window.addEventListener("touchmove", tm); window.addEventListener("touchend", te); }}
+      >
+        <div className="w-10 h-1 bg-gray-300 rounded-full" />
+      </div>
 
           {/* Lab Tests — full width, matches Book an appointment style */}
           <motion.div
@@ -643,4 +663,44 @@ export default function PatientHomePage() {
   );
 
   return isDesktop ? desktopView : mobileView;
+}
+
+// Phone only: paint the page behind the header dark teal so pull-to-refresh / overscroll never shows a white strip.
+function TealOverscroll() {
+  useEffect(() => {
+    if (!window.matchMedia("(max-width: 1023px)").matches) return;
+    const els = [document.documentElement, document.body];
+    const prev = els.map((e) => e.style.backgroundColor);
+    els.forEach((e) => { e.style.backgroundColor = "#115e59"; });
+    document.documentElement.style.setProperty("--pull-gap-bg", "linear-gradient(to right, #115e59, #0f766e)");
+    return () => { els.forEach((e, i) => { e.style.backgroundColor = prev[i]; }); document.documentElement.style.removeProperty("--pull-gap-bg"); };
+  }, []);
+  return null;
+}
+
+// Header search: type a hospital name or city, then press Enter / Search to open the results.
+function HeaderSearch() {
+  const { navigate } = useRouter();
+  const [q, setQ] = useState("");
+  const go = () => navigate({ path: "/patient/hospitals", q: q.trim() } as any);
+  return (
+    <form
+      onSubmit={(e) => { e.preventDefault(); go(); }}
+      className="relative mt-4 flex items-center gap-2 rounded-xl bg-white py-1.5 pl-4 pr-1.5 shadow-lg"
+    >
+      <svg className="w-5 h-5 text-teal-700 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+      <input
+        type="search"
+        enterKeyHint="search"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Search hospital name or city"
+        aria-label="Search hospitals by name or city"
+        className="flex-1 min-w-0 bg-transparent py-1.5 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none"
+      />
+      <button type="submit" className="shrink-0 rounded-lg bg-teal-700 px-3.5 py-2 text-sm font-semibold text-white active:scale-95 transition-transform">
+        Search
+      </button>
+    </form>
+  );
 }

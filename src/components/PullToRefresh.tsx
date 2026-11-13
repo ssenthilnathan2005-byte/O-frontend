@@ -51,18 +51,23 @@ export default function PullToRefresh({ onRefresh, children }: Props) {
     }
   }, [pullDistance, refreshing, onRefresh]);
 
+  const handleTouchCancel = useCallback(() => {
+    pulling.current = false;
+    if (!refreshing) setPullDistance(0);
+  }, [refreshing]);
   return (
     <div
       ref={scrollEl}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchCancel}
       className="relative"
       style={{ overscrollBehavior: "contain" }}
     >
       <div
         className="flex items-center justify-center overflow-hidden transition-[height] duration-200"
-        style={{ height: pullDistance }}
+        style={{ height: pullDistance, background: "var(--pull-gap-bg, transparent)" }}
       >
         <RefreshCw
           className="w-5 h-5 text-teal-600"
