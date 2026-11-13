@@ -48,7 +48,7 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 function RegisterWalkIn() {
   const today = new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
   const [docs, setDocs] = useState<any[]>([]);
-  const empty = { patientName: "", phone: "", age: "", complaint: "", description: "", doctorId: "", session: "morning", date: today };
+  const empty = { patientName: "", phone: "", age: "", patientGender: "", complaint: "", description: "", doctorId: "", session: "morning", date: today };
   const [spec, setSpec] = useState("");
   const [syms, setSyms] = useState<string[]>([]);
   const [dateText, setDateText] = useState(today.split("-").reverse().join("-"));
@@ -93,6 +93,7 @@ function RegisterWalkIn() {
   useEffect(() => { call("/walkin/doctors").then((r) => setDocs(r.doctors || [])).catch((e) => toast.error(e.message)); }, []);
   async function submit() {
     if (!f.patientName.trim()) return toast.error("Enter patient name");
+    if (!f.patientGender) return toast.error("Select the patient's gender");
     if (!f.doctorId) return toast.error("Choose a doctor");
     if (dateText !== f.date.split("-").reverse().join("-")) return toast.error("Enter a valid date as dd-mm-yyyy");
     if (!sessionOptions.includes(f.session)) return toast.error("No session available for this doctor on this date");
@@ -118,6 +119,7 @@ function RegisterWalkIn() {
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5"><Label className="block">Phone (optional)</Label><Input style={{ height: 40 }} inputMode="numeric" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></div>
         <div className="space-y-1.5"><Label className="block">Age</Label><Input style={{ height: 40 }} inputMode="numeric" value={f.age} onChange={(e) => setF({ ...f, age: e.target.value })} /></div>
+        <div className="space-y-1.5"><Label className="block">Gender</Label><select style={{ height: 40 }} className="w-full border border-input bg-background rounded-md px-3 text-sm" value={f.patientGender} onChange={(e) => setF({ ...f, patientGender: e.target.value })}><option value="">Select gender</option><option>Male</option><option>Female</option><option>Other</option></select></div>
       </div>
       
       <div className="space-y-1.5"><Label className="block">Type of doctor</Label>
@@ -299,7 +301,7 @@ function Outpatients() {
               <div className="flex flex-wrap items-center gap-3">
                 <div className="min-w-[2.25rem] h-9 px-1 rounded-lg bg-teal-50 text-teal-700 font-bold flex items-center justify-center">{b.token_number}</div>
                 <div className="flex-1 min-w-[140px]">
-                  <p className="font-medium text-gray-900 truncate">{b.patient_name}{b.patient_age != null ? ", " + b.patient_age : ""}{b.booking_source === "front_desk" && <span className="ml-2 text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded px-1.5 py-0.5">Front desk</span>}</p>
+                  <p className="font-medium text-gray-900 truncate">{b.patient_name}{b.patient_age != null ? ", " + b.patient_age : ""}{(b as any).patient_gender ? " · " + (b as any).patient_gender[0] : ""}{b.booking_source === "front_desk" && <span className="ml-2 text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded px-1.5 py-0.5">Front desk</span>}</p>
                   <p className="text-xs text-gray-500 truncate">{b.phone || "No phone"}{b.patient_area ? " | " + b.patient_area : ""}{b.complaint ? " | " + b.complaint : ""}</p>
                 </div>
                 {(b as any).stage && <span className={"text-xs font-medium rounded-md px-2 py-1 border " + ((b as any).stage === "collected" ? "bg-emerald-50 text-emerald-700 border-emerald-100" : (b as any).stage === "collect_tablets" ? "bg-amber-50 text-amber-700 border-amber-100" : (b as any).stage === "seen" ? "bg-blue-50 text-blue-700 border-blue-100" : "bg-gray-50 text-gray-600 border-gray-200")}>{({ waiting: "Waiting", seen: "Seen doctor", collect_tablets: "Collect tablets", collected: "Tablets collected" } as Record<string, string>)[(b as any).stage]}</span>}
