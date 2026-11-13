@@ -54,7 +54,7 @@ interface LoginPageProps {
 }
 
 async function apiPost(url: string, body: object) {
-  const r = await fetch((import.meta.env.VITE_API_URL || "") + url, {
+  const r = await fetch(((import.meta.env.VITE_API_URL as string) || "").replace(/\/api\/?$/, "") + url, {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
   });
   const d = await r.json().catch(() => ({}));
