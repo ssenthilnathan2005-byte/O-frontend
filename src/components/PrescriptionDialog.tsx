@@ -41,9 +41,9 @@ interface Props {
     patientId?: string;
     patientName?: string;
     patientAge?: number;
-  patientArea?: string;
-  patientBloodGroup?: string;
-  patientGender?: string;
+  patientArea?: string | null;
+  patientBloodGroup?: string | null;
+  patientGender?: string | null;
     complaint?: string | null;
   } | null;
   doctorId: string;
