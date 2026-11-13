@@ -469,10 +469,21 @@ function Admit() {
   const [aq, setAq] = useState(""); // ADMIT_SEARCH_V1
   const aql = aq.trim().toLowerCase();
   const inwardShown = inward.filter(p => !aql || [p.patient_name, p.phone, p.ward, p.bed_number, p.admitting_doctor_name, p.diagnosis].some(v => (v || "").toLowerCase().includes(aql)));
-  const empty = { patientName: "", phone: "", age: "", gender: "", admittingDoctorId: "", bed: "", diagnosis: "", notes: "" };
+  const empty = { patientName: "", phone: "", age: "", gender: "", admittingDoctorId: "", bed: "", diagnosis: "", notes: "", uhid: "" };
   const [f, setF] = useState(empty);
   const [saving, setSaving] = useState(false);
 
+  const [found, setFound] = useState<any>(null);
+  const [slip, setSlip] = useState<any>(null);
+  async function lookup() {
+    if (!f.uhid.trim()) { toast.error("Enter the patient's UHID"); return; }
+    if (!f.phone.trim()) { toast.error("Enter the patient's phone number first"); return; }
+    try {
+      const r = await call("/patient-lookup?uhid=" + encodeURIComponent(f.uhid.trim()) + "&phone=" + encodeURIComponent(f.phone.trim()));
+      setFound({ ...r, uhid: f.uhid.trim() });
+      setF((p) => ({ ...p, patientName: r.name || p.patientName, age: r.age != null ? String(r.age) : p.age, gender: r.gender || p.gender }));
+    } catch (e: any) { setFound(null); toast.error(e.message); }
+  }
   const load = useCallback(async () => {
     try {
       const [d, b, i] = await Promise.all([call("/doctors"), call("/beds"), call("/inward")]);
@@ -484,19 +495,24 @@ function Admit() {
     maternityApi.eligible().then((r) => setMatEligible(new Set(r.ids))).catch(() => setMatEligible(new Set()));
   }, [inward]);
 
-  async function submit() {
+  async function submit(confirmNew = false) {
+    if (f.uhid.trim() && !found) { toast.error("Look up the UHID first, or clear it for a new patient"); return; }
     if (!f.patientName.trim()) { toast.error("Enter the patient name"); return; }
     if (!f.bed) { toast.error("Choose a bed"); return; }
     const [wardId, bedId] = f.bed.split("|");
     setSaving(true);
     try {
       const res = await call("/admit", "POST", {
-        patientName: f.patientName, phone: f.phone, age: f.age, gender: f.gender,
+        patientName: f.patientName, phone: f.phone, age: f.age, gender: f.gender, uhid: found ? found.uhid : undefined, confirmNew,
         admittingDoctorId: f.admittingDoctorId || null, diagnosis: f.diagnosis, notes: f.notes, wardId, bedId,
       });
       toast.success("Admitted to " + res.ward + " / " + res.bed);
-      setF(empty); load();
-    } catch (e: any) { toast.error(e.message); load(); }
+      setSlip({ name: res.patientName, uhid: res.uhid, where: res.ward + " / " + res.bed, isNew: res.newAccount });
+      setF(empty); setFound(null); load();
+    } catch (e: any) {
+      if (!confirmNew && /different person/i.test(e.message || "") && window.confirm(e.message)) { return await submit(true); }
+      toast.error(e.message); load();
+    }
     finally { setSaving(false); }
   }
 
@@ -504,6 +520,22 @@ function Admit() {
     <div className="grid lg:grid-cols-2 gap-6">
       <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
         <h2 className="font-semibold text-gray-900">Admit inpatient</h2>
+        {slip && (
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm">
+            <p className="font-semibold text-emerald-800">{slip.name} admitted to {slip.where}</p>
+            <p className="text-emerald-700">UHID: <span className="font-mono font-bold">{slip.uhid || "-"}</span>{slip.isNew ? " (new patient)" : ""}</p>
+            <p className="text-xs text-emerald-700/80">Write the UHID on the patient's slip.</p>
+            <button type="button" className="text-xs underline text-emerald-800 mt-1" onClick={() => setSlip(null)}>Dismiss</button>
+          </div>
+        )}
+        <div className="space-y-1"><Label>Existing patient UHID (optional)</Label>
+          <div className="flex gap-2">
+            <Input placeholder="e.g. DB09" value={f.uhid} onChange={e => { setF({ ...f, uhid: e.target.value }); setFound(null); }} />
+            <Button type="button" variant="outline" onClick={lookup}>Look up</Button>
+          </div>
+          {found && <p className="text-xs text-emerald-700">{found.name}{found.age != null ? ", " + found.age : ""}{found.gender ? " · " + found.gender : ""}. Confirm this is the patient.</p>}
+          <p className="text-[11px] text-gray-400">Enter the phone below first. Leave the UHID blank for a new patient, who gets a UHID after admitting.</p>
+        </div>
         <div className="space-y-1"><Label>Patient name *</Label><Input value={f.patientName} onChange={e => setF({ ...f, patientName: e.target.value })} /></div>
         <div className="grid grid-cols-3 gap-2">
           <div className="space-y-1 col-span-2"><Label>Phone</Label><Input value={f.phone} onChange={e => setF({ ...f, phone: e.target.value })} /></div>
@@ -525,7 +557,7 @@ function Admit() {
           </select></div>
         <div className="space-y-1"><Label>Diagnosis</Label><Input value={f.diagnosis} onChange={e => setF({ ...f, diagnosis: e.target.value })} /></div>
         <div className="space-y-1"><Label>Notes</Label><Input value={f.notes} onChange={e => setF({ ...f, notes: e.target.value })} /></div>
-        <Button className="w-full" onClick={submit} disabled={saving}>{saving ? "Admitting..." : "Admit patient"}</Button>
+        <Button className="w-full" onClick={() => submit()} disabled={saving}>{saving ? "Admitting..." : "Admit patient"}</Button>
       </div>
       <div className="bg-white border border-gray-200 rounded-xl p-4">
         <div className="flex items-center justify-between mb-3">
