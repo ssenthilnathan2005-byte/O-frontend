@@ -309,7 +309,8 @@ export default function LoginPage({
     const ph = loginMethod === "phone" ? phone.trim() : "";
     const uh = loginMethod === "uhid" ? uhidInput.trim().toUpperCase() : "";
     const pw = password;
-    if ((!em && !ph && !uh) || !pw) { toast.error("Please fill all required fields"); return; }
+    if (!em && !ph && !uh) { toast.error("Please fill all required fields"); return; }
+    if (loginMethod !== "uhid" && !pw) { toast.error("Please fill all required fields"); return; }
 
     // Prefer email when both are provided
     const id = em || ph || uh;
@@ -969,7 +970,6 @@ export default function LoginPage({
                           />
                         </div>
                         <p className="text-xs text-gray-400">Your Unique Health ID, for example DB01</p>
-                        <button type="button" className="text-xs text-teal-600 underline mt-0.5" onClick={() => { setClaimUhid(uhidInput); setScreen("claim-start"); }}>Admitted at a hospital? Claim your account →</button>
                       </div>
                     ) : loginMethod === "phone" ? (
                       <div className="space-y-1.5">
