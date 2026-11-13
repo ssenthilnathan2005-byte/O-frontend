@@ -363,11 +363,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, [user?.id, user?.role]);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
     const role = userRef.current?.role;
-    import("../lib/push").then(({ disablePushNotifications }) => {
-      disablePushNotifications();
-    });
+    // Remove this device's push token first, while the login token is still valid
+    try {
+      await Promise.race([
+        import("../lib/push").then(({ disablePushNotifications }) => disablePushNotifications()),
+        new Promise(resolve => setTimeout(resolve, 2000)),
+      ]);
+    } catch (_) {}
     try {
       const t = api.getToken?.() || localStorage.getItem("db_token");
       if (t) fetch((import.meta.env.VITE_API_URL || "http://localhost:4000/api") + "/auth/logout", {
