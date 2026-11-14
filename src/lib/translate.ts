@@ -1,4 +1,4 @@
-﻿const KEY = "app_lang";
+const KEY = "app_lang";
 export type Lang = "en" | "ta";
 
 export function getLang(): Lang {
@@ -62,8 +62,27 @@ export async function syncWithServer(
   if (serverLang !== local) setLang(serverLang);
 }
 
+// Tamil applies to patients and logged-out visitors only.
+// Admin, doctor, pharmacy and staff screens always stay in English.
+function isStaff(): boolean {
+  try {
+    const u = JSON.parse(localStorage.getItem("db_user") || "null");
+    return !!u && !!u.role && u.role !== "patient";
+  } catch {
+    return false;
+  }
+}
+
 export function initTranslate() {
   if (getLang() !== "ta") return;
+  if (isStaff()) { clearCookie(); return; }
+  // A staff member logging in without a page reload: drop the translation
+  window.setInterval(() => {
+    if (isStaff() && document.documentElement.classList.contains("lang-ta")) {
+      clearCookie();
+      window.location.reload();
+    }
+  }, 1000);
   document.documentElement.classList.add("lang-ta");
   patchDom();
 
