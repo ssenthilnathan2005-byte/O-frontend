@@ -584,21 +584,6 @@ export default function ProfilePage() {
       </div>
 
       <FamilyMembersSection />
-      {/* Language */}
-      <div className="bg-white border border-gray-200 rounded-2xl p-4 mt-4">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-full bg-teal-50 flex items-center justify-center shrink-0">
-              <Languages className="w-4 h-4 text-teal-600" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-gray-900">Language</p>
-              <p className="text-xs text-gray-400" translate="no">English / தமிழ்</p>
-            </div>
-          </div>
-          <LanguageSwitcher />
-        </div>
-      </div>
 
       {/* Permissions */}
       <div className="space-y-3 bg-white border border-gray-200 rounded-2xl p-4 mt-4">

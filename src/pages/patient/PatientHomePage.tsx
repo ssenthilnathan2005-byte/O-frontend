@@ -210,7 +210,7 @@ export default function PatientHomePage() {
             <img src="/assets/Logo.jpg" alt="Doctor Booked" className="w-8 h-8 rounded-full object-cover ring-2 ring-white/40" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
             <span className="text-sm font-bold tracking-wide text-white" translate="no">Doctor Booked</span>
           </div>
-          <LanguageSwitcher />
+          {!user && <LanguageSwitcher />}
         </div>
         <h1 className="relative text-4xl font-extrabold leading-tight">
           {(() => {

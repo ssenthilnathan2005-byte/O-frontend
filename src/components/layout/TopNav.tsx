@@ -473,8 +473,6 @@ export default function TopNav() {
 
           <div className="flex-1" />
 
-          <LanguageSwitcher />
-
           <div className="relative" ref={desktopMenuRef}>
             <button
               type="button"
