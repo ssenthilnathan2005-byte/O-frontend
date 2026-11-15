@@ -1,5 +1,5 @@
 import { useBodyScrollLock } from "../../lib/useBodyScrollLock";
-import { ShieldCheck, HeartPulse, Activity, BarChart3, ChevronDown, ShoppingCart, Fingerprint, BedDouble, Building2, ClipboardList, FlaskConical, LayoutDashboard, LogOut, Menu, Package, Pill, Receipt, Stethoscope, UserCog, Users2, Users, X, Settings2 } from "lucide-react";
+import { ShieldCheck, HeartPulse, Activity, BarChart3, ChevronDown, ShoppingCart, Fingerprint, BedDouble, Building2, ClipboardList, FlaskConical, LayoutDashboard, LogOut, Menu, Package, Pill, Receipt, Stethoscope, UserCog, Users2, Users, X, Settings2, KeyRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useStore } from "../../context/StoreContext";
 import useAdminSession from "../../hooks/useAdminSession";
@@ -21,6 +21,7 @@ import HALab from "./HALab";
 import HAAttendance from "./HAAttendance";
 import HABilling from "./HABilling";
 import HAPermissions from "./HAPermissions";
+import HAPasswordManagement from "./HAPasswordManagement";
 import GstInvoice from "./GstInvoice";
 import useModules from "../../hooks/useModules";
 import { PharmRevenue, PharmInventory, PharmPatients, PharmSold, PharmStockUpdate, usePharmacySocket } from "./PharmacyModule";
@@ -41,6 +42,7 @@ const NAV_ITEMS = [
   { path: "/hospital-admin/patients", label: "Live Patients", icon: Users2 },
   { path: "/hospital-admin/nurses", label: "Nurses", icon: HeartPulse },
   { path: "/hospital-admin/permissions", label: "Permissions", icon: ShieldCheck },
+  { path: "/hospital-admin/passwords", label: "Password Management", icon: KeyRound },
   { path: "/hospital-admin/pharmacy", label: "Pharmacy", icon: Pill },
 ] as const;
 
@@ -137,6 +139,7 @@ export default function HospitalAdminPanel() {
     if (route.path === "/hospital-admin/attendance") return <HAAttendance />;
     if (route.path === "/hospital-admin/billing") return <HABilling />;
     if (route.path === "/hospital-admin/permissions") return <HAPermissions />;
+    if (route.path === "/hospital-admin/passwords") return <HAPasswordManagement />;
     if (route.path === "/hospital-admin/functioning") return <HospitalFunctioning />;
     return <HADashboard />;
   }
