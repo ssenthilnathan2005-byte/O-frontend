@@ -45,7 +45,7 @@ export default function AbdmOptInCard() {
   };
 
   const box: React.CSSProperties = {
-    border: "1px solid #d9dee5", borderRadius: 12, padding: 16, background: "#fff", maxWidth: 520,
+    border: "1px solid #d9dee5", borderRadius: 12, padding: 16, background: "#fff", maxWidth: "100%",
   };
 
   return (

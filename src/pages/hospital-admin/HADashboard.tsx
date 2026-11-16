@@ -454,7 +454,7 @@ export default function HADashboard() {
   const revenueChartTotal = revenueSeries.reduce((s, r) => s + r.amount + r.ipd, 0);
 
   return (
-    <div className="p-4 max-w-5xl mx-auto space-y-3">
+    <div className="p-4 md:p-6 space-y-4">
       {/* Header */}
       <div>
         <h1 className="text-xl font-bold text-gray-900">Dashboard Overview</h1>

@@ -105,10 +105,13 @@ export default function HAPasswordManagement() {
   }
 
   return (
-    <div className="max-w-6xl space-y-4 p-4 md:p-6">
-      <div>
-        <h1 className="text-xl font-bold text-gray-900">Password Management</h1>
-        <p className="text-sm text-gray-500">Active login accounts of your hospital. Removed or inactive staff do not appear here.</p>
+    <div className="w-full space-y-4 p-4 md:p-6">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600"><KeyRound className="h-5 w-5" /></div>
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-gray-900">Password Management</h1>
+          <p className="text-sm text-gray-500">Active login accounts of your hospital. Removed or inactive staff do not appear here.</p>
+        </div>
       </div>
 
       {!vaultEnabled && (
@@ -132,8 +135,8 @@ export default function HAPasswordManagement() {
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-gray-100 bg-white">
-        <table className="w-full min-w-[720px] text-sm">
+      <div className="hidden overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm md:block">
+        <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 text-left text-xs uppercase tracking-wide text-gray-500">
               <th className="px-4 py-3">Name</th><th className="px-4 py-3">Login ID</th><th className="px-4 py-3">Role</th>
@@ -159,6 +162,29 @@ export default function HAPasswordManagement() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div className="space-y-2 md:hidden">
+        {loading && <div className="rounded-xl border border-gray-200 bg-white py-8 text-center text-gray-400"><Loader2 className="mx-auto h-5 w-5 animate-spin" /></div>}
+        {!loading && shown.length === 0 && <div className="rounded-xl border border-gray-200 bg-white py-8 text-center text-sm text-gray-400">No users found</div>}
+        {shown.map(r => (
+          <div key={r.type + r.id} className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="truncate font-medium text-gray-900">{r.name}</p>
+                <p className="font-mono text-xs text-gray-500">{r.loginId}</p>
+              </div>
+              <span className={"shrink-0 rounded-full px-2 py-0.5 text-xs font-medium " + statusClass(r.status)}>{r.status}</span>
+            </div>
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <span className="text-xs text-gray-500">{r.role}</span>
+              <div className="flex gap-1.5">
+                <button type="button" onClick={() => open("show", r)} className="flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs hover:bg-gray-50"><Eye className="h-3.5 w-3.5" />Show</button>
+                <button type="button" onClick={() => open("change", r)} className="flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs hover:bg-gray-50"><KeyRound className="h-3.5 w-3.5" />Change</button>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
 
       {action && (

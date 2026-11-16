@@ -222,7 +222,7 @@ export default function HADoctors() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-6 lg:p-8">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold">Your Doctors</h1>

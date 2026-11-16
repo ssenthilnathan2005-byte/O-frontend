@@ -115,7 +115,7 @@ export default function HAPermissions() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-5">
+    <div className="w-full p-4 md:p-6 space-y-5">
       <div className="flex items-start gap-3">
         <div className="w-10 h-10 rounded-xl bg-teal-500 flex items-center justify-center shrink-0">
           <ShieldCheck className="w-5 h-5 text-white" />

@@ -177,7 +177,7 @@ export default function HAPatients() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-6 lg:p-8">
       {hospitalId && (
         <MonthlyArchiveBanner base="/api/hospital" hospitalId={hospitalId} who="hospital" onCleared={() => window.location.reload()} />
       )}

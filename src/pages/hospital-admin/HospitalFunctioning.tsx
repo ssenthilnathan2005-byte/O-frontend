@@ -84,7 +84,7 @@ export default function HospitalFunctioning() {
 
   if (!hospitalId) return null;
   return (
-    <div className="p-4 max-w-3xl space-y-4">
+    <div className="p-4 md:p-6 space-y-4">
       <Card>
         <CardHeader><CardTitle className="text-base">Hospital functioning</CardTitle></CardHeader>
         <CardContent className="space-y-4">
@@ -99,7 +99,7 @@ export default function HospitalFunctioning() {
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-medium text-gray-700">Modules {customised && <span className="ml-1 text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-100 rounded px-1.5 py-0.5">Customised</span>}</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-4 gap-y-1.5">
                   {catalog.map((m) => (
                     <label key={m.key} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
                       <input type="checkbox" checked={on.includes(m.key)} onChange={() => toggle(m.key)} />

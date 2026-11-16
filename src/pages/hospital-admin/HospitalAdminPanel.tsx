@@ -135,7 +135,7 @@ export default function HospitalAdminPanel() {
     if (route.path === "/hospital-admin/inventory") return <HAInventory />;
     if (route.path === "/hospital-admin/hr") return <HAHR />;
     if (route.path === "/hospital-admin/nurses") return <HANurses />;
-    if (route.path === "/hospital-admin/front-desk") return <div className="p-4 max-w-3xl space-y-4"><HAFrontDeskCollections /><HAFrontOfficeStaff /></div>;
+    if (route.path === "/hospital-admin/front-desk") return <div className="w-full space-y-4 p-4 md:p-6"><div className="flex items-center gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600"><ClipboardList className="h-5 w-5" /></div><div><h1 className="text-xl font-bold text-gray-900">Front Desk</h1><p className="text-sm text-gray-500">Daily fee collections and front office logins.</p></div></div><HAFrontDeskCollections /><HAFrontOfficeStaff /></div>;
     if (route.path === "/hospital-admin/attendance") return <HAAttendance />;
     if (route.path === "/hospital-admin/billing") return <HABilling />;
     if (route.path === "/hospital-admin/permissions") return <HAPermissions />;
@@ -147,7 +147,7 @@ export default function HospitalAdminPanel() {
   return (
     <div className="fixed inset-0 flex overflow-hidden bg-background">
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex w-64 h-full overflow-hidden bg-admin-sidebar text-admin-sidebar-fg flex-col shrink-0">
+      <aside className="hidden lg:flex w-64 h-full overflow-hidden bg-admin-sidebar text-admin-sidebar-fg flex-col shrink-0">
         <div className="px-6 py-5 border-b border-white/10">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-teal-500 flex items-center justify-center shrink-0">
@@ -195,7 +195,7 @@ export default function HospitalAdminPanel() {
       </aside>
 
       {/* Mobile Top Bar */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-admin-sidebar text-white flex items-center justify-between px-4 py-3 border-b border-white/10">
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-admin-sidebar text-white flex items-center justify-between px-4 py-3 border-b border-white/10">
         <div className="flex items-center gap-2 min-w-0">
           <Building2 className="w-5 h-5 shrink-0" />
           <span className="font-bold text-sm truncate">{hospitalName}</span>
@@ -211,10 +211,10 @@ export default function HospitalAdminPanel() {
           <button
             type="button"
             aria-label="Close menu"
-            className="md:hidden fixed inset-0 z-50 bg-black/50 cursor-default"
+            className="lg:hidden fixed inset-0 z-50 bg-black/50 cursor-default"
             onClick={() => setDrawerOpen(false)}
           />
-          <div className="md:hidden fixed left-0 top-0 bottom-0 w-72 z-50 bg-admin-sidebar flex flex-col overflow-hidden" style={{ height: "100dvh" }}>
+          <div className="lg:hidden fixed left-0 top-0 bottom-0 w-72 z-50 bg-admin-sidebar flex flex-col overflow-hidden" style={{ height: "100dvh" }}>
             <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between">
               <div className="flex items-center gap-3 min-w-0">
                 <Building2 className="w-6 h-6 text-white shrink-0" />
@@ -251,7 +251,7 @@ export default function HospitalAdminPanel() {
         </>
       )}
 
-      <main className="violet-scroll flex-1 min-w-0 h-full overflow-y-auto overscroll-contain md:pt-0 pt-14">{renderContent()}</main>
+      <main className="violet-scroll flex-1 min-w-0 h-full overflow-y-auto overscroll-contain lg:pt-0 pt-14"><div className="mx-auto w-full max-w-[1760px]">{renderContent()}</div></main>
     </div>
   );
 }
