@@ -33,8 +33,10 @@ export default function DoctorLoginPassword() {
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [shown, setShown] = useState<string | null>(null);
+  const [showBusy, setShowBusy] = useState(false);
 
-  function reset() { setOpen(false); setCur(""); setNext(""); setConfirm(""); setError(""); }
+  function reset() { setShown(null); setOpen(false); setCur(""); setNext(""); setConfirm(""); setError(""); }
 
   // Same checks the server repeats, so the doctor gets instant feedback.
   function validate(): string {
@@ -63,23 +65,46 @@ export default function DoctorLoginPassword() {
     finally { setBusy(false); }
   }
 
+  async function toggleShow() {
+    if (shown !== null) { setShown(null); return; }
+    setShowBusy(true);
+    try {
+      const res = await fetch(BASE + "/doctor-account/password/show", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + getToken() },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { toast.error((data as any).error || "Could not show password"); return; }
+      setShown((data as any).password);
+      setTimeout(() => setShown(null), 15000);   // hides itself again after 15 seconds
+    } catch { toast.error("Network error. Please try again."); }
+    finally { setShowBusy(false); }
+  }
+
   return (
     <div className="space-y-1.5">
       <Label className="flex items-center gap-1.5 text-sm font-medium">
         <KeyRound className="h-3.5 w-3.5 text-gray-400" /> Login Password
       </Label>
       <div className="relative">
-        <Input value="••••••••••" readOnly aria-label="Login password (hidden)"
-          className="cursor-default bg-gray-50 pr-28 text-gray-600" />
-        {!open && (
-          <button type="button" onClick={() => setOpen(true)}
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md bg-teal-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-600">
-            Change Password
+        <Input value={shown ?? "••••••••••"} readOnly aria-label="Login password"
+          className={"cursor-default bg-gray-50 text-gray-600 " + (open ? "pr-24" : "pr-48")} />
+        <div className="absolute right-1.5 top-1/2 flex -translate-y-1/2 gap-1.5">
+          <button type="button" onClick={toggleShow} disabled={showBusy}
+            className="flex items-center gap-1 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60">
+            {showBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : shown !== null ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+            {shown !== null ? "Hide" : "Show"}
           </button>
-        )}
+          {!open && (
+            <button type="button" onClick={() => setOpen(true)}
+              className="rounded-md bg-teal-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-600">
+              Change Password
+            </button>
+          )}
+        </div>
       </div>
       <p className="flex items-center gap-1 text-xs text-gray-500">
-        <Lock className="h-3 w-3" /> Your password is stored securely and cannot be displayed. You can set a new one at any time.
+        <Lock className="h-3 w-3" /> Tap Show to see your current password. It hides again after 15 seconds. You can set a new one at any time.
       </p>
 
       {open && (
