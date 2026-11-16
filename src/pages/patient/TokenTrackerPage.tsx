@@ -40,6 +40,15 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
 
   // Warning popup shown every time the page is opened
   const [showWarningPopup, setShowWarningPopup] = useState(true);
+  // Offline detection
+  const [isOnline, setIsOnline] = useState(() => navigator.onLine);
+  useEffect(() => {
+    const on = () => setIsOnline(true);
+    const off = () => setIsOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
+  }, []);
   // "You're Next" banner (dismissable)
   const [bannerDismissed, setBannerDismissed] = useState(false);
   // "Running late?" ETA picker
@@ -199,6 +208,11 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
 
   return (
     <div className="max-w-3xl mx-auto px-4 pt-3 pb-6">
+      {!isOnline && (
+        <div className="bg-yellow-100 border-b border-yellow-300 text-yellow-800 text-xs text-center py-1 px-3">
+          You're offline — showing last known queue
+        </div>
+      )}
 
       {/* ── "You're Next!" top notification (Image 2) ── */}
       {showNextBanner && (

@@ -7,6 +7,7 @@ import App from "./App";
 import "./index.css";
 import { initTranslate } from "./lib/translate";
 import { initNavHeight } from "./lib/navHeight";
+import { registerOfflineSW } from "./lib/offlineSW";
 
 BigInt.prototype.toJSON = function () {
   return this.toString();
@@ -20,6 +21,7 @@ declare global {
 
 initTranslate();
 initNavHeight();
+registerOfflineSW();
 
 const queryClient = new QueryClient();
 
