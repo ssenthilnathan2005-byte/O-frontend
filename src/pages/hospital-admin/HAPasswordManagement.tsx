@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Copy, Eye, KeyRound, Loader2, RotateCcw, Search, X } from "lucide-react";
+import { Copy, Eye, KeyRound, Loader2, RefreshCw, Search, X } from "lucide-react";
 import { getToken } from "../../api";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
@@ -17,13 +17,12 @@ async function call(path: string, method = "GET", body?: unknown) {
 }
 
 type Row = { type: string; role: string; id: string; name: string; loginId: string; status: string };
-type Action = { kind: "show" | "change" | "reset"; row: Row };
+type Action = { kind: "show" | "change"; row: Row };
 
 const FILTERS = ["All", "Hospital Admin", "Doctor", "Nurse", "Front Office", "Laboratory", "Pharmacy"];
 
 function statusClass(s: string) {
   if (s === "Active") return "bg-emerald-50 text-emerald-700";
-  if (s === "Inactive") return "bg-gray-100 text-gray-500";
   return "bg-amber-50 text-amber-700";
 }
 
@@ -56,16 +55,24 @@ export default function HAPasswordManagement() {
   const [busy, setBusy] = useState(false);
   const [revealed, setRevealed] = useState<{ password: string; note?: string } | null>(null);
 
-  async function load() {
-    setLoading(true);
+  async function load(silent = false) {
+    if (!silent) setLoading(true);
     try {
       const d = await call("/");
       setRows(d.users || []);
       setVaultEnabled(!!d.vaultEnabled);
-    } catch (e: any) { toast.error(e.message || "Could not load users"); }
+    } catch (e: any) { if (!silent) toast.error(e.message || "Could not load users"); }
     finally { setLoading(false); }
   }
-  useEffect(() => { load(); }, []);
+  // Always reflect the live database: reload on open, every 30s, and when the tab regains focus.
+  useEffect(() => {
+    load();
+    const t = setInterval(() => load(true), 30000);
+    const onVis = () => { if (document.visibilityState === "visible") load(true); };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("focus", onVis);
+    return () => { clearInterval(t); document.removeEventListener("visibilitychange", onVis); window.removeEventListener("focus", onVis); };
+  }, []);
 
   const shown = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -91,13 +98,9 @@ export default function HAPasswordManagement() {
         if (input.trim().length < 6) { toast.error("Password must be at least 6 characters"); return; }
         await call(base + "/change", "POST", { password: input.trim() });
         toast.success("Password changed for " + row.name);
-        close(); load();
-      } else {
-        const d = await call(base + "/reset", "POST");
-        setRevealed({ password: d.tempPassword, note: "Temporary password. Share it with the user - it is shown only once here." });
-        load();
+        close(); load(true);
       }
-    } catch (e: any) { toast.error(e.message || "Failed"); }
+    } catch (e: any) { toast.error(e.message || "Failed"); load(true); }
     finally { setBusy(false); }
   }
 
@@ -105,12 +108,12 @@ export default function HAPasswordManagement() {
     <div className="max-w-6xl space-y-4 p-4 md:p-6">
       <div>
         <h1 className="text-xl font-bold text-gray-900">Password Management</h1>
-        <p className="text-sm text-gray-500">Manage login passwords for every user of your hospital.</p>
+        <p className="text-sm text-gray-500">Active login accounts of your hospital. Removed or inactive staff do not appear here.</p>
       </div>
 
       {!vaultEnabled && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-          Show Current Password is switched off on the server (encryption key not set). Change and Reset still work.
+          Show Current Password is switched off on the server (encryption key not set). Change still works.
         </div>
       )}
 
@@ -121,7 +124,8 @@ export default function HAPasswordManagement() {
             {f}
           </button>
         ))}
-        <div className="relative ml-auto w-full sm:w-64">
+        <button type="button" onClick={() => load()} title="Refresh" className="ml-auto rounded-lg border border-gray-200 p-2 hover:bg-gray-50"><RefreshCw className="h-4 w-4" /></button>
+        <div className="relative w-full sm:w-64">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search name or login ID"
             className="w-full rounded-lg border border-gray-200 py-2 pl-8 pr-3 text-sm outline-none focus:border-teal-400" />
@@ -149,7 +153,6 @@ export default function HAPasswordManagement() {
                   <div className="flex justify-end gap-1.5">
                     <button type="button" onClick={() => open("show", r)} className="flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs hover:bg-gray-50"><Eye className="h-3.5 w-3.5" />Show</button>
                     <button type="button" onClick={() => open("change", r)} className="flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs hover:bg-gray-50"><KeyRound className="h-3.5 w-3.5" />Change</button>
-                    <button type="button" onClick={() => open("reset", r)} className="flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-red-600 hover:bg-red-50"><RotateCcw className="h-3.5 w-3.5" />Reset</button>
                   </div>
                 </td>
               </tr>
@@ -160,7 +163,7 @@ export default function HAPasswordManagement() {
 
       {action && (
         <Modal
-          title={(action.kind === "show" ? "Show current password" : action.kind === "change" ? "Change password" : "Reset password") + " - " + action.row.name}
+          title={(action.kind === "show" ? "Show current password" : "Change password") + " - " + action.row.name}
           onClose={close}>
           {revealed ? (
             <div className="space-y-3">
@@ -183,15 +186,12 @@ export default function HAPasswordManagement() {
                 <input type="text" autoFocus value={input} onChange={e => setInput(e.target.value)} placeholder="New password"
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-teal-400" />
               </>)}
-              {action.kind === "reset" && (
-                <p className="text-sm text-gray-600">This creates a new temporary password for <b>{action.row.name}</b>. The old password stops working immediately.</p>
-              )}
               <div className="flex gap-2">
                 <button type="button" onClick={close} className="flex-1 rounded-lg border border-gray-200 py-2 text-sm">Cancel</button>
                 <button type="button" disabled={busy} onClick={submit}
                   className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-teal-500 py-2 text-sm font-medium text-white disabled:opacity-60">
                   {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {action.kind === "show" ? "Show" : action.kind === "change" ? "Save" : "Reset"}
+                  {action.kind === "show" ? "Show" : "Save"}
                 </button>
               </div>
             </div>
