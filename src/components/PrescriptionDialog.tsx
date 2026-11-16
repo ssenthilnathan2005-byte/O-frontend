@@ -1,5 +1,6 @@
 import AssignFollowUpDialog from "./AssignFollowUpDialog";
 import { searchIcd10 } from "../data/icd10Common";
+import { isNlem } from "../data/nlem";
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -608,11 +609,14 @@ export default function PrescriptionDialog({
                           className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 flex items-center justify-between gap-2"
                           onClick={() => pickSuggestion(idx, s.name)}
                         >
-                          <span>{s.name}</span>
+                          <span className="flex items-center gap-1.5">{s.name}{isNlem(s.name) && <span className="text-[10px] font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded px-1 py-0.5">NLEM</span>}</span>
                           {s.inStock && <span className="text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded px-1.5 py-0.5">In Stock</span>}
                         </button>
                       ))}
                     </div>
+                  )}
+                  {med.name.trim().length >= 3 && !isNlem(med.name) && (
+                    <p className="text-[11px] text-gray-400 mt-1">Not on NLEM list (government dispensing)</p>
                   )}
                 </div>
 
