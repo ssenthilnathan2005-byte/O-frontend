@@ -1,3 +1,4 @@
+import StockSearchSelect from "@/components/StockSearchSelect";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useStore } from "../context/StoreContext";
 import { getToken } from "@/api";
@@ -485,11 +486,12 @@ export default function PharmacyDashboard() {
             </label>
             {deduct && (
               <div className="space-y-2 pl-6">
-                <select value={pl.itemId} onChange={e => setPlan(p, i, { itemId: e.target.value })}
-                  className="w-full border border-gray-200 rounded-md text-xs px-2 py-1.5 bg-white">
-                  <option value="">Select stock item...</option>
-                  {stock.map(s => <option key={s.id} value={s.id}>{s.name} ({isBottle(undefined, s) ? (Math.round(tabletsAvailable(s) / packOf(s) * 10) / 10) + " " + packName(s) + "s" : tabletsAvailable(s)} in stock)</option>)}
-                </select>
+                <StockSearchSelect value={pl.itemId} onChange={v => setPlan(p, i, { itemId: v })}
+                  options={stock.map(s => ({
+                    id: String(s.id),
+                    label: s.name + " (" + (isBottle(undefined, s) ? (Math.round(tabletsAvailable(s) / packOf(s) * 10) / 10) + " " + packName(s) + "s" : tabletsAvailable(s)) + " in stock)",
+                    outOfStock: tabletsAvailable(s) <= 0,
+                  }))} />
                 {pl.itemId && (
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-gray-500">Dispensed</span>
