@@ -1651,6 +1651,9 @@ export default function DoctorDashboard() {
                         {foInfo[b.id]?.vitals && (
                           <p className="text-xs text-teal-700 bg-teal-50 border border-teal-100 rounded-md px-2 py-1 mt-1">{vitalsText(foInfo[b.id].vitals as Vitals)}</p>
                         )}
+                        {foInfo[b.id]?.checked_in_at && !foInfo[b.id]?.vitals && (
+                          <p className="mt-1"><span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-800 bg-amber-50 border border-amber-300 rounded-full px-2 py-0.5">&#9888; Vitals pending</span></p>
+                        )}
                         <p className="text-xs text-gray-400 mt-0.5">{b.session} · {b.date}</p>
                         {b.complaint && <p className="text-xs text-gray-500 mt-0.5 italic line-clamp-2">📋 {b.complaint}</p>}
                         {b.patientId && (
@@ -2149,7 +2152,7 @@ export default function DoctorDashboard() {
                 {foInfo[dialogTokenBooking.id].vitals ? (
                   <VitalsPanel vitals={foInfo[dialogTokenBooking.id].vitals as Vitals} />
                 ) : (
-                  <p className="text-sm text-gray-400 italic">No vitals recorded</p>
+                  <p className="text-sm font-medium text-amber-800 bg-amber-50 border border-amber-300 rounded-md px-2 py-1.5">&#9888; Vitals pending &mdash; not yet recorded by nurse / front office</p>
                 )}
               </div>
             )}
