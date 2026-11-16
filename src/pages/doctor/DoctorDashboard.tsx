@@ -1,3 +1,4 @@
+import DoctorLoginPassword from "./DoctorLoginPassword";
 import FollowUpMark from "../../components/FollowUpMark";
 import { ClipboardList, Bell, Stethoscope } from "lucide-react";
 import PrescriptionPresetsManager from "@/components/PrescriptionPresetsManager";
@@ -667,6 +668,10 @@ export default function DoctorDashboard() {
     };
     // Only send phone if it has a value — never overwrite with empty string
     // Phone is the doctor's login password so it must never be blanked
+    if (profileForm.contactPhone.trim() && (!/^\+?[0-9\s-]+$/.test(profileForm.contactPhone.trim()) || profileForm.contactPhone.replace(/\D/g, "").length < 10 || profileForm.contactPhone.replace(/\D/g, "").length > 15)) {
+      toast.error("Enter a valid phone number (10 to 15 digits)");
+      return;
+    }
     if (profileForm.contactPhone.trim()) {
       payload.contactPhone = profileForm.contactPhone.trim();
       payload.phone = profileForm.contactPhone.trim();
@@ -1789,32 +1794,21 @@ export default function DoctorDashboard() {
                   <p className="text-xs text-gray-500">Shown in bold to patients on your card. Online booking payment is unaffected.</p>
                 </div>
                 <div className="space-y-1.5">
-                  <Label
-                    htmlFor="doc-phone"
-                    className="flex items-center gap-1.5 text-sm font-medium"
-                  >
-                    <Phone className="w-3.5 h-3.5 text-gray-400" /> Phone
-                    Number
-                    <span className="ml-1 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-normal">
-                      Login Password
-                    </span>
+                  <Label htmlFor="doc-phone" className="flex items-center gap-1.5 text-sm font-medium">
+                    <Phone className="w-3.5 h-3.5 text-gray-400" /> Phone Number
                   </Label>
-                  <div className="relative">
-                    <Input
-                      id="doc-phone"
-                      value={profileForm.contactPhone}
-                      placeholder="Set by admin — contact admin to change"
-                      readOnly
-                      className="pr-10 bg-gray-50 text-gray-600 cursor-not-allowed"
-                      data-ocid="profile.input"
-                    />
-                    <Lock className="absolute right-3 top-2.5 w-4 h-4 text-gray-400 pointer-events-none" />
-                  </div>
-                  <p className="text-xs text-amber-600 flex items-center gap-1">
-                    <Lock className="w-3 h-3" />
-                    This is your login password. Only the admin can change it.
-                  </p>
+                  <Input
+                    id="doc-phone"
+                    type="tel"
+                    inputMode="tel"
+                    value={profileForm.contactPhone}
+                    onChange={(e) => setProfileForm((p) => ({ ...p, contactPhone: e.target.value }))}
+                    placeholder="Your registered phone number"
+                    data-ocid="profile.input"
+                  />
+                  <p className="text-xs text-gray-500">Saved with the Save button below. Changing it does not change your login password.</p>
                 </div>
+                <DoctorLoginPassword />
               </div>
             </div>
 
