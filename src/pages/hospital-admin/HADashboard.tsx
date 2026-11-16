@@ -464,7 +464,7 @@ export default function HADashboard() {
       </div>
 
       {/* ABDM opt-in */}
-      <AbdmOptInCard />
+      {false && <AbdmOptInCard />}
 
       {/* Hospital website */}
       <div className="bg-white border border-gray-200 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center gap-2">
