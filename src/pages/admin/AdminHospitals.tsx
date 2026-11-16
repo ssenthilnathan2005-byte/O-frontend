@@ -1,3 +1,4 @@
+import AbdmAdminPanel from "../../components/AbdmAdminPanel";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
@@ -230,6 +231,7 @@ export default function AdminHospitals() {
 
   return (
     <div className="p-8">
+      <AbdmAdminPanel />
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
