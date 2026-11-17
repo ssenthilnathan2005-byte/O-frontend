@@ -18,6 +18,63 @@ type PermStatus = "granted" | "denied" | "prompt" | "gps-off" | "unknown";
 
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "Unknown"];
 
+
+function PhoneRequestsSection() {
+  const [reqs, setReqs] = useState<{ id: string; requester_name: string; relation: string; created_at: string }[]>([]);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  async function load() {
+    try {
+      const token = getToken();
+      const r = await fetch("/api/patients/phone-requests", { headers: { Authorization: "Bearer " + token } });
+      const d = await r.json();
+      setReqs(d.requests || []);
+    } catch {}
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function decide(id: string, approve: boolean) {
+    setBusy(id);
+    try {
+      const token = getToken();
+      const r = await fetch("/api/patients/phone-requests/" + id + "/decide", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token }, body: JSON.stringify({ approve }) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Failed");
+      toast.success(approve ? "Approved" : "Rejected");
+      setReqs(prev => prev.filter(x => x.id !== id));
+    } catch (e: any) { toast.error(e.message || "Failed"); }
+    finally { setBusy(null); }
+  }
+
+  if (reqs.length === 0) return null;
+
+  return (
+    <div className="space-y-3 bg-white border border-amber-200 rounded-2xl p-4 mt-4">
+      <h2 className="text-sm font-semibold text-gray-900">Phone Number Requests</h2>
+      <p className="text-xs text-gray-500">These people want to use your phone number on their account.</p>
+      {reqs.map(r => (
+        <div key={r.id} className="flex items-center justify-between gap-3 py-2 border-b border-gray-100 last:border-0">
+          <div>
+            <p className="text-sm font-medium text-gray-900">{r.requester_name}</p>
+            <p className="text-xs text-gray-500">Relation: {r.relation}</p>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => decide(r.id, true)} disabled={!!busy}
+              className="px-3 py-1.5 text-xs rounded-full bg-teal-500 text-white disabled:opacity-60">
+              {busy === r.id ? "…" : "Approve"}
+            </button>
+            <button onClick={() => decide(r.id, false)} disabled={!!busy}
+              className="px-3 py-1.5 text-xs rounded-full border border-red-300 text-red-500 disabled:opacity-60">
+              Reject
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function ProfilePage() {
   const { navigate, replace } = useRouter();
   const { updateUser } = useStore();
@@ -597,6 +654,8 @@ export default function ProfilePage() {
           )}
         </button>
       </div>
+
+      <PhoneRequestsSection />
 
       <FamilyMembersSection />
 
