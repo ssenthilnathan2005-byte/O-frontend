@@ -63,7 +63,7 @@ function PatientFinder({ f, found, setFound, setField, onPick }: any) {
         if (!live) return;
         const list = r.patients || [];
         setMatches(list);
-        if (list.length === 1 && (u.length >= 4 || ph.length >= 10)) { /* show card, let user confirm */ }
+        if (list.length === 1) pick(list[0]);
       } catch (e: any) { if (live) { setMatches([]); toast.error(e.message); } }
       finally { if (live) setBusy(false); }
     }, 400);
