@@ -398,6 +398,10 @@ export const patients = {
     get<{ name: string; phone: string; age: string; yearOfBirth: string; isComplete: boolean; preferredLanguage?: string; uhid?: string; area?: string; bloodGroup?: string; gender?: string }>("/patients/profile"),
   updateProfile: (data: { name: string; phone: string; yearOfBirth: string; area?: string; bloodGroup?: string; gender?: string }) =>
     patch<{ success: boolean }>("/patients/profile", data),
+  getPhoneRequests: () =>
+    get<{ requests: { id: string; relation: string; created_at: string; requester_name: string }[] }>("/patients/phone-requests"),
+  decidePhoneRequest: (id: string, approve: boolean) =>
+    post<{ success: boolean }>("/patients/phone-requests/" + id + "/decide", { approve }),
   updateLanguage: (preferredLanguage: "en" | "ta") =>
     patch<{ success: boolean }>("/patients/language", { preferredLanguage }),
 };

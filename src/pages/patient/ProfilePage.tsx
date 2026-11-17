@@ -13,6 +13,7 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { KeyRound, Info, Eye, EyeOff } from "lucide-react";
 import { setPatientPassword, changePatientPassword } from "../../api";
 import FamilyMembersSection from "@/components/FamilyMembersSection";
+import PhoneRequestsCard from "@/components/PhoneRequestsCard";
 
 type PermStatus = "granted" | "denied" | "prompt" | "gps-off" | "unknown";
 
@@ -556,6 +557,7 @@ export default function ProfilePage() {
             </button>
           )}
         </div>
+        <PhoneRequestsCard />
         <div>
           <label className="text-xs font-medium text-gray-600 mb-1 block">Phone Number <span className="text-red-500">*</span></label>
           <input
