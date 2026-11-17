@@ -26,7 +26,7 @@ type Visit = {
   inwardId?: string;
 };
 
-type Raw = Visit & { name: string; phone: string; age: string; gender: string };
+type Raw = Visit & { name: string; phone: string; age: string; gender: string; uhid: string };
 
 type Person = {
   id: string;
@@ -34,6 +34,7 @@ type Person = {
   phone: string;
   age: string;
   gender: string;
+  uhid: string;
   visits: Visit[];
 };
 
@@ -161,6 +162,7 @@ export default function HAAllPatients() {
         phone: pick(b, "phone") || pick(rec, "phone"),
         age: pick(b, "age", "patientAge") || pick(rec, "age"),
         gender: pick(b, "gender") || pick(rec, "gender"),
+        uhid: pick(b, "uhid") || pick(rec, "uhid"),
         doctor: pick(b, "doctorName"),
         doctorId: b.doctorId,
         session: pick(b, "session"),
@@ -188,6 +190,7 @@ export default function HAAllPatients() {
         phone: pick(p, "phone", "patientPhone", "patient_phone"),
         age: pick(p, "age", "patientAge", "patient_age"),
         gender: pick(p, "gender"),
+        uhid: pick(p, "uhid"),
         doctor: pick(p, "admittingDoctorName", "admitting_doctor_name", "admittingDoctor", "doctorName", "doctor_name", "doctor"),
         detail: pick(p, "diagnosis", "reason", "reasonForAdmission"),
         place: [ward, bed].filter(Boolean).join(" · "),
@@ -215,11 +218,12 @@ export default function HAAllPatients() {
       const id = `${digits}|${nameKey}`;
       let p = map.get(id);
       if (!p) {
-        p = { id, name: r.name, phone: r.phone, age: r.age, gender: r.gender, visits: [] };
+        p = { id, name: r.name, phone: r.phone, age: r.age, gender: r.gender, uhid: r.uhid, visits: [] };
         map.set(id, p);
       }
       if (!p.age && r.age) p.age = r.age;
       if (!p.gender && r.gender) p.gender = r.gender;
+      if (!p.uhid && r.uhid) p.uhid = r.uhid;
       if (!p.phone && r.phone) p.phone = r.phone;
       p.visits.push({
         key: r.key, type: r.type, doctor: r.doctor, detail: r.detail,
@@ -235,7 +239,7 @@ export default function HAAllPatients() {
       if (typeFilter !== "all" && !p.visits.some(v => v.type === typeFilter)) return false;
       if (!q) return true;
       const hay = [
-        p.name, p.phone,
+        p.name, p.phone, p.uhid,
         ...p.visits.flatMap(v => [v.doctor, v.detail, v.place, v.status]),
       ];
       return hay.some(v => v.toLowerCase().includes(q));
@@ -305,6 +309,7 @@ export default function HAAllPatients() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>UHID</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Age / Gender</TableHead>
               <TableHead>Phone</TableHead>
@@ -317,10 +322,10 @@ export default function HAAllPatients() {
           </TableHeader>
           <TableBody>
             {loading && filtered.length === 0 && (
-              <TableRow><TableCell colSpan={8} className="text-center py-10 text-muted-foreground">Loading...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center py-10 text-muted-foreground">Loading...</TableCell></TableRow>
             )}
             {!loading && filtered.length === 0 && (
-              <TableRow><TableCell colSpan={8} className="text-center py-10 text-muted-foreground">No patients found.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center py-10 text-muted-foreground">No patients found.</TableCell></TableRow>
             )}
             {filtered.map(p => {
               const last = p.visits[0];
@@ -329,6 +334,7 @@ export default function HAAllPatients() {
               const admitted = p.visits.some(v => v.type === "Inward" && v.status === "admitted");
               return (
                 <TableRow key={p.id} className="cursor-pointer hover:bg-gray-50" onClick={() => setSelectedId(p.id)}>
+                  <TableCell className="font-mono text-sm whitespace-nowrap">{p.uhid || "-"}</TableCell>
                   <TableCell className="font-medium">{p.name || "-"}</TableCell>
                   <TableCell>{[p.age, p.gender].filter(Boolean).join(" / ") || "-"}</TableCell>
                   <TableCell>{p.phone || "-"}</TableCell>
@@ -366,7 +372,7 @@ export default function HAAllPatients() {
               <div>
                 <h2 className="font-semibold text-lg">{selected.name || "Patient"}</h2>
                 <p className="text-sm text-gray-500">
-                  {[selected.age && `${selected.age} yrs`, selected.gender, selected.phone].filter(Boolean).join(" · ")}
+                  {[selected.uhid && `UHID ${selected.uhid}`, selected.age && `${selected.age} yrs`, selected.gender, selected.phone].filter(Boolean).join(" · ")}
                 </p>
               </div>
               <button type="button" onClick={() => setSelectedId(null)}><X className="w-4 h-4" /></button>
