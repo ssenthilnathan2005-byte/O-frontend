@@ -163,6 +163,8 @@ async function req<T>(
           emitStatus("ok"); // server is reachable
           const clientErr = new Error((data as any).error || `Error ${res.status}`);
           (clientErr as any).isClientError = true;
+          (clientErr as any).code = (data as any).code;
+          (clientErr as any).relations = (data as any).relations;
           throw clientErr;
         }
         // 5xx — server error, retry

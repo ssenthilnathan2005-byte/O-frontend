@@ -26,6 +26,8 @@ export default function ProfilePage() {
   const [wasComplete, setWasComplete] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [phoneRelation, setPhoneRelation] = useState("");
+  const [relationOptions, setRelationOptions] = useState<string[]>([]);
   const [yearOfBirth, setYearOfBirth] = useState("");
   const [legacyAge, setLegacyAge] = useState("");
   const [area, setArea] = useState("");
@@ -307,7 +309,7 @@ export default function ProfilePage() {
 
     setSaving(true);
     try {
-      await patients.updateProfile({ name: name.trim(), phone: phone.trim(), yearOfBirth: yearOfBirth.trim(), area: area.trim(), bloodGroup, gender });
+      await patients.updateProfile({ name: name.trim(), phone: phone.trim(), yearOfBirth: yearOfBirth.trim(), area: area.trim(), bloodGroup, gender, ...(phoneRelation ? { phoneRelation } : {}) } as any);
       toast.success("Profile saved");
       updateUser({ name: name.trim(), phone: phone.trim(), gender } as any);
       setWasComplete(true);
@@ -315,7 +317,7 @@ export default function ProfilePage() {
       try { const raw = sessionStorage.getItem("db_after_profile"); if (raw) { back = JSON.parse(raw); sessionStorage.removeItem("db_after_profile"); } } catch {}
       replace(back);
     } catch (err: any) {
-      toast.error(err.message || "Could not save your profile");
+      if (err.code === "PHONE_SHARED") { setRelationOptions(err.relations || []); toast.error(err.message, { duration: 8000 }); } else { toast.error(err.message || "Could not save your profile"); }
     } finally {
       setSaving(false);
     }
@@ -504,9 +506,22 @@ export default function ProfilePage() {
             inputMode="numeric"
             placeholder="Enter 10-digit phone number"
             value={phone}
-            onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+            onChange={e => { setPhone(e.target.value.replace(/\D/g, "").slice(0, 10)); setPhoneRelation(""); setRelationOptions([]); }}
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
           />
+          {relationOptions.length > 0 && (
+            <div className="mt-2">
+              <label className="text-xs font-medium text-amber-700 mb-1 block">This number is already used by another account. How are you related? <span className="text-red-500">*</span></label>
+              <select
+                value={phoneRelation}
+                onChange={e => setPhoneRelation(e.target.value)}
+                className="w-full border border-amber-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-300"
+              >
+                <option value="">Select relation</option>
+                {relationOptions.map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </div>
+          )}
         </div>
         <div>
           <label className="text-xs font-medium text-gray-600 mb-1 block">Area / Locality <span className="text-red-500">*</span></label>
