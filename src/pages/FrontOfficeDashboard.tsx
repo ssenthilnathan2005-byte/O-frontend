@@ -82,15 +82,25 @@ function PatientFinder({ f, found, setFound, setField, onPick }: any) {
       {!busy && searching && !found && matches.length === 0 && <p className="text-xs text-gray-500">No patient found. For a new patient, just fill the details below.</p>}
       {found && <p className="text-xs text-emerald-700">{found.name}{found.age != null ? ", " + found.age : ""}{found.gender ? " · " + found.gender : ""} · {found.uhid}</p>}
       {matches.length > 0 && (
-        <div className="mt-2 xl:mt-0 xl:absolute xl:right-full xl:mr-4 xl:top-0 xl:w-64 rounded-lg border border-gray-200 bg-white p-2 space-y-1.5">
+        <div className="mt-2 xl:mt-0 xl:absolute xl:right-full xl:mr-4 xl:top-0 xl:w-72 rounded-lg border border-gray-200 bg-white p-2 space-y-1.5">
           <p className="text-[11px] font-medium text-gray-500">{matches.length > 1 ? matches.length + " patients found. Pick one" : "Patient found"}</p>
-          {matches.map((m: any) => (
-            <button key={m.uhid} type="button" onClick={() => pick(m)}
-              className={"w-full text-left rounded-md border px-2 py-1.5 text-sm " + (found && found.uhid === m.uhid ? "border-emerald-400 bg-emerald-50" : "border-gray-200 hover:bg-gray-50")}>
-              <span className="font-mono font-bold">{m.uhid}</span>
-              <span className="block text-xs text-gray-600">{m.name}{m.age != null ? ", " + m.age : ""}{m.gender ? " · " + m.gender : ""}</span>
-            </button>
-          ))}
+          {matches.map((m: any) => {
+            const rows: [string, any][] = [["UHID", m.uhid], ["Name", m.name], ["Age", m.age], ["Gender", m.gender], ["Phone", m.phone], ["Area", m.area], ["Blood group", m.blood_group]];
+            const sel = found && found.uhid === m.uhid;
+            return (
+              <button key={m.uhid} type="button" onClick={() => pick(m)}
+                className={"w-full text-left rounded-lg border p-3 " + (sel ? "border-emerald-400 bg-emerald-50" : "border-gray-200 hover:bg-gray-50")}>
+                <div className="grid grid-cols-[84px_1fr] gap-y-1.5 text-sm">
+                  {rows.map(([k, v]) => (
+                    <div key={k} className="contents">
+                      <span className="text-xs text-gray-500">{k}</span>
+                      <span className={(k === "UHID" ? "font-mono font-bold " : "text-gray-900 ") + "break-words"}>{v !== null && v !== undefined && v !== "" ? String(v) : "-"}</span>
+                    </div>
+                  ))}
+                </div>
+              </button>
+            );
+          })}
           {matches.length > 1 && !found && <p className="text-[11px] text-gray-400">A new person with this phone? Skip these and fill the details below.</p>}
         </div>
       )}
