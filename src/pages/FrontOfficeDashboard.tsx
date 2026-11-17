@@ -63,7 +63,7 @@ function PatientFinder({ f, found, setFound, setField, onPick }: any) {
         if (!live) return;
         const list = r.patients || [];
         setMatches(list);
-        if (list.length === 1) pick(list[0]);
+        if (list.length === 1 && (u.length >= 4 || ph.length >= 10)) { /* show card, let user confirm */ }
       } catch (e: any) { if (live) { setMatches([]); toast.error(e.message); } }
       finally { if (live) setBusy(false); }
     }, 400);
@@ -80,7 +80,20 @@ function PatientFinder({ f, found, setFound, setField, onPick }: any) {
       <p className="text-[11px] text-gray-400">Type a UHID or a phone number. Leave the UHID blank for a new patient, who gets a UHID after saving.</p>
       {busy && <p className="text-xs text-gray-500">Searching...</p>}
       {!busy && searching && !found && matches.length === 0 && <p className="text-xs text-gray-500">No patient found. For a new patient, just fill the details below.</p>}
-      {found && <p className="text-xs text-emerald-700">{found.name}{found.age != null ? ", " + found.age : ""}{found.gender ? " · " + found.gender : ""} · {found.uhid}</p>}
+      {found && (
+        <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-3 mt-1">
+          <p className="text-xs font-semibold text-emerald-700 mb-1">Patient found</p>
+          <div className="grid grid-cols-[84px_1fr] gap-y-1 text-sm">
+            {([["UHID", found.uhid], ["Name", found.name], ["Age", found.age], ["Gender", found.gender], ["Phone", found.phone], ["Area", found.area], ["Blood group", found.blood_group]] as [string,any][]).map(([k,v]) => (
+              <div key={k} className="contents">
+                <span className="text-xs text-gray-500">{k}</span>
+                <span className={(k==="UHID"?"font-mono font-bold ":"text-gray-900 ")+"break-words"}>{v!=null&&v!==""?String(v):"-"}</span>
+              </div>
+            ))}
+          </div>
+          <button type="button" onClick={() => { setFound(null); setField("uhid",""); setField("phone",""); }} className="mt-2 text-[11px] text-red-500 hover:underline">Not this patient? Clear</button>
+        </div>
+      )}
       {matches.length > 0 && (
         <div className="mt-2 xl:mt-0 xl:absolute xl:right-full xl:mr-4 xl:top-0 xl:w-72 rounded-lg border border-gray-200 bg-white p-2 space-y-1.5">
           <p className="text-[11px] font-medium text-gray-500">{matches.length > 1 ? matches.length + " patients found. Pick one" : "Patient found"}</p>
