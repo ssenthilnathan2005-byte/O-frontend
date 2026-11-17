@@ -49,6 +49,7 @@ import LabDashboard from "./pages/LabDashboard";
 import AmbulancePage from "./pages/patient/AmbulancePage";
 import PatientHomePage from "./pages/patient/PatientHomePage";
 import ProfilePage from "./pages/patient/ProfilePage";
+import PhoneRequestPopup from "@/components/PhoneRequestPopup";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ChatbotWidget from "./components/ChatbotWidget";
 import FloatingAdmissionButton from "./components/FloatingAdmissionButton";
@@ -584,6 +585,7 @@ function AppRoutes() {
         <PullToRefresh onRefresh={refreshFromStorage}>{renderPage()}</PullToRefresh>
       </main>
       <Toaster position="top-right" />
+      <PhoneRequestPopup />
       <ChatbotWidget />
       <FloatingAdmissionButton />
       <BedStatusWatcher />
