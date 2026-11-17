@@ -45,6 +45,59 @@ interface Admitted {
 const sel = "w-full h-10 rounded-md border border-gray-200 bg-white px-3 text-sm";
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
+function PatientFinder({ f, found, setFound, setField, onPick }: any) {
+  const [matches, setMatches] = useState<any[]>([]);
+  const [busy, setBusy] = useState(false);
+  function pick(x: any) { setFound(x); onPick(x); }
+  const u = String(f.uhid || "").trim();
+  const ph = String(f.phone || "").replace(/\D/g, "");
+  const searching = u.length >= 4 || ph.length >= 10;
+  useEffect(() => {
+    if (found) return;
+    if (!searching) { setMatches([]); return; }
+    let live = true;
+    const t = setTimeout(async () => {
+      setBusy(true);
+      try {
+        const r = await call("/patient-lookup?uhid=" + encodeURIComponent(u) + "&phone=" + encodeURIComponent(ph));
+        if (!live) return;
+        const list = r.patients || [];
+        setMatches(list);
+        if (list.length === 1) pick(list[0]);
+      } catch (e: any) { if (live) { setMatches([]); toast.error(e.message); } }
+      finally { if (live) setBusy(false); }
+    }, 400);
+    return () => { live = false; clearTimeout(t); };
+  }, [f.uhid, f.phone, found]);
+  return (
+    <div className="relative space-y-1.5">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1.5"><Label className="block">Patient UHID</Label>
+          <Input style={{ height: 40 }} placeholder="e.g. DB09" value={f.uhid} onChange={(e: any) => setField("uhid", e.target.value)} /></div>
+        <div className="space-y-1.5"><Label className="block">Phone</Label>
+          <Input style={{ height: 40 }} inputMode="numeric" value={f.phone} onChange={(e: any) => setField("phone", e.target.value)} /></div>
+      </div>
+      <p className="text-[11px] text-gray-400">Type a UHID or a phone number. Leave the UHID blank for a new patient, who gets a UHID after saving.</p>
+      {busy && <p className="text-xs text-gray-500">Searching...</p>}
+      {!busy && searching && !found && matches.length === 0 && <p className="text-xs text-gray-500">No patient found. For a new patient, just fill the details below.</p>}
+      {found && <p className="text-xs text-emerald-700">{found.name}{found.age != null ? ", " + found.age : ""}{found.gender ? " · " + found.gender : ""} · {found.uhid}</p>}
+      {matches.length > 0 && (
+        <div className="mt-2 xl:mt-0 xl:absolute xl:right-full xl:mr-4 xl:top-0 xl:w-64 rounded-lg border border-gray-200 bg-white p-2 space-y-1.5">
+          <p className="text-[11px] font-medium text-gray-500">{matches.length > 1 ? matches.length + " patients found. Pick one" : "Patient found"}</p>
+          {matches.map((m: any) => (
+            <button key={m.uhid} type="button" onClick={() => pick(m)}
+              className={"w-full text-left rounded-md border px-2 py-1.5 text-sm " + (found && found.uhid === m.uhid ? "border-emerald-400 bg-emerald-50" : "border-gray-200 hover:bg-gray-50")}>
+              <span className="font-mono font-bold">{m.uhid}</span>
+              <span className="block text-xs text-gray-600">{m.name}{m.age != null ? ", " + m.age : ""}{m.gender ? " · " + m.gender : ""}</span>
+            </button>
+          ))}
+          {matches.length > 1 && !found && <p className="text-[11px] text-gray-400">A new person with this phone? Skip these and fill the details below.</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RegisterWalkIn() {
   const today = new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
   const [docs, setDocs] = useState<any[]>([]);
@@ -56,16 +109,6 @@ function RegisterWalkIn() {
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState<any>(null);
   const [found, setFound] = useState<any>(null);
-  async function lookup() {
-    if (!f.uhid.trim()) { toast.error("Enter the patient's UHID"); return; }
-    if (!f.phone.trim()) { toast.error("Enter the patient's phone number first"); return; }
-    try {
-      const r = await call("/patient-lookup?uhid=" + encodeURIComponent(f.uhid.trim()) + "&phone=" + encodeURIComponent(f.phone.trim()));
-      setFound({ ...r, uhid: f.uhid.trim() });
-      const g = ["Male", "Female", "Other"].find((x) => x.toLowerCase() === String(r.gender || "").toLowerCase()) || "";
-      setF((p) => ({ ...p, patientName: r.name || p.patientName, age: r.age != null ? String(r.age) : p.age, patientGender: g || p.patientGender }));
-    } catch (e: any) { setFound(null); toast.error(e.message); }
-  }
   const selDoc: any = docs.find((d: any) => d.id === f.doctorId);
   const specialties = Array.from(new Set(docs.map((d: any) => d.specialty).filter(Boolean))).sort() as string[];
   const shownDocs = spec ? docs.filter((d: any) => d.specialty === spec) : docs;
@@ -103,7 +146,7 @@ function RegisterWalkIn() {
   }, [f.doctorId, f.date, sessionOptions.join()]);
   useEffect(() => { call("/walkin/doctors").then((r) => setDocs(r.doctors || [])).catch((e) => toast.error(e.message)); }, []);
   async function submit(confirmNew = false) {
-    if (f.uhid.trim() && !found) return toast.error("Look up the UHID first, or clear it for a new patient");
+    if (f.uhid.trim() && !found) return toast.error("Pick the patient from the list, or clear the UHID for a new patient");
     if (!f.patientName.trim()) return toast.error("Enter patient name");
     if (!f.patientGender) return toast.error("Select the patient's gender");
     if (!f.doctorId) return toast.error("Choose a doctor");
@@ -132,17 +175,14 @@ function RegisterWalkIn() {
           {done.uhid && <div className="mt-1">UHID: <span className="font-mono font-bold">{done.uhid}</span>{done.newAccount ? " (new patient). Write it on the patient's slip." : ""}</div>}
         </div>
       )}
-      <div className="space-y-1.5"><Label className="block">Existing patient UHID (optional)</Label>
-        <div className="flex gap-2">
-          <Input style={{ height: 40 }} placeholder="e.g. DB09" value={f.uhid} onChange={(e) => { setF({ ...f, uhid: e.target.value }); setFound(null); }} />
-          <Button type="button" variant="outline" onClick={lookup}>Look up</Button>
-        </div>
-        {found && <p className="text-xs text-emerald-700">{found.name}{found.age != null ? ", " + found.age : ""}{found.gender ? " · " + found.gender : ""}. Confirm this is the patient.</p>}
-        <p className="text-[11px] text-gray-400">Enter the phone below first. Leave the UHID blank for a new patient, who gets a UHID after the token is created.</p>
-      </div>
+      <PatientFinder f={f} found={found} setFound={setFound}
+        setField={(k: string, v: string) => { setF((p) => ({ ...p, [k]: v })); setFound(null); }}
+        onPick={(r: any) => {
+          const g = ["Male", "Female", "Other"].find((x) => x.toLowerCase() === String(r.gender || "").toLowerCase()) || "";
+          setF((p) => ({ ...p, uhid: r.uhid, phone: r.phone || p.phone, patientName: r.name || p.patientName, age: r.age != null ? String(r.age) : p.age, patientGender: g || p.patientGender }));
+        }} />
       <div className="space-y-1.5"><Label className="block">Patient name *</Label><Input style={{ height: 40 }} value={f.patientName} onChange={(e) => setF({ ...f, patientName: e.target.value })} /></div>
       <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1.5"><Label className="block">Phone (optional)</Label><Input style={{ height: 40 }} inputMode="numeric" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></div>
         <div className="space-y-1.5"><Label className="block">Age</Label><Input style={{ height: 40 }} inputMode="numeric" value={f.age} onChange={(e) => setF({ ...f, age: e.target.value })} /></div>
         <div className="space-y-1.5"><Label className="block">Gender</Label><select style={{ height: 40 }} className="w-full border border-input bg-background rounded-md px-3 text-sm" value={f.patientGender} onChange={(e) => setF({ ...f, patientGender: e.target.value })}><option value="">Select gender</option><option>Male</option><option>Female</option><option>Other</option></select></div>
       </div>
@@ -500,15 +540,6 @@ function Admit() {
 
   const [found, setFound] = useState<any>(null);
   const [slip, setSlip] = useState<any>(null);
-  async function lookup() {
-    if (!f.uhid.trim()) { toast.error("Enter the patient's UHID"); return; }
-    if (!f.phone.trim()) { toast.error("Enter the patient's phone number first"); return; }
-    try {
-      const r = await call("/patient-lookup?uhid=" + encodeURIComponent(f.uhid.trim()) + "&phone=" + encodeURIComponent(f.phone.trim()));
-      setFound({ ...r, uhid: f.uhid.trim() });
-      setF((p) => ({ ...p, patientName: r.name || p.patientName, age: r.age != null ? String(r.age) : p.age, gender: r.gender || p.gender }));
-    } catch (e: any) { setFound(null); toast.error(e.message); }
-  }
   const load = useCallback(async () => {
     try {
       const [d, b, i] = await Promise.all([call("/doctors"), call("/beds"), call("/inward")]);
@@ -521,7 +552,7 @@ function Admit() {
   }, [inward]);
 
   async function submit(confirmNew = false) {
-    if (f.uhid.trim() && !found) { toast.error("Look up the UHID first, or clear it for a new patient"); return; }
+    if (f.uhid.trim() && !found) { toast.error("Pick the patient from the list, or clear the UHID for a new patient"); return; }
     if (!f.patientName.trim()) { toast.error("Enter the patient name"); return; }
     if (!f.bed) { toast.error("Choose a bed"); return; }
     const [wardId, bedId] = f.bed.split("|");
@@ -554,17 +585,11 @@ function Admit() {
             <button type="button" className="text-xs underline text-emerald-800 mt-1" onClick={() => setSlip(null)}>Dismiss</button>
           </div>
         )}
-        <div className="space-y-1"><Label>Existing patient UHID (optional)</Label>
-          <div className="flex gap-2">
-            <Input placeholder="e.g. DB09" value={f.uhid} onChange={e => { setF({ ...f, uhid: e.target.value }); setFound(null); }} />
-            <Button type="button" variant="outline" onClick={lookup}>Look up</Button>
-          </div>
-          {found && <p className="text-xs text-emerald-700">{found.name}{found.age != null ? ", " + found.age : ""}{found.gender ? " · " + found.gender : ""}. Confirm this is the patient.</p>}
-          <p className="text-[11px] text-gray-400">Enter the phone below first. Leave the UHID blank for a new patient, who gets a UHID after admitting.</p>
-        </div>
+        <PatientFinder f={f} found={found} setFound={setFound}
+          setField={(k: string, v: string) => { setF((p) => ({ ...p, [k]: v })); setFound(null); }}
+          onPick={(r: any) => setF((p) => ({ ...p, uhid: r.uhid, phone: r.phone || p.phone, patientName: r.name || p.patientName, age: r.age != null ? String(r.age) : p.age, gender: r.gender || p.gender }))} />
         <div className="space-y-1"><Label>Patient name *</Label><Input value={f.patientName} onChange={e => setF({ ...f, patientName: e.target.value })} /></div>
         <div className="grid grid-cols-3 gap-2">
-          <div className="space-y-1 col-span-2"><Label>Phone</Label><Input value={f.phone} onChange={e => setF({ ...f, phone: e.target.value })} /></div>
           <div className="space-y-1"><Label>Age</Label><Input value={f.age} onChange={e => setF({ ...f, age: e.target.value })} /></div>
         </div>
         <div className="space-y-1"><Label>Gender</Label>
