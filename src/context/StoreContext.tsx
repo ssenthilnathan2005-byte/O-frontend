@@ -391,18 +391,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const u = JSON.parse(localStorage.getItem("db_user") || "null");
         if (!u || u.role !== "patient") return;
         if (!tok) { expire(); return; }
-        const payload = JSON.parse(atob(tok.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+        let payload: any = null;
+        try { payload = JSON.parse(atob(tok.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))); } catch { expire(); return; }
         if (payload && payload.exp && payload.exp * 1000 <= Date.now()) expire();
       } catch {}
     };
     const onVis = () => { if (document.visibilityState === "visible") check(); };
     check();
     const timer = setInterval(check, 30000);
-    window.addEventListener("db:session-expired", check);
+    window.addEventListener("db:session-expired", expire);
     document.addEventListener("visibilitychange", onVis);
     return () => {
       clearInterval(timer);
-      window.removeEventListener("db:session-expired", check);
+      window.removeEventListener("db:session-expired", expire);
       document.removeEventListener("visibilitychange", onVis);
     };
   }, []);
