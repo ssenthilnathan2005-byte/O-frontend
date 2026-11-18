@@ -1836,27 +1836,6 @@ export default function DoctorDashboard() {
               </p>
               <div className="grid grid-cols-1 gap-4 mb-5">
                 <div className="space-y-1.5">
-                  <Label htmlFor="doc-walkin-interval" className="text-sm font-medium">
-                    Walk-in Slot Interval
-                  </Label>
-                  <Input
-                    id="doc-walkin-interval"
-                    type="number"
-                    min={1}
-                    value={profileForm.walkInInterval}
-                    onChange={(e) =>
-                      setProfileForm((p) => ({
-                        ...p,
-                        walkInInterval: e.target.value,
-                      }))
-                    }
-                    data-ocid="profile.input"
-                  />
-                  <p className="text-xs text-gray-400">
-                    A walk-in patient slot is inserted after every N online patients (e.g. 5 means after tokens 5, 10, 15…).
-                  </p>
-                </div>
-                <div className="space-y-1.5">
                   <Label htmlFor="doc-avg-minutes" className="text-sm font-medium">
                     Avg. time per patient (minutes)
                   </Label>
