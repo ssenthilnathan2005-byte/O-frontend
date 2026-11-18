@@ -73,6 +73,8 @@ export default function BookingDialog({ doctor, hospital, open, onClose, maxDate
   const [patientPhone, setPatientPhone] = useState("");
   const [patientAge, setPatientAge]     = useState("");
   const [bookingFor, setBookingFor]     = useState<"self" | "other" | "">("");
+  const [familyMemberId, setFamilyMemberId] = useState("");
+  const memberIdForBooking = () => (bookingFor === "other" && familyMemberId && family.find(m => m.id === familyMemberId)?.name === patientName ? familyMemberId : undefined);
   const [patientYob, setPatientYob] = useState("");
   const bookingYearNow = new Date().getFullYear();
   const patientYobNum = Number(patientYob);
@@ -260,7 +262,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose, maxDate
         session: selectedSession as SessionType,
         complaint: complaint.trim() || undefined,
         phone: patientPhone.trim(),
-        patientName: patientName.trim() || undefined,
+        patientName: patientName.trim() || undefined, familyMemberId: memberIdForBooking(),
         patientGender: patientGender || undefined,
         patientBloodGroup: patientBloodGroup || undefined,
         patientArea: profile?.area || undefined,
@@ -381,7 +383,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose, maxDate
         session: selectedSession as SessionType,
         complaint: complaint.trim() || undefined,
         phone: patientPhone.trim(),
-        patientName: patientName.trim() || undefined,
+        patientName: patientName.trim() || undefined, familyMemberId: memberIdForBooking(),
         patientGender: patientGender || undefined,
         patientBloodGroup: patientBloodGroup || undefined,
         patientArea: profile?.area || undefined,
@@ -481,7 +483,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose, maxDate
           session: selectedSession as SessionType,
           complaint: complaint.trim() || undefined,
           phone: patientPhone.trim(),
-          patientName: patientName.trim() || undefined,
+          patientName: patientName.trim() || undefined, familyMemberId: memberIdForBooking(),
         patientGender: patientGender || undefined,
         patientBloodGroup: patientBloodGroup || undefined,
         patientArea: profile?.area || undefined,
@@ -672,6 +674,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose, maxDate
                         type="button"
                         onClick={() => {
                           setPatientName(m.name);
+                          setFamilyMemberId(m.id);
                           setPatientGender(m.gender || "");
                           setPatientBloodGroup(m.bloodGroup || "");
                           setPatientPhone(String(profile?.phone || "").replace(/\D/g, "").slice(-10));

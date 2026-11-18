@@ -349,7 +349,7 @@ export const bookings = {
       return get<Booking[]>(`/hospital/bookings?hospitalId=${encodeURIComponent(hospitalId)}`);
     }
   },
-  create:     (data: { doctorId: string; date: string; session: string; complaint?: string; phone: string; patientName?: string; patientAge?: string | number; patientYearOfBirth?: string | number; patientArea?: string; patientGender?: string; patientBloodGroup?: string }) =>
+  create:     (data: { doctorId: string; date: string; session: string; complaint?: string; phone: string; patientName?: string; familyMemberId?: string; patientAge?: string | number; patientYearOfBirth?: string | number; patientArea?: string; patientGender?: string; patientBloodGroup?: string }) =>
     post<Booking>("/bookings", data),
   updateStatus: (id: string, status: string)  => patch<Booking>(`/bookings/${id}/status`, { status }),
   markLate:   (id: string, etaMinutes: number) => post<{ success: boolean; etaMinutes: number }>(`/bookings/${id}/mark-late`, { etaMinutes }),
@@ -376,7 +376,7 @@ export const payments = {
   // Step 1: create Razorpay order → returns orderId, amount, keyId
   createOrder: (data: {
     doctorId: string; date: string; session: string; complaint?: string; phone: string;
-    patientName?: string; patientAge?: string | number; patientYearOfBirth?: string | number;
+    patientName?: string; familyMemberId?: string; patientAge?: string | number; patientYearOfBirth?: string | number;
     patientArea?: string; patientGender?: string; patientBloodGroup?: string;
   }) => post<{
     orderId: string; amount: number; amountRupees: number;
@@ -507,7 +507,7 @@ export interface SessionTokenState {
   isClosed: boolean; cancelledSessions: string[];
 }
 export interface PrioritySlotState {
-  label: string; status: "waiting" | "ongoing" | "completed"; patientName?: string;
+  label: string; status: "waiting" | "ongoing" | "completed"; patientName?: string; familyMemberId?: string;
 }
 export interface PatientRecord { id: string; name: string; email?: string; createdAt: string; }
 export type AppUser =
