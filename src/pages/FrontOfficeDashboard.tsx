@@ -124,7 +124,7 @@ function PatientFinder({ f, found, setFound, setField, onPick }: any) {
 function RegisterWalkIn() {
   const today = new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
   const [docs, setDocs] = useState<any[]>([]);
-  const empty = { patientName: "", phone: "", age: "", patientGender: "", complaint: "", description: "", doctorId: "", session: "morning", date: today, uhid: "" };
+  const empty = { patientName: "", phone: "", age: "", patientGender: "", complaint: "", description: "", doctorId: "", session: "morning", date: today, uhid: "", phoneRelation: "" };
   const [spec, setSpec] = useState("");
   const [syms, setSyms] = useState<string[]>([]);
   const [dateText, setDateText] = useState(today.split("-").reverse().join("-"));
@@ -178,7 +178,7 @@ function RegisterWalkIn() {
     setSaving(true);
     try {
       const { description, ...rest } = f;
-      const r = await call("/walkin", "POST", { ...rest, uhid: found ? found.uhid : undefined, confirmNew, complaint: [[...syms, f.complaint.trim()].filter(Boolean).join(", "), description.trim()].filter(Boolean).join(" - ") });
+      const r = await call("/walkin", "POST", { ...rest, phoneRelation: f.phoneRelation || undefined, uhid: found ? found.uhid : undefined, confirmNew, complaint: [[...syms, f.complaint.trim()].filter(Boolean).join(", "), description.trim()].filter(Boolean).join(" - ") });
       setDone(r);
       setF({ ...empty, doctorId: f.doctorId, session: f.session, date: f.date });
       setSyms([]);
@@ -205,6 +205,16 @@ function RegisterWalkIn() {
           setF((p) => ({ ...p, uhid: r.uhid, phone: r.phone || p.phone, patientName: r.name || p.patientName, age: r.age != null ? String(r.age) : p.age, patientGender: g || p.patientGender }));
         }} />
       <div className="space-y-1.5"><Label className="block">Patient name *</Label><Input style={{ height: 40 }} value={f.patientName} onChange={(e) => setF({ ...f, patientName: e.target.value })} /></div>
+      {!found && String(f.phone || "").replace(/\D/g, "").length === 10 && (
+        <div className="space-y-1.5">
+          <Label className="block">Relation to the existing owner of this phone (only if the number is already registered)</Label>
+          <select value={f.phoneRelation} onChange={(e) => setF({ ...f, phoneRelation: e.target.value })}
+            className="w-full border border-gray-200 rounded-lg px-3 text-sm bg-white" style={{ height: 40 }}>
+            <option value="">Not related / number is new</option>
+            {["Spouse", "Child", "Parent", "Sibling", "Other family"].map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5"><Label className="block">Age</Label><Input style={{ height: 40 }} inputMode="numeric" value={f.age} onChange={(e) => setF({ ...f, age: e.target.value })} /></div>
         <div className="space-y-1.5"><Label className="block">Gender</Label><select style={{ height: 40 }} className="w-full border border-input bg-background rounded-md px-3 text-sm" value={f.patientGender} onChange={(e) => setF({ ...f, patientGender: e.target.value })}><option value="">Select gender</option><option>Male</option><option>Female</option><option>Other</option></select></div>
