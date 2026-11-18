@@ -379,6 +379,34 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, [user?.id, user?.role]);
 
+  // Patient session expiry: drop the stale name and go back to logged-out state
+  useEffect(() => {
+    const expire = () => {
+      try { localStorage.removeItem("db_jwt"); localStorage.removeItem("db_user"); } catch {}
+      setUser(null); setBookings([]); setPatients([]); setTokenStates({});
+    };
+    const check = () => {
+      try {
+        const tok = localStorage.getItem("db_jwt");
+        const u = JSON.parse(localStorage.getItem("db_user") || "null");
+        if (!u || u.role !== "patient") return;
+        if (!tok) { expire(); return; }
+        const payload = JSON.parse(atob(tok.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+        if (payload && payload.exp && payload.exp * 1000 <= Date.now()) expire();
+      } catch {}
+    };
+    const onVis = () => { if (document.visibilityState === "visible") check(); };
+    check();
+    const timer = setInterval(check, 30000);
+    window.addEventListener("db:session-expired", check);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("db:session-expired", check);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, []);
+
   const logout = useCallback(async () => {
     const role = userRef.current?.role;
     // Remove this device's push token first, while the login token is still valid

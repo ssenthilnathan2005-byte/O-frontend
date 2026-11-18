@@ -150,6 +150,7 @@ async function req<T>(
           const hadSession = !!(localStorage.getItem("db_jwt") || localStorage.getItem("db_user"));
           clearToken();
           try { localStorage.removeItem("db_user"); } catch {}
+          try { window.dispatchEvent(new Event("db:session-expired")); } catch {}
           const authErr = new Error((data as any).error || "Your session has expired. Please log in again.");
           (authErr as any).isClientError = true;
           (authErr as any).isAuthError = true;
