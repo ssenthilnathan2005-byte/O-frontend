@@ -55,7 +55,8 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Download } from "lucide-react";
 import PrescriptionDialog from "@/components/PrescriptionDialog";
 import NurseTab from "@/components/NurseTab";
-import { Mic as NurseMic } from "lucide-react";
+import { Mic as NurseMic, UsersRound as StaffIcon } from "lucide-react";
+import StaffManagementPanel, { fetchStaffAccess } from "./StaffManagementPanel";
 import PatientHistoryModal from "@/components/PatientHistoryModal";
 import { toast } from "sonner";
 import { useStore } from "../../context/StoreContext";
@@ -209,16 +210,16 @@ function sanitizeSessionTimings(
   return result;
 }
 
-type DoctorTab = "regulator" | "livetokens" | "profile" | "presets" | "nurse";
+type DoctorTab = "regulator" | "livetokens" | "profile" | "presets" | "nurse" | "staff";
 
 function getInitialDoctorTab(): DoctorTab {
   if (typeof window === "undefined") return "regulator";
   const params = new URLSearchParams(window.location.search);
   const queryTab = params.get("doctorTab") as DoctorTab | null;
-  if (queryTab === "livetokens" || queryTab === "profile" || queryTab === "presets") return queryTab;
+  if (queryTab === "livetokens" || queryTab === "profile" || queryTab === "presets" || queryTab === "staff") return queryTab;
 
   const savedTab = window.localStorage.getItem("doctorTab") as DoctorTab | null;
-  if (savedTab === "livetokens" || savedTab === "profile" || savedTab === "presets") return savedTab;
+  if (savedTab === "livetokens" || savedTab === "profile" || savedTab === "presets" || savedTab === "staff") return savedTab;
 
   return "regulator";
 }
@@ -315,6 +316,17 @@ export default function DoctorDashboard() {
       .catch(() => {});
   }, [doctor?.hospitalId]);
   const [activeTab, setActiveTab] = useState<DoctorTab>(getInitialDoctorTab);
+  // Staff Management is a Basic-plan feature; the server decides (Premium hospitals never see it).
+  const [staffEnabled, setStaffEnabled] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    fetchStaffAccess().then((ok) => {
+      if (!alive) return;
+      setStaffEnabled(ok);
+      if (!ok) setActiveTab((t) => (t === "staff" ? "regulator" : t));
+    });
+    return () => { alive = false; };
+  }, []);
   const { nav: extraNav } = useExtraNav(["live_patients"]);
   // Sidebar visibility (shown by default); toggled by the hamburger in TopNav
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -1075,6 +1087,7 @@ export default function DoctorDashboard() {
     { key: "followups", label: "Follow-ups", icon: Bell },
     { key: "presets", label: "Presets", icon: ClipboardList },
     { key: "nurse", label: "Nurse", icon: NurseMic },
+    ...(staffEnabled ? [{ key: "staff", label: "Staff Management", icon: StaffIcon }] : []),
     ...extraNav.map((n) => ({ key: n.key, label: n.label, icon: n.icon })),
   ];
 
@@ -1686,6 +1699,7 @@ export default function DoctorDashboard() {
 
       {extraNav.map(n => (<TabsContent key={n.key} value={n.key}><ExtraPanel moduleKey={n.key.slice(2)} /></TabsContent>))}
         <TabsContent value="followups"><FollowUpsPanel /></TabsContent>
+        {staffEnabled && <TabsContent value="staff"><StaffManagementPanel /></TabsContent>}
         <TabsContent value="presets">
         <PrescriptionPresetsManager doctor={doctor} />
       </TabsContent>
