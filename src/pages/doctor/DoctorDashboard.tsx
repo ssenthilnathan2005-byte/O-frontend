@@ -327,7 +327,7 @@ export default function DoctorDashboard() {
     });
     return () => { alive = false; };
   }, []);
-  const { nav: extraNav } = useExtraNav(["live_patients"]);
+  const { nav: extraNav } = useExtraNav(["live_patients", "lab"]);
   // Sidebar visibility (shown by default); toggled by the hamburger in TopNav
   const [sidebarOpen, setSidebarOpen] = useState(true);
   useEffect(() => {
