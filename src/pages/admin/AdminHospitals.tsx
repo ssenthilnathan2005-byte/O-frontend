@@ -318,26 +318,26 @@ export default function AdminHospitals() {
       </div>
 
       <div className="rounded-xl border border-border overflow-hidden bg-card" data-ocid="admin.table">
-        <Table>
+        <Table className="min-w-[1180px]">
           <TableHeader>
-            <TableRow className="bg-muted/40">
-              <TableHead>Hospital</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead>Address</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead className="text-center">Doctors</TableHead>
-              <TableHead className="text-center">Plan</TableHead>
-              <TableHead className="text-center">Mode</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+            <TableRow className="bg-muted/40 hover:bg-muted/40">
+              <TableHead className="h-11 px-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Hospital</TableHead>
+              <TableHead className="h-11 px-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground w-[110px]">Location</TableHead>
+              <TableHead className="h-11 px-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground w-[220px]">Address</TableHead>
+              <TableHead className="h-11 px-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground w-[130px]">Phone</TableHead>
+              <TableHead className="h-11 px-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground w-[80px] text-center">Doctors</TableHead>
+              <TableHead className="h-11 px-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground w-[210px] text-center">Plan</TableHead>
+              <TableHead className="h-11 px-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground w-[130px] text-center">Mode</TableHead>
+              <TableHead className="h-11 px-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground w-[200px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {groupedHospitals.filter(([area]) => !selectedArea || area === selectedArea).map(([area, list]) => (
               <Fragment key={area}>
                 {list.map((hospital, idx) => (
-              <TableRow key={hospital.id} data-ocid={`admin.item.${idx + 1}`}>
-                <TableCell>
-                  <div className="flex items-center gap-3">
+              <TableRow key={hospital.id} className="hover:bg-muted/30" data-ocid={`admin.item.${idx + 1}`}>
+                <TableCell className="px-4 py-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     {/* Show actual photo thumbnail if available */}
                     {resolvePhotoUrl(hospital.photoUrl) ? (
                       <img
@@ -356,35 +356,35 @@ export default function AdminHospitals() {
                     >
                       <Building2 className="w-4 h-4 text-white" />
                     </div>
-                    <span className="font-medium">{hospital.name}</span>
+                    <span className="font-medium truncate max-w-[220px]" title={hospital.name}>{hospital.name}</span>
                   </div>
                 </TableCell>
-                <TableCell className="text-muted-foreground">{hospital.area}</TableCell>
-                <TableCell className="text-muted-foreground text-sm">{hospital.address ?? "—"}</TableCell>
-                <TableCell className="text-muted-foreground text-sm">{hospital.phone ?? "—"}</TableCell>
-                <TableCell className="text-center">
+                <TableCell className="px-4 py-3 text-muted-foreground whitespace-nowrap">{hospital.area}</TableCell>
+                <TableCell className="px-4 py-3 text-muted-foreground text-sm"><div className="max-w-[200px] truncate" title={hospital.address ?? ""}>{hospital.address || "—"}</div></TableCell>
+                <TableCell className="px-4 py-3 text-muted-foreground text-sm whitespace-nowrap tabular-nums">{hospital.phone || "—"}</TableCell>
+                <TableCell className="px-4 py-3 text-center">
                   <Badge variant="secondary">{getDoctorCount(hospital.id)}</Badge>
                 </TableCell>
-                <TableCell className="text-center">
+                <TableCell className="px-4 py-3 text-center">
                   <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden">
                     <button type="button"
                       onClick={() => { if (hospital.plan === "basic") return; updateHospital(hospital.id, { plan: "basic" }).then(() => toast.success("Plan changed to Basic ₹8")).catch((e: any) => toast.error(e.message || "Failed to change plan")); }}
-                      className={`px-3 py-1 text-xs font-medium transition-colors ${(hospital.plan ?? "premium") === "basic" ? "bg-gray-900 text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}>
+                      className={`px-3 py-1.5 text-xs font-medium whitespace-nowrap min-w-[76px] transition-colors ${(hospital.plan ?? "premium") === "basic" ? "bg-gray-900 text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}>
                       Basic ₹8
                     </button>
                     <button type="button"
                       onClick={() => { if (hospital.plan === "premium") return; updateHospital(hospital.id, { plan: "premium" }).then(() => toast.success("Plan changed to Premium ₹15")).catch((e: any) => toast.error(e.message || "Failed to change plan")); }}
-                      className={`px-3 py-1 text-xs font-medium transition-colors ${(hospital.plan ?? "premium") === "premium" ? "bg-teal-600 text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}>
+                      className={`px-3 py-1.5 text-xs font-medium whitespace-nowrap min-w-[96px] transition-colors ${(hospital.plan ?? "premium") === "premium" ? "bg-teal-600 text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}>
                       Premium ₹15
                     </button>
                   </div>
                 </TableCell>
-                <TableCell className="text-center">
+                <TableCell className="px-4 py-3 text-center">
                   <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden" data-ocid="admin.hospital_mode_toggle">
                     <button
                       type="button"
                       onClick={() => handleSetHospitalMode(hospital, false)}
-                      className={`px-3 py-1 text-xs font-medium transition-colors ${
+                      className={`px-3 py-1.5 text-xs font-medium min-w-[52px] transition-colors ${
                         !hospital.isFree
                           ? "bg-gray-900 text-white"
                           : "bg-white text-gray-500 hover:bg-gray-50"
@@ -395,7 +395,7 @@ export default function AdminHospitals() {
                     <button
                       type="button"
                       onClick={() => handleSetHospitalMode(hospital, true)}
-                      className={`px-3 py-1 text-xs font-medium transition-colors ${
+                      className={`px-3 py-1.5 text-xs font-medium min-w-[52px] transition-colors ${
                         hospital.isFree
                           ? "bg-teal-600 text-white"
                           : "bg-white text-gray-500 hover:bg-gray-50"
@@ -405,28 +405,29 @@ export default function AdminHospitals() {
                     </button>
                   </div>
                 </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2 justify-end">
-                    <Button variant="ghost" size="sm" onClick={() => openEditHospital(hospital)} data-ocid="admin.edit_button">
+                <TableCell className="px-4 py-3">
+                  <div className="flex items-center gap-1 justify-end">
+                    <Button variant="ghost" size="icon" className="size-8" title="Edit hospital" aria-label="Edit hospital" onClick={() => openEditHospital(hospital)} data-ocid="admin.edit_button">
                       <Edit2 className="w-4 h-4" />
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setIntegHospital(hospital)} data-ocid="admin.button">
-                      <Fingerprint className="w-4 h-4 mr-1" />Integrations
+                    <Button variant="ghost" size="icon" className="size-8" title="Integrations" aria-label="Integrations" onClick={() => setIntegHospital(hospital)} data-ocid="admin.button">
+                      <Fingerprint className="w-4 h-4" />
                     </Button>
-                    {/* hide Login for Basic: Basic hospitals are not provided with a Hospital Admin account */}
-                    {(hospital.plan ?? "premium") !== "basic" && (
-                      <Button variant="ghost" size="sm" onClick={() => openLoginDialog(hospital)} data-ocid="admin.button">
-                        <KeyRound className="w-4 h-4 mr-1" />
-                        Login
+                    {/* hide Login for Basic: Basic hospitals are not provided with a Hospital Admin account.
+                        An empty slot keeps the remaining icons aligned across rows. */}
+                    {(hospital.plan ?? "premium") !== "basic" ? (
+                      <Button variant="ghost" size="icon" className="size-8" title="Staff login" aria-label="Staff login" onClick={() => openLoginDialog(hospital)} data-ocid="admin.button">
+                        <KeyRound className="w-4 h-4" />
                       </Button>
+                    ) : (
+                      <span className="size-8 shrink-0" aria-hidden="true" />
                     )}
-                    <Button variant="ghost" size="sm" onClick={() => openPhotoDialog(hospital)} data-ocid="admin.button">
-                      <ImageIcon className="w-4 h-4 mr-1" />
-                      {resolvePhotoUrl(hospital.photoUrl) ? "Change Photo" : "Add Photo"}
+                    <Button variant="ghost" size="icon" className="size-8" title={resolvePhotoUrl(hospital.photoUrl) ? "Change photo" : "Add photo"} aria-label={resolvePhotoUrl(hospital.photoUrl) ? "Change photo" : "Add photo"} onClick={() => openPhotoDialog(hospital)} data-ocid="admin.button">
+                      <ImageIcon className="w-4 h-4" />
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" data-ocid="admin.delete_button">
+                        <Button variant="ghost" size="icon" className="size-8 text-destructive hover:text-destructive" title="Delete hospital" aria-label="Delete hospital" data-ocid="admin.delete_button">
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </AlertDialogTrigger>
