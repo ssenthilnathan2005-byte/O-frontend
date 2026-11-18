@@ -79,7 +79,6 @@ export default function StaffManagementPanel() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [specialty, setSpecialty] = useState("");
-  const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [revealed, setRevealed] = useState<Record<string, string>>({});
   const [changing, setChanging] = useState<Account | null>(null);
@@ -106,17 +105,15 @@ export default function StaffManagementPanel() {
   }, []);
 
   async function create() {
-    const id = loginId.trim();
     if (!name.trim()) { toast.error("Enter the full name"); return; }
     if (role === "doctor" && !specialty.trim()) { toast.error("Enter the specialty"); return; }
     if (role !== "doctor" && !/^[0-9+\-\s]{7,15}$/.test(phone.trim())) { toast.error("Enter a valid phone number"); return; }
-    if (id.length < 3) { toast.error("Login ID must be at least 3 characters"); return; }
     if (password.trim().length < 6) { toast.error("Password must be at least 6 characters"); return; }
     setBusy(true);
     try {
-      await call("/" + role, "POST", { name: name.trim(), phone: phone.trim(), specialty: specialty.trim(), loginId: id, password: password.trim() });
-      setName(""); setPhone(""); setSpecialty(""); setLoginId(""); setPassword("");
-      toast.success(roleLabel + " account created");
+      const d = await call("/" + role, "POST", { name: name.trim(), phone: phone.trim(), specialty: specialty.trim(), password: password.trim() });
+      setName(""); setPhone(""); setSpecialty(""); setPassword("");
+      toast.success(roleLabel + " account created. Login ID: " + d.loginId, { duration: 10000 });
       load(true);
     } catch (e: any) { toast.error(e.message || "Could not create the account"); }
     finally { setBusy(false); }
@@ -175,16 +172,15 @@ export default function StaffManagementPanel() {
             <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone number" inputMode="tel" autoComplete="off"
               className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-teal-400" />
           )}
-          <input value={loginId} onChange={e => setLoginId(e.target.value)} placeholder="Login ID" autoComplete="off"
-            className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-teal-400" />
           <PasswordField value={password} onChange={setPassword} placeholder="Password" />
+          <div className="flex items-center justify-end">
+            <button type="button" disabled={busy} onClick={create}
+              className="flex items-center justify-center gap-2 rounded-lg bg-teal-500 px-6 py-2.5 text-sm font-medium text-white hover:bg-teal-600 disabled:opacity-60">
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}Create
+            </button>
+          </div>
         </div>
-        <div className="mt-3 flex justify-end">
-          <button type="button" disabled={busy} onClick={create}
-            className="flex items-center justify-center gap-2 rounded-lg bg-teal-500 px-6 py-2.5 text-sm font-medium text-white hover:bg-teal-600">
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}Create
-          </button>
-        </div>
+        <p className="mt-3 text-xs text-gray-500">The Login ID is generated automatically and shown here after the account is created.</p>
       </div>
 
       {loading && <div className="py-6 text-center text-gray-400"><Loader2 className="mx-auto h-5 w-5 animate-spin" /></div>}
