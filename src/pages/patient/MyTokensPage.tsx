@@ -277,9 +277,9 @@ export default function MyTokensPage() {
                             <div className="flex items-center gap-2 flex-wrap">
                               <h3 className="font-bold text-gray-900">{booking.doctorName}</h3>
                               {(booking as any).forMe
-                                ? <span className="inline-flex items-center whitespace-nowrap mt-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 text-[11px] font-medium">Booked by family</span>
+                                ? <span className="inline-block whitespace-nowrap mt-1 text-xs font-bold text-teal-700">Booked by family</span>
                                 : (booking as any).forUserId
-                                  ? <span className="inline-flex items-center whitespace-nowrap mt-1 px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200 text-[11px] font-medium">For: {booking.patientName}</span>
+                                  ? <span className="inline-block whitespace-nowrap mt-1 text-xs font-bold text-teal-700">For: {booking.patientName}</span>
                                   : null}
                               <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${STATUS_BADGE[booking.status]?.className ?? "bg-gray-100 text-gray-600"}`}>
                                 {STATUS_BADGE[booking.status]?.label ?? booking.status}
@@ -383,9 +383,9 @@ export default function MyTokensPage() {
                             <div className="flex items-center gap-2 flex-wrap">
                               <h4 className="font-bold text-gray-900">{booking.doctorName}</h4>
                               {(booking as any).forMe
-                                ? <span className="inline-flex items-center whitespace-nowrap mt-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 text-[11px] font-medium">Booked by family</span>
+                                ? <span className="inline-block whitespace-nowrap mt-1 text-xs font-bold text-teal-700">Booked by family</span>
                                 : (booking as any).forUserId
-                                  ? <span className="inline-flex items-center whitespace-nowrap mt-1 px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200 text-[11px] font-medium">For: {booking.patientName}</span>
+                                  ? <span className="inline-block whitespace-nowrap mt-1 text-xs font-bold text-teal-700">For: {booking.patientName}</span>
                                   : null}
                               <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_BADGE[booking.status]?.className ?? "bg-gray-100 text-gray-600"}`}>
                                 {STATUS_BADGE[booking.status]?.label ?? booking.status}
