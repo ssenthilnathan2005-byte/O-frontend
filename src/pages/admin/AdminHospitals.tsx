@@ -413,10 +413,13 @@ export default function AdminHospitals() {
                     <Button variant="ghost" size="sm" onClick={() => setIntegHospital(hospital)} data-ocid="admin.button">
                       <Fingerprint className="w-4 h-4 mr-1" />Integrations
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => openLoginDialog(hospital)} data-ocid="admin.button">
-                      <KeyRound className="w-4 h-4 mr-1" />
-                      Login
-                    </Button>
+                    {/* hide Login for Basic: Basic hospitals are not provided with a Hospital Admin account */}
+                    {(hospital.plan ?? "premium") !== "basic" && (
+                      <Button variant="ghost" size="sm" onClick={() => openLoginDialog(hospital)} data-ocid="admin.button">
+                        <KeyRound className="w-4 h-4 mr-1" />
+                        Login
+                      </Button>
+                    )}
                     <Button variant="ghost" size="sm" onClick={() => openPhotoDialog(hospital)} data-ocid="admin.button">
                       <ImageIcon className="w-4 h-4 mr-1" />
                       {resolvePhotoUrl(hospital.photoUrl) ? "Change Photo" : "Add Photo"}
