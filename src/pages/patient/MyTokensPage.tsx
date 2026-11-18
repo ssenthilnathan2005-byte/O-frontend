@@ -143,7 +143,7 @@ export default function MyTokensPage() {
   const patientId = (user as { id: string }).id;
 
   const allMyBookings = bookings
-    .filter((b) => b.patientId === patientId)
+    .filter((b) => b.patientId === patientId || (b as any).forUserId === patientId)
     .sort((a, b) => {
       const timeA = new Date(`${a.date}T00:00:00`).getTime();
       const timeB = new Date(`${b.date}T00:00:00`).getTime();
