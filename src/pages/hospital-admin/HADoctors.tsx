@@ -30,7 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Edit2, Plus, Trash2 } from "lucide-react";
+import { Edit2, Plus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useStore } from "../../context/StoreContext";
@@ -82,7 +82,7 @@ const SPECIALTIES = [
 ];
 
 export default function HADoctors() {
-  const { doctors, user, addDoctor, deleteDoctor, updateDoctor } = useStore();
+  const { doctors, user, addDoctor, updateDoctor } = useStore();
   const hospitalId = user && user.role === "hospital_admin" ? user.hospitalId : "";
   const myDoctors = doctors.filter((d) => d.hospitalId === hospitalId);
 
@@ -210,15 +210,6 @@ export default function HADoctors() {
 
   function handleToggleAvailability(doc: Doctor) {
     updateDoctor(doc.id, { isAvailable: !(doc.isAvailable ?? true) });
-  }
-
-  async function handleDelete(id: string) {
-    try {
-      await deleteDoctor(id);
-      toast.success("Doctor deleted");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to delete doctor");
-    }
   }
 
   return (
@@ -375,31 +366,6 @@ export default function HADoctors() {
                     <Button variant="ghost" size="sm" onClick={() => openEdit(doctor)}>
                       <Edit2 className="w-4 h-4" />
                     </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Doctor</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to delete <strong>{doctor.name}</strong>? All associated
-                            sessions, tokens, and bookings will be removed.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDelete(doctor.id)}
-                            className="bg-destructive hover:bg-destructive/90"
-                          >
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
                   </div>
                 </TableCell>
               </TableRow>
