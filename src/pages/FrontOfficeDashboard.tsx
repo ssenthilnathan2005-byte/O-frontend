@@ -45,7 +45,8 @@ interface Admitted {
 const sel = "w-full h-10 rounded-md border border-gray-200 bg-white px-3 text-sm";
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-function PatientFinder({ f, found, setFound, setField, onPick }: any) {
+function PatientFinder({ f, found, setFound, setField, onPick, onNew }: any) {
+  const [skipPhone, setSkipPhone] = useState("");
   const [matches, setMatches] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
   function pick(x: any) { setFound(x); onPick(x); }
@@ -63,12 +64,12 @@ function PatientFinder({ f, found, setFound, setField, onPick }: any) {
         if (!live) return;
         const list = r.patients || [];
         setMatches(list);
-        if (list.length === 1) pick(list[0]);
+        if (list.length === 1 && !(skipPhone && skipPhone === ph && !u)) pick(list[0]);
       } catch (e: any) { if (live) { setMatches([]); toast.error(e.message); } }
       finally { if (live) setBusy(false); }
     }, 400);
     return () => { live = false; clearTimeout(t); };
-  }, [f.uhid, f.phone, found]);
+  }, [f.uhid, f.phone, found, skipPhone]);
   return (
     <div className="relative space-y-1.5">
       <div className="grid grid-cols-2 gap-4">
@@ -91,7 +92,9 @@ function PatientFinder({ f, found, setFound, setField, onPick }: any) {
               </div>
             ))}
           </div>
-          <button type="button" onClick={() => { setFound(null); setField("uhid",""); setField("phone",""); }} className="mt-2 text-[11px] text-red-500 hover:underline">Not this patient? Clear</button>
+          <><button type="button" onClick={() => { setFound(null); setField("uhid",""); setField("phone",""); }} className="mt-2 text-[11px] text-red-500 hover:underline">Not this patient? Clear</button>
+          {onNew && <button type="button" onClick={() => { setSkipPhone(ph); onNew(); }} className="mt-2 ml-3 text-[11px] text-teal-700 hover:underline">New person on this phone</button>}
+          </>
         </div>
       )}
       {matches.length > 0 && (
@@ -203,7 +206,8 @@ function RegisterWalkIn() {
         onPick={(r: any) => {
           const g = ["Male", "Female", "Other"].find((x) => x.toLowerCase() === String(r.gender || "").toLowerCase()) || "";
           setF((p) => ({ ...p, uhid: r.uhid, phone: r.phone || p.phone, patientName: r.name || p.patientName, age: r.age != null ? String(r.age) : p.age, patientGender: g || p.patientGender }));
-        }} />
+        }}
+        onNew={() => { setFound(null); setF((p) => ({ ...p, uhid: "", patientName: "", age: "", patientGender: "", phoneRelation: "" })); }} />
       <div className="space-y-1.5"><Label className="block">Patient name *</Label><Input style={{ height: 40 }} value={f.patientName} onChange={(e) => setF({ ...f, patientName: e.target.value })} /></div>
       {!found && String(f.phone || "").replace(/\D/g, "").length === 10 && (
         <div className="space-y-1.5">
