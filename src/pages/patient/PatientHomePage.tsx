@@ -198,8 +198,35 @@ export default function PatientHomePage() {
   const prescriptionCount = realPrescriptionCount ?? 0;
   const nearbyHospitals = hospitals.slice(0, 6);
 
+
+const [showUpdateBanner, setShowUpdateBanner] = React.useState(false);
+
+React.useEffect(() => {
+  import("@capacitor/core").then(({ Capacitor }) => {
+    if (!Capacitor.isNativePlatform()) return;
+    fetch("https://api.doctorbooked.in/api/app-version")
+      .then(r => r.json())
+      .then(data => {
+        if (data.version && data.version !== "1.2.0") {
+          setShowUpdateBanner(true);
+        }
+      })
+      .catch(() => {});
+  });
+}, []);
+
   const mobileView = (
     <div className="flex flex-col bg-gray-50" style={{ minHeight: "100dvh" }}>
+      {showUpdateBanner && (
+        <div style={{ background: "#FFF3CD", borderBottom: "1px solid #FFC107", padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "14px" }}>
+          <span>🔔 A new update is available!</span>
+          <div style={{ display: "flex", gap: "10px" }}>
+            <a href="https://play.google.com/store/apps/details?id=in.doctorbooked.app" target="_blank" rel="noreferrer" style={{ color: "#856404", fontWeight: "bold" }}>Update Now</a>
+            <button onClick={() => setShowUpdateBanner(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#856404" }}>✕</button>
+          </div>
+        </div>
+      )}
+
       {/* Header: continuous teal band, content sheet slides over it */}
       <div className="relative overflow-hidden bg-gradient-to-br from-teal-800 via-teal-700 to-teal-600 px-4 pt-5 pb-12 text-white">
         <TealOverscroll />
