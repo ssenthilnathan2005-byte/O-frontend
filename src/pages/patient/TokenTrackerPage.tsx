@@ -10,6 +10,7 @@ import { hasSessionEndedForDate, SESSION_TIMES, getSessionLabelForDate, resolveS
 import { useRouter } from "../../router/RouterContext";
 import type { SessionType, TokenStatus } from "../../types";
 import { useQueueNotifications } from "../../hooks/useQueueNotifications";
+import PatientBreakBanner from "../../components/PatientBreakBanner";
 
 const TOKEN_CLASSES: Record<TokenStatus, string> = {
   white:    "bg-gray-100 border-2 border-gray-200 text-gray-400",
@@ -316,6 +317,15 @@ export default function TokenTrackerPage({ sessionId, tokenNumber }: Props) {
           </div>
         </div>
       </div>
+
+      {/* ── Doctor break notice ── */}
+      {booking && !isPastSession && (
+        <PatientBreakBanner
+          doctorId={booking.doctorId}
+          doctorName={booking.doctorName}
+          bookingDate={booking.date}
+        />
+      )}
 
       {/* ── Queue Position status ── */}
       <div className={`rounded-2xl border p-5 mb-4 ${msg.bg}`}>
