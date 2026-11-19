@@ -57,6 +57,7 @@ import PrescriptionDialog from "@/components/PrescriptionDialog";
 import NurseTab from "@/components/NurseTab";
 import { Mic as NurseMic, UsersRound as StaffIcon } from "lucide-react";
 import StaffManagementPanel, { fetchStaffAccess } from "./StaffManagementPanel";
+import BreakManagementCard from "./BreakManagementCard";
 import PatientHistoryModal from "@/components/PatientHistoryModal";
 import { toast } from "sonner";
 import { useStore } from "../../context/StoreContext";
@@ -298,6 +299,7 @@ export default function DoctorDashboard() {
     tokenStates,
     getBookingsForSession,
     hospitals,
+    refreshFromStorage,
   } = useStore();
 
   const doctorUser = user as { doctorId: string; code: string };
@@ -1234,6 +1236,12 @@ export default function DoctorDashboard() {
                 )}
               </CardContent>
             </Card>
+
+            {/* ── Break Management ── */}
+            <BreakManagementCard
+              doctorId={doctor?.id}
+              onChanged={() => { void refreshFromStorage(); }}
+            />
 
             {/* Session selectors */}
             <Card className="border border-gray-100 shadow-sm">
