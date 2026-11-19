@@ -9,6 +9,16 @@ import { initTranslate } from "./lib/translate";
 import { initNavHeight } from "./lib/navHeight";
 import { registerOfflineSW } from "./lib/offlineSW";
 
+// Clear stale storage on version upgrade
+const APP_VERSION = "1.2.0";
+const storedVersion = localStorage.getItem("app_version");
+if (storedVersion !== APP_VERSION) {
+  localStorage.clear();
+  sessionStorage.clear();
+  localStorage.setItem("app_version", APP_VERSION);
+}
+
+
 BigInt.prototype.toJSON = function () {
   return this.toString();
 };
