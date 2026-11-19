@@ -199,9 +199,9 @@ export default function PatientHomePage() {
   const nearbyHospitals = hospitals.slice(0, 6);
 
 
-const [showUpdateBanner, setShowUpdateBanner] = React.useState(false);
+const [showUpdateBanner, setShowUpdateBanner] = useState(false);
 
-React.useEffect(() => {
+useEffect(() => {
   import("@capacitor/core").then(({ Capacitor }) => {
     if (!Capacitor.isNativePlatform()) return;
     fetch("https://api.doctorbooked.in/api/app-version")
