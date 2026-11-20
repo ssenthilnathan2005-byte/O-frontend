@@ -81,7 +81,7 @@ let _bkDeniedAt = 0;
 let _bkLastAt = 0;
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const { navigate, resetToLogin } = useRouter();
+  const { navigate, navigateUrl, resetToLogin } = useRouter();
 
   // Auto-register push for already logged-in patients on app start
   useEffect(() => {
@@ -351,7 +351,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         toast.info(title, {
           description: body,
           duration: 7000,
-          action: link ? { label: "View", onClick: () => navigate({ path: link as any }) } : undefined,
+          action: link ? { label: "View", onClick: () => navigateUrl(link) } : undefined,
         });
 
         if (Capacitor.isNativePlatform()) {

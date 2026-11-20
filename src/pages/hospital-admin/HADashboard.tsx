@@ -391,20 +391,20 @@ export default function HADashboard() {
     group: Group; label: string; value: string | number; sub: string;
     icon: LucideIcon; color: string; bg: string; to?: string;
   }[] = [
-    { group: "opd", label: "Total Doctors", value: myDoctors.length, sub: `${availableDoctors} available today`, icon: UserCog, color: "text-teal-600", bg: "bg-teal-50", to: "/hospital-admin/doctors" },
+    { group: "opd", label: "Total Doctors", value: myDoctors.length, sub: `${availableDoctors} available today`, icon: UserCog, color: "text-teal-600", bg: "bg-teal-50", to: "/admin/doctors" },
     { group: "opd", label: isToday ? "Today's Bookings" : "Bookings", value: bTotal, sub: `${bConfirmed} confirmed`, icon: CalendarCheck, color: "text-blue-600", bg: "bg-blue-50" },
     { group: "opd", label: isToday ? "Completed Today" : "Completed", value: bCompleted, sub: `${bUnvisited} unvisited`, icon: Activity, color: "text-green-600", bg: "bg-green-50" },
-    { group: "opd", label: "Pharmacy Staff", value: pharmacyCount, sub: hasPharmacy ? "pharmacy active" : "no pharmacy", icon: Pill, color: "text-orange-600", bg: "bg-orange-50", to: "/hospital-admin/pharmacy" },
-    { group: "ipd", label: "Bed Occupancy", value: `${bedStats.occupied}/${bedStats.total}`, sub: bedStats.maintenance > 0 ? `${bedStats.maintenance} cleaning` : "beds occupied", icon: BedDouble, color: "text-red-600", bg: "bg-red-50", to: "/hospital-admin/wards" },
-    { group: "ipd", label: "Admitted Patients", value: activeInward, sub: "currently inward", icon: Users2, color: "text-indigo-600", bg: "bg-indigo-50", to: "/hospital-admin/ipd" },
-    { group: "opd", label: "Pending Lab Orders", value: pendingLabOrders, sub: "awaiting results", icon: FlaskConical, color: "text-purple-600", bg: "bg-purple-50", to: "/hospital-admin/lab" },
+    { group: "opd", label: "Pharmacy Staff", value: pharmacyCount, sub: hasPharmacy ? "pharmacy active" : "no pharmacy", icon: Pill, color: "text-orange-600", bg: "bg-orange-50", to: "/admin/pharmacy" },
+    { group: "ipd", label: "Bed Occupancy", value: `${bedStats.occupied}/${bedStats.total}`, sub: bedStats.maintenance > 0 ? `${bedStats.maintenance} cleaning` : "beds occupied", icon: BedDouble, color: "text-red-600", bg: "bg-red-50", to: "/admin/wards" },
+    { group: "ipd", label: "Admitted Patients", value: activeInward, sub: "currently inward", icon: Users2, color: "text-indigo-600", bg: "bg-indigo-50", to: "/admin/ipd" },
+    { group: "opd", label: "Pending Lab Orders", value: pendingLabOrders, sub: "awaiting results", icon: FlaskConical, color: "text-purple-600", bg: "bg-purple-50", to: "/admin/lab" },
     {
       group: "opd", label: "Low Stock Items", value: lowStockCount,
       sub: lowStockCount > 0 ? "needs reordering" : "all stocked",
       icon: Package,
       color: lowStockCount > 0 ? "text-amber-600" : "text-gray-500",
       bg: lowStockCount > 0 ? "bg-amber-50" : "bg-gray-50",
-      to: "/hospital-admin/inventory",
+      to: "/admin/inventory",
     },
   ];
   const TILE_MODULE: Record<string, string> = { "Bed Occupancy": "wards", "Admitted Patients": "ipd", "Pending Lab Orders": "lab", "Low Stock Items": "inventory", "Pharmacy Staff": "pharmacy" };

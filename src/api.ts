@@ -26,6 +26,8 @@
  *    Background 30s refresh errors were reaching error toasts. Fix: quiet
  *    mode for background calls, loud mode for user-initiated calls.
  */
+import { isProtectedPath, loginUrlForPath, rememberNextUrl } from "./router/routes";
+
 
 const BASE    = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 const WS_BASE = BASE.replace(/^http/, "ws").replace(/\/api$/, "");
@@ -154,8 +156,13 @@ async function req<T>(
           const authErr = new Error((data as any).error || "Your session has expired. Please log in again.");
           (authErr as any).isClientError = true;
           (authErr as any).isAuthError = true;
-          if (typeof window !== "undefined" && hadSession && window.location.pathname !== "/") {
-            setTimeout(() => { window.location.href = "/"; }, 400);
+          if (typeof window !== "undefined" && hadSession && isProtectedPath(window.location.pathname, window.location.search)) {
+            // Send them to the right login and bring them back to this page afterwards.
+            const { pathname, search } = window.location;
+            setTimeout(() => {
+              rememberNextUrl(pathname, search);
+              window.location.href = loginUrlForPath(pathname, search);
+            }, 400);
           }
           throw authErr;
         }

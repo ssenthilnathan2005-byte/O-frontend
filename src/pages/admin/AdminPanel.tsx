@@ -33,17 +33,17 @@ import AdminPatients from "./AdminPatients";
 import AdminPharmacies from "./AdminPharmacies";
 
 const NAV_ITEMS = [
-  { path: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { path: "/admin/hospitals", label: "Hospitals", icon: Building2 },
-  { path: "/admin/doctors", label: "Doctors", icon: UserCog },
-  { path: "/admin/patients", label: "Patients", icon: Users },
-  { path: "/admin/bookings", label: "Bookings", icon: BookOpen },
-  { path: "/admin/lab-bookings", label: "Lab Bookings", icon: ClipboardList },
-  { path: "/admin/billing", label: "Billing", icon: IndianRupee },
-  { path: "/admin/pharmacies", label: "Pharmacies", icon: Pill },
-  { path: "/admin/ambulance", label: "Ambulance", icon: Ambulance },
-  { path: "/admin/labs", label: "Labs", icon: FlaskConical },
-  { path: "/admin/enquiries", label: "Enquiries", icon: Inbox },
+  { path: "/super-admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { path: "/super-admin/hospitals", label: "Hospitals", icon: Building2 },
+  { path: "/super-admin/doctors", label: "Doctors", icon: UserCog },
+  { path: "/super-admin/patients", label: "Patients", icon: Users },
+  { path: "/super-admin/bookings", label: "Bookings", icon: BookOpen },
+  { path: "/super-admin/lab-bookings", label: "Lab Bookings", icon: ClipboardList },
+  { path: "/super-admin/billing", label: "Billing", icon: IndianRupee },
+  { path: "/super-admin/pharmacies", label: "Pharmacies", icon: Pill },
+  { path: "/super-admin/ambulance", label: "Ambulance", icon: Ambulance },
+  { path: "/super-admin/labs", label: "Labs", icon: FlaskConical },
+  { path: "/super-admin/enquiries", label: "Enquiries", icon: Inbox },
 ] as const;
 
 export default function AdminPanel() {
@@ -62,31 +62,31 @@ export default function AdminPanel() {
     return () => { alive = false; window.clearInterval(id); };
   }, []);
   const badge = (path: string) =>
-    path === "/admin/enquiries" && newEnq > 0 ? (
+    path === "/super-admin/enquiries" && newEnq > 0 ? (
       <span className="ml-auto rounded-full bg-teal-400 px-2 py-0.5 text-[10px] font-bold text-gray-900">{newEnq}</span>
     ) : null;
 
   function renderContent() {
     switch (route.path) {
-      case "/admin/hospitals":
+      case "/super-admin/hospitals":
         return <AdminHospitals />;
-      case "/admin/doctors":
+      case "/super-admin/doctors":
         return <AdminDoctors />;
-      case "/admin/patients":
+      case "/super-admin/patients":
         return <AdminPatients />;
-      case "/admin/bookings":
+      case "/super-admin/bookings":
         return <AdminBookings />;
-      case "/admin/lab-bookings":
+      case "/super-admin/lab-bookings":
         return <AdminLabBookings />;
-      case "/admin/billing":
+      case "/super-admin/billing":
         return <AdminBilling />;
-      case "/admin/pharmacies":
+      case "/super-admin/pharmacies":
         return <AdminPharmacies />;
-      case "/admin/ambulance":
+      case "/super-admin/ambulance":
         return <AdminAmbulance />;
-      case "/admin/labs":
+      case "/super-admin/labs":
         return <AdminLabs />;
-      case "/admin/enquiries":
+      case "/super-admin/enquiries":
         return <AdminEnquiries />;
       default:
         return <AdminDashboard />;

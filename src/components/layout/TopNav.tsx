@@ -144,7 +144,7 @@ export default function TopNav() {
           <button
             type="button"
             className="flex flex-col items-center gap-0.5 px-3 py-1 focus:outline-none"
-            onClick={() => navigate({ path: "/" })}
+            onClick={() => navigate(user ? { path: "/patient/dashboard" } : { path: "/" })}
             data-ocid="nav.link"
           >
             <div className="w-14 h-14 -mt-5 rounded-full bg-teal-600 shadow-lg flex items-center justify-center border-4 border-white">
@@ -545,7 +545,7 @@ export default function TopNav() {
           <button
             type="button"
             className="flex flex-col items-center gap-0.5 px-3 py-1 focus:outline-none"
-            onClick={() => navigate({ path: "/" })}
+            onClick={() => navigate(user ? { path: "/patient/dashboard" } : { path: "/" })}
             data-ocid="nav.link"
           >
             <div className="w-14 h-14 -mt-5 rounded-full bg-teal-600 shadow-lg flex items-center justify-center border-4 border-white">

@@ -1,5 +1,6 @@
 import { useBodyScrollLock } from "../lib/useBodyScrollLock";
 import { useState } from "react";
+import { useTabRoute } from "../router/RouterContext";
 import { HeartPulse, LogOut, Building2, User, LayoutDashboard, Stethoscope, Menu, X } from "lucide-react";
 import { useStore } from "../context/StoreContext";
 import NurseWards from "./nurse/NurseWards";
@@ -16,11 +17,15 @@ const NAV: { key: Tab; label: string; icon: typeof LayoutDashboard }[] = [
 export default function NurseDashboard() {
   const { user, logout } = useStore();
   const u = user as any;
-  const [tab, setTab] = useState<Tab>("dashboard");
   const [drawerOpen, setDrawerOpen] = useState(false);
   useBodyScrollLock(drawerOpen);
   const { nav: extraNav, can, loading: permLoading } = useExtraNav(["beds_wards", "vitals"]);
   const { has } = useModules();
+  // The open page lives in the URL: /nurse/dashboard, /nurse/wards ...
+  const [tab, setTab] = useTabRoute("/nurse", {
+    allowed: ["dashboard", ...(can("beds_wards") && has("wards") ? ["wards"] : []), ...extraNav.map((n) => n.key)],
+    ready: !permLoading,
+  });
   const hospitalName = u?.hospitalName || "Hospital";
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";

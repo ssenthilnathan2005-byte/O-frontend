@@ -78,7 +78,7 @@ const splitCsv = (s?: string) => (s ? s.split(",").filter(Boolean) : []);
 
 // Filters sent by the Billing charts arrive as route.query
 function drillFromRoute(r: Route): Drill {
-  const q = r.path === "/hospital-admin/all-patients" ? r.query : undefined;
+  const q = r.path === "/admin/all-patients" ? r.query : undefined;
   if (!q) return NO_DRILL;
   return {
     doctorIds: splitCsv(q.doctorId), statuses: splitCsv(q.status), payment: q.payment ?? "",

@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import * as api from "../api";
 import type { LabTest, LabBooking } from "../api";
 import { useStore } from "../context/StoreContext";
+import { useTabRoute } from "../router/RouterContext";
 import LabTokenPanel from "./LabTokenPanel";
 import LabStatusControl from "./LabStatusControl";
 import LabHomeCollectionSetting from "./LabHomeCollectionSetting";
@@ -22,7 +23,8 @@ export default function LabDashboard() {
   const { user, logout } = useStore();
   const labName = (user as any)?.labName || "Your Lab";
 
-  const [tab, setTab] = useState<"tokens" | "bookings" | "tests">("tokens");
+  // The open page lives in the URL: /lab-admin/dashboard, /lab-admin/bookings, /lab-admin/tests
+  const [tab, setTab] = useTabRoute("/lab-admin", { allowed: ["tokens", "bookings", "tests"] });
 
   return (
     <div className="min-h-screen bg-gray-50">

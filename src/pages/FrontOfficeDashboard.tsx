@@ -2,6 +2,7 @@ import { hasSessionEndedForDate, getSessionLabelForDate } from "../data/seed";
 import VitalsScanAll from "@/components/VitalsScanAll";
 import DateInput from "@/components/DateInput";
 import { useState, useEffect, useCallback } from "react";
+import { useTabRoute } from "@/router/RouterContext";
 import { toast } from "sonner";
 import { LogOut, RefreshCw, UserCheck, BedDouble, Undo2, ClipboardList, Activity, Receipt, Printer, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -689,9 +690,13 @@ function Admit() {
 
 export default function FrontOfficeDashboard() {
   const { user, logout } = useStore() as any;
-  const [tab, setTab] = useState<string>("op");
-  const { nav: extraNav } = useExtraNav(["live_patients", "ipd", "beds_wards"]);
+  const { nav: extraNav, loading: extraLoading } = useExtraNav(["live_patients", "ipd", "beds_wards"]);
   const { has } = useModules();
+  // The open page lives in the URL: /front-office/dashboard, /front-office/register-patient ...
+  const [tab, setTab] = useTabRoute("/front-office", {
+    allowed: ["op", "walkin", ...(has("ipd") ? ["admit"] : []), ...(has("bed_bookings") ? ["beds"] : []), ...extraNav.map((n: any) => n.key)],
+    ready: !extraLoading,
+  });
   const tabCls = (on: boolean) => "flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium " + (on ? "bg-teal-500 text-white" : "bg-white border border-gray-200 text-gray-600");
   return (
     <div className="min-h-screen bg-gray-50">

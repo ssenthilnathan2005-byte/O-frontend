@@ -4,332 +4,209 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
 import { Capacitor } from "@capacitor/core";
 import { App as CapApp } from "@capacitor/app";
-type Route =
-  | { path: "/" }
-  | {
-      path: "/login";
-      tab?: "patient" | "doctor";
-      patientMode?: "login" | "signup";
-    }
-  | { path: "/patient/hospitals"; city?: string }
-  | { path: "/patient/hospital"; id: string }
-  | { path: "/patient/tokens" }
-  | { path: "/patient/admission" }
-  | { path: "/patient/prescriptions" }
-  | { path: "/patient/profile" }
-  | { path: "/patient/track"; sessionId: string; tokenNumber: number }
-  | { path: "/doctor" }
-  | { path: "/admin" }
-  | { path: "/admin/hospitals" }
-  | { path: "/admin/doctors" }
-  | { path: "/admin/patients" }
-  | { path: "/admin/sessions" }
-  | { path: "/admin/bookings" }
-  | { path: "/admin/pharmacies" }
-  | { path: "/admin/ambulance" }
-  | { path: "/admin/labs" }
-  | { path: "/admin/lab-bookings" }
-  | { path: "/admin/billing" }
-  | { path: "/admin/enquiries" }
-  | { path: "/hospital-admin/login" }
-  | { path: "/hospital-admin" }
-  | { path: "/hospital-admin/doctors" }
-  | { path: "/hospital-admin/patients" }
-  | { path: "/hospital-admin/pharmacy" }
-    | { path: "/hospital-admin/pharmacy/revenue" }
-    | { path: "/hospital-admin/pharmacy/inventory" }
-    | { path: "/hospital-admin/pharmacy/patients" }
-    | { path: "/hospital-admin/pharmacy/sold" }
-  | { path: "/hospital-admin/pharmacy/gst" }
-    | { path: "/hospital-admin/pharmacy/stock" }
-  | { path: "/hospital-admin/inward" }
-  | { path: "/hospital-admin/ipd" }
-  | { path: "/hospital-admin/lab" }
-  | { path: "/hospital-admin/wards" }
-  | { path: "/hospital-admin/all-patients"; query?: Record<string, string> }
-  | { path: "/hospital-admin/inventory" }
-  | { path: "/hospital-admin/hr" }
-  | { path: "/hospital-admin/attendance" }
-  | { path: "/hospital-admin/billing" }
-  | { path: "/hospital-admin/permissions" }
-  | { path: "/hospital-admin/passwords" }
-  | { path: "/hospital-admin/functioning" }
-  | { path: "/pharmacy/login" }
-  | { path: "/front-office/login" }
-  | { path: "/nurse/login" }
-  | { path: "/nurse" }
-  | { path: "/hospital-admin/nurses" }
-  | { path: "/hospital-admin/front-desk" }
-  | { path: "/terms" }
-  | { path: "/privacy" }
-  | { path: "/about" }
-  | { path: "/pharmacies" }
-  | { path: "/labs" }
-  | { path: "/labs/detail"; id: string }
-  | { path: "/labs/track"; bookingId: string }
-  | { path: "/lab-admin/login" }
-  | { path: "/hospital-lab/login" }
-  | { path: "/pharmacy/detail"; id: string }
-  | { path: "/pharmacy-owner/login" }
-  | { path: "/pharmacy-owner/register" }
-  | { path: "/pharmacy-owner/dashboard" }
-  | { path: "/ambulance" }
-  | { path: "/delete-account" };
+import {
+  type Route,
+  type TabBase,
+  TAB_CONFIG,
+  clearNext,
+  homeRoute,
+  isRole,
+  loginUrlForPath,
+  ownerOf,
+  parseUrl,
+  pathnameOf,
+  toUrl,
+} from "./routes";
+
+// The address bar IS the router state. Every navigation writes a real URL with
+// history.pushState; Back/Forward, refresh and pasted links all go through
+// parseUrl(). There is no separate in-memory page stack any more.
+
 interface RouterCtx {
   route: Route;
   navigate: (r: Route) => void;
-  goBack: () => void;
+  /** Open a path from a notification or link, e.g. "/labs/track?bookingId=1". */
+  navigateUrl: (url: string) => void;
   replace: (r: Route) => void;
+  /** Kept for existing callers: same as replace(). */
   reset: (r: Route) => void;
   resetToLogin: (role?: string) => void;
+  goBack: () => void;
 }
 const RouterContext = createContext<RouterCtx | null>(null);
 
-function getInitialRoute(): Route {
-  const { pathname, search } = window.location;
-  const params = new URLSearchParams(search);
-  const token = params.get("token");
-  const mode = params.get("mode");
-  const tab = params.get("tab") as "patient" | "doctor" | null;
-  const patientMode = params.get("patientMode") as "login" | "signup" | null;
-  const sessionId = params.get("sessionId") ?? "";
-  const tokenNumber = Number.parseInt(params.get("tokenNumber") ?? "0", 10);
-  const hospitalId = params.get("id") ?? "";
-  const city = params.get("city") ?? undefined;
+function readLocation(): Route {
+  return parseUrl(window.location.pathname, window.location.search);
+}
 
-  if (token && (!mode || mode === "reset")) {
-    return { path: "/login", tab: "patient", patientMode: "login" };
+function storedRole(): string | null {
+  try {
+    if (!localStorage.getItem("db_jwt")) return null;
+    return JSON.parse(localStorage.getItem("db_user") || "null")?.role ?? null;
+  } catch {
+    return null;
   }
-
-  if (pathname === "/login") {
-    return {
-      path: "/login",
-      tab: tab ?? "patient",
-      patientMode:
-        patientMode ?? "login",
-    };
-  }
-
-  if (pathname === "/patient/hospitals") return { path: "/patient/hospitals", city };
-  if (pathname === "/patient/hospital") return { path: "/patient/hospital", id: hospitalId };
-  if (pathname === "/patient/tokens") return { path: "/patient/tokens" };
-  if (pathname === "/patient/admission") return { path: "/patient/admission" };
-  if (pathname === "/patient/prescriptions") return { path: "/patient/prescriptions" };
-  if (pathname === "/patient/track") {
-    return {
-      path: "/patient/track",
-      sessionId,
-      tokenNumber: Number.isFinite(tokenNumber) ? tokenNumber : 0,
-    };
-  }
-  if (pathname === "/doctor") return { path: "/doctor" };
-  if (pathname === "/admin") return { path: "/admin" };
-  if (pathname === "/admin/hospitals") return { path: "/admin/hospitals" };
-  if (pathname === "/admin/doctors") return { path: "/admin/doctors" };
-  if (pathname === "/admin/patients") return { path: "/admin/patients" };
-  if (pathname === "/admin/sessions") return { path: "/admin/sessions" };
-  if (pathname === "/admin/bookings") return { path: "/admin/bookings" };
-  if (pathname === "/admin/pharmacies") return { path: "/admin/pharmacies" };
-  if (pathname === "/admin/ambulance") return { path: "/admin/ambulance" };
-  if (pathname === "/admin/labs") return { path: "/admin/labs" };
-  if (pathname === "/admin/lab-bookings") return { path: "/admin/lab-bookings" };
-  if (pathname === "/admin/billing") return { path: "/admin/billing" };
-  if (pathname === "/admin/enquiries") return { path: "/admin/enquiries" };
-  if (pathname === "/hospital-admin/login") return { path: "/hospital-admin/login" };
-  if (pathname === "/hospital-admin/doctors") return { path: "/hospital-admin/doctors" };
-  if (pathname === "/hospital-admin/patients") return { path: "/hospital-admin/patients" };
-  if (pathname === "/hospital-admin/pharmacy") return { path: "/hospital-admin/pharmacy" };
-  if (pathname === "/hospital-admin/pharmacy/revenue") return { path: "/hospital-admin/pharmacy/revenue" };
-  if (pathname === "/hospital-admin/pharmacy/inventory") return { path: "/hospital-admin/pharmacy/inventory" };
-  if (pathname === "/hospital-admin/pharmacy/patients") return { path: "/hospital-admin/pharmacy/patients" };
-  if (pathname === "/hospital-admin/pharmacy/sold") return { path: "/hospital-admin/pharmacy/sold" };
-  if (pathname === "/hospital-admin/pharmacy/gst") return { path: "/hospital-admin/pharmacy/gst" };
-  if (pathname === "/hospital-admin/pharmacy/stock") return { path: "/hospital-admin/pharmacy/stock" };
-  if (pathname === "/hospital-admin/inward") return { path: "/hospital-admin/inward" };
-  if (pathname === "/hospital-admin/ipd") return { path: "/hospital-admin/ipd" };
-  if (pathname === "/hospital-admin/lab") return { path: "/hospital-admin/lab" };
-  if (pathname === "/hospital-admin/wards") return { path: "/hospital-admin/wards" };
-  if (pathname === "/hospital-admin/all-patients") return { path: "/hospital-admin/all-patients" };
-  if (pathname === "/hospital-admin/inventory") return { path: "/hospital-admin/inventory" };
-  if (pathname === "/hospital-admin/hr") return { path: "/hospital-admin/hr" };
-  if (pathname === "/hospital-admin/attendance") return { path: "/hospital-admin/attendance" };
-  if (pathname === "/hospital-admin/billing") return { path: "/hospital-admin/billing" };
-  if (pathname === "/hospital-admin/permissions") return { path: "/hospital-admin/permissions" };
-  if (pathname === "/hospital-admin/passwords") return { path: "/hospital-admin/passwords" };
-  if (pathname === "/hospital-admin/functioning") return { path: "/hospital-admin/functioning" };
-  if (pathname === "/hospital-admin") return { path: "/hospital-admin" };
-  if (pathname === "/pharmacy/login") return { path: "/pharmacy/login" };
-  if (pathname === "/front-office/login") return { path: "/front-office/login" };
-  if (pathname === "/nurse/login") return { path: "/nurse/login" };
-  if (pathname === "/nurse") return { path: "/nurse" };
-  if (pathname === "/hospital-admin/nurses") return { path: "/hospital-admin/nurses" };
-  if (pathname === "/hospital-admin/front-desk") return { path: "/hospital-admin/front-desk" };
-  if (pathname === "/terms") return { path: "/terms" };
-  if (pathname === "/privacy") return { path: "/privacy" };
-  if (pathname === "/about") return { path: "/about" };
-  if (pathname === "/delete-account") return { path: "/delete-account" };
-
-  if (pathname === "/pharmacies") return { path: "/pharmacies" };
-  if (pathname === "/pharmacy/detail") return { path: "/pharmacy/detail", id: hospitalId };
-  if (pathname === "/pharmacy-owner/login") return { path: "/pharmacy-owner/login" };
-  if (pathname === "/pharmacy-owner/register") return { path: "/pharmacy-owner/register" };
-  if (pathname === "/pharmacy-owner/dashboard") return { path: "/pharmacy-owner/dashboard" };
-  if (pathname === "/labs") return { path: "/labs" };
-  if (pathname === "/labs/detail") return { path: "/labs/detail", id: hospitalId };
-  if (pathname === "/labs/track") return { path: "/labs/track", bookingId: params.get("bookingId") ?? "" };
-  if (pathname === "/hospital-lab/login") return { path: "/hospital-lab/login" };
-  if (pathname === "/lab-admin/login") return { path: "/lab-admin/login" };
-  if (pathname === "/ambulance") return { path: "/ambulance" };
-  return { path: "/" };
-}
-
-
-function hasSession(): boolean {
-  try { return !!localStorage.getItem("db_jwt"); } catch { return false; }
-}
-function isProtectedRoute(r: Route): boolean {
-  const p = r.path;
-  if (p === "/hospital-admin/login") return false;
-  return (
-    p.startsWith("/patient/") ||
-    p === "/doctor" ||
-    p === "/nurse" ||
-    p.startsWith("/admin") ||
-    p.startsWith("/hospital-admin") ||
-    p === "/pharmacy-owner/dashboard"
-  );
-}
-function loginRouteForPath(_p: string): Route {
-  return { path: "/login", tab: "patient", patientMode: "login" };
-}
-function loginRouteForRole(_role?: string): Route {
-  return { path: "/login", tab: "patient", patientMode: "login" };
-}
-function loginUrl(r: Route): string {
-  if (r.path === "/login" && r.tab === "doctor") return "/login?tab=doctor&patientMode=login";
-  return r.path;
 }
 
 export function RouterProvider({ children }: { children: ReactNode }) {
-  // full in-app navigation stack (used for rendering)
-  const [history, setHistory] = useState<Route[]>([getInitialRoute()]);
-  const route = history[history.length - 1];
+  const [route, setRoute] = useState<Route>(readLocation);
+  const routeRef = useRef(route);
+  routeRef.current = route;
+  // How many in-app pages sit behind the current one. 0 = first page of this visit.
+  const depthRef = useRef(0);
 
-  // keep a ref in sync so the popstate handler always reads the latest stack
-  const historyRef = useRef(history);
-  historyRef.current = history;
-
-  // On first mount, seed the browser's real history entry with our stack so
-  // that popstate events (from the hardware/browser back button) have
-  // something to compare against.
+  // First load: adopt the depth stored in history (survives refresh) and rewrite
+  // legacy / unknown URLs (/doctor, /hospital-admin/doctors, /nonsense) to the
+  // canonical address without adding a history entry.
   useEffect(() => {
-    window.history.replaceState({ stack: history }, "");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const navigate = useCallback((r: Route) => {
-    setHistory((prev) => {
-      const next = [...prev, r];
-      // Push a REAL browser/webview history entry (same pathname, so hosts
-      // that 404 on a direct pathname refresh are unaffected) carrying our
-      // in-app stack in its state. This is what makes the hardware/browser
-      // back button step back through in-app pages instead of leaving the
-      // site immediately.
-      window.history.pushState({ stack: next }, "");
-      return next;
-    });
-  }, []);
-
-  const replace = useCallback((r: Route) => {
-    setHistory((prev) => {
-      const next = [...prev.slice(0, -1), r];
-      window.history.replaceState({ stack: next }, "");
-      return next;
-    });
-  }, []);
-
-  const reset = useCallback((r: Route) => {
-    const next = [r];
-    window.history.replaceState({ stack: next }, "");
-    setHistory(next);
-  }, []);
-
-  const resetToLogin = useCallback((role?: string) => {
-    reset(loginRouteForRole(role));
-  }, [reset]);
-
-  const goBack = useCallback(() => {
-    // Delegate to the browser's own back navigation. This fires a
-    // popstate event, which the listener below uses to update our
-    // in-app stack — so both the on-screen "back" buttons and the
-    // phone's hardware back button go through the same code path and
-    // stay in sync.
-    if (historyRef.current.length > 1) {
-      window.history.back();
+    const st = window.history.state as { idx?: number } | null;
+    depthRef.current = typeof st?.idx === "number" ? st.idx : 0;
+    const canon = toUrl(routeRef.current);
+    const keepQuery = routeRef.current.path === "/login" && /[?&]token=/.test(window.location.search);
+    const target = keepQuery ? "/login" + window.location.search : canon;
+    if (pathnameOf(target) !== window.location.pathname) {
+      window.history.replaceState({ idx: depthRef.current }, "", target);
+    } else if (typeof st?.idx !== "number") {
+      window.history.replaceState({ ...(st ?? {}), idx: depthRef.current }, "");
     }
   }, []);
 
+  const commit = useCallback((r: Route, mode: "push" | "replace") => {
+    const url = toUrl(r);
+    const current = window.location.pathname + window.location.search;
+    if (mode === "push" && url !== current) {
+      depthRef.current += 1;
+      window.history.pushState({ idx: depthRef.current }, "", url);
+    } else {
+      window.history.replaceState({ idx: depthRef.current }, "", url);
+    }
+    setRoute(r);
+  }, []);
+
+  const navigate = useCallback((r: Route) => commit(r, "push"), [commit]);
+  const replace = useCallback((r: Route) => commit(r, "replace"), [commit]);
+  const reset = replace;
+
+  const navigateUrl = useCallback(
+    (url: string) => {
+      try {
+        const u = new URL(url, window.location.origin);
+        if (u.origin !== window.location.origin) return; // never leave the app from a link
+        commit(parseUrl(u.pathname, u.search), "push");
+      } catch {
+        /* ignore malformed links */
+      }
+    },
+    [commit],
+  );
+
+  const resetToLogin = useCallback(
+    (_role?: string) => {
+      clearNext();
+      commit({ path: "/login", tab: "patient", patientMode: "login" }, "replace");
+    },
+    [commit],
+  );
+
+  const goBack = useCallback(() => {
+    if (depthRef.current > 0) {
+      window.history.back();
+      return;
+    }
+    // Opened straight on this page (link, refresh, new tab): there is no earlier
+    // in-app page, so go to the right home instead of leaving the site.
+    const role = storedRole();
+    commit(isRole(role) ? homeRoute(role) : { path: "/" }, "replace");
+  }, [commit]);
+
+  // Browser Back / Forward / history.go(): the URL decides the page.
   useEffect(() => {
     const onPopState = (e: PopStateEvent) => {
-      const stack = (e.state as { stack?: Route[] } | null)?.stack;
-      if (stack && stack.length > 0) {
-        const top = stack[stack.length - 1];
-        if (isProtectedRoute(top) && !hasSession()) {
-          const nx = [loginRouteForPath(top.path)];
-          window.history.replaceState({ stack: nx }, "");
-          setHistory(nx);
-          return;
-        }
-        setHistory(stack);
-      }
-      // If there's no stack in state (user has backed out past everything
-      // we pushed), we simply do nothing here and let the browser itself
-      // navigate away/exit — which is the correct, expected behavior once
-      // the in-app stack is exhausted.
+      const idx = (e.state as { idx?: number } | null)?.idx;
+      if (typeof idx === "number") depthRef.current = idx;
+      const next = readLocation();
+      if (toUrl(next) !== toUrl(routeRef.current)) setRoute(next);
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
-  // Back-forward cache: a frozen copy of an old page can reappear after logout.
+  // Back-forward cache: a frozen copy of a signed-in page can reappear after logout.
   useEffect(() => {
     const onPageShow = (e: PageTransitionEvent) => {
-      const cur = historyRef.current[historyRef.current.length - 1];
-      if (e.persisted && !hasSession() && isProtectedRoute(cur)) {
-        window.location.replace(loginUrl(loginRouteForPath(cur.path)));
+      if (!e.persisted) return;
+      const cur = routeRef.current;
+      if (isRole(ownerOf(cur)) && !storedRole()) {
+        window.location.replace(loginUrlForPath(window.location.pathname, window.location.search));
       }
     };
     window.addEventListener("pageshow", onPageShow);
     return () => window.removeEventListener("pageshow", onPageShow);
   }, []);
 
-  // Hardware back button — native app only
+  // Hardware back button (Android app)
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
     const handler = CapApp.addListener("backButton", () => {
-      if (historyRef.current.length > 1) {
-        window.history.back();
-      } else {
-        CapApp.exitApp();
-      }
+      if (depthRef.current > 0) window.history.back();
+      else CapApp.exitApp();
     });
-    return () => { handler.then(h => h.remove()); };
+    return () => {
+      handler.then((h) => h.remove());
+    };
   }, []);
 
-  return (
-    <RouterContext.Provider value={{ route, navigate, replace, reset, resetToLogin, goBack }}>
-      {children}
-    </RouterContext.Provider>
+  const value = useMemo(
+    () => ({ route, navigate, navigateUrl, replace, reset, resetToLogin, goBack }),
+    [route, navigate, navigateUrl, replace, reset, resetToLogin, goBack],
   );
+  return <RouterContext.Provider value={value}>{children}</RouterContext.Provider>;
 }
+
 export function useRouter(): RouterCtx {
   const ctx = useContext(RouterContext);
   if (!ctx) throw new Error("useRouter must be used within RouterProvider");
   return ctx;
 }
+
+/**
+ * Binds the pages inside a role dashboard to the URL (doctor/profile, pharmacy/stock ...).
+ *   const [tab, setTab] = useTabRoute("/doctor", { allowed, ready });
+ * - tab:     the page to show (the dashboard's default when the URL says "dashboard")
+ * - setTab:  opens another page; the address bar and Back button follow
+ * - allowed: pages this user may open; a URL for any other page is replaced with the dashboard
+ * - ready:   set false while permissions are still loading so a valid URL is not bounced early
+ */
+export function useTabRoute(
+  base: TabBase,
+  opts: { allowed?: readonly string[]; ready?: boolean } = {},
+): readonly [string, (tab: string) => void] {
+  const { route, navigate, replace } = useRouter();
+  const def = TAB_CONFIG[base].default;
+  const here = route.path === base;
+  const requested = here ? (route as { tab?: string }).tab : undefined;
+  const wanted = requested ?? def;
+  const known = !opts.allowed || opts.allowed.includes(wanted);
+  const ready = opts.ready !== false;
+
+  useEffect(() => {
+    if (here && requested !== undefined && ready && !known) replace({ path: base } as Route);
+  }, [here, requested, ready, known, base, replace]);
+
+  const setTab = useCallback(
+    (t: string) => {
+      if (t === wanted) return;
+      navigate({ path: base, tab: t === def ? undefined : t } as Route);
+    },
+    [base, def, wanted, navigate],
+  );
+  return [known ? wanted : def, setTab] as const;
+}
+
 export type { Route };

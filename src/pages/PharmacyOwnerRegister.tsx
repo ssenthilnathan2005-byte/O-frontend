@@ -30,7 +30,6 @@ export default function PharmacyOwnerRegister() {
       const res = await api.pharmacyOwner.register(form);
       login(res.user, res.token);
       toast.success("Pharmacy registered!");
-      navigate({ path: "/pharmacy-owner/dashboard" });
     } catch (err: any) {
       toast.error(err.message || "Registration failed");
     } finally { setLoading(false); }

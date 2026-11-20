@@ -27,46 +27,46 @@ import useModules from "../../hooks/useModules";
 import { PharmRevenue, PharmInventory, PharmPatients, PharmSold, PharmStockUpdate, usePharmacySocket } from "./PharmacyModule";
 
 const NAV_ITEMS = [
-  { path: "/hospital-admin/functioning", label: "Hospital Functioning", icon: Settings2 },
-  { path: "/hospital-admin", label: "Dashboard", icon: LayoutDashboard },
-  { path: "/hospital-admin/billing", label: "Revenue", icon: Receipt },
-  { path: "/hospital-admin/all-patients", label: "All Patients", icon: Users },
-  { path: "/hospital-admin/attendance", label: "Attendance", icon: Fingerprint },
-  { path: "/hospital-admin/wards", label: "Beds & Wards", icon: Stethoscope },
-  { path: "/hospital-admin/doctors", label: "Doctors", icon: UserCog },
-  { path: "/hospital-admin/front-desk", label: "Front Desk", icon: ClipboardList },
-  { path: "/hospital-admin/hr", label: "HR / Staff", icon: ClipboardList },
-  { path: "/hospital-admin/inventory", label: "Inventory", icon: Package },
-  { path: "/hospital-admin/ipd", label: "IPD / Inward", icon: BedDouble },
-  { path: "/hospital-admin/lab", label: "Laboratory", icon: FlaskConical },
-  { path: "/hospital-admin/patients", label: "Live Patients", icon: Users2 },
-  { path: "/hospital-admin/nurses", label: "Nurses", icon: HeartPulse },
-  { path: "/hospital-admin/permissions", label: "Permissions", icon: ShieldCheck },
-  { path: "/hospital-admin/passwords", label: "Password Management", icon: KeyRound },
-  { path: "/hospital-admin/pharmacy", label: "Pharmacy", icon: Pill },
+  { path: "/admin/functioning", label: "Hospital Functioning", icon: Settings2 },
+  { path: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { path: "/admin/billing", label: "Revenue", icon: Receipt },
+  { path: "/admin/all-patients", label: "All Patients", icon: Users },
+  { path: "/admin/attendance", label: "Attendance", icon: Fingerprint },
+  { path: "/admin/wards", label: "Beds & Wards", icon: Stethoscope },
+  { path: "/admin/doctors", label: "Doctors", icon: UserCog },
+  { path: "/admin/front-desk", label: "Front Desk", icon: ClipboardList },
+  { path: "/admin/hr", label: "HR / Staff", icon: ClipboardList },
+  { path: "/admin/inventory", label: "Inventory", icon: Package },
+  { path: "/admin/ipd", label: "IPD / Inward", icon: BedDouble },
+  { path: "/admin/lab", label: "Laboratory", icon: FlaskConical },
+  { path: "/admin/patients", label: "Live Patients", icon: Users2 },
+  { path: "/admin/nurses", label: "Nurses", icon: HeartPulse },
+  { path: "/admin/permissions", label: "Permissions", icon: ShieldCheck },
+  { path: "/admin/passwords", label: "Password Management", icon: KeyRound },
+  { path: "/admin/pharmacy", label: "Pharmacy", icon: Pill },
 ] as const;
 
 const NAV_MODULE: Record<string, string | undefined> = {
-  "/hospital-admin/wards": "wards",
-  "/hospital-admin/ipd": "ipd",
-  "/hospital-admin/inventory": "inventory",
-  "/hospital-admin/lab": "lab",
-  "/hospital-admin/nurses": "nursing",
-  "/hospital-admin/pharmacy": "pharmacy",
+  "/admin/wards": "wards",
+  "/admin/ipd": "ipd",
+  "/admin/inventory": "inventory",
+  "/admin/lab": "lab",
+  "/admin/nurses": "nursing",
+  "/admin/pharmacy": "pharmacy",
 };
 
 const PHARMACY_SUB = [
-  { path: "/hospital-admin/pharmacy/inventory", label: "Inventory Management", icon: Package },
-  { path: "/hospital-admin/pharmacy/patients", label: "Patient Purchases", icon: Users },
-  { path: "/hospital-admin/pharmacy/sold", label: "Sales History", icon: ShoppingCart },
-  { path: "/hospital-admin/pharmacy/gst", label: "GST Invoice", icon: Receipt },
-  { path: "/hospital-admin/pharmacy/stock", label: "Stock Update", icon: ClipboardList },
-  { path: "/hospital-admin/pharmacy", label: "Staff & Setup", icon: UserCog },
+  { path: "/admin/pharmacy/inventory", label: "Inventory Management", icon: Package },
+  { path: "/admin/pharmacy/patients", label: "Patient Purchases", icon: Users },
+  { path: "/admin/pharmacy/sold", label: "Sales History", icon: ShoppingCart },
+  { path: "/admin/pharmacy/gst", label: "GST Invoice", icon: Receipt },
+  { path: "/admin/pharmacy/stock", label: "Stock Update", icon: ClipboardList },
+  { path: "/admin/pharmacy", label: "Staff & Setup", icon: UserCog },
 ] as const;
 
 function PharmacyMenu({ onNavigate }: { onNavigate?: () => void }) {
   const { route, navigate } = useRouter();
-  const inPharmacy = route.path.startsWith("/hospital-admin/pharmacy");
+  const inPharmacy = route.path.startsWith("/admin/pharmacy");
   const [open, setOpen] = useState(inPharmacy);
   useEffect(() => { if (inPharmacy) setOpen(true); }, [inPharmacy]);
   return (
@@ -117,30 +117,30 @@ export default function HospitalAdminPanel() {
   const hospitalName = user && user.role === "hospital_admin" ? user.hospitalName : "Hospital Admin";
 
   function renderContent() {
-    const need = route.path.startsWith("/hospital-admin/pharmacy") ? "pharmacy" : NAV_MODULE[route.path];
+    const need = route.path.startsWith("/admin/pharmacy") ? "pharmacy" : NAV_MODULE[route.path];
     if (!has(need)) return <div className="p-6 text-sm text-gray-500">This module is not enabled for your hospital type.</div>;
-    if (route.path === "/hospital-admin/ipd") return <HAInward />;
-    if (route.path === "/hospital-admin/patients") return <HAPatients />;
-    if (route.path === "/hospital-admin/all-patients") return <HAAllPatients />;
-    if (route.path === "/hospital-admin/pharmacy/revenue") return <PharmRevenue />;
-    if (route.path === "/hospital-admin/pharmacy/inventory") return <PharmInventory iconActions />;
-    if (route.path === "/hospital-admin/pharmacy/patients") return <PharmPatients />;
-    if (route.path === "/hospital-admin/pharmacy/sold") return <PharmSold />;
-    if (route.path === "/hospital-admin/pharmacy/gst") return <GstInvoice />;
-    if (route.path === "/hospital-admin/pharmacy/stock") return <PharmStockUpdate />;
-    if (route.path === "/hospital-admin/pharmacy") return <HAPharmacy />;
-    if (route.path === "/hospital-admin/doctors") return <HADoctors />;
-    if (route.path === "/hospital-admin/lab") return <HALab />;
-    if (route.path === "/hospital-admin/wards") return <HAWards />;
-    if (route.path === "/hospital-admin/inventory") return <HAInventory />;
-    if (route.path === "/hospital-admin/hr") return <HAHR />;
-    if (route.path === "/hospital-admin/nurses") return <HANurses />;
-    if (route.path === "/hospital-admin/front-desk") return <div className="w-full space-y-4 p-4 md:p-6"><div className="flex items-center gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600"><ClipboardList className="h-5 w-5" /></div><div><h1 className="text-xl font-bold text-gray-900">Front Desk</h1><p className="text-sm text-gray-500">Daily fee collections and front office logins.</p></div></div><HAFrontDeskCollections /><HAFrontOfficeStaff /></div>;
-    if (route.path === "/hospital-admin/attendance") return <HAAttendance />;
-    if (route.path === "/hospital-admin/billing") return <HABilling />;
-    if (route.path === "/hospital-admin/permissions") return <HAPermissions />;
-    if (route.path === "/hospital-admin/passwords") return <HAPasswordManagement />;
-    if (route.path === "/hospital-admin/functioning") return <HospitalFunctioning />;
+    if (route.path === "/admin/ipd") return <HAInward />;
+    if (route.path === "/admin/patients") return <HAPatients />;
+    if (route.path === "/admin/all-patients") return <HAAllPatients />;
+    if (route.path === "/admin/pharmacy/revenue") return <PharmRevenue />;
+    if (route.path === "/admin/pharmacy/inventory") return <PharmInventory iconActions />;
+    if (route.path === "/admin/pharmacy/patients") return <PharmPatients />;
+    if (route.path === "/admin/pharmacy/sold") return <PharmSold />;
+    if (route.path === "/admin/pharmacy/gst") return <GstInvoice />;
+    if (route.path === "/admin/pharmacy/stock") return <PharmStockUpdate />;
+    if (route.path === "/admin/pharmacy") return <HAPharmacy />;
+    if (route.path === "/admin/doctors") return <HADoctors />;
+    if (route.path === "/admin/lab") return <HALab />;
+    if (route.path === "/admin/wards") return <HAWards />;
+    if (route.path === "/admin/inventory") return <HAInventory />;
+    if (route.path === "/admin/hr") return <HAHR />;
+    if (route.path === "/admin/nurses") return <HANurses />;
+    if (route.path === "/admin/front-desk") return <div className="w-full space-y-4 p-4 md:p-6"><div className="flex items-center gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600"><ClipboardList className="h-5 w-5" /></div><div><h1 className="text-xl font-bold text-gray-900">Front Desk</h1><p className="text-sm text-gray-500">Daily fee collections and front office logins.</p></div></div><HAFrontDeskCollections /><HAFrontOfficeStaff /></div>;
+    if (route.path === "/admin/attendance") return <HAAttendance />;
+    if (route.path === "/admin/billing") return <HABilling />;
+    if (route.path === "/admin/permissions") return <HAPermissions />;
+    if (route.path === "/admin/passwords") return <HAPasswordManagement />;
+    if (route.path === "/admin/functioning") return <HospitalFunctioning />;
     return <HADashboard />;
   }
 
@@ -164,8 +164,8 @@ export default function HospitalAdminPanel() {
 
         <nav className="violet-scroll-dark flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 py-4 space-y-1">
           {NAV_ITEMS.filter((n) => has(NAV_MODULE[n.path])).map(({ path, label, icon: Icon }) => {
-            if (path === "/hospital-admin/pharmacy") return <PharmacyMenu key={path} />;
-            const isActive = route.path === path || (route.path === "/hospital-admin" && path === "/hospital-admin");
+            if (path === "/admin/pharmacy") return <PharmacyMenu key={path} />;
+            const isActive = route.path === path || (route.path === "/admin/dashboard" && path === "/admin/dashboard");
             return (
               <button
                 key={path}
@@ -225,7 +225,7 @@ export default function HospitalAdminPanel() {
               </button>
             </div>
             <nav className="violet-scroll-dark flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y px-3 py-4 space-y-1">
-              {NAV_ITEMS.filter((n) => has(NAV_MODULE[n.path])).map(({ path, label, icon: Icon }) => path === "/hospital-admin/pharmacy" ? <PharmacyMenu key={path} onNavigate={() => setDrawerOpen(false)} /> : (
+              {NAV_ITEMS.filter((n) => has(NAV_MODULE[n.path])).map(({ path, label, icon: Icon }) => path === "/admin/pharmacy" ? <PharmacyMenu key={path} onNavigate={() => setDrawerOpen(false)} /> : (
                 <button
                   key={path}
                   type="button"

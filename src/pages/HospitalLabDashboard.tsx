@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTabRoute } from "../router/RouterContext";
 import { BedDouble, CheckCircle, FlaskConical, LogOut, Phone, X, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -37,8 +38,12 @@ export default function HospitalLabDashboard() {
   const [resultFor, setResultFor] = useState<Order | null>(null);
   const [resultValue, setResultValue] = useState("");
   const [busy, setBusy] = useState(false);
-  const [tab, setTab] = useState<string>("board");
-  const { nav: extraNav } = useExtraNav(["lab"]);
+  const { nav: extraNav, loading: extraLoading } = useExtraNav(["lab"]);
+  // The open page lives in the URL: /hospital-lab/dashboard, /hospital-lab/bookings ...
+  const [tab, setTab] = useTabRoute("/hospital-lab", {
+    allowed: ["board", "orders", "inpatients", ...extraNav.map((n) => n.key)],
+    ready: !extraLoading,
+  });
 
   async function call(path: string, method = "GET", body?: any) {
     const res = await fetch(`${BASE}/hospital-lab-staff${path}`, {

@@ -4,7 +4,7 @@ import AboutPage from "./components/AboutPage";
 import PullToRefresh from "./components/PullToRefresh";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Calendar, ChevronRight, Clock, MapPin, User, Search, Navigation, Loader2, XCircle, Users, Hospital, Pill, Ambulance, FileText, FlaskConical } from "lucide-react";
-import { useEffect, useRef, useCallback, useState, useState as useMobileState } from "react";
+import { useEffect, useLayoutEffect, useRef, useCallback, useState, useState as useMobileState } from "react";
 import { useNearMe } from "./hooks/useNearMe";
 import { loadGoogleMaps } from "./lib/googleMaps";
 import { motion } from "motion/react";
@@ -56,6 +56,7 @@ import FloatingAdmissionButton from "./components/FloatingAdmissionButton";
 import BedStatusWatcher from "./components/BedStatusWatcher";
 import LocationAlwaysPrompt from "./components/LocationAlwaysPrompt";
 import { RouterProvider, useRouter } from "./router/RouterContext";
+import { ownerOf, rememberNext, resolveAccess, takeNext } from "./router/routes";
 import PrescriptionAlert from "./components/PrescriptionAlert";
 
 function resolvePhotoUrl(url: string | null | undefined): string | null {
@@ -466,97 +467,110 @@ function LandingPage() {
 
 function AppRoutes() {
   const { user, serverStatus, refreshFromStorage } = useStore();
-  const { route } = useRouter();
+  const { route, replace } = useRouter();
+  const role = (user as { role?: string } | null)?.role ?? null;
+
+  // Route guard. The URL must match who is signed in:
+  //  - signed out on a staff/patient page  -> that area's login (and we remember the page)
+  //  - signed in on another role's page    -> your own dashboard
+  //  - signed in on a login screen         -> the page you asked for, else your dashboard
+  // useLayoutEffect redirects before the browser paints, so the wrong page never flashes.
+  const access = resolveAccess(route, role);
+  useLayoutEffect(() => {
+    if (access.ok) return;
+    if (access.why === "login") rememberNext(route);
+    const saved = access.why === "home" && ownerOf(route) === "entry" ? takeNext(role) : null;
+    replace(saved ?? access.to);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route, role]);
 
   function renderPage() {
-    if (window.location.pathname === "/mobile-preview") return <MobileDesign />;
-    if (route.path === "/about") return <AboutUsPage />;
+    const p = route.path;
+    const r = route as any;
+
+    // Pages for everyone
+    if (p === "/mobile-preview") return <MobileDesign />;
+    if (p === "/about") return <AboutUsPage />;
+    if (p === "/terms") return <TermsPage />;
+    if (p === "/privacy") return <PrivacyPage />;
+    if (p === "/delete-account") return <DeleteAccountPage />;
+
+    // Signed out: landing, login screens and public browsing
     if (!user) {
-      if (route.path === "/") return <LandingPage />;
-      if (route.path === "/terms") return <TermsPage />;
-      if (route.path === "/privacy") return <PrivacyPage />;
-      if (route.path === "/delete-account") return <DeleteAccountPage />;
-      if (route.path === "/hospital-admin/login") return <HospitalAdminLogin />;
-      if (route.path === "/lab-admin/login") return <LabLogin />;
-      if (route.path === "/hospital-lab/login") return <HospitalLabLogin />;
-      if (route.path === "/pharmacy/login") return <PharmacyLogin />;
-      if (route.path === "/front-office/login") return <FrontOfficeLogin />;
-      if (route.path === "/nurse/login") return <NurseLogin />;
-      if (route.path === "/patient/hospitals") return <HospitalsPage city={(route as { city?: string }).city} q={(route as { q?: string }).q} />;
-      if (route.path === "/patient/hospital") return <HospitalDoctorsPage id={(route as { id: string }).id} />;
-      if (route.path === "/pharmacies") return <ComingSoonPage title="Pharmacies" />; // was: <PharmaciesPage />
-      if (route.path === "/pharmacy/detail") return <PharmacyDetailPage id={(route as any).id} />;
-      if (route.path === "/pharmacy-owner/login") return <PharmacyOwnerLogin />;
-      if (route.path === "/pharmacy-owner/register") return <PharmacyOwnerRegister />;
-      if (route.path === "/labs") return <LabsPage />;
-      if (route.path === "/labs/detail") return <LabDetailPage id={(route as any).id} />;
-      if (route.path === "/labs/track") return <LabTrackingPage bookingId={(route as any).bookingId} />;
-      if (route.path === "/ambulance") return <ComingSoonPage title="Ambulance" />; // was: <AmbulancePage />
-      if (route.path === "/login") {
-        const loginRoute = route as {
-          tab?: "patient" | "doctor";
-          patientMode?: "login" | "signup";
-        };
-        const initialTab = loginRoute.tab ?? "patient";
-        const initialPatientMode =
-          loginRoute.patientMode ??
-          (initialTab === "doctor" ? "login" : "login");
-        return (
-          <LoginPage
-            key={`${initialTab}-${initialPatientMode}`}
-            initialTab={initialTab}
-            initialPatientMode={initialPatientMode}
-          />
-        );
-      }
-      return <LoginPage initialTab="patient" initialPatientMode="login" />;
+      if (p === "/") return <LandingPage />;
+      if (p === "/hospital-admin/login") return <HospitalAdminLogin />;
+      if (p === "/lab-admin/login") return <LabLogin />;
+      if (p === "/hospital-lab/login") return <HospitalLabLogin />;
+      if (p === "/pharmacy/login") return <PharmacyLogin />;
+      if (p === "/front-office/login") return <FrontOfficeLogin />;
+      if (p === "/nurse/login") return <NurseLogin />;
+      if (p === "/pharmacy-owner/login") return <PharmacyOwnerLogin />;
+      if (p === "/pharmacy-owner/register") return <PharmacyOwnerRegister />;
+      if (p === "/patient/hospitals") return <HospitalsPage city={r.city} q={r.q} />;
+      if (p === "/patient/hospital") return <HospitalDoctorsPage id={r.id} />;
+      if (p === "/pharmacies") return <ComingSoonPage title="Pharmacies" />; // was: <PharmaciesPage />
+      if (p === "/pharmacy/detail") return <PharmacyDetailPage id={r.id} />;
+      if (p === "/labs") return <LabsPage />;
+      if (p === "/labs/detail") return <LabDetailPage id={r.id} />;
+      if (p === "/labs/track") return <LabTrackingPage bookingId={r.bookingId} />;
+      if (p === "/ambulance") return <ComingSoonPage title="Ambulance" />; // was: <AmbulancePage />
+      const initialTab = r.tab ?? "patient";
+      const initialPatientMode = r.patientMode ?? "login";
+      return (
+        <LoginPage
+          key={`${initialTab}-${initialPatientMode}`}
+          initialTab={initialTab}
+          initialPatientMode={initialPatientMode}
+        />
+      );
     }
-    if (user.role === "admin") return <AdminPanel />;
-    if (user.role === "hospital_admin") return <HospitalAdminPanel />;
-    if (user.role === "pharmacy") return <PharmacyDashboard />;
-    if ((user as any).role === "front_office") return <FrontOfficeDashboard />;
-    if ((user as any).role === "nurse") return <NurseDashboard />;
-    if ((user as any).role === "hospital_lab") return <HospitalLabDashboard />;
-    if (user.role === "lab_admin") return <LabDashboard />;
-    if (user.role === "doctor") return <DoctorDashboard />;
-    if (route.path === "/patient/hospitals") return <HospitalsPage city={(route as { city?: string }).city} q={(route as { q?: string }).q} />;
-    if (route.path === "/patient/hospital")
-      return <HospitalDoctorsPage id={(route as { id: string }).id} />;
-    if (route.path === "/pharmacies") return <ComingSoonPage title="Pharmacies" />; // was: <PharmaciesPage />
-    if (route.path === "/pharmacy/detail") return <PharmacyDetailPage id={(route as any).id} />;
-    if (route.path === "/pharmacy-owner/dashboard") return <PharmacyOwnerDashboard />;
-    if (route.path === "/labs") return <LabsPage />;
-    if (route.path === "/labs/detail") return <LabDetailPage id={(route as any).id} />;
-    if (route.path === "/labs/track") return <LabTrackingPage bookingId={(route as any).bookingId} />;
-    if (route.path === "/ambulance") return <ComingSoonPage title="Ambulance" />; // was: <AmbulancePage />
-    if (route.path === "/patient/profile") return <ProfilePage />;
-    if (route.path === "/patient/tokens") return <MyTokensPage />;
-    if (route.path === "/patient/admission") return <MyAdmissionPage />;
-    if (route.path === "/patient/prescriptions") return <MyPrescriptionsPage />;
-    if (route.path === "/patient/track") {
-      const r = route as { sessionId: string; tokenNumber: number };
+
+    // Signed in: each role has its own area (the guard above keeps the URL inside it).
+    // Pages inside a dashboard are chosen by the URL, see each dashboard.
+    const userRole = (user as any).role;
+    if (userRole === "admin") return <AdminPanel />;
+    if (userRole === "hospital_admin") return <HospitalAdminPanel />;
+    if (userRole === "pharmacy") return <PharmacyDashboard />;
+    if (userRole === "front_office") return <FrontOfficeDashboard />;
+    if (userRole === "nurse") return <NurseDashboard />;
+    if (userRole === "hospital_lab") return <HospitalLabDashboard />;
+    if (userRole === "lab_admin") return <LabDashboard />;
+    if (userRole === "doctor") return <DoctorDashboard />;
+    if (userRole === "pharmacy_owner") return <PharmacyOwnerDashboard />;
+
+    // Patient
+    if (p === "/patient/hospitals") return <HospitalsPage city={r.city} q={r.q} />;
+    if (p === "/patient/hospital") return <HospitalDoctorsPage id={r.id} />;
+    if (p === "/pharmacies") return <ComingSoonPage title="Pharmacies" />; // was: <PharmaciesPage />
+    if (p === "/pharmacy/detail") return <PharmacyDetailPage id={r.id} />;
+    if (p === "/labs") return <LabsPage />;
+    if (p === "/labs/detail") return <LabDetailPage id={r.id} />;
+    if (p === "/labs/track") return <LabTrackingPage bookingId={r.bookingId} />;
+    if (p === "/ambulance") return <ComingSoonPage title="Ambulance" />; // was: <AmbulancePage />
+    if (p === "/patient/profile") return <ProfilePage />;
+    if (p === "/patient/tokens") return <MyTokensPage />;
+    if (p === "/patient/admission") return <MyAdmissionPage />;
+    if (p === "/patient/prescriptions") return <MyPrescriptionsPage />;
+    if (p === "/patient/track") {
       return (
         <ErrorBoundary fallbackLabel="your queue tracker">
           <TokenTrackerPage sessionId={r.sessionId} tokenNumber={r.tokenNumber} />
         </ErrorBoundary>
       );
     }
-    if (route.path === "/") return <PatientHomePage />;
-    return <HospitalsPage />;
+    return <PatientHomePage />; // /patient/dashboard
   }
 
   const isAdmin = (user as any)?.role === "hospital_lab" || user?.role === "admin" || user?.role === "hospital_admin" || user?.role === "pharmacy" || user?.role === "pharmacy_owner" || (user as any)?.role === "nurse" || (user as any)?.role === "front_office";
-  // Only hide TopNav for routes that don't require login (landing/login/terms)
-  // AND only when there's no logged-in user — a page refresh resets the
-  // in-memory router to "/" even though the user is still authenticated
-  // (login state lives in localStorage, not in the URL), so we must not
-  // hide the nav purely based on route.path when `user` is already set.
+  // Hide TopNav on login/terms screens (only when signed out) and on staff dashboards.
   const hideTopNav =
-    window.location.pathname === "/mobile-preview" ||
+    route.path === "/mobile-preview" ||
     isAdmin ||
     route.path === "/about" ||
     (!user && (route.path === "/login" || route.path === "/terms" || route.path === "/privacy" || route.path === "/delete-account" || route.path === "/hospital-admin/login" || route.path === "/pharmacy/login" || route.path === "/nurse/login" || route.path === "/front-office/login" || route.path === "/pharmacy-owner/login" || route.path === "/pharmacy-owner/register" || route.path === "/lab-admin/login")) ||
     (!!user && route.path === "/terms");
+
+  if (!access.ok) return null; // the layout effect above is redirecting
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">

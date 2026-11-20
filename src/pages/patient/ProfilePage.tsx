@@ -371,7 +371,7 @@ export default function ProfilePage() {
       toast.success("Profile saved");
       updateUser({ name: name.trim(), phone: phone.trim(), gender } as any);
       setWasComplete(true);
-      let back: any = { path: "/" };
+      let back: any = { path: "/patient/dashboard" };
       try { const raw = sessionStorage.getItem("db_after_profile"); if (raw) { back = JSON.parse(raw); sessionStorage.removeItem("db_after_profile"); } } catch {}
       replace(back);
     } catch (err: any) {

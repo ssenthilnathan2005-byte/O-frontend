@@ -22,7 +22,6 @@ export default function PharmacyOwnerLogin() {
       const res = await api.pharmacyOwner.login(email.trim(), password.trim());
       login(res.user, res.token);
       toast.success("Welcome back!");
-      navigate({ path: "/pharmacy-owner/dashboard" });
     } catch (err: any) {
       toast.error(err.message || "Login failed");
     } finally { setLoading(false); }

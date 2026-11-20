@@ -364,7 +364,7 @@ export default function HABilling() {
   // along so the list matches the number shown on the chart.
   const drillTo = (q: Record<string, string>) =>
     navigate({
-      path: "/hospital-admin/all-patients",
+      path: "/admin/all-patients",
       query: { ...(range ? { from: range[0], to: range[1] } : {}), ...q },
     });
 
@@ -381,7 +381,7 @@ export default function HABilling() {
       : shareAll;
   const sourceSplit = [
     { name: "Consultations", value: consultRevenue, go: () => drillTo({ status: "completed" }) },
-    { name: "Laboratory", value: labTotals.revenue, go: () => navigate({ path: "/hospital-admin/lab" }) },
+    { name: "Laboratory", value: labTotals.revenue, go: () => navigate({ path: "/admin/lab" }) },
     { name: "Pharmacy", value: pharmStats.revenue, go: () => openPharmacyDrawer(hospitalId, pharmRange[0], pharmRange[1]) },
     { name: "Inward (IPD)", value: ipdTotal },
   ].filter((x) => x.value > 0);
@@ -560,7 +560,7 @@ export default function HABilling() {
                     <Tooltip cursor={{ fill: "rgba(0,0,0,0.04)" }} content={<HintTip fmt={rupee} hint={CLICK_HINT} />} />
                     <Bar dataKey="consultation" name="Consultations" stackId="rev" fill="#0d9488" maxBarSize={32} onClick={onDayClick}
                       radius={showLab || showPharm || showIpd ? undefined : [3, 3, 0, 0]} />
-                    {showLab && <Bar dataKey="lab" name="Laboratory" stackId="rev" fill="#6366f1" maxBarSize={32} radius={showPharm || showIpd ? undefined : [3, 3, 0, 0]} onClick={() => navigate({ path: "/hospital-admin/lab" })} />}
+                    {showLab && <Bar dataKey="lab" name="Laboratory" stackId="rev" fill="#6366f1" maxBarSize={32} radius={showPharm || showIpd ? undefined : [3, 3, 0, 0]} onClick={() => navigate({ path: "/admin/lab" })} />}
                     {showPharm && <Bar dataKey="pharmacy" name="Pharmacy" stackId="rev" fill="#f97316" maxBarSize={32} radius={showIpd ? undefined : [3, 3, 0, 0]} onClick={() => openPharmacyDrawer(hospitalId, pharmRange[0], pharmRange[1])} />}
                     {showIpd && <Bar dataKey="ipd" name="Inward (IPD)" stackId="rev" fill="#0ea5e9" maxBarSize={32} radius={[3, 3, 0, 0]} />}
                   </BarChart>

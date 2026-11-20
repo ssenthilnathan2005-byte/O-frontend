@@ -10,7 +10,7 @@ import { useRouter } from "../router/RouterContext";
 
 export default function NurseLogin() {
   const { login } = useStore();
-  const { navigate, replace } = useRouter();
+  const { navigate } = useRouter();
 
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
@@ -32,7 +32,6 @@ export default function NurseLogin() {
         return;
       }
       login(res.user, res.token);
-      replace({ path: "/nurse" });
     } catch (err: any) {
       toast.error(err.message || "Login failed");
     } finally {
@@ -49,7 +48,6 @@ export default function NurseLogin() {
     try {
       const res = await api.auth.nurseSetPassword(code.trim(), password, newPassword);
       login(res.user, res.token);
-      replace({ path: "/nurse" });
       toast.success("Password updated");
     } catch (err: any) {
       toast.error(err.message || "Failed to set password");

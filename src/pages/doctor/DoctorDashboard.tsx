@@ -52,6 +52,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useTabRoute } from "../../router/RouterContext";
 import { Download } from "lucide-react";
 import PrescriptionDialog from "@/components/PrescriptionDialog";
 import NurseTab from "@/components/NurseTab";
@@ -211,20 +212,6 @@ function sanitizeSessionTimings(
   return result;
 }
 
-type DoctorTab = "regulator" | "livetokens" | "profile" | "presets" | "nurse" | "staff";
-
-function getInitialDoctorTab(): DoctorTab {
-  if (typeof window === "undefined") return "regulator";
-  const params = new URLSearchParams(window.location.search);
-  const queryTab = params.get("doctorTab") as DoctorTab | null;
-  if (queryTab === "livetokens" || queryTab === "profile" || queryTab === "presets" || queryTab === "staff") return queryTab;
-
-  const savedTab = window.localStorage.getItem("doctorTab") as DoctorTab | null;
-  if (savedTab === "livetokens" || savedTab === "profile" || savedTab === "presets" || savedTab === "staff") return savedTab;
-
-  return "regulator";
-}
-
 const API = (import.meta.env.VITE_API_URL ?? "").replace(/\/api$/, "");
 
 function DoctorExportBanner({ token }: { token: string }) {
@@ -317,19 +304,27 @@ export default function DoctorDashboard() {
       })
       .catch(() => {});
   }, [doctor?.hospitalId]);
-  const [activeTab, setActiveTab] = useState<DoctorTab>(getInitialDoctorTab);
   // Staff Management is a Basic-plan feature; the server decides (Premium hospitals never see it).
   const [staffEnabled, setStaffEnabled] = useState(false);
+  const [staffChecked, setStaffChecked] = useState(false);
   useEffect(() => {
     let alive = true;
     fetchStaffAccess().then((ok) => {
       if (!alive) return;
       setStaffEnabled(ok);
-      if (!ok) setActiveTab((t) => (t === "staff" ? "regulator" : t));
+      setStaffChecked(true);
     });
     return () => { alive = false; };
   }, []);
-  const { nav: extraNav } = useExtraNav(["live_patients", "lab"]);
+  const { nav: extraNav, loading: extraLoading } = useExtraNav(["live_patients", "lab"]);
+  // The open page lives in the URL: /doctor/dashboard, /doctor/profile, /doctor/live-tokens ...
+  // A URL for a page this doctor may not open is replaced with the dashboard.
+  const allowedTabs = [
+    "regulator", "livetokens", "profile", "followups", "presets", "nurse",
+    ...(staffEnabled ? ["staff"] : []),
+    ...extraNav.map((n) => n.key),
+  ];
+  const [activeTab, goDoctorTab] = useTabRoute("/doctor", { allowed: allowedTabs, ready: staffChecked && !extraLoading });
   // Sidebar visibility (shown by default); toggled by the hamburger in TopNav
   const [sidebarOpen, setSidebarOpen] = useState(true);
   useEffect(() => {
@@ -337,8 +332,6 @@ export default function DoctorDashboard() {
     window.addEventListener("doctor-sidebar-toggle", toggle);
     return () => window.removeEventListener("doctor-sidebar-toggle", toggle);
   }, []);
-
-  // Initial tab is set from getInitialDoctorTab(); persistence handled on user interaction
 
   const [profileForm, setProfileForm] = useState({
     name: doctor?.name ?? "",
@@ -1093,23 +1086,6 @@ export default function DoctorDashboard() {
     ...extraNav.map((n) => ({ key: n.key, label: n.label, icon: n.icon })),
   ];
 
-  const goDoctorTab = (value: string) => {
-    const nextTab = value as DoctorTab;
-    setActiveTab(nextTab);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem("doctorTab", nextTab);
-      const url = new URL(window.location.href);
-      if (window.location.pathname === "/doctor") {
-        if (nextTab === "regulator") {
-          url.searchParams.delete("doctorTab");
-        } else {
-          url.searchParams.set("doctorTab", nextTab);
-        }
-        window.history.replaceState({}, "", url.toString());
-      }
-    }
-  };
-
   return (
     <div className="flex min-h-screen bg-background">
       {/* Doctor sidebar (desktop) */}
@@ -1163,22 +1139,7 @@ export default function DoctorDashboard() {
 
       <Tabs
         value={activeTab}
-        onValueChange={(value) => {
-          const nextTab = value as DoctorTab;
-          setActiveTab(nextTab);
-          if (typeof window !== "undefined") {
-            window.localStorage.setItem("doctorTab", nextTab);
-            const url = new URL(window.location.href);
-            if (window.location.pathname === "/doctor") {
-              if (nextTab === "regulator") {
-                url.searchParams.delete("doctorTab");
-              } else {
-                url.searchParams.set("doctorTab", nextTab);
-              }
-              window.history.replaceState({}, "", url.toString());
-            }
-          }
-        }}
+        onValueChange={goDoctorTab}
         className="w-full"
       >
 

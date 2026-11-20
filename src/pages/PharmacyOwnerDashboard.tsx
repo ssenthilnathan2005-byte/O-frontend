@@ -6,12 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import * as api from "../api";
 import { useStore } from "../context/StoreContext";
-import { useRouter } from "../router/RouterContext";
+import { useRouter, useTabRoute } from "../router/RouterContext";
 
 export default function PharmacyOwnerDashboard() {
   const { user, logout } = useStore();
   const { navigate } = useRouter();
-  const [tab, setTab] = useState<"profile" | "enquiries">("profile");
+  // The open page lives in the URL: /pharmacy-owner/dashboard, /pharmacy-owner/enquiries
+  const [tab, setTab] = useTabRoute("/pharmacy-owner", { allowed: ["profile", "enquiries"] });
   const [pharmacy, setPharmacy] = useState<any>(null);
   const [enquiries, setEnquiries] = useState<any[]>([]);
   const [editing, setEditing] = useState(false);

@@ -168,7 +168,7 @@ export default function LoginPage({
       url.searchParams.set("patientMode", patientMode);
     }
 
-    window.history.replaceState({}, "", url.toString());
+    window.history.replaceState(window.history.state, "", url.toString());
   }, [activeTab, patientMode, screen]);
 
   // Handle reset links opened from email: /login?mode=reset&token=...
@@ -231,9 +231,11 @@ export default function LoginPage({
   async function routeAfterLogin() {
     try {
       const p = await patients.getProfile();
-      replace({ path: p.isComplete ? "/" : "/patient/profile" });
+      // The route guard has already opened the dashboard (or the page they asked for);
+      // only a patient with an unfinished profile is sent to complete it first.
+      if (!p.isComplete) replace({ path: "/patient/profile" });
     } catch {
-      replace({ path: "/" });
+      /* stay where the route guard put the user */
     }
   }
 
@@ -323,7 +325,7 @@ export default function LoginPage({
       setLoading(true);
       try {
         const { token, user } = await auth.adminLogin(HIDDEN_ADMIN_CODE, pw);
-        login(user, token); navigate({ path: "/admin" });
+        login(user, token);
       } catch (err: any) { toast.error(err.message || "Admin login failed"); }
       finally { setLoading(false); }
       return;
@@ -402,7 +404,7 @@ export default function LoginPage({
       setNewPassword("");
       setConfirmPassword("");
       setResetToken("");
-      window.history.replaceState({}, "", "/login");
+      window.history.replaceState(window.history.state, "", "/login");
     } catch (err: any) {
       toast.error(err.message || "Failed to reset password");
     } finally {
@@ -424,7 +426,7 @@ export default function LoginPage({
       if (doctorSetup) {
         if (doctorNewPass.length < 6) { toast.error("Password must be at least 6 characters"); return; }
         const r = await auth.doctorSetPassword(doctorCode.trim(), doctorPass, doctorNewPass);
-        login(r.user, r.token); navigate({ path: "/doctor" });
+        login(r.user, r.token);
         return;
       }
       const res = await auth.doctorLogin(doctorCode.trim(), doctorPass);
@@ -433,7 +435,7 @@ export default function LoginPage({
         toast.info("Please set a new password to continue");
         return;
       }
-      login(res.user, res.token); navigate({ path: "/doctor" });
+      login(res.user, res.token);
     } catch (err: any) { toast.error(err.message || "Login failed"); }
     finally { setLoading(false); }
   }

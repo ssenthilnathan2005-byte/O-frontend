@@ -1,5 +1,6 @@
 import StockSearchSelect from "@/components/StockSearchSelect";
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useTabRoute } from "@/router/RouterContext";
 import { useStore } from "../context/StoreContext";
 import { getToken } from "@/api";
 import { printInvoice, showInvoicePopup } from "@/lib/printInvoice";
@@ -156,9 +157,13 @@ export default function PharmacyDashboard() {
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [openRx, setOpenRx] = useState<Record<string, boolean>>({});
   const [detailId, setDetailId] = useState<string | null>(null);
-  const [tab, setTab] = useState<string>("rx");
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const { nav: extraNav } = useExtraNav(["pharmacy", "inventory"]);
+  const { nav: extraNav, loading: extraLoading } = useExtraNav(["pharmacy", "inventory"]);
+  // The open page lives in the URL: /pharmacy/dashboard, /pharmacy/stock, /pharmacy/sales ...
+  const [tab, setTab] = useTabRoute("/pharmacy", {
+    allowed: ["rx", "revenue", "inventory", "patients", "sold", "gst", "stock", ...extraNav.map((n) => n.key)],
+    ready: !extraLoading,
+  });
   const { has } = useModules();
   usePharmacySocket(hospitalId);
   const headers = { Authorization: `Bearer ${getToken()}` };
