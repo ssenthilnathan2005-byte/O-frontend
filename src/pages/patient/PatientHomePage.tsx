@@ -245,9 +245,9 @@ useEffect(() => {
             <img src="/assets/Logo.jpg" alt="Doctor Booked" className="w-8 h-8 rounded-full object-cover ring-2 ring-white/40" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
             <span className="text-sm font-bold tracking-wide text-white" translate="no">Doctor Booked</span>
           </div>
-          {user && uhid
+          {uhid
             ? <span className="text-[10px] font-bold bg-white/15 text-white px-2.5 py-1 rounded-full tracking-widest border border-white/30">{uhid}</span>
-            : <LanguageSwitcher />
+            : (!user ? <LanguageSwitcher /> : null)
           }
         </div>
         <h1 className="relative text-4xl font-extrabold leading-tight">
