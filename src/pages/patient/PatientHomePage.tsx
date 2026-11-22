@@ -6,7 +6,7 @@ import { useStore } from "../../context/StoreContext";
 import { useRouter } from "../../router/RouterContext";
 import { useNearMe } from "../../hooks/useNearMe";
 import { loadGoogleMaps } from "../../lib/googleMaps";
-import { getToken } from "@/api";
+import { getToken, patients as patientsApi } from "@/api";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { enablePushNotifications } from "../../lib/push";
 
@@ -43,9 +43,7 @@ export default function PatientHomePage() {
   const [uhid, setUhid] = useState<string>("");
   useEffect(() => {
     if (user?.role === "patient") {
-      import("../../api").then((mod) =>
-        (mod as any).patients.profile().then((p: any) => { if (p?.uhid) setUhid(p.uhid); }).catch(() => {})
-      );
+      patientsApi.profile().then((p: any) => { if (p?.uhid) setUhid(p.uhid); }).catch(() => {});
     }
   }, [user]);
 
