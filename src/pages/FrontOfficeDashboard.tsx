@@ -340,6 +340,7 @@ function Outpatients() {
   const pj = (v: any) => { if (typeof v === "string") { try { return JSON.parse(v); } catch { return null; } } return v ?? null; };
   const sessionOver = (b: any) => !!date && hasSessionEndedForDate(date, String(b.session), pj(b.schedule_config) as any, pj(b.session_timings) as any);
   const WINDOW_MIN = 10;
+  const autoNoShow = (b: any) => b.status === "confirmed" && !b.checked_in_at && b.rx_status == null && sessionOver(b);
   const noShowWindow = (b: any) => !!date && isSessionEndingSoon(date, String(b.session), pj(b.schedule_config) as any, pj(b.session_timings) as any, WINDOW_MIN);
   async function markNoShow(b: OPBooking) {
     if (!window.confirm("Mark " + b.patient_name + " (token " + b.token_number + ") as no-show?")) return;
@@ -389,7 +390,7 @@ function Outpatients() {
       </div>
       <p className="text-sm text-gray-500">{arrived} of {rows.length} patients checked in</p>
       {(() => {
-        const pending = shown.filter(b => b.status === "confirmed" && noShowWindow(b) && (b as any).rx_status == null);
+        const pending: typeof shown = [];
         return pending.length > 0 ? (
           <div className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
             <p className="flex-1 min-w-[180px] text-sm text-amber-800">{pending.length} patient{pending.length > 1 ? "s" : ""} still pending as the session is ending or has ended.</p>
@@ -415,8 +416,8 @@ function Outpatients() {
                     <span key={l} className={d ? "font-medium text-emerald-700" : "text-gray-300"}>{d ? "\u2713" : "\u25CB"} {l}</span>
                   ))}
                 </div>
-                {b.status !== "confirmed" ? (
-                  (b.status === "unvisited" ? (
+                {(b.status !== "confirmed" || autoNoShow(b)) ? (
+                  ((b.status === "unvisited" || autoNoShow(b)) ? (
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-medium text-orange-700 bg-orange-50 border border-orange-100 rounded-md px-2 py-1">No-show</span>
                     {(b as any).no_show_at && <Button size="sm" variant="ghost" onClick={() => reopenNoShow(b.id)}>Reopen</Button>}
@@ -431,12 +432,12 @@ function Outpatients() {
                       : <Button size="sm" variant="outline" onClick={() => startFee(b)}>Collect fee{b.doctor_fee != null ? " \u20B9" + b.doctor_fee : ""}</Button>}
                     {b.fee_paid_at && <Button size="sm" variant="outline" onClick={() => printReceipt(b)}>Receipt</Button>}
                     <Button size="sm" variant="ghost" onClick={() => undo(b.id)}><Undo2 className="w-4 h-4" /></Button>
-                    {noShowWindow(b) && (b as any).rx_status == null && <Button size="sm" variant="outline" className="text-orange-700 border-orange-200" onClick={() => markNoShow(b)}>No-show</Button>}
+                    
                   </div>
                 ) : (
                   <div className="flex flex-wrap items-center gap-2">
                     <Button size="sm" onClick={() => startEdit(b)}><UserCheck className="w-4 h-4 mr-1" />Check in</Button>
-                    {noShowWindow(b) && <Button size="sm" variant="outline" className="text-orange-700 border-orange-200" onClick={() => markNoShow(b)}>No-show</Button>}
+                    
                   </div>
                 )}
               </div>
