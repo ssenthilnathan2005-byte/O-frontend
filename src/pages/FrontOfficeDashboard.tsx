@@ -303,6 +303,7 @@ function Outpatients() {
   const [f, setF] = useState({ phone: "", patientAge: "", complaint: "" });
   const [q, setQ] = useState("");
   const [vitalsId, setVitalsId] = useState<string | null>(null);
+  const [openEnded, setOpenEnded] = useState<Record<string, boolean>>({});
   const [feeId, setFeeId] = useState<string | null>(null);
   const [feeAmt, setFeeAmt] = useState("");
   const [feeMode, setFeeMode] = useState("cash");
@@ -400,10 +401,14 @@ function Outpatients() {
         ) : null;
       })()}
       {Object.keys(groups).length === 0 && <p className="text-sm text-gray-400 py-8 text-center">No bookings for this date.</p>}
-      {Object.entries(groups).map(([k, list]) => (
+      {Object.entries(groups).sort(([, a], [, c]) => Number(sessionOver(a[0])) - Number(sessionOver(c[0]))).map(([k, list]) => (
         <div key={k} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="px-4 py-2 bg-gray-50 text-sm font-semibold text-gray-700">{k}</div>
-          {list.map(b => (
+          <div className={"px-4 py-2 bg-gray-50 text-sm font-semibold text-gray-700 flex items-center gap-2" + (sessionOver(list[0]) ? " cursor-pointer" : "")} onClick={() => { if (sessionOver(list[0])) setOpenEnded(p => ({ ...p, [k]: !p[k] })); }}>
+            <span className="flex-1">{k}</span>
+            {sessionOver(list[0]) && <span className="text-xs font-normal text-gray-500">Ended - {list.length} patient{list.length > 1 ? "s" : ""}</span>}
+            {sessionOver(list[0]) && <span className="text-xs font-medium text-teal-700">{openEnded[k] ? "Collapse" : "Expand"}</span>}
+          </div>
+          {(sessionOver(list[0]) && !openEnded[k] ? [] : list).map(b => (
             <div key={b.id} className="px-4 py-3 border-t border-gray-100">
               <div className="flex flex-wrap items-center gap-3">
                 <div className="min-w-[2.25rem] h-9 px-1 rounded-lg bg-teal-50 text-teal-700 font-bold flex items-center justify-center">{b.token_number}</div>
