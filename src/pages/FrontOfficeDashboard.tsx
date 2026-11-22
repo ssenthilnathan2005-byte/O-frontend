@@ -166,6 +166,7 @@ function RegisterWalkIn() {
     const raw = bucket ? bucket[sn] : undefined;
     const cnt = raw && typeof raw === "object" ? raw.count : raw;
     if (cnt !== undefined && cnt !== null && cnt !== "" && Number(cnt) === 0) return false;
+    if (((docs.find((d: any) => d.id === f.doctorId) as any)?.closed || []).includes(f.date + "|" + sn)) return false;
     return !hasSessionEndedForDate(f.date, sn as any, cfg as any, tim as any);
   });
   useEffect(() => {
