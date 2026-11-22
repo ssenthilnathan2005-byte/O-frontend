@@ -304,6 +304,7 @@ function Outpatients() {
   const [q, setQ] = useState("");
   const [vitalsId, setVitalsId] = useState<string | null>(null);
   const [openEnded, setOpenEnded] = useState<Record<string, boolean>>({});
+  const [docTab, setDocTab] = useState<string>("all");
   const [feeId, setFeeId] = useState<string | null>(null);
   const [feeAmt, setFeeAmt] = useState("");
   const [feeMode, setFeeMode] = useState("cash");
@@ -400,11 +401,24 @@ function Outpatients() {
           </div>
         ) : null;
       })()}
+      {(() => {
+        const docNames = Array.from(new Set(shown.map(b => b.doctor_name)));
+        if (docNames.length < 2) return null;
+        const tabCls2 = (on: boolean) => "shrink-0 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors " + (on ? "bg-teal-600 text-white border-teal-600" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50");
+        return (
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            <button type="button" className={tabCls2(docTab === "all" || !docNames.includes(docTab))} onClick={() => setDocTab("all")}>All doctors ({shown.length})</button>
+            {docNames.map(n => (
+              <button key={n} type="button" className={tabCls2(docTab === n)} onClick={() => setDocTab(n)}>{n} ({shown.filter(b => b.doctor_name === n).length})</button>
+            ))}
+          </div>
+        );
+      })()}
       {Object.keys(groups).length === 0 && <p className="text-sm text-gray-400 py-8 text-center">No bookings for this date.</p>}
-      {Object.entries(groups).sort(([, a], [, c]) => Number(sessionOver(a[0])) - Number(sessionOver(c[0]))).map(([k, list]) => (
+      {Object.entries(groups).filter(([, a]) => docTab === "all" || !shown.some(b => b.doctor_name === docTab) || a[0].doctor_name === docTab).sort(([, a], [, c]) => Number(sessionOver(a[0])) - Number(sessionOver(c[0]))).map(([k, list]) => (
         <div key={k} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
           <div className={"px-4 py-2 bg-gray-50 text-sm font-semibold text-gray-700 flex items-center gap-2" + (sessionOver(list[0]) ? " cursor-pointer" : "")} onClick={() => { if (sessionOver(list[0])) setOpenEnded(p => ({ ...p, [k]: !p[k] })); }}>
-            <span className="flex-1">{k}</span>
+            <span className="flex-1">{docTab === "all" || !shown.some(b => b.doctor_name === docTab) ? k : cap(list[0].session)}</span>
             {sessionOver(list[0]) && <span className="text-xs font-normal text-gray-500">Ended - {list.length} patient{list.length > 1 ? "s" : ""}</span>}
             {sessionOver(list[0]) && <span className="text-xs font-medium text-teal-700">{openEnded[k] ? "Collapse" : "Expand"}</span>}
           </div>
