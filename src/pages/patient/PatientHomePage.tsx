@@ -526,8 +526,8 @@ useEffect(() => {
   const [uhid, setUhid] = useState<string>("");
   useEffect(() => {
     if (user?.role === "patient") {
-      import("../../api").then(({ default: api }) =>
-        (api as any).patients.profile().then((p: any) => { if (p?.uhid) setUhid(p.uhid); }).catch(() => {})
+      import("../../api").then((mod) =>
+        (mod as any).patients.profile().then((p: any) => { if (p?.uhid) setUhid(p.uhid); }).catch(() => {})
       );
     }
   }, [user]);
