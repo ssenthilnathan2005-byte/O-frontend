@@ -523,6 +523,14 @@ useEffect(() => {
   }, [isDesktop]);
 
   const firstName = (((user as any)?.name as string) || "").split(" ")[0];
+  const [uhid, setUhid] = useState<string>("");
+  useEffect(() => {
+    if (user?.role === "patient") {
+      import("../../api").then(({ default: api }) =>
+        (api as any).patients.profile().then((p: any) => { if (p?.uhid) setUhid(p.uhid); }).catch(() => {})
+      );
+    }
+  }, [user]);
   const services = [
     { label: "Hospitals", sub: "Find & book", Icon: Hospital, path: "/patient/hospitals", tint: "bg-teal-50 text-teal-600" },
     { label: "Labs", sub: "Diagnostic tests", Icon: FlaskConical, path: "/labs", tint: "bg-sky-50 text-sky-600" },
@@ -541,6 +549,9 @@ useEffect(() => {
           <div>
             <h1 className="text-xl font-bold text-gray-900 leading-tight">{getGreeting()}{firstName ? `, ${firstName}` : ""} 👋</h1>
             <p className="text-xs text-gray-500 mt-0.5">Your health matters. We're here to help.</p>
+            {uhid && (
+              <p className="text-xs text-teal-700 font-medium mt-1 tracking-wide"> UHID: {uhid}</p>
+            )}
           </div>
           {notifState === "default" && (
             <button type="button"
