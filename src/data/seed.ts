@@ -221,3 +221,23 @@ export function isSessionAccessibleForRegulator(
   endTime.setHours(endH, endM, 0, 0);
   return now >= unlockTime && now <= endTime;
 }
+
+/** True when the session ends within `minutes` minutes, or has already ended. */
+export function isSessionEndingSoon(
+  date: string,
+  session: string,
+  scheduleConfig?: any,
+  customTimings?: any,
+  minutes = 10,
+): boolean {
+  const now = new Date();
+  const today = now.toISOString().split("T")[0];
+  if (date < today) return true;
+  if (date > today) return false;
+  const times = resolveSessionTiming(date, session as SessionType, scheduleConfig, customTimings);
+  if (!times) return true;
+  const [endH, endM] = times.end.split(":").map(Number);
+  const endTime = new Date(now);
+  endTime.setHours(endH, endM, 0, 0);
+  return now.getTime() >= endTime.getTime() - minutes * 60000;
+}
