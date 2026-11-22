@@ -40,6 +40,14 @@ function parseCoords(str?: string): { lat: number; lng: number } | null {
 export default function PatientHomePage() {
   const { navigate } = useRouter();
   const { user, bookings, hospitals, tokenStates } = useStore();
+  const [uhid, setUhid] = useState<string>("");
+  useEffect(() => {
+    if (user?.role === "patient") {
+      import("../../api").then((mod) =>
+        (mod as any).patients.profile().then((p: any) => { if (p?.uhid) setUhid(p.uhid); }).catch(() => {})
+      );
+    }
+  }, [user]);
 
   // Map state
   const mapRef = useRef<HTMLDivElement>(null);
@@ -248,6 +256,7 @@ useEffect(() => {
           })()}
         </h1>
         <p className="relative text-sm text-teal-50 mt-1.5 font-medium">Your health matters. We're here to help.</p>
+        {uhid && <p className="relative text-xs text-teal-100 font-semibold mt-1 tracking-wide"> UHID: {uhid}</p>}
         <HeaderSearch />
       </div>
 
@@ -523,14 +532,6 @@ useEffect(() => {
   }, [isDesktop]);
 
   const firstName = (((user as any)?.name as string) || "").split(" ")[0];
-  const [uhid, setUhid] = useState<string>("");
-  useEffect(() => {
-    if (user?.role === "patient") {
-      import("../../api").then((mod) =>
-        (mod as any).patients.profile().then((p: any) => { if (p?.uhid) setUhid(p.uhid); }).catch(() => {})
-      );
-    }
-  }, [user]);
   const services = [
     { label: "Hospitals", sub: "Find & book", Icon: Hospital, path: "/patient/hospitals", tint: "bg-teal-50 text-teal-600" },
     { label: "Labs", sub: "Diagnostic tests", Icon: FlaskConical, path: "/labs", tint: "bg-sky-50 text-sky-600" },
