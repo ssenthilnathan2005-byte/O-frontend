@@ -1,5 +1,5 @@
 import FollowUpNavIcon from "@/components/FollowUpNavIcon";
-import { Ambulance, BedDouble, BookOpen, FlaskConical, Hospital, LogOut, Mail, Phone, Pill, User, UserCog, X, Menu as MenuIcon } from "lucide-react";
+import { Ambulance, BedDouble, BookOpen, Home, FlaskConical, Hospital, LogOut, Mail, Phone, Pill, User, UserCog, X, Menu as MenuIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useStore } from "../../context/StoreContext";
@@ -405,6 +405,14 @@ export default function TopNav() {
           </button>
 
           <nav className="topnav-menu flex items-center gap-6 text-sm font-medium">
+            <button
+              type="button"
+              className={`flex items-center gap-1.5 transition-colors ${isActive(["/patient/dashboard"])} hover:text-teal-600`}
+              onClick={() => navigate({ path: "/patient/dashboard" })}
+              data-ocid="nav.link"
+            >
+              <Home className="w-4 h-4" /> Home
+            </button>
             <button
               type="button"
               className={`flex items-center gap-1.5 transition-colors ${isActive(["/patient/hospitals", "/patient/hospital"])} hover:text-teal-600`}
