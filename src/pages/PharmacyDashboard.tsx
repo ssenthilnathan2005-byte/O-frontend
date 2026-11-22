@@ -6,7 +6,7 @@ import { getToken } from "@/api";
 import { printInvoice, showInvoicePopup } from "@/lib/printInvoice";
 import { detectFormFromText } from "@/lib/medicineTypes";
 import { toast } from "sonner";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns/formatDistanceToNow";
 import { Button } from "@/components/ui/button";
 import { useExtraNav, ExtraPanel } from "@/components/StaffExtras";
 import useModules from "@/hooks/useModules";
