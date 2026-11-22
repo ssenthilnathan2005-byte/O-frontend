@@ -418,7 +418,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ]);
     } catch (_) {}
     try {
-      const t = api.getToken?.() || localStorage.getItem("db_token");
+      const t = api.getToken?.() || localStorage.getItem("db_jwt");
       if (t) fetch((import.meta.env.VITE_API_URL || "http://localhost:4000/api") + "/auth/logout", {
         method: "POST", headers: { Authorization: "Bearer " + t, "Content-Type": "application/json" }
       }).catch(() => {});
@@ -496,6 +496,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const b = await api.bookings.create({
       doctorId: data.doctorId, date: data.date,
       session: data.session, complaint: data.complaint, phone: data.phone,
+      patientName: data.patientName, familyMemberId: data.familyMemberId,
+      patientAge: data.patientAge, patientYearOfBirth: data.patientYearOfBirth,
+      patientArea: data.patientArea, patientGender: data.patientGender,
+      patientBloodGroup: data.patientBloodGroup,
     });
     setBookings(p => [...p, b]);
     subscribe(b.sessionId);

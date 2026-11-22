@@ -96,6 +96,7 @@ export interface SessionTokenState {
 }
 
 export interface PrioritySlotState {
+  familyMemberId?: string;
   label: string;
   status: "waiting" | "ongoing" | "completed";
   patientName?: string;
