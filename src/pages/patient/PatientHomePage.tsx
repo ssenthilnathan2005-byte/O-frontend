@@ -43,7 +43,7 @@ export default function PatientHomePage() {
   const [uhid, setUhid] = useState<string>("");
   useEffect(() => {
     if (user?.role === "patient") {
-      patientsApi.profile().then((p: any) => { if (p?.uhid) setUhid(p.uhid); }).catch(() => {});
+      patientsApi.getProfile().then((p: any) => { if (p?.uhid) setUhid(p.uhid); }).catch(() => {});
     }
   }, [user]);
 
