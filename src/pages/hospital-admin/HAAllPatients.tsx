@@ -112,6 +112,7 @@ function matchesDrill(v: Visit, d: Drill) {
 export default function HAAllPatients() {
   const { bookings, doctors, patients, user } = useStore();
   const hospitalId = (user as any)?.hospitalId || "";
+  const isNurse = /nurse/i.test(String((user as any)?.role ?? ""));
 
   const { route } = useRouter();
   const [drill, setDrill] = useState<Drill>(() => drillFromRoute(route));
@@ -152,6 +153,7 @@ export default function HAAllPatients() {
     const out: Raw[] = [];
 
     for (const b of bookings as any[]) {
+      if (isNurse) continue;
       if (!myDoctorIds.has(b.doctorId)) continue;
       const status = normalizeBookingStatus(b.status);
       if (status === "cancelled" && !drill.statuses.includes("cancelled")) continue;
@@ -201,7 +203,7 @@ export default function HAAllPatients() {
     }
 
     return out;
-  }, [bookings, inwardList, patients, myDoctorIds, drill.statuses]);
+  }, [bookings, inwardList, patients, myDoctorIds, drill.statuses, isNurse]);
 
   // Only the visits that match the filter coming from a Billing chart
   const visibleRaw = useMemo(
@@ -282,7 +284,7 @@ export default function HAAllPatients() {
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <div className="flex gap-2">
-          {([["all", "All"], ["OPD", "Outpatient"], ["Inward", "Inward"]] as const).map(([val, label]) => (
+          {([["all", "All"], ["OPD", "Outpatient"], ["Inward", "Inward"]] as const).filter(([val]) => !isNurse || val !== "OPD").map(([val, label]) => (
             <button key={val} type="button" onClick={() => setTypeFilter(val)}
               className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
                 typeFilter === val ? "bg-teal-600 text-white border-teal-600" : "bg-white hover:bg-gray-50"
