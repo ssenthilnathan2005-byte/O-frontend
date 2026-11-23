@@ -103,7 +103,7 @@ async function loadHospitalLab(): Promise<LabBooking[]> {
     return d.map((o: any) => ({
       id: o.id, patient_id: null, patient_name: "", phone: "", lab_id: o.hospital_id, test_id: "",
       lab_name: o.hospital_name, lab_area: o.booked_via === "ipd" ? "Hospital lab booked report" : "Hospital lab", test_name: o.test_name,
-      slot_date: o.slot_date || String(o.ordered_at).slice(0, 10), slot_time: o.slot_time || "morning",
+      slot_date: o.slot_date || new Date(o.ordered_at).toLocaleDateString("en-CA"), slot_time: o.slot_time || "morning",
       token_number: o.token_number, collection_type: "walk_in", price: o.price ?? o.amount ?? 0, payment_done: false,
       status: o.status === "ordered" ? "booked" : o.status,
       created_at: o.ordered_at, updated_at: o.ordered_at, _hospital: true,
@@ -176,8 +176,11 @@ export default function MyTokensPage() {
   const sortedLab = [...labBookings].map(markExpired).sort(
     (a, b) => (parseDay(b.slot_date)?.getTime() ?? 0) - (parseDay(a.slot_date)?.getTime() ?? 0),
   );
-  const activeLab = sortedLab.filter((b) => !LAB_DONE.has(b.status));
-  const pastLab = sortedLab.filter((b) => LAB_DONE.has(b.status));
+  // IPD hospital-lab reports stay in the live section for the same day only.
+  const todayStr = new Date().toLocaleDateString("en-CA");
+  const keepLive = (b: LabBooking) => (b as any)._ipd && b.status === "report_ready" && b.slot_date === todayStr;
+  const activeLab = sortedLab.filter((b) => !LAB_DONE.has(b.status) || keepLive(b));
+  const pastLab = sortedLab.filter((b) => LAB_DONE.has(b.status) && !keepLive(b));
   const labGroups = groupByDay(pastLab.slice(0, labVisible), (b) => b.slot_date);
 
   const renderLabCard = (b: LabBooking) => (
