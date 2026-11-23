@@ -84,10 +84,14 @@ export default function HospitalLabPage({ id, onBack }: { id: string; onBack: ()
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="font-semibold text-gray-900 text-sm">{o.test_name}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">{o.hospital_name}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{o.hospital_name}{o.booked_via === "ipd" ? " · Hospital lab booked report" : ""}</p>
+                      {o.booked_via === "ipd" ? (
+                        <p className="text-xs text-gray-400 mt-0.5">Ordered {String(o.ordered_at).slice(0, 10)} · Charged to your IPD bill</p>
+                      ) : (
                       <p className="text-xs text-gray-400 mt-0.5">
                         {o.slot_date} · {o.slot_time} session{o.token_number != null ? ` · Token #${o.token_number}` : ""}
                       </p>
+                      )}
                     </div>
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium shrink-0 ${st.cls}`}>{st.label}</span>
                   </div>
@@ -98,7 +102,7 @@ export default function HospitalLabPage({ id, onBack }: { id: string; onBack: ()
                     <a href={o.report_url} target="_blank" rel="noreferrer" className="text-xs text-teal-600 underline mt-1 inline-block">View report</a>
                   )}
                   {o.status !== "report_ready" && o.status !== "cancelled" && (
-                    <p className="text-xs text-gray-400 mt-2">Pay ₹{o.price} at the hospital lab. This updates automatically.</p>
+                    <p className="text-xs text-gray-400 mt-2">{o.booked_via === "ipd" ? "Added to your IPD bill. The report appears here when ready." : `Pay ₹${o.price} at the hospital lab. This updates automatically.`}</p>
                   )}
                 </div>
               );

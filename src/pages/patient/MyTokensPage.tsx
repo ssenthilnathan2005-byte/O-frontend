@@ -102,11 +102,12 @@ async function loadHospitalLab(): Promise<LabBooking[]> {
     if (!Array.isArray(d)) return [];
     return d.map((o: any) => ({
       id: o.id, patient_id: null, patient_name: "", phone: "", lab_id: o.hospital_id, test_id: "",
-      lab_name: o.hospital_name, lab_area: "Hospital lab", test_name: o.test_name,
+      lab_name: o.hospital_name, lab_area: o.booked_via === "ipd" ? "Hospital lab booked report" : "Hospital lab", test_name: o.test_name,
       slot_date: o.slot_date || String(o.ordered_at).slice(0, 10), slot_time: o.slot_time || "morning",
-      token_number: o.token_number, collection_type: "walk_in", price: o.price ?? 0, payment_done: false,
+      token_number: o.token_number, collection_type: "walk_in", price: o.price ?? o.amount ?? 0, payment_done: false,
       status: o.status === "ordered" ? "booked" : o.status,
       created_at: o.ordered_at, updated_at: o.ordered_at, _hospital: true,
+      _ipd: o.booked_via === "ipd", _result: o.result_value || null, _reportUrl: o.report_url || null,
     }) as unknown as LabBooking);
   } catch { return []; }
 }
@@ -206,8 +207,17 @@ export default function MyTokensPage() {
           </div>
           <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-gray-500">
             <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {b.slot_date}</span>
-            <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {api.labSessionLabel(b.slot_time)}</span>
+            {!(b as any)._ipd && <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {api.labSessionLabel(b.slot_time)}</span>}
           </div>
+          {(b as any)._ipd && (
+            <p className="text-xs text-gray-500 mt-1">Charged to your IPD bill</p>
+          )}
+          {(b as any)._hospital && b.status === "report_ready" && (b as any)._result && (
+            <p className="text-xs text-green-700 font-medium mt-2">Result: {(b as any)._result}</p>
+          )}
+          {(b as any)._hospital && b.status === "report_ready" && (b as any)._reportUrl && (
+            <a href={(b as any)._reportUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-xs text-teal-600 underline mt-1 inline-block">View report</a>
+          )}
         </div>
         {b.token_number != null && (
           <div className="text-right shrink-0 leading-none">
