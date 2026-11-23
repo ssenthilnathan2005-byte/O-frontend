@@ -58,7 +58,7 @@ import PrescriptionDialog from "@/components/PrescriptionDialog";
 import NurseTab from "@/components/NurseTab";
 import { Mic as NurseMic, UsersRound as StaffIcon } from "lucide-react";
 import StaffManagementPanel, { fetchStaffAccess } from "./StaffManagementPanel";
-import BreakManagementCard from "./BreakManagementCard";
+import BreakManagementCard, { resumeBreakNow } from "./BreakManagementCard";
 import PatientHistoryModal from "@/components/PatientHistoryModal";
 import { toast } from "sonner";
 import { useStore } from "../../context/StoreContext";
@@ -464,6 +464,14 @@ export default function DoctorDashboard() {
     open: boolean;
     tokenNum: number | null;
   }>({ open: false, tokenNum: null });
+  // ── Break guard: token actions are blocked while the doctor is On Break ──
+  const [breakState, setBreakState] = useState<{ onBreak: boolean; version: number } | null>(null);
+  const [breakPrompt, setBreakPrompt] = useState<{
+    open: boolean;
+    action: { type: "token"; tokenNum: number } | { type: "priority"; slotIndex: number } | null;
+  }>({ open: false, action: null });
+  const [breakResuming, setBreakResuming] = useState(false);
+  const [breakRefresh, setBreakRefresh] = useState(0);
   const [closeReason, setCloseReason] = useState("");
   const [showPrescription, setShowPrescription] = useState(false);
   const [completionMode, setCompletionMode] = useState<"normal" | "skipped">("normal");
@@ -783,6 +791,48 @@ export default function DoctorDashboard() {
     });
   }
 
+  // Returns true (and opens the "resume consultation?" prompt) when the doctor is still On Break.
+  function blockedByBreak(
+    action: { type: "token"; tokenNum: number } | { type: "priority"; slotIndex: number },
+  ): boolean {
+    if (!breakState?.onBreak) return false;
+    setBreakPrompt({ open: true, action });
+    return true;
+  }
+
+  // Same guard for actions started from inside the token dialog (e.g. a break began on another device).
+  function blockedInDialog(): boolean {
+    if (tokenDialog.tokenNum === null) return false;
+    if (!blockedByBreak({ type: "token", tokenNum: tokenDialog.tokenNum })) return false;
+    setTokenDialog({ open: false, tokenNum: null });
+    return true;
+  }
+
+  async function handleResumeFromPrompt() {
+    if (breakResuming) return;
+    setBreakResuming(true);
+    try {
+      const r = await resumeBreakNow(breakState?.version);
+      const a = r.data.availability;
+      if (a) setBreakState({ onBreak: a.status === "on_break", version: a.version });
+      setBreakRefresh((n) => n + 1);
+      if (!r.ok && a?.status !== "available") {
+        toast.error(r.data.error || "Could not resume consultation. Please try again.");
+        return;
+      }
+      if (r.ok) toast.success("Consultation resumed — patients are being notified.");
+      const act = breakPrompt.action;
+      setBreakPrompt({ open: false, action: null });
+      // Continue with what the doctor was trying to do.
+      if (act?.type === "token") setTokenDialog({ open: true, tokenNum: act.tokenNum });
+      else if (act?.type === "priority") openPriorityDialogNow(act.slotIndex);
+    } catch {
+      toast.error("No connection. Check your internet and try again.");
+    } finally {
+      setBreakResuming(false);
+    }
+  }
+
   function handleTokenClick(tokenNum: number) {
     if (isClosed || !isSessionAccessibleNow) return;
     const st = statuses[tokenNum] as TokenStatus;
@@ -793,11 +843,13 @@ export default function DoctorDashboard() {
       st !== "unvisited"
     )
       return;
+    if (blockedByBreak({ type: "token", tokenNum })) return;
     setTokenDialog({ open: true, tokenNum });
   }
 
   function handleMarkAsOngoing() {
     if (tokenDialog.tokenNum === null) return;
+    if (blockedInDialog()) return;
     const calledNum = tokenDialog.tokenNum;
 
     // If there's already an ongoing token (orange), show prescription first
@@ -833,6 +885,7 @@ export default function DoctorDashboard() {
   }
 
   function handleMarkCompleted() {
+    if (blockedInDialog()) return;
     const doneNum = tokenDialog.tokenNum;
     completeCurrentToken(sessionId);
     // Find next queued token (yellow or next red) to notify
@@ -856,6 +909,7 @@ export default function DoctorDashboard() {
   }
 
   function handleSkipToken() {
+    if (blockedInDialog()) return;
     const skippedNum = tokenDialog.tokenNum;
     // Pass the explicit token number so backend marks THIS token as unvisited
     // even if it was never set to "ongoing" (currentToken would be null otherwise)
@@ -905,6 +959,11 @@ export default function DoctorDashboard() {
   }
 
   function openPriorityDialog(slotIndex: number) {
+    if (blockedByBreak({ type: "priority", slotIndex })) return;
+    openPriorityDialogNow(slotIndex);
+  }
+
+  function openPriorityDialogNow(slotIndex: number) {
     const existing = tokenState?.prioritySlots?.[slotIndex] ?? {
       label: `Priority Slot P${slotIndex}`,
       status: "waiting" as const,
@@ -1203,6 +1262,8 @@ export default function DoctorDashboard() {
             <BreakManagementCard
               doctorId={doctor?.id}
               onChanged={() => { void refreshFromStorage(); }}
+              onAvailabilityChange={setBreakState}
+              refreshSignal={breakRefresh}
             />
 
             {/* Session selectors */}
@@ -2049,6 +2110,41 @@ export default function DoctorDashboard() {
           }}
         />
       )}
+
+      {/* Break guard: shown when a token action is attempted while On Break */}
+      <AlertDialog
+        open={breakPrompt.open}
+        onOpenChange={(v) => {
+          if (!v && !breakResuming) setBreakPrompt({ open: false, action: null });
+        }}
+      >
+        <AlertDialogContent data-ocid="break_guard.dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>You are on a break</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are currently on a break. Would you like to resume consultation?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button
+              variant="outline"
+              disabled={breakResuming}
+              onClick={() => setBreakPrompt({ open: false, action: null })}
+              data-ocid="break_guard.cancel_button"
+            >
+              Continue Break
+            </Button>
+            <Button
+              className="bg-teal-500 hover:bg-teal-600 text-white"
+              disabled={breakResuming}
+              onClick={() => void handleResumeFromPrompt()}
+              data-ocid="break_guard.confirm_button"
+            >
+              {breakResuming ? "Resuming…" : "Resume Consultation"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Token Action Dialog */}
       <Dialog
