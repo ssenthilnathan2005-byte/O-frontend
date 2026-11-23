@@ -83,6 +83,14 @@ async function callApi(path: string, method: "GET" | "POST", body?: unknown) {
   }
 }
 
+// Used by the dashboard's "You are on a break" prompt to end the break from outside the card.
+export async function resumeBreakNow(expectedVersion?: number) {
+  return callApi("/availability/resume", "POST", {
+    idempotencyKey: newKey(),
+    expectedVersion,
+  });
+}
+
 const fmtTime = (ms: number) =>
   new Date(ms).toLocaleTimeString("en-IN", {
     hour: "2-digit",
@@ -134,9 +142,13 @@ function Chip({
 export default function BreakManagementCard({
   doctorId,
   onChanged,
+  onAvailabilityChange,
+  refreshSignal,
 }: {
   doctorId?: string;
   onChanged?: () => void;
+  onAvailabilityChange?: (s: { onBreak: boolean; version: number } | null) => void;
+  refreshSignal?: number;
 }) {
   const [av, setAv] = useState<Availability | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -199,6 +211,16 @@ export default function BreakManagementCard({
   }, [doctorId, apply]);
 
   const onBreak = av?.status === "on_break";
+
+  // Tell the dashboard whether the doctor is on a break (used to guard token actions).
+  useEffect(() => {
+    onAvailabilityChange?.(av ? { onBreak: av.status === "on_break", version: av.version } : null);
+  }, [av, onAvailabilityChange]);
+
+  // Re-read the status when the dashboard resumes the break from its own prompt.
+  useEffect(() => {
+    if (refreshSignal) void load();
+  }, [refreshSignal, load]);
 
   useEffect(() => {
     if (!onBreak) return;
