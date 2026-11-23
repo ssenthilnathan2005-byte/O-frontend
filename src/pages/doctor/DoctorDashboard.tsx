@@ -759,7 +759,8 @@ export default function DoctorDashboard() {
       if (field === "count") {
         const n = Number(value);
         if (!Number.isInteger(n) || n < 0) return prev;
-        updated.count = n;
+        if (n > 200) toast.error("Maximum 200 tokens per session.");
+        updated.count = Math.min(n, 200);
       } else {
         const normalizedValue = normalizeTimeValue(value);
         if (!normalizedValue) return prev;
@@ -1958,6 +1959,7 @@ export default function DoctorDashboard() {
                             <Input
                               type="number"
                               min={0}
+                              max={200}
                               value={entry.count}
                               onChange={(e) =>
                                 updateScheduleEntry(scheduleTab, s, "count", e.target.value)
@@ -2014,7 +2016,7 @@ export default function DoctorDashboard() {
                   );
                 })}
                 <p className="text-xs text-gray-400">
-                  Token count of 0 means the session is deliberately closed for that day type.
+                  Token count of 0 means the session is deliberately closed for that day type. Maximum 200 tokens per session.
                 </p>
               </div>
             </div>
