@@ -201,6 +201,14 @@ export default function BookingDialog({ doctor, hospital, open, onClose, maxDate
     return bookings.filter(b => b.sessionId === sid && b.paymentDone && b.status !== "cancelled").length;
   }
 
+  // Same patient already booked in the chosen session (server rejects this at the last step).
+  function existingFor(name?: string | null) {
+    const n = String(name || "").trim().toLowerCase();
+    if (!n || !selectedDate || !selectedSession) return null;
+    const sid = makeSessionId(doctor.id, selectedDate, selectedSession);
+    return bookings.find((b) => b.sessionId === sid && b.status !== "cancelled" && String(b.patientName || "").trim().toLowerCase() === n) || null;
+  }
+
   function handleClose() {
     pushedRef.current = 0; setStep("date"); setSelectedDate(""); setSelectedSession("");
     setTokenNumber(0); setComplaint(""); setSelectedSymptoms([]); setPatientGender(""); setPatientBloodGroup(""); setPatientName(""); setPatientPhone(""); setPatientAge(""); setPatientYob(""); setBookingFor(""); setPayError("");
@@ -672,6 +680,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose, maxDate
                       <button
                         key={m.id}
                         type="button"
+                        disabled={!!existingFor(m.name)}
                         onClick={() => {
                           setPatientName(m.name);
                           setFamilyMemberId(m.id);
@@ -683,9 +692,10 @@ export default function BookingDialog({ doctor, hospital, open, onClose, maxDate
                           setBookingFor("other");
                           goToStep("complaint");
                         }}
-                        className="px-3 py-1.5 rounded-full border border-teal-200 bg-teal-50 text-teal-700 text-sm font-medium hover:bg-teal-100 transition-colors"
+                        className="px-3 py-1.5 rounded-full border border-teal-200 bg-teal-50 text-teal-700 text-sm font-medium hover:bg-teal-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-teal-50"
                       >
                         {m.relation} - {m.name}
+                        {existingFor(m.name) ? ` (already booked, Token #${existingFor(m.name)!.tokenNumber})` : ""}
                       </button>
                     ))}
                   </div>
@@ -693,7 +703,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose, maxDate
               )}
               <button
                 type="button"
-                disabled={profileLoading}
+                disabled={profileLoading || !!existingFor(profile?.name)}
                 onClick={() => {
                   if (!profile || !profile.isComplete) {
                     handleClose();
@@ -713,7 +723,9 @@ export default function BookingDialog({ doctor, hospital, open, onClose, maxDate
               >
                 <p className="font-medium text-gray-900 text-sm">Booking for Myself</p>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  {profileLoading
+                  {existingFor(profile?.name)
+                    ? `You already have a booking in this session (Token #${existingFor(profile?.name)!.tokenNumber})`
+                    : profileLoading
                     ? "Checking your profile…"
                     : profile?.isComplete
                     ? "We'll use your saved details"
