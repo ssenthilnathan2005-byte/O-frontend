@@ -129,7 +129,7 @@ function PatientFinder({ f, found, setFound, setField, onPick, onNew }: any) {
 function RegisterWalkIn() {
   const today = new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
   const [docs, setDocs] = useState<any[]>([]);
-  const empty = { patientName: "", phone: "", age: "", patientGender: "", complaint: "", description: "", doctorId: "", session: "morning", date: today, uhid: "", phoneRelation: "" };
+  const empty = { patientName: "", phone: "", age: "", patientGender: "", complaint: "", description: "", doctorId: "", session: "morning", date: today, uhid: "", phoneRelation: "", patientArea: "" };
   const [spec, setSpec] = useState("");
   const [syms, setSyms] = useState<string[]>([]);
   const [dateText, setDateText] = useState(today.split("-").reverse().join("-"));
@@ -208,9 +208,9 @@ function RegisterWalkIn() {
         setField={(k: string, v: string) => { setF((p) => ({ ...p, [k]: v })); setFound(null); }}
         onPick={(r: any) => {
           const g = ["Male", "Female", "Other"].find((x) => x.toLowerCase() === String(r.gender || "").toLowerCase()) || "";
-          setF((p) => ({ ...p, uhid: r.uhid, phone: shortPhone(r.phone) || p.phone, patientName: r.name || p.patientName, age: r.age != null ? String(r.age) : p.age, patientGender: g || p.patientGender }));
+          setF((p) => ({ ...p, uhid: r.uhid, phone: shortPhone(r.phone) || p.phone, patientName: r.name || p.patientName, age: r.age != null ? String(r.age) : p.age, patientGender: g || p.patientGender, patientArea: r.area || p.patientArea }));
         }}
-        onNew={() => { setFound(null); setF((p) => ({ ...p, uhid: "", patientName: "", age: "", patientGender: "", phoneRelation: "" })); }} />
+        onNew={() => { setFound(null); setF((p) => ({ ...p, uhid: "", patientName: "", age: "", patientGender: "", phoneRelation: "", patientArea: "" })); }} />
       <div className="space-y-1.5"><Label className="block">Patient name *</Label><Input style={{ height: 40 }} value={f.patientName} onChange={(e) => setF({ ...f, patientName: e.target.value })} /></div>
       {!found && String(f.phone || "").replace(/\D/g, "").length === 10 && (
         <div className="space-y-1.5">
@@ -227,6 +227,7 @@ function RegisterWalkIn() {
         <div className="space-y-1.5"><Label className="block">Gender</Label><select style={{ height: 40 }} className="w-full border border-input bg-background rounded-md px-3 text-sm" value={f.patientGender} onChange={(e) => setF({ ...f, patientGender: e.target.value })}><option value="">Select gender</option><option>Male</option><option>Female</option><option>Other</option></select></div>
       </div>
       
+      <div className="space-y-1.5"><Label className="block">Address</Label><Input style={{ height: 40 }} placeholder="Street, area, city" value={f.patientArea} onChange={(e) => setF({ ...f, patientArea: e.target.value })} /></div>
       <div className="space-y-1.5"><Label className="block">Type of doctor</Label>
         <select className={sel} value={spec} onChange={(e) => { const v = e.target.value; setSpec(v); if (v && selDoc && selDoc.specialty !== v) { setF({ ...f, doctorId: "" }); setSyms([]); } }}>
           <option value="">All types</option>
@@ -596,7 +597,7 @@ function Admit() {
   const [aq, setAq] = useState(""); // ADMIT_SEARCH_V1
   const aql = aq.trim().toLowerCase();
   const inwardShown = inward.filter(p => !aql || [p.patient_name, p.phone, p.ward, p.bed_number, p.admitting_doctor_name, p.diagnosis, p.gender, p.area].some(v => (v || "").toLowerCase().includes(aql)));
-  const empty = { patientName: "", phone: "", age: "", gender: "", admittingDoctorId: "", bed: "", diagnosis: "", notes: "", uhid: "" };
+  const empty = { patientName: "", phone: "", age: "", gender: "", admittingDoctorId: "", bed: "", diagnosis: "", notes: "", uhid: "", area: "" };
   const [f, setF] = useState(empty);
   const [saving, setSaving] = useState(false);
 
@@ -621,7 +622,7 @@ function Admit() {
     setSaving(true);
     try {
       const res = await call("/admit", "POST", {
-        patientName: f.patientName, phone: f.phone, age: f.age, gender: f.gender, uhid: found ? found.uhid : undefined, confirmNew,
+        patientName: f.patientName, phone: f.phone, age: f.age, gender: f.gender, area: f.area, uhid: found ? found.uhid : undefined, confirmNew,
         admittingDoctorId: f.admittingDoctorId || null, diagnosis: f.diagnosis, notes: f.notes, wardId, bedId,
       });
       toast.success("Admitted to " + res.ward + " / " + res.bed);
@@ -649,7 +650,7 @@ function Admit() {
         )}
         <PatientFinder f={f} found={found} setFound={setFound}
           setField={(k: string, v: string) => { setF((p) => ({ ...p, [k]: v })); setFound(null); }}
-          onPick={(r: any) => setF((p) => ({ ...p, uhid: r.uhid, phone: shortPhone(r.phone) || p.phone, patientName: r.name || p.patientName, age: r.age != null ? String(r.age) : p.age, gender: r.gender || p.gender }))} />
+          onPick={(r: any) => setF((p) => ({ ...p, uhid: r.uhid, phone: shortPhone(r.phone) || p.phone, patientName: r.name || p.patientName, age: r.age != null ? String(r.age) : p.age, gender: r.gender || p.gender, area: r.area || p.area }))} />
         <div className="space-y-1"><Label>Patient name *</Label><Input value={f.patientName} onChange={e => setF({ ...f, patientName: e.target.value })} /></div>
         <div className="grid grid-cols-3 gap-2">
           <div className="space-y-1"><Label>Age</Label><Input value={f.age} onChange={e => setF({ ...f, age: e.target.value })} /></div>
@@ -658,6 +659,7 @@ function Admit() {
           <select className={sel} value={f.gender} onChange={e => setF({ ...f, gender: e.target.value })}>
             <option value="">Select</option><option>Male</option><option>Female</option><option>Other</option>
           </select></div>
+        <div className="space-y-1"><Label>Address</Label><Input placeholder="Street, area, city" value={f.area} onChange={e => setF({ ...f, area: e.target.value })} /></div>
         <div className="space-y-1"><Label>Ward / bed *</Label>
           <select className={sel} value={f.bed} onChange={e => setF({ ...f, bed: e.target.value })}>
             <option value="">{beds.length ? "Select an available bed" : "No beds available"}</option>
