@@ -1,3 +1,4 @@
+import { shortPhone } from "../../lib/utils";
 import { useEffect, useState, Fragment } from "react";
 import DateInput from "@/components/DateInput";
 import * as api from "../../api";
@@ -258,7 +259,7 @@ export default function HAInward() {
               <tr className="border-t hover:bg-muted/20 transition-colors">
                 <td className="px-4 py-3">
                   <p className="font-medium">{p.patient_name}</p>
-                  {p.phone && <p className="text-xs text-muted-foreground">{p.phone}</p>}
+                  {p.phone && <p className="text-xs text-muted-foreground">{shortPhone(p.phone)}</p>}
                   {p.age && <p className="text-xs text-muted-foreground">{p.age}y {p.gender || ""}</p>}
                 </td>
                 <td className="px-4 py-3">

@@ -1,3 +1,4 @@
+import { shortPhone } from "../lib/utils";
 import { useEffect, useState } from "react";
 
 type Item = {
@@ -50,7 +51,7 @@ export default function FollowUpsPanel() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-semibold text-gray-900 truncate">{i.patientName}</p>
-                    {i.phone && <a href={`tel:${i.phone}`} className="text-xs text-teal-700">{i.phone}</a>}
+                    {i.phone && <a href={`tel:${i.phone}`} className="text-xs text-teal-700">{shortPhone(i.phone)}</a>}
                     {i.diagnosis && <p className="text-xs text-gray-600 mt-0.5">Dx: {i.diagnosis}</p>}
                     <p className="text-xs text-gray-500 mt-0.5">Seen {fmt(i.visitDate)} · asked to return after {i.followUpDays} day(s)</p>
                   </div>

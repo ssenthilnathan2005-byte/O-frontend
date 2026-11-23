@@ -1,3 +1,4 @@
+import { shortPhone } from "../../lib/utils";
 import { useEffect, useMemo, useState } from "react";
 import { Search, X, Printer } from "lucide-react";
 import { toast } from "sonner";
@@ -337,7 +338,7 @@ export default function HAAllPatients() {
                   <TableCell className="font-mono text-sm whitespace-nowrap">{p.uhid || "-"}</TableCell>
                   <TableCell className="font-medium">{p.name || "-"}</TableCell>
                   <TableCell>{[p.age, p.gender].filter(Boolean).join(" / ") || "-"}</TableCell>
-                  <TableCell>{p.phone || "-"}</TableCell>
+                  <TableCell>{shortPhone(p.phone) || "-"}</TableCell>
                   <TableCell>
                     <span className="font-semibold">{p.visits.length}</span>
                     <span className="block text-xs text-muted-foreground">

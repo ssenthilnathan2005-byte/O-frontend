@@ -1,3 +1,4 @@
+import { shortPhone } from "../../lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
@@ -283,7 +284,7 @@ export default function HAPatients() {
                   )}
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
-                  {b.phone || "—"}
+                  {shortPhone(b.phone) || "—"}
                 </TableCell>
                 <TableCell className="text-sm font-medium">
                   {b.doctorName || "—"}

@@ -1,3 +1,4 @@
+import { shortPhone } from "../lib/utils";
 import { hasSessionEndedForDate, getSessionLabelForDate, isSessionEndingSoon } from "../data/seed";
 import VitalsScanAll from "@/components/VitalsScanAll";
 import DateInput from "@/components/DateInput";
@@ -207,7 +208,7 @@ function RegisterWalkIn() {
         setField={(k: string, v: string) => { setF((p) => ({ ...p, [k]: v })); setFound(null); }}
         onPick={(r: any) => {
           const g = ["Male", "Female", "Other"].find((x) => x.toLowerCase() === String(r.gender || "").toLowerCase()) || "";
-          setF((p) => ({ ...p, uhid: r.uhid, phone: r.phone || p.phone, patientName: r.name || p.patientName, age: r.age != null ? String(r.age) : p.age, patientGender: g || p.patientGender }));
+          setF((p) => ({ ...p, uhid: r.uhid, phone: shortPhone(r.phone) || p.phone, patientName: r.name || p.patientName, age: r.age != null ? String(r.age) : p.age, patientGender: g || p.patientGender }));
         }}
         onNew={() => { setFound(null); setF((p) => ({ ...p, uhid: "", patientName: "", age: "", patientGender: "", phoneRelation: "" })); }} />
       <div className="space-y-1.5"><Label className="block">Patient name *</Label><Input style={{ height: 40 }} value={f.patientName} onChange={(e) => setF({ ...f, patientName: e.target.value })} /></div>
@@ -328,7 +329,7 @@ function Outpatients() {
 
   function startEdit(b: OPBooking) {
     setEditId(b.id);
-    setF({ phone: b.phone || "", patientAge: b.patient_age != null ? String(b.patient_age) : "", complaint: b.complaint || "" });
+    setF({ phone: shortPhone(b.phone), patientAge: b.patient_age != null ? String(b.patient_age) : "", complaint: b.complaint || "" });
   }
   async function checkIn(id: string) {
     try { await call("/bookings/" + id + "/check-in", "POST", f); toast.success("Checked in"); setEditId(null); load(); }
@@ -428,7 +429,7 @@ function Outpatients() {
                 <div className="min-w-[2.25rem] h-9 px-1 rounded-lg bg-teal-50 text-teal-700 font-bold flex items-center justify-center">{b.token_number}</div>
                 <div className="flex-1 min-w-[140px]">
                   <p className="font-medium text-gray-900 truncate">{b.patient_name}{b.patient_age != null ? ", " + b.patient_age : ""}{(b as any).patient_gender ? " · " + (b as any).patient_gender[0] : ""}{b.booking_source === "front_desk" && <span className="ml-2 text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded px-1.5 py-0.5">Front desk</span>}{(docTab === "all" || !shown.some(x => x.doctor_name === docTab)) && <span className="ml-2 text-[10px] font-semibold text-teal-700 bg-teal-50 border border-teal-100 rounded px-1.5 py-0.5">{b.doctor_name}</span>}</p>
-                  <p className="text-xs text-gray-500 truncate">{b.phone || "No phone"}{b.patient_area ? " | " + b.patient_area : ""}{b.complaint ? " | " + b.complaint : ""}</p>
+                  <p className="text-xs text-gray-500 truncate">{shortPhone(b.phone) || "No phone"}{b.patient_area ? " | " + b.patient_area : ""}{b.complaint ? " | " + b.complaint : ""}</p>
                 </div>
                 {(b as any).stage && <span className={"text-xs font-medium rounded-md px-2 py-1 border " + ((b as any).stage === "collected" ? "bg-emerald-50 text-emerald-700 border-emerald-100" : (b as any).stage === "collect_tablets" ? "bg-amber-50 text-amber-700 border-amber-100" : (b as any).stage === "seen" ? "bg-blue-50 text-blue-700 border-blue-100" : "bg-gray-50 text-gray-600 border-gray-200")}>{({ waiting: "Waiting", seen: "Seen doctor", collect_tablets: "Collect tablets", collected: "Tablets collected" } as Record<string, string>)[(b as any).stage]}</span>}
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
@@ -648,7 +649,7 @@ function Admit() {
         )}
         <PatientFinder f={f} found={found} setFound={setFound}
           setField={(k: string, v: string) => { setF((p) => ({ ...p, [k]: v })); setFound(null); }}
-          onPick={(r: any) => setF((p) => ({ ...p, uhid: r.uhid, phone: r.phone || p.phone, patientName: r.name || p.patientName, age: r.age != null ? String(r.age) : p.age, gender: r.gender || p.gender }))} />
+          onPick={(r: any) => setF((p) => ({ ...p, uhid: r.uhid, phone: shortPhone(r.phone) || p.phone, patientName: r.name || p.patientName, age: r.age != null ? String(r.age) : p.age, gender: r.gender || p.gender }))} />
         <div className="space-y-1"><Label>Patient name *</Label><Input value={f.patientName} onChange={e => setF({ ...f, patientName: e.target.value })} /></div>
         <div className="grid grid-cols-3 gap-2">
           <div className="space-y-1"><Label>Age</Label><Input value={f.age} onChange={e => setF({ ...f, age: e.target.value })} /></div>

@@ -1,3 +1,4 @@
+import { shortPhone } from "../lib/utils";
 import { useEffect, useMemo, useState } from "react";
 import { useTabRoute } from "../router/RouterContext";
 import { BedDouble, CheckCircle, FlaskConical, LogOut, Phone, X, XCircle } from "lucide-react";
@@ -141,7 +142,7 @@ export default function HospitalLabDashboard() {
                     <p className="text-sm text-gray-500">{o.test_name}</p>
                     {o.source === "patient" && (
                       <p className="text-xs text-teal-700 mt-0.5">
-                        {o.slot_date} · {o.slot_time}{o.token_number != null ? ` · Token #${o.token_number}` : ""}{o.phone ? ` · ${o.phone}` : ""}
+                        {o.slot_date} · {o.slot_time}{o.token_number != null ? ` · Token #${o.token_number}` : ""}{o.phone ? ` · ${shortPhone(o.phone)}` : ""}
                       </p>
                     )}
                     {o.result_value && <p className="text-xs text-green-700 mt-1 font-medium">Result: {o.result_value}</p>}
@@ -326,7 +327,7 @@ function TokenBoard({ orders, busy, update, onResult }: {
             </div>
             <div className="px-5 py-4 space-y-2 text-sm">
               <p className="font-semibold text-gray-900">{sel.patient_name}</p>
-              {sel.phone && <p className="flex items-center gap-1.5 text-gray-600"><Phone className="w-3.5 h-3.5" /> {sel.phone}</p>}
+              {sel.phone && <p className="flex items-center gap-1.5 text-gray-600"><Phone className="w-3.5 h-3.5" /> {shortPhone(sel.phone)}</p>}
               <p className="text-gray-500">{sel.test_name}</p>
               <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${(BADGE[sel.status] || BADGE.cancelled).cls}`}>
                 {(BADGE[sel.status] || { label: sel.status }).label}

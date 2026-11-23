@@ -1,3 +1,4 @@
+import { shortPhone } from "../../lib/utils";
 import { useEffect, useState } from "react";
 import { useStore } from "../../context/StoreContext";
 import { FlaskConical, Plus, X, Trash2, CheckCircle, XCircle } from "lucide-react";
@@ -246,7 +247,7 @@ export default function HALab() {
                         <p className="text-xs text-teal-700 mt-0.5">
                           Patient booking · {order.slot_date} · {order.slot_time}
                           {order.token_number != null ? ` · Token #${order.token_number}` : ""}
-                          {order.phone ? ` · ${order.phone}` : ""}
+                          {order.phone ? ` · ${shortPhone(order.phone)}` : ""}
                         </p>
                       )}
                       {order.doctor_name && <p className="text-xs text-gray-400">Dr. {order.doctor_name}</p>}

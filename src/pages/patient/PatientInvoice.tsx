@@ -1,3 +1,4 @@
+import { shortPhone } from "../../lib/utils";
 import { useEffect, useState } from "react";
 import { FileText, X, Loader2 } from "lucide-react";
 import { ipdBilling } from "../../api";
@@ -84,7 +85,7 @@ export default function PatientInvoice({ inwardId }: { inwardId: string }) {
 
             <div className="grid grid-cols-1 gap-x-6 gap-y-1 border-b py-4 text-sm sm:grid-cols-2">
               <p><span className="text-gray-500">Patient: </span><span className="font-semibold">{bill.patientName || "-"}</span></p>
-              {bill.phone && <p><span className="text-gray-500">Phone: </span>{bill.phone}</p>}
+              {bill.phone && <p><span className="text-gray-500">Phone: </span>{shortPhone(bill.phone)}</p>}
               <p><span className="text-gray-500">Ward / Bed: </span>{bill.ward || "-"}{bill.bedNumber ? " / " + bill.bedNumber : ""}</p>
               {bill.doctor && <p><span className="text-gray-500">Doctor: </span>Dr. {String(bill.doctor).replace(/^Dr\.?\s*/i, "")}</p>}
               <p><span className="text-gray-500">Admitted: </span>{fmtDateTime(bill.admittedAt)}</p>

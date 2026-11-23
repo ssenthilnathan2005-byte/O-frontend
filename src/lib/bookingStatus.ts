@@ -46,6 +46,8 @@ export function getBookingPatientName(value?: string | null, fallback = "Patient
 }
 
 export function getBookingPhone(value?: string | null, fallback = "Phone not provided"): string {
-  const phone = (value ?? "").trim();
+  const raw = (value ?? "").trim();
+  const digits = raw.replace(/\D/g, "");
+  const phone = digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : raw;
   return phone || fallback;
 }
