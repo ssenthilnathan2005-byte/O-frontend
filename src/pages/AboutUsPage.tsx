@@ -1,4 +1,4 @@
-import { ArrowLeft, Clock, ShieldCheck, Building2, Activity, Users, Target, Eye, ChevronRight } from "lucide-react";
+import { ArrowLeft, Clock, ShieldCheck, Building2, Activity, Target, Eye, ChevronRight } from "lucide-react";
 import { useRouter } from "../router/RouterContext";
 import { useState } from "react";
 import { Send, CheckCircle2 } from "lucide-react";
@@ -13,7 +13,7 @@ const founders = [
     bio: "Leads the company's vision, business strategy, product direction, partnerships and overall growth.",
   },
   {
-    name: "Kishore",
+    name: "Kishore Kumar",
     role: "Chief Technology Officer (CTO)",
     bio: "Leads technology strategy, software development, hospital ERP architecture and AI integration.",
   },
@@ -93,7 +93,7 @@ export default function AboutUsPage() {
             </button>
           </div>
 
-          <div className={`${CARD} mt-10 w-full max-w-6xl p-6 lg:p-8 text-left`}>
+          <div className={`${CARD} mt-10 w-full p-6 lg:p-8 text-left`}>
             <h2 className="text-lg lg:text-xl font-bold text-gray-900 text-center">What we do</h2>
             <ul className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-3">
               {offerings.map((o) => (
@@ -158,8 +158,7 @@ export default function AboutUsPage() {
 
         {/* Founders */}
         <section>
-          <div className="flex items-start gap-4">
-            <div className="hidden sm:flex w-12 h-12 shrink-0 rounded-xl bg-teal-50 items-center justify-center"><Users className="w-6 h-6 text-teal-600" /></div>
+          <div>
             <div className="max-w-3xl">
               <SectionHeading
                 label="Leadership"
