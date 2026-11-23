@@ -74,6 +74,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose, maxDate
   const [patientAge, setPatientAge]     = useState("");
   const [bookingFor, setBookingFor]     = useState<"self" | "other" | "">("");
   const [familyMemberId, setFamilyMemberId] = useState("");
+  const [showOthers, setShowOthers] = useState(false);
   const memberIdForBooking = () => (bookingFor === "other" && familyMemberId && family.find(m => m.id === familyMemberId)?.name === patientName ? familyMemberId : undefined);
   const [patientYob, setPatientYob] = useState("");
   const bookingYearNow = new Date().getFullYear();
@@ -211,7 +212,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose, maxDate
 
   function handleClose() {
     pushedRef.current = 0; setStep("date"); setSelectedDate(""); setSelectedSession("");
-    setTokenNumber(0); setComplaint(""); setSelectedSymptoms([]); setPatientGender(""); setPatientBloodGroup(""); setPatientName(""); setPatientPhone(""); setPatientAge(""); setPatientYob(""); setBookingFor(""); setPayError("");
+    setTokenNumber(0); setComplaint(""); setSelectedSymptoms([]); setPatientGender(""); setPatientBloodGroup(""); setPatientName(""); setPatientPhone(""); setPatientAge(""); setPatientYob(""); setBookingFor(""); setPayError(""); setShowOthers(false);
     setTrackerSessionId("");
     setPrefetchedOrder(null); setPrefetchingOrder(false);
     onClose();
@@ -672,35 +673,6 @@ export default function BookingDialog({ doctor, hospital, open, onClose, maxDate
               <p className="text-sm text-gray-400 mt-1">This helps us fill in the right details.</p>
             </div>
             <div className="space-y-3">
-              {family.filter(m => m.relation !== "Self").length > 0 && (
-                <div>
-                  <p className="text-xs font-medium text-gray-500 mb-2">Family members</p>
-                  <div className="flex flex-wrap gap-2">
-                    {family.filter(m => m.relation !== "Self").map(m => (
-                      <button
-                        key={m.id}
-                        type="button"
-                        disabled={!!existingFor(m.name)}
-                        onClick={() => {
-                          setPatientName(m.name);
-                          setFamilyMemberId(m.id);
-                          setPatientGender(m.gender || "");
-                          setPatientBloodGroup(m.bloodGroup || "");
-                          setPatientPhone(String(profile?.phone || "").replace(/\D/g, "").slice(-10));
-                          setPatientAge(m.age);
-                          setPatientYob(m.yearOfBirth || "");
-                          setBookingFor("other");
-                          goToStep("complaint");
-                        }}
-                        className="px-3 py-1.5 rounded-full border border-teal-200 bg-teal-50 text-teal-700 text-sm font-medium hover:bg-teal-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-teal-50"
-                      >
-                        {m.relation} - {m.name}
-                        {existingFor(m.name) ? ` (already booked, Token #${existingFor(m.name)!.tokenNumber})` : ""}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
               <button
                 type="button"
                 disabled={profileLoading || !!existingFor(profile?.name)}
@@ -734,12 +706,52 @@ export default function BookingDialog({ doctor, hospital, open, onClose, maxDate
               </button>
               <button
                 type="button"
-                onClick={() => { handleClose(); navigate({ path: "/patient/profile" }); }}
-                className="w-full p-4 rounded-xl border-2 border-dashed border-gray-200 hover:border-teal-500 hover:bg-teal-50 transition-all text-left"
+                onClick={() => setShowOthers(v => !v)}
+                className="w-full p-4 rounded-xl border-2 border-gray-200 hover:border-teal-500 hover:bg-teal-50 transition-all text-left"
               >
-                <p className="font-medium text-gray-900 text-sm">Add a family member</p>
-                <p className="text-xs text-gray-400 mt-0.5">You can only book for family members saved in My Profile</p>
+                <p className="font-medium text-gray-900 text-sm">Book for Others</p>
+                <p className="text-xs text-gray-400 mt-0.5">Choose from family members saved in your profile</p>
               </button>
+              {showOthers && (
+                <div className="rounded-xl border border-gray-200 p-3 space-y-3">
+                  <p className="text-xs font-medium text-gray-500">Whom do you want to book for?</p>
+                  {family.filter(m => m.relation !== "Self").length === 0 ? (
+                    <p className="text-sm text-gray-400">No family members saved yet.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {family.filter(m => m.relation !== "Self").map(m => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          disabled={!!existingFor(m.name)}
+                          onClick={() => {
+                            setPatientName(m.name);
+                            setFamilyMemberId(m.id);
+                            setPatientGender(m.gender || "");
+                            setPatientBloodGroup(m.bloodGroup || "");
+                            setPatientPhone(String(profile?.phone || "").replace(/\D/g, "").slice(-10));
+                            setPatientAge(m.age);
+                            setPatientYob(m.yearOfBirth || "");
+                            setBookingFor("other");
+                            goToStep("complaint");
+                          }}
+                          className="px-3 py-1.5 rounded-full border border-teal-200 bg-teal-50 text-teal-700 text-sm font-medium hover:bg-teal-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-teal-50"
+                        >
+                          {m.relation} - {m.name}
+                          {existingFor(m.name) ? ` (already booked, Token #${existingFor(m.name)!.tokenNumber})` : ""}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => { handleClose(); navigate({ path: "/patient/profile" }); }}
+                    className="text-xs font-medium text-teal-600 hover:text-teal-700"
+                  >
+                    + Add a family member in My Profile
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
