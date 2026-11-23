@@ -22,6 +22,7 @@ import HAAttendance from "./HAAttendance";
 import HABilling from "./HABilling";
 import HAPermissions from "./HAPermissions";
 import HAPasswordManagement from "./HAPasswordManagement";
+import HAActivity, { useActivityUnread } from "./HAActivity";
 import GstInvoice from "./GstInvoice";
 import useModules from "../../hooks/useModules";
 import { PharmRevenue, PharmInventory, PharmPatients, PharmSold, PharmStockUpdate, usePharmacySocket } from "./PharmacyModule";
@@ -29,6 +30,7 @@ import { PharmRevenue, PharmInventory, PharmPatients, PharmSold, PharmStockUpdat
 const NAV_ITEMS = [
   { path: "/admin/functioning", label: "Hospital Functioning", icon: Settings2 },
   { path: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { path: "/admin/activity", label: "Activity Monitor", icon: Activity },
   { path: "/admin/billing", label: "Revenue", icon: Receipt },
   { path: "/admin/all-patients", label: "All Patients", icon: Users },
   { path: "/admin/attendance", label: "Attendance", icon: Fingerprint },
@@ -113,6 +115,7 @@ export default function HospitalAdminPanel() {
     return () => { html.style.overflow = prevHtml; body.style.overflow = prevBody; };
   }, []);
   usePharmacySocket(user && user.role === "hospital_admin" ? user.hospitalId : "");
+  const activityUnread = useActivityUnread();
 
   const hospitalName = user && user.role === "hospital_admin" ? user.hospitalName : "Hospital Admin";
 
@@ -140,6 +143,7 @@ export default function HospitalAdminPanel() {
     if (route.path === "/admin/billing") return <HABilling />;
     if (route.path === "/admin/permissions") return <HAPermissions />;
     if (route.path === "/admin/passwords") return <HAPasswordManagement />;
+    if (route.path === "/admin/activity") return <HAActivity />;
     if (route.path === "/admin/functioning") return <HospitalFunctioning />;
     return <HADashboard />;
   }
@@ -177,6 +181,7 @@ export default function HospitalAdminPanel() {
               >
                 <Icon className="w-4 h-4 shrink-0" />
                 {label}
+                {path === "/admin/activity" && activityUnread > 0 && (<span className="ml-auto rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">{activityUnread > 99 ? "99+" : activityUnread}</span>)}
               </button>
             );
           })}
@@ -234,6 +239,7 @@ export default function HospitalAdminPanel() {
                 >
                   <Icon className="w-4 h-4 shrink-0" />
                   {label}
+                  {path === "/admin/activity" && activityUnread > 0 && (<span className="ml-auto rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">{activityUnread > 99 ? "99+" : activityUnread}</span>)}
                 </button>
               ))}
             </nav>

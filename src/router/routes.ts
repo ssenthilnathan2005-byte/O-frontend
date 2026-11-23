@@ -98,6 +98,7 @@ export function slugToTab(base: TabBase, slug: string): string | undefined {
 // ── Hospital admin area: /admin/*   (role "hospital_admin") ──────────────────
 export const HOSPITAL_ADMIN_PATHS = [
   "/admin/dashboard",
+  "/admin/activity",
   "/admin/functioning",
   "/admin/billing",
   "/admin/all-patients",
