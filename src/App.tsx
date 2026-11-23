@@ -361,7 +361,7 @@ function LandingPage() {
             </div>
             <nav className="hidden lg:flex items-center gap-8 text-sm font-medium text-gray-700">
               <button onClick={() => navigate({ path: "/patient/hospitals" })} className="hover:text-teal-600 transition-colors">Find Hospitals</button>
-              <button onClick={() => navigate({ path: "/patient/hospitals" })} className="hover:text-teal-600 transition-colors">Find Doctors</button>
+              <button onClick={() => navigate({ path: "/patient/hospitals", q: "@doctors" })} className="hover:text-teal-600 transition-colors">Find Doctors</button>
               <button onClick={() => navigate({ path: "/patient/tokens" })} className="hover:text-teal-600 transition-colors">My Tokens</button>
               <button onClick={() => navigate({ path: "/patient/prescriptions" })} className="hover:text-teal-600 transition-colors">My Prescriptions</button>
             </nav>

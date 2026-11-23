@@ -26,7 +26,8 @@ const TYPE_LABELS: Record<string, string> = { general: "General Hospital", eye: 
 const typeOf = (h: any): string => h?.hospitalType || "general";
 
 export default function HospitalsPage({ city, q }: { city?: string; q?: string }) {
-  const [search, setSearch] = useState(q ?? "");
+  const [mode, setMode] = useState<"hospitals" | "specialty">(q === "@doctors" ? "specialty" : "hospitals");
+  const [search, setSearch] = useState(q === "@doctors" ? "" : (q ?? ""));
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const { navigate, goBack } = useRouter();
   const { hospitals, doctors } = useStore();
@@ -39,9 +40,11 @@ export default function HospitalsPage({ city, q }: { city?: string; q?: string }
   const typeList = Array.from(new Set(cityScoped0.map((h) => typeOf(h))));
   const cityScoped = typeFilter === "all" ? cityScoped0 : cityScoped0.filter((h) => typeOf(h) === typeFilter);
 
+  const hasSpec = (hid: string) => (doctors as any[]).some((d) => d.hospitalId === hid && norm(d.specialty).includes(norm(search)));
+  const matchCount = (hid: string) => (doctors as any[]).filter((d) => d.hospitalId === hid && norm(d.specialty).includes(norm(search))).length;
   const filtered = cityScoped.filter(
     (h) =>
-      h.name.toLowerCase().includes(search.toLowerCase()) ||
+      mode === "specialty" ? hasSpec(h.id) : h.name.toLowerCase().includes(search.toLowerCase()) ||
       h.area.toLowerCase().includes(search.toLowerCase()),
   );
 
@@ -90,7 +93,7 @@ export default function HospitalsPage({ city, q }: { city?: string; q?: string }
         <div className="relative flex gap-2 mt-4">
           <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-            <Input className="h-11 pl-10 pr-9 rounded-xl bg-white border-0 text-base text-gray-900 shadow-md placeholder:text-gray-400" placeholder="Search hospital or area..." value={search} onChange={(e) => setSearch(e.target.value)} data-ocid="hospitals.search_input" />
+            <Input className="h-11 pl-10 pr-9 rounded-xl bg-white border-0 text-base text-gray-900 shadow-md placeholder:text-gray-400" placeholder={mode === "specialty" ? "Search specialty, e.g. Cardiology..." : "Search hospital or area..."} value={search} onChange={(e) => setSearch(e.target.value)} data-ocid="hospitals.search_input" />
             {search && (
               <button type="button" onClick={() => setSearch("")} aria-label="Clear search" className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600">
                 <XCircle className="w-4 h-4" />
@@ -129,7 +132,36 @@ export default function HospitalsPage({ city, q }: { city?: string; q?: string }
         </AnimatePresence>
       </div>
 
-      {!city && !isNearMeActive && (() => {
+      {mode === "specialty" && (() => {
+        const spCounts = new Map<string, number>();
+        for (const d of doctors as any[]) {
+          const sp = (d.specialty || "").trim();
+          if (sp) spCounts.set(sp, (spCounts.get(sp) ?? 0) + 1);
+        }
+        const spList = Array.from(spCounts.keys()).sort((a, b) => a.localeCompare(b));
+        return (
+          <div className="mt-5">
+            <h2 className="text-xs font-semibold text-gray-500 mb-2 tracking-wide uppercase">Specialties</h2>
+            <div className="flex flex-wrap gap-2">
+              {spList.map((sp) => {
+                const active = norm(search) === norm(sp);
+                return (
+                  <button key={sp} type="button" onClick={() => setSearch(active ? "" : sp)} className={"px-3.5 py-1.5 rounded-full text-sm font-medium border transition-colors " + (active ? "bg-teal-700 text-white border-teal-700" : "bg-white text-gray-700 border-gray-200 hover:border-teal-300")}>
+                    {sp} <span className={"text-xs " + (active ? "text-teal-100" : "text-gray-400")}>{spCounts.get(sp)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
+      <div className="mt-5 inline-flex rounded-full border border-gray-200 bg-white p-1 text-sm font-medium">
+        <button type="button" onClick={() => { setMode("hospitals"); setSearch(""); }} className={"px-4 py-1.5 rounded-full " + (mode === "hospitals" ? "bg-teal-700 text-white" : "text-gray-600")}>Hospitals</button>
+        <button type="button" onClick={() => { setMode("specialty"); setSearch(""); }} className={"px-4 py-1.5 rounded-full " + (mode === "specialty" ? "bg-teal-700 text-white" : "text-gray-600")}>Doctors by specialty</button>
+      </div>
+
+      {mode === "hospitals" && !city && !isNearMeActive && (() => {
         const cityCounts = new Map<string, number>();
         for (const h of hospitals) {
           const c = (h.area || "").trim();
@@ -216,7 +248,7 @@ export default function HospitalsPage({ city, q }: { city?: string; q?: string }
                         <div className="flex flex-wrap items-center gap-1.5 mt-2">
                           <span className="flex items-center gap-1 bg-teal-50 text-teal-700 text-xs font-medium px-2 py-0.5 rounded-full">
                             <Users className="w-3 h-3" />
-                            {docCount} Doctors
+                            {mode === "specialty" && search.trim() ? `${matchCount(hospital.id)} ${search.trim()}` : `${docCount} Doctors`}
                           </span>
                           {typeOf(hospital) !== "general" && (
                             <span className="bg-gray-100 text-gray-600 text-[11px] font-medium px-2 py-0.5 rounded-full">{TYPE_LABELS[typeOf(hospital)] || typeOf(hospital)}</span>

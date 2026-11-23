@@ -157,7 +157,7 @@ export type Route =
         | "/pharmacy-owner/register";
     }
   // patient: public browsing
-  | { path: "/patient/hospitals"; city?: string }
+  | { path: "/patient/hospitals"; city?: string; q?: string }
   | { path: "/patient/hospital"; id: string }
   | { path: "/labs" | "/pharmacies" | "/ambulance" }
   | { path: "/labs/detail"; id: string }
