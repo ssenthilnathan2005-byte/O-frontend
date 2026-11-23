@@ -41,7 +41,7 @@ interface OPBooking {
 interface Bed { bed_id: string; bed_number: string; ward_id: string; ward_name: string }
 interface Admitted {
   id: string; patient_name: string; phone: string | null; age: number | null; gender: string | null;
-  ward: string | null; bed_number: string | null; admitting_doctor_name: string | null; diagnosis: string | null; admitted_at: string;
+  ward: string | null; bed_number: string | null; admitting_doctor_name: string | null; diagnosis: string | null; admitted_at: string; area?: string | null;
 }
 
 const sel = "w-full h-10 rounded-md border border-gray-200 bg-white px-3 text-sm";
@@ -595,7 +595,7 @@ function Admit() {
   const [inward, setInward] = useState<Admitted[]>([]);
   const [aq, setAq] = useState(""); // ADMIT_SEARCH_V1
   const aql = aq.trim().toLowerCase();
-  const inwardShown = inward.filter(p => !aql || [p.patient_name, p.phone, p.ward, p.bed_number, p.admitting_doctor_name, p.diagnosis].some(v => (v || "").toLowerCase().includes(aql)));
+  const inwardShown = inward.filter(p => !aql || [p.patient_name, p.phone, p.ward, p.bed_number, p.admitting_doctor_name, p.diagnosis, p.gender, p.area].some(v => (v || "").toLowerCase().includes(aql)));
   const empty = { patientName: "", phone: "", age: "", gender: "", admittingDoctorId: "", bed: "", diagnosis: "", notes: "", uhid: "" };
   const [f, setF] = useState(empty);
   const [saving, setSaving] = useState(false);
@@ -677,14 +677,14 @@ function Admit() {
           <h2 className="font-semibold text-gray-900">Currently admitted ({inward.length})</h2>
           <Button size="sm" variant="outline" onClick={load}><RefreshCw className="w-4 h-4" /></Button>
         </div>
-        {inward.length > 0 && <Input className="mb-3" placeholder="Search admitted patients (name, phone, ward, bed, doctor)" value={aq} onChange={e => setAq(e.target.value)} />}
+        {inward.length > 0 && <Input className="mb-3" placeholder="Search admitted patients (name, phone, ward, bed, doctor, area)" value={aq} onChange={e => setAq(e.target.value)} />}
         {inward.length === 0 && <p className="text-sm text-gray-400 py-6 text-center">No admitted patients.</p>}
         {inward.length > 0 && inwardShown.length === 0 && <p className="text-sm text-gray-400 py-6 text-center">No admitted patient matches "{aq}".</p>}
         <div className="space-y-2">
           {inwardShown.map(p => (
             <div key={p.id} className="border border-gray-100 rounded-lg px-3 py-2">
               <div className="flex items-start justify-between gap-2">
-                <p className="font-medium text-gray-900">{p.patient_name}{p.age != null ? ", " + p.age : ""}</p>
+                <p className="font-medium text-gray-900">{p.patient_name}{p.age != null ? ", " + p.age : ""}{p.gender ? " · " + p.gender : ""}</p>
                 <div className="flex items-center gap-1.5">
                   {matEligible.has(p.id) && (
                     <button type="button" disabled={printingId === p.id}
@@ -702,6 +702,7 @@ function Admit() {
                 </div>
               </div>
               <p className="text-xs text-gray-500">{p.ward} / {p.bed_number}{p.admitting_doctor_name ? " | " + p.admitting_doctor_name : ""}</p>
+              {p.area && <p className="text-xs text-gray-500">Area: {p.area}</p>}
               {p.diagnosis && <p className="text-xs text-gray-400">{p.diagnosis}</p>}
             </div>
           ))}
