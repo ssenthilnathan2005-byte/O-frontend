@@ -46,7 +46,7 @@ export default function TermsPage() {
             </div>
           </div>
 
-          <div className="space-y-8 text-sm text-gray-600 leading-relaxed">
+          <div className="space-y-8 text-sm text-gray-600 leading-relaxed text-justify">
 
             <section>
               <h2 className="text-base font-bold text-gray-900 mb-3">1. About Doctor Booked</h2>
@@ -136,8 +136,8 @@ export default function TermsPage() {
               </p>
               <div className="mt-3 bg-gray-50 rounded-xl p-4 space-y-1">
                 <p><span className="font-medium text-gray-800">Website:</span> <a href="https://www.doctorbooked.in" className="text-teal-600 hover:underline" target="_blank" rel="noopener noreferrer">www.doctorbooked.in</a></p>
-                <p><span className="font-medium text-gray-800">Email:</span> doctorbookedsn1@gmail.com</p>
-                <p><span className="font-medium text-gray-800">Registered in:</span> India (Udyam Registered Startup)</p>
+                <p><span className="font-medium text-gray-800">Email:</span> support@doctorbooked.in</p>
+                <p><span className="font-medium text-gray-800">Registered in:</span> Care In Motion Private Limited, India</p>
               </div>
             </section>
 
