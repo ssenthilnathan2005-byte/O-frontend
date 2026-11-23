@@ -48,7 +48,7 @@ function SectionHeading({ label, title, text, center }: { label: string; title: 
     <div className={center ? "text-center max-w-2xl mx-auto" : ""}>
       <span className="text-xs font-semibold tracking-wide text-teal-700 uppercase">{label}</span>
       <h2 className="mt-2 text-2xl lg:text-3xl font-bold text-gray-900">{title}</h2>
-      {text && <p className="mt-3 text-gray-500 leading-relaxed">{text}</p>}
+      {text && <p className={`mt-3 text-gray-500 leading-relaxed ${center ? "" : "text-justify"}`}>{text}</p>}
     </div>
   );
 }
@@ -111,7 +111,7 @@ export default function AboutUsPage() {
         {/* Our story */}
         <section className="space-y-8">
           <SectionHeading label="Our story" title="Why Doctor Booked exists" />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-gray-600 leading-relaxed">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-gray-600 leading-relaxed text-justify">
             <p className={`${CARD} p-6 border-t-4 border-t-teal-500`}>
               Long waits and uncertainty are a daily reality in many clinics. Patients arrive early, sit for hours and never know when their turn will come, while hospital staff manage the crowd with paper registers and phone calls.
             </p>
@@ -129,14 +129,14 @@ export default function AboutUsPage() {
           <div className={`${CARD} p-6 lg:p-8`}>
             <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center mb-4"><Target className="w-5 h-5 text-teal-600" /></div>
             <h3 className="text-lg font-semibold text-gray-900">Our mission</h3>
-            <p className="mt-2 text-gray-600 leading-relaxed">
+            <p className="mt-2 text-gray-600 leading-relaxed text-justify">
               To eliminate the waiting room by giving every patient a transparent, real-time view of their care, and every hospital the tools to run efficiently.
             </p>
           </div>
           <div className={`${CARD} p-6 lg:p-8`}>
             <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center mb-4"><Eye className="w-5 h-5 text-teal-600" /></div>
             <h3 className="text-lg font-semibold text-gray-900">Our vision</h3>
-            <p className="mt-2 text-gray-600 leading-relaxed">
+            <p className="mt-2 text-gray-600 leading-relaxed text-justify">
               To become the digital backbone for clinics and hospitals across India, making quality, well-organised healthcare accessible to everyone.
             </p>
           </div>
@@ -150,7 +150,7 @@ export default function AboutUsPage() {
               <div key={v.title} className={`${CARD} p-6`}>
                 <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center mb-4"><v.icon className="w-5 h-5 text-teal-600" /></div>
                 <h3 className="font-semibold text-gray-900">{v.title}</h3>
-                <p className="mt-2 text-sm text-gray-500 leading-relaxed">{v.text}</p>
+                <p className="mt-2 text-sm text-gray-500 leading-relaxed text-justify">{v.text}</p>
               </div>
             ))}
           </div>
@@ -175,7 +175,7 @@ export default function AboutUsPage() {
                 </div>
                 <h3 className="mt-4 font-semibold text-gray-900">{f.name}</h3>
                 <p className="text-xs font-medium text-teal-700 tracking-wide">{f.role}</p>
-                <p className="mt-3 text-sm text-gray-600 leading-relaxed">{f.bio}</p>
+                <p className="mt-3 text-sm text-gray-600 leading-relaxed text-justify">{f.bio}</p>
               </div>
             ))}
           </div>
