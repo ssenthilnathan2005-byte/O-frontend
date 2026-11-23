@@ -734,15 +734,11 @@ export default function BookingDialog({ doctor, hospital, open, onClose, maxDate
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setPatientGender(""); setPatientBloodGroup(""); setPatientName(""); setPatientPhone(""); setPatientAge(""); setPatientYob("");
-                  setBookingFor("other");
-                  goToStep("complaint");
-                }}
-                className="w-full p-4 rounded-xl border-2 border-gray-200 hover:border-teal-500 hover:bg-teal-50 transition-all text-left"
+                onClick={() => { handleClose(); navigate({ path: "/patient/profile" }); }}
+                className="w-full p-4 rounded-xl border-2 border-dashed border-gray-200 hover:border-teal-500 hover:bg-teal-50 transition-all text-left"
               >
-                <p className="font-medium text-gray-900 text-sm">Booking for Someone Else</p>
-                <p className="text-xs text-gray-400 mt-0.5">Fill in their details fully</p>
+                <p className="font-medium text-gray-900 text-sm">Add a family member</p>
+                <p className="text-xs text-gray-400 mt-0.5">You can only book for family members saved in My Profile</p>
               </button>
             </div>
           </div>
@@ -783,6 +779,7 @@ export default function BookingDialog({ doctor, hospital, open, onClose, maxDate
                       type="text"
                       placeholder="Enter patient name"
                       value={patientName}
+                      readOnly={!!familyMemberId}
                       onChange={e => setPatientName(e.target.value)}
                       className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
                     />
