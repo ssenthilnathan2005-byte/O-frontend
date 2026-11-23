@@ -63,7 +63,7 @@ export default function HABedRequests() {
         <div className="flex items-start justify-between gap-2">
           <div>
             <p className="font-semibold text-gray-900 text-sm">{b.patient_name}{b.age ? ", " + b.age : ""}{b.gender ? " · " + b.gender : ""}</p>
-            <p className="text-xs text-gray-500">{shortPhone(b.phone)}{b.doctor_name ? " · " + b.doctor_name : ""}</p>
+            <p className="text-xs text-gray-500">{shortPhone(b.phone)}{b.doctor_name ? " · " + b.doctor_name : ""}{b.area ? " · Area: " + b.area : ""}</p>
           </div>
           <span className={"text-[11px] font-semibold px-2 py-0.5 rounded-full " + (b.status === "confirmed" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700")}>
             {b.status === "confirmed" ? "Reserved" : "New request"}
