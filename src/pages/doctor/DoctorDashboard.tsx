@@ -497,16 +497,45 @@ export default function DoctorDashboard() {
     return nowTick >= end.getTime();
   }
 
+  // True once the scheduled end time (no grace) has passed - today only
+  function isPastScheduledEnd(date: string, session: string): boolean {
+    if (date !== today) return false;
+    const times =
+      doctor?.sessionTimings?.[session as SessionType] ?? SESSION_TIMES[session as SessionType];
+    if (!times) return false;
+    const [h, m] = times.end.split(":").map(Number);
+    const end = new Date(nowTick);
+    end.setHours(h, m, 0, 0);
+    return nowTick >= end.getTime();
+  }
+
+  // Patients of a session who are still waiting / being seen.
+  // Uses BOTH token colours and bookings and takes the larger number, so a half-loaded
+  // store can never make a busy session look empty.
+  function pendingCountFor(date: string, session: string): number {
+    if (!doctor) return 0;
+    const sid = makeSessionId(doctor.id, date, session);
+    const fromTokens = Object.values(tokenStates[sid]?.tokenStatuses ?? {}).filter(
+      (s) => s === "red" || s === "yellow" || s === "orange",
+    ).length;
+    const fromBookings = getBookingsForSession(sid).filter((b) =>
+      isLiveBookingStatus(b.status),
+    ).length;
+    return Math.max(fromTokens, fromBookings);
+  }
+
   const visibleSessions = useMemo((): SessionType[] => {
     if (!doctor) return [];
     return (doctor.sessions as string[]).filter((s) => {
       if (isSessionCancelled(doctor.id, regDate, s)) return false;
       const sid = makeSessionId(doctor.id, regDate, s);
       if (tokenStates[sid]?.isClosed === true) return false;
-      if (isPastAutoEnd(regDate, s)) return false;
+      // Past its end time: hide ONLY when nobody is waiting (today's overrun sessions stay)
+      if (isPastAutoEnd(regDate, s) && !(regDate === today && pendingCountFor(regDate, s) > 0))
+        return false;
       return true;
     }) as SessionType[];
-  }, [doctor, regDate, tokenStates, isSessionCancelled, nowTick]);
+  }, [doctor, regDate, tokenStates, isSessionCancelled, nowTick, bookings]);
 
   // Pick the session that is running now, otherwise the next one; leave an ended one
   const sessionInitRef = useRef(false);
@@ -519,8 +548,11 @@ export default function DoctorDashboard() {
       return h * 60 + m;
     };
     const sorted = [...visibleSessions].sort((a, b) => startMin(a) - startMin(b));
+    const overrun = sorted.find(
+      (s) => isPastScheduledEnd(regDate, s) && pendingCountFor(regDate, s) > 0,
+    );
     const running = sorted.find((s) => isSessionAccessibleForRegulator(regDate, s, doctor.sessionTimings));
-    const best = running ?? sorted[0];
+    const best = overrun ?? running ?? sorted[0];
     const invalid = !visibleSessions.includes(regSession);
     if (invalid || (!sessionInitRef.current && regDate === today)) {
       sessionInitRef.current = true;
@@ -538,6 +570,8 @@ export default function DoctorDashboard() {
       const sid = makeSessionId(doctor.id, today, s);
       const st = tokenStates[sid];
       if (!st || st.isClosed === true) continue;
+      // Patients still waiting -> never auto-close (it would mark them unvisited + refund them)
+      if (pendingCountFor(today, s) > 0) continue;
       if (autoEndedRef.current.has(sid)) continue;
       autoEndedRef.current.add(sid);
       const label = getSessionLabel(s as SessionType, doctor.sessionTimings);
@@ -545,7 +579,7 @@ export default function DoctorDashboard() {
         .then(() => toast.info(label + " ended automatically"))
         .catch((e: unknown) => console.warn("Auto-end failed", sid, e));
     }
-  }, [nowTick, doctor, tokenStates]);
+  }, [nowTick, doctor, tokenStates, bookings]);
 
   const availableDates = useMemo(() => getAvailableDates(), []);
 
@@ -560,11 +594,13 @@ export default function DoctorDashboard() {
     : false;
 
   // Session is only accessible for token regulation when date=today AND time >= session start
-  const isSessionAccessibleNow = isSessionAccessibleForRegulator(
-    regDate,
-    regSession,
-    doctor?.sessionTimings,
-  );
+  const overrunPending =
+    regDate === today && !isClosed && !cancelled && isPastScheduledEnd(regDate, regSession)
+      ? pendingCountFor(regDate, regSession)
+      : 0;
+  const isSessionAccessibleNow =
+    isSessionAccessibleForRegulator(regDate, regSession, doctor?.sessionTimings) ||
+    overrunPending > 0;
 
   // Show cancel button for future sessions OR today's sessions that haven't started yet
   const canCancelSession =
@@ -1334,6 +1370,10 @@ export default function DoctorDashboard() {
                       <span className="bg-yellow-100 text-yellow-700 text-xs font-medium px-3 py-1.5 rounded-full">
                         Not Started Yet
                       </span>
+                    ) : overrunPending > 0 ? (
+                      <span className="bg-amber-100 text-amber-800 text-xs font-medium px-3 py-1.5 rounded-full">
+                        Past scheduled time - {overrunPending} waiting
+                      </span>
                     ) : (
                       <span className="bg-green-100 text-green-700 text-xs font-medium px-3 py-1.5 rounded-full">
                         Session Active
@@ -1359,6 +1399,13 @@ export default function DoctorDashboard() {
                       },
                     )}
                   </CardTitle>
+                  {overrunPending > 0 && (
+                    <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                      The scheduled time of this session has ended, but{" "}
+                      <b>{overrunPending} patient{overrunPending === 1 ? "" : "s"}</b> {overrunPending === 1 ? "is" : "are"} still
+                      waiting. The session stays open and will close automatically once the last patient is seen.
+                    </div>
+                  )}
                   <div className="flex flex-wrap items-center gap-2">
                     {/* End Session: only when session is accessible now */}
                     {!isClosed && !cancelled && isSessionAccessibleNow && (
@@ -1380,6 +1427,11 @@ export default function DoctorDashboard() {
                               Close This Session?
                             </AlertDialogTitle>
                             <AlertDialogDescription>
+                              {pendingCountFor(regDate, regSession) > 0 && (
+                                <span className="block font-semibold text-red-600 mb-1">
+                                  {pendingCountFor(regDate, regSession)} patient(s) are still waiting and will be marked unvisited.
+                                </span>
+                              )}
                               All remaining booked tokens will be marked as
                               unvisited and eligible for refund. This cannot be
                               undone.
