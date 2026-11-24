@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useStore } from "../context/StoreContext";
+import { useRouter } from "../router/RouterContext";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
@@ -21,6 +22,7 @@ async function post(path: string, body: any) {
 
 export default function FrontOfficeLogin() {
   const { login } = useStore();
+  const { navigate } = useRouter();
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -92,6 +94,13 @@ export default function FrontOfficeLogin() {
               </Button>
             </>
           )}
+          <button
+            type="button"
+            onClick={() => navigate({ path: "/login", tab: "patient", patientMode: "login" })}
+            className="w-full text-center text-xs text-gray-400 hover:text-teal-600 transition-colors"
+          >
+            Not front office staff? Go to patient login
+          </button>
         </div>
       </div>
     </div>
