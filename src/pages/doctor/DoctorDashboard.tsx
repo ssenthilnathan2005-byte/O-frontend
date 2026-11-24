@@ -632,6 +632,7 @@ export default function DoctorDashboard() {
           .sort((a, b) => sessionStartMinutes(a) - sessionStartMinutes(b))[0] ?? null)
       : null;
   const carryTargetLabel = carryTarget ? getSessionLabel(carryTarget, doctor?.sessionTimings) : "";
+  const capName = (s: string | null) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : "");
   const waitingTokens = Object.values(statuses).filter((s) => s === "red" || s === "yellow").length;
   const carryMode = !!carryTarget && waitingTokens > 0 && carryChoice === "carry";
 
@@ -1482,22 +1483,24 @@ export default function DoctorDashboard() {
                     )}
                   </CardTitle>
                   {overrunPending > 0 && (
-                    <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                      The scheduled time of this session has ended, but{" "}
-                      <b>{overrunPending} patient{overrunPending === 1 ? "" : "s"}</b> {overrunPending === 1 ? "is" : "are"} still
-                      waiting. The session stays open and will close automatically once the last patient is seen.
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                      <div className="flex items-center gap-2 text-sm text-amber-900">
+                        <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600" />
+                        <span>
+                          <b>{overrunPending} patient{overrunPending === 1 ? "" : "s"} waiting</b>
+                          {" · session time is over"}
+                        </span>
+                      </div>
                       {carryTarget &&
                         waitingTokens > 0 &&
                         isSessionAccessibleForRegulator(regDate, carryTarget, doctor?.sessionTimings) && (
-                          <div className="mt-2">
-                            <Button
-                              size="sm"
-                              className="bg-teal-600 hover:bg-teal-700 text-white"
-                              onClick={() => setSwitchPrompt(carryTarget)}
-                            >
-                              Start {carryTarget.charAt(0).toUpperCase() + carryTarget.slice(1)} session
-                            </Button>
-                          </div>
+                          <Button
+                            size="sm"
+                            className="bg-teal-600 hover:bg-teal-700 text-white"
+                            onClick={() => setSwitchPrompt(carryTarget)}
+                          >
+                            Start {capName(carryTarget)}
+                          </Button>
                         )}
                     </div>
                   )}
@@ -1507,27 +1510,22 @@ export default function DoctorDashboard() {
                   >
                     <AlertDialogContent data-ocid="tokens.dialog">
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Patients are still waiting</AlertDialogTitle>
+                        <AlertDialogTitle>
+                          {waitingTokens} patient{waitingTokens === 1 ? "" : "s"} still waiting
+                        </AlertDialogTitle>
                         <AlertDialogDescription>
-                          {waitingTokens} patient{waitingTokens === 1 ? " is" : "s are"} still waiting in the{" "}
-                          {regSession.charAt(0).toUpperCase() + regSession.slice(1)} session and{" "}
-                          {waitingTokens === 1 ? "has" : "have"} not been consulted yet. Do you want to shift{" "}
-                          {waitingTokens === 1 ? "this patient" : "these patients"} to the{" "}
-                          {switchPrompt ? switchPrompt.charAt(0).toUpperCase() + switchPrompt.slice(1) : ""} session,
-                          or continue the {regSession.charAt(0).toUpperCase() + regSession.slice(1)} session?
+                          Shift to {capName(switchPrompt)}, or continue {capName(regSession)}?
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>
-                          Continue {regSession.charAt(0).toUpperCase() + regSession.slice(1)} session
-                        </AlertDialogCancel>
+                        <AlertDialogCancel>Continue {capName(regSession)}</AlertDialogCancel>
                         <AlertDialogAction
                           onClick={() => {
                             const t = switchPrompt;
                             if (t) void carryWaitingTo(t);
                           }}
                         >
-                          Shift patients to {switchPrompt ? switchPrompt.charAt(0).toUpperCase() + switchPrompt.slice(1) : ""} &amp; start it
+                          Shift to {capName(switchPrompt)}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
