@@ -596,8 +596,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (carryOverTo) {
       // Waiting patients were moved to another session: load that session's new state.
       // The caller refreshes bookings (they changed session and token number).
-      const parts = sid.split("_");
-      const tsid = `${parts[0]}_${parts[1]}_${carryOverTo}`;
+      const tsid = `${sid.slice(0, sid.lastIndexOf("_"))}_${carryOverTo}`;
       const ts = await api.tokens.getState(tsid).catch(() => null);
       if (ts) setTokenStates(p => ({ ...p, [tsid]: ts }));
       return;
