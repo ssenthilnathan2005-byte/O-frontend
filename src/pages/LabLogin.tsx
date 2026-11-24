@@ -145,9 +145,9 @@ export default function LabLogin() {
           <button
             type="button"
             onClick={() => navigate({ path: "/login", tab: "patient", patientMode: "login" })}
-            className="w-full text-center text-xs text-gray-400 hover:text-teal-600 transition-colors"
+            className="w-full text-center text-sm text-gray-400 hover:text-teal-600 transition-colors"
           >
-            Not lab staff? Go to patient/doctor login
+            &larr; Back
           </button>
         </div>
       </div>
