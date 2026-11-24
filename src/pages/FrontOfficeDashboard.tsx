@@ -573,7 +573,7 @@ function Outpatients() {
                   <Input placeholder="Phone" value={f.phone} onChange={e => setF({ ...f, phone: e.target.value })} />
                   <Input placeholder="Age" value={f.patientAge} onChange={e => setF({ ...f, patientAge: e.target.value })} />
                   <Input placeholder="Complaint" value={f.complaint} onChange={e => setF({ ...f, complaint: e.target.value })} />
-                  <div className="sm:col-span-3 flex gap-2">
+                  <div className="sm:col-span-3 flex justify-end gap-2">
                     <Button size="sm" onClick={() => checkIn(b.id)}>Confirm check-in</Button>
                     <Button size="sm" variant="ghost" onClick={() => setEditId(null)}>Cancel</Button>
                   </div>
