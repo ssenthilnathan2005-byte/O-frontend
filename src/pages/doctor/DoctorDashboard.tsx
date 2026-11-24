@@ -273,6 +273,7 @@ export default function DoctorDashboard() {
     user,
     doctors,
     bookings,
+    bookingsLoaded,
     updateDoctor,
     getOrCreateTokenState,
     regulateToken,
@@ -474,6 +475,8 @@ export default function DoctorDashboard() {
   const [breakRefresh, setBreakRefresh] = useState(0);
   const [closeReason, setCloseReason] = useState("");
   const [carryChoice, setCarryChoice] = useState<"carry" | "skip">("carry");
+  // Session the doctor tried to move on to while patients are still waiting in the current one
+  const [switchPrompt, setSwitchPrompt] = useState<SessionType | null>(null);
   const [showPrescription, setShowPrescription] = useState(false);
   const [completionMode, setCompletionMode] = useState<"normal" | "skipped">("normal");
   const [nurseAuto, setNurseAuto] = useState(false);
@@ -525,23 +528,30 @@ export default function DoctorDashboard() {
     return Math.max(fromTokens, fromBookings);
   }
 
+  // Safe to close this session and move on: past dates always; today only once the scheduled end
+  // time has passed AND bookings have loaded AND nobody is still waiting.
+  function shouldAutoSwitch(date: string, session: string): boolean {
+    if (date < today) return true;
+    if (date > today) return false;
+    return bookingsLoaded && isPastScheduledEnd(date, session) && pendingCountFor(date, session) === 0;
+  }
+
   const visibleSessions = useMemo((): SessionType[] => {
     if (!doctor) return [];
     return (doctor.sessions as string[]).filter((s) => {
       if (isSessionCancelled(doctor.id, regDate, s)) return false;
       const sid = makeSessionId(doctor.id, regDate, s);
       if (tokenStates[sid]?.isClosed === true) return false;
-      // Past its end time: hide ONLY when nobody is waiting (today's overrun sessions stay)
-      if (isPastAutoEnd(regDate, s) && !(regDate === today && pendingCountFor(regDate, s) > 0))
-        return false;
+      // Ended and nobody waiting -> hide (auto switch). Waiting patients, or bookings not loaded yet -> keep.
+      if (shouldAutoSwitch(regDate, s)) return false;
       return true;
     }) as SessionType[];
-  }, [doctor, regDate, tokenStates, isSessionCancelled, nowTick, bookings]);
+  }, [doctor, regDate, tokenStates, isSessionCancelled, nowTick, bookings, bookingsLoaded]);
 
   // Pick the session that is running now, otherwise the next one; leave an ended one
   const sessionInitRef = useRef(false);
   useEffect(() => {
-    if (!doctor || visibleSessions.length === 0) return;
+    if (!doctor || visibleSessions.length === 0 || !bookingsLoaded) return;
     const startMin = (s: SessionType) => {
       const tm = doctor.sessionTimings?.[s] ?? SESSION_TIMES[s];
       if (!tm) return 0;
@@ -559,14 +569,14 @@ export default function DoctorDashboard() {
       sessionInitRef.current = true;
       if (best !== regSession) setRegSession(best);
     }
-  }, [doctor, visibleSessions, regDate, regSession, nowTick]);
+  }, [doctor, visibleSessions, regDate, regSession, nowTick, bookingsLoaded]);
 
   // Auto-end: if not ended manually, close it at end time + 10 minutes
   const autoEndedRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!doctor) return;
     for (const s of doctor.sessions as string[]) {
-      if (!isPastAutoEnd(today, s)) continue;
+      if (!shouldAutoSwitch(today, s)) continue;
       if (isSessionCancelled(doctor.id, today, s)) continue;
       const sid = makeSessionId(doctor.id, today, s);
       const st = tokenStates[sid];
@@ -580,7 +590,7 @@ export default function DoctorDashboard() {
         .then(() => toast.info(label + " ended automatically"))
         .catch((e: unknown) => console.warn("Auto-end failed", sid, e));
     }
-  }, [nowTick, doctor, tokenStates, bookings]);
+  }, [nowTick, doctor, tokenStates, bookings, bookingsLoaded]);
 
   const availableDates = useMemo(() => getAvailableDates(), []);
 
@@ -996,6 +1006,24 @@ export default function DoctorDashboard() {
     setTokenDialog({ open: false, tokenNum: null });
   }
 
+  // Shift every waiting patient of the current session to a later session, then move on to it
+  async function carryWaitingTo(target: SessionType) {
+    const sessionLabel = getSessionLabel(regSession, doctor?.sessionTimings);
+    const targetLabel = getSessionLabel(target, doctor?.sessionTimings);
+    const moved = waitingTokens;
+    try {
+      await closeSession(sessionId, "", target);
+      await refreshFromStorage();
+      toast.success(
+        `${moved} waiting patient${moved === 1 ? "" : "s"} moved to ${targetLabel}. They have been notified.`,
+      );
+      setRegSession(target);
+      setSessionActionResult({ type: "ended", session: sessionLabel });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not shift the patients");
+    }
+  }
+
   async function handleCloseSession() {
     const sessionLabel = getSessionLabel(regSession, doctor?.sessionTimings);
     if (carryMode && carryTarget) {
@@ -1375,7 +1403,22 @@ export default function DoctorDashboard() {
                     <Label className="text-xs text-gray-500">Session</Label>
                     <Select
                       value={regSession}
-                      onValueChange={(v) => setRegSession(v as SessionType)}
+                      onValueChange={(v) => {
+                        // Moving on to a later session while patients are still waiting here -> warn first
+                        if (
+                          v !== regSession &&
+                          regDate === today &&
+                          !isClosed &&
+                          !cancelled &&
+                          isPastScheduledEnd(regDate, regSession) &&
+                          waitingTokens > 0 &&
+                          sessionStartMinutes(v) > sessionStartMinutes(regSession)
+                        ) {
+                          setSwitchPrompt(v as SessionType);
+                          return;
+                        }
+                        setRegSession(v as SessionType);
+                      }}
                     >
                       <SelectTrigger
                         className="w-full sm:w-72 [&>span]:truncate"
@@ -1443,8 +1486,52 @@ export default function DoctorDashboard() {
                       The scheduled time of this session has ended, but{" "}
                       <b>{overrunPending} patient{overrunPending === 1 ? "" : "s"}</b> {overrunPending === 1 ? "is" : "are"} still
                       waiting. The session stays open and will close automatically once the last patient is seen.
+                      {carryTarget &&
+                        waitingTokens > 0 &&
+                        isSessionAccessibleForRegulator(regDate, carryTarget, doctor?.sessionTimings) && (
+                          <div className="mt-2">
+                            <Button
+                              size="sm"
+                              className="bg-teal-600 hover:bg-teal-700 text-white"
+                              onClick={() => setSwitchPrompt(carryTarget)}
+                            >
+                              Start {carryTarget.charAt(0).toUpperCase() + carryTarget.slice(1)} session
+                            </Button>
+                          </div>
+                        )}
                     </div>
                   )}
+                  <AlertDialog
+                    open={switchPrompt !== null}
+                    onOpenChange={(v) => { if (!v) setSwitchPrompt(null); }}
+                  >
+                    <AlertDialogContent data-ocid="tokens.dialog">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Patients are still waiting</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {waitingTokens} patient{waitingTokens === 1 ? " is" : "s are"} still waiting in the{" "}
+                          {regSession.charAt(0).toUpperCase() + regSession.slice(1)} session and{" "}
+                          {waitingTokens === 1 ? "has" : "have"} not been consulted yet. Do you want to shift{" "}
+                          {waitingTokens === 1 ? "this patient" : "these patients"} to the{" "}
+                          {switchPrompt ? switchPrompt.charAt(0).toUpperCase() + switchPrompt.slice(1) : ""} session,
+                          or continue the {regSession.charAt(0).toUpperCase() + regSession.slice(1)} session?
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>
+                          Continue {regSession.charAt(0).toUpperCase() + regSession.slice(1)} session
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => {
+                            const t = switchPrompt;
+                            if (t) void carryWaitingTo(t);
+                          }}
+                        >
+                          Shift patients to {switchPrompt ? switchPrompt.charAt(0).toUpperCase() + switchPrompt.slice(1) : ""} &amp; start it
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                   <div className="flex flex-wrap items-center gap-2">
                     {/* End Session: only when session is accessible now */}
                     {!isClosed && !cancelled && isSessionAccessibleNow && (
