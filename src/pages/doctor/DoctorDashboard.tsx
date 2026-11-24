@@ -473,6 +473,7 @@ export default function DoctorDashboard() {
   const [breakResuming, setBreakResuming] = useState(false);
   const [breakRefresh, setBreakRefresh] = useState(0);
   const [closeReason, setCloseReason] = useState("");
+  const [carryChoice, setCarryChoice] = useState<"carry" | "skip">("carry");
   const [showPrescription, setShowPrescription] = useState(false);
   const [completionMode, setCompletionMode] = useState<"normal" | "skipped">("normal");
   const [nurseAuto, setNurseAuto] = useState(false);
@@ -601,6 +602,28 @@ export default function DoctorDashboard() {
   const isSessionAccessibleNow =
     isSessionAccessibleForRegulator(regDate, regSession, doctor?.sessionTimings) ||
     overrunPending > 0;
+
+  // ── Carry-over: waiting patients can move to the next session of the day ──
+  const sessionStartMinutes = (s: string) => {
+    const tm = doctor?.sessionTimings?.[s as SessionType] ?? SESSION_TIMES[s as SessionType];
+    if (!tm) return 0;
+    const [h, m] = tm.start.split(":").map(Number);
+    return h * 60 + m;
+  };
+  const carryTarget: SessionType | null =
+    doctor && regDate === today
+      ? ([...visibleSessions]
+          .filter(
+            (s) =>
+              s !== regSession &&
+              sessionStartMinutes(s) > sessionStartMinutes(regSession) &&
+              !isPastScheduledEnd(regDate, s),
+          )
+          .sort((a, b) => sessionStartMinutes(a) - sessionStartMinutes(b))[0] ?? null)
+      : null;
+  const carryTargetLabel = carryTarget ? getSessionLabel(carryTarget, doctor?.sessionTimings) : "";
+  const waitingTokens = Object.values(statuses).filter((s) => s === "red" || s === "yellow").length;
+  const carryMode = !!carryTarget && waitingTokens > 0 && carryChoice === "carry";
 
   // Show cancel button for future sessions OR today's sessions that haven't started yet
   const canCancelSession =
@@ -973,8 +996,24 @@ export default function DoctorDashboard() {
     setTokenDialog({ open: false, tokenNum: null });
   }
 
-  function handleCloseSession() {
+  async function handleCloseSession() {
     const sessionLabel = getSessionLabel(regSession, doctor?.sessionTimings);
+    if (carryMode && carryTarget) {
+      const moved = waitingTokens;
+      try {
+        await closeSession(sessionId, "", carryTarget);
+        await refreshFromStorage();
+        toast.success(
+          `${moved} waiting patient${moved === 1 ? "" : "s"} moved to ${carryTargetLabel}. They have been notified.`,
+        );
+        setCloseReason("");
+        setRegSession(carryTarget);
+        setSessionActionResult({ type: "ended", session: sessionLabel });
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Could not carry the patients over");
+      }
+      return;
+    }
     closeSession(sessionId, closeReason.trim());
     toast.success(
       "Session closed. Patients have been notified and refunds will be processed for paid tokens.",
@@ -1409,7 +1448,7 @@ export default function DoctorDashboard() {
                   <div className="flex flex-wrap items-center gap-2">
                     {/* End Session: only when session is accessible now */}
                     {!isClosed && !cancelled && isSessionAccessibleNow && (
-                      <AlertDialog onOpenChange={(v) => { if (!v) setCloseReason(""); }}>
+                      <AlertDialog onOpenChange={(v) => { if (!v) setCloseReason(""); setCarryChoice("carry"); }}>
                         <AlertDialogTrigger asChild>
                           <Button
                             size="sm"
@@ -1427,17 +1466,65 @@ export default function DoctorDashboard() {
                               Close This Session?
                             </AlertDialogTitle>
                             <AlertDialogDescription>
-                              {pendingCountFor(regDate, regSession) > 0 && (
-                                <span className="block font-semibold text-red-600 mb-1">
-                                  {pendingCountFor(regDate, regSession)} patient(s) are still waiting and will be marked unvisited.
-                                </span>
+                              {carryMode ? (
+                                <>
+                                  The {waitingTokens} waiting patient(s) will move to the {carryTargetLabel} session
+                                  with new token numbers. They keep their payment, are notified, and no refund is issued.
+                                </>
+                              ) : (
+                                <>
+                                  {pendingCountFor(regDate, regSession) > 0 && (
+                                    <span className="block font-semibold text-red-600 mb-1">
+                                      {pendingCountFor(regDate, regSession)} patient(s) are still waiting and will be marked unvisited.
+                                    </span>
+                                  )}
+                                  All remaining booked tokens will be marked as
+                                  unvisited and eligible for refund. This cannot be
+                                  undone.
+                                </>
                               )}
-                              All remaining booked tokens will be marked as
-                              unvisited and eligible for refund. This cannot be
-                              undone.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
-                          <div className="space-y-1.5 py-1">
+                          {carryTarget && waitingTokens > 0 && (
+                            <div className="space-y-2 py-1">
+                              <p className="text-sm font-medium">
+                                What should happen to the {waitingTokens} waiting patient(s)?
+                              </p>
+                              <label className="flex items-start gap-2 rounded-lg border p-3 cursor-pointer text-sm">
+                                <input
+                                  type="radio"
+                                  name="carry-choice"
+                                  className="mt-1"
+                                  checked={carryChoice === "carry"}
+                                  onChange={() => setCarryChoice("carry")}
+                                />
+                                <span>
+                                  <b>Carry over to {carryTargetLabel}</b>
+                                  <br />
+                                  <span className="text-gray-500">
+                                    They keep their payment, get new tokens at the end of that queue, and are notified.
+                                  </span>
+                                </span>
+                              </label>
+                              <label className="flex items-start gap-2 rounded-lg border p-3 cursor-pointer text-sm">
+                                <input
+                                  type="radio"
+                                  name="carry-choice"
+                                  className="mt-1"
+                                  checked={carryChoice === "skip"}
+                                  onChange={() => setCarryChoice("skip")}
+                                />
+                                <span>
+                                  <b>End and mark unvisited</b>
+                                  <br />
+                                  <span className="text-gray-500">
+                                    They are refunded and told the session ended early (reason required).
+                                  </span>
+                                </span>
+                              </label>
+                            </div>
+                          )}
+                          <div className={"space-y-1.5 py-1" + (carryMode ? " hidden" : "")}>
                             <Label htmlFor="close-reason">
                               Reason for ending early <span className="text-red-500">*</span>
                             </Label>
@@ -1458,10 +1545,10 @@ export default function DoctorDashboard() {
                             </AlertDialogCancel>
                             <AlertDialogAction
                               onClick={handleCloseSession}
-                              disabled={!closeReason.trim()}
+                              disabled={!carryMode && !closeReason.trim()}
                               data-ocid="tokens.confirm_button"
                             >
-                              Close Session & Process Refunds
+                              {carryMode ? "Close & Carry Over Patients" : "Close Session & Process Refunds"}
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>

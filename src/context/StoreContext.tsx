@@ -53,7 +53,7 @@ interface Store {
   completeCurrentToken: (sid: string) => Promise<void>;
   skipToken: (sid: string, tokenNum?: number) => Promise<void>;
   completeSkippedToken: (sid: string, tokenNum: number) => Promise<void>;
-  closeSession: (sid: string, reason: string) => Promise<void>;
+  closeSession: (sid: string, reason: string, carryOverTo?: string) => Promise<void>;
   setPrioritySlot: (sid: string, slotIndex: number, slot: PrioritySlotState) => Promise<void>;
   cancelSession: (doctorId: string, date: string, session: string) => Promise<void>;
   isSessionCancelled: (doctorId: string, date: string, session: string) => boolean;
@@ -587,9 +587,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const closeSession = useCallback(async (sid: string, reason: string) => {
-    const s = await api.tokens.closeSession(sid, reason);
+  const closeSession = useCallback(async (sid: string, reason: string, carryOverTo?: string) => {
+    const s = await api.tokens.closeSession(sid, reason, carryOverTo);
     setTokenStates(p => ({ ...p, [sid]: s }));
+    if (carryOverTo) {
+      // Waiting patients were moved to another session: load that session's new state.
+      // The caller refreshes bookings (they changed session and token number).
+      const parts = sid.split("_");
+      const tsid = `${parts[0]}_${parts[1]}_${carryOverTo}`;
+      const ts = await api.tokens.getState(tsid).catch(() => null);
+      if (ts) setTokenStates(p => ({ ...p, [tsid]: ts }));
+      return;
+    }
     setBookings(p => p.map(b =>
       b.sessionId === sid && b.status === "confirmed"
         ? { ...b, status: "unvisited" as const, closeReason: reason || null } : b

@@ -371,7 +371,7 @@ export const tokens = {
   complete:        (sid: string)                                  => post<SessionTokenState>(`/tokens/${sid}/complete`),
   skip:            (sid: string, tokenNum?: number)               => post<SessionTokenState>(`/tokens/${sid}/skip`, tokenNum != null ? { tokenNum } : undefined),
   completeSkipped: (sid: string, tokenNum: number)                => post<SessionTokenState>(`/tokens/${sid}/complete-skipped`, { tokenNum }),
-  closeSession:    (sid: string, reason: string)                    => post<SessionTokenState>(`/tokens/${sid}/close`, { reason }),
+  closeSession:    (sid: string, reason: string, carryOverTo?: string) => post<SessionTokenState>(`/tokens/${sid}/close`, carryOverTo ? { reason, carryOverTo } : { reason }),
   setPrioritySlot: (sid: string, slotIndex: number, slot: PrioritySlotState) =>
     post<SessionTokenState>(`/tokens/${sid}/priority-slot`, { slotIndex, slot }),
   cancelSession:   (doctorId: string, date: string, session: string) =>
