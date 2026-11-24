@@ -37,3 +37,6 @@ add_enquiries_to_admin.py
 *.bak-*
 keys/
 keys/
+
+# Release bundles
+*.aab
