@@ -65,6 +65,8 @@ import { useStore } from "../../context/StoreContext";
 import { getToken as foGetToken } from "@/api";
 import { Vitals, vitalsText } from "@/lib/vitals";
 import VitalsPanel from "@/components/VitalsPanel";
+import DoctorIntakeVitals from "@/components/DoctorIntakeVitals";
+import VitalsRecordedBy from "@/components/VitalsRecordedBy";
 import MonthlyArchiveBanner from "../../components/MonthlyArchiveBanner";
 import { useExtraNav, ExtraPanel } from "../../components/StaffExtras";
 import useModules from "@/hooks/useModules";
@@ -273,6 +275,7 @@ export default function DoctorDashboard() {
     user,
     doctors,
     bookings,
+    bookingsLoaded,
     updateDoctor,
     getOrCreateTokenState,
     regulateToken,
@@ -320,7 +323,7 @@ export default function DoctorDashboard() {
   // The open page lives in the URL: /doctor/dashboard, /doctor/profile, /doctor/live-tokens ...
   // A URL for a page this doctor may not open is replaced with the dashboard.
   const allowedTabs = [
-    "regulator", "livetokens", "profile", "followups", "presets", "nurse",
+    "regulator", "livetokens", "profile", "followups", "presets", "nurse", "intakevitals",
     ...(staffEnabled ? ["staff"] : []),
     ...extraNav.map((n) => n.key),
   ];
@@ -428,7 +431,7 @@ export default function DoctorDashboard() {
   const [liveTokensView, setLiveTokensView] = useState<"tovisit" | "visited" | "archived">("tovisit");
   const [historyFor, setHistoryFor] = useState<{ patientId: string; patientName: string; bookingId: string } | null>(null);
   const [historyReturnToken, setHistoryReturnToken] = useState<number | null>(null);
-  const [foInfo, setFoInfo] = useState<Record<string, { checked_in_at: string | null; vitals: Vitals | null }>>({});
+  const [foInfo, setFoInfo] = useState<Record<string, { checked_in_at: string | null; vitals: Vitals | null; vitals_at?: string | null }>>({});
   useEffect(() => {
     let off = false;
     const foBase = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
@@ -438,8 +441,8 @@ export default function DoctorDashboard() {
         if (!r.ok) return;
         const j = await r.json();
         if (off) return;
-        const m: Record<string, { checked_in_at: string | null; vitals: Vitals | null }> = {};
-        for (const x of j.bookings || []) m[x.id] = { checked_in_at: x.checked_in_at, vitals: x.vitals };
+        const m: Record<string, { checked_in_at: string | null; vitals: Vitals | null; vitals_at?: string | null }> = {};
+        for (const x of j.bookings || []) m[x.id] = { checked_in_at: x.checked_in_at, vitals: x.vitals, vitals_at: x.vitals_at };
         setFoInfo(m);
       } catch {}
     }
@@ -473,6 +476,9 @@ export default function DoctorDashboard() {
   const [breakResuming, setBreakResuming] = useState(false);
   const [breakRefresh, setBreakRefresh] = useState(0);
   const [closeReason, setCloseReason] = useState("");
+  const [carryChoice, setCarryChoice] = useState<"carry" | "skip">("carry");
+  // Session the doctor tried to move on to while patients are still waiting in the current one
+  const [switchPrompt, setSwitchPrompt] = useState<SessionType | null>(null);
   const [showPrescription, setShowPrescription] = useState(false);
   const [completionMode, setCompletionMode] = useState<"normal" | "skipped">("normal");
   const [nurseAuto, setNurseAuto] = useState(false);
@@ -497,21 +503,57 @@ export default function DoctorDashboard() {
     return nowTick >= end.getTime();
   }
 
+  // True once the scheduled end time (no grace) has passed - today only
+  function isPastScheduledEnd(date: string, session: string): boolean {
+    if (date !== today) return false;
+    const times =
+      doctor?.sessionTimings?.[session as SessionType] ?? SESSION_TIMES[session as SessionType];
+    if (!times) return false;
+    const [h, m] = times.end.split(":").map(Number);
+    const end = new Date(nowTick);
+    end.setHours(h, m, 0, 0);
+    return nowTick >= end.getTime();
+  }
+
+  // Patients of a session who are still waiting / being seen.
+  // Uses BOTH token colours and bookings and takes the larger number, so a half-loaded
+  // store can never make a busy session look empty.
+  function pendingCountFor(date: string, session: string): number {
+    if (!doctor) return 0;
+    const sid = makeSessionId(doctor.id, date, session);
+    const fromTokens = Object.values(tokenStates[sid]?.tokenStatuses ?? {}).filter(
+      (s) => s === "red" || s === "yellow" || s === "orange",
+    ).length;
+    const fromBookings = getBookingsForSession(sid).filter((b) =>
+      isLiveBookingStatus(b.status),
+    ).length;
+    return Math.max(fromTokens, fromBookings);
+  }
+
+  // Safe to close this session and move on: past dates always; today only once the scheduled end
+  // time has passed AND bookings have loaded AND nobody is still waiting.
+  function shouldAutoSwitch(date: string, session: string): boolean {
+    if (date < today) return true;
+    if (date > today) return false;
+    return bookingsLoaded && isPastScheduledEnd(date, session) && pendingCountFor(date, session) === 0;
+  }
+
   const visibleSessions = useMemo((): SessionType[] => {
     if (!doctor) return [];
     return (doctor.sessions as string[]).filter((s) => {
       if (isSessionCancelled(doctor.id, regDate, s)) return false;
       const sid = makeSessionId(doctor.id, regDate, s);
       if (tokenStates[sid]?.isClosed === true) return false;
-      if (isPastAutoEnd(regDate, s)) return false;
+      // Ended and nobody waiting -> hide (auto switch). Waiting patients, or bookings not loaded yet -> keep.
+      if (shouldAutoSwitch(regDate, s)) return false;
       return true;
     }) as SessionType[];
-  }, [doctor, regDate, tokenStates, isSessionCancelled, nowTick]);
+  }, [doctor, regDate, tokenStates, isSessionCancelled, nowTick, bookings, bookingsLoaded]);
 
   // Pick the session that is running now, otherwise the next one; leave an ended one
   const sessionInitRef = useRef(false);
   useEffect(() => {
-    if (!doctor || visibleSessions.length === 0) return;
+    if (!doctor || visibleSessions.length === 0 || !bookingsLoaded) return;
     const startMin = (s: SessionType) => {
       const tm = doctor.sessionTimings?.[s] ?? SESSION_TIMES[s];
       if (!tm) return 0;
@@ -519,25 +561,30 @@ export default function DoctorDashboard() {
       return h * 60 + m;
     };
     const sorted = [...visibleSessions].sort((a, b) => startMin(a) - startMin(b));
+    const overrun = sorted.find(
+      (s) => isPastScheduledEnd(regDate, s) && pendingCountFor(regDate, s) > 0,
+    );
     const running = sorted.find((s) => isSessionAccessibleForRegulator(regDate, s, doctor.sessionTimings));
-    const best = running ?? sorted[0];
+    const best = overrun ?? running ?? sorted[0];
     const invalid = !visibleSessions.includes(regSession);
     if (invalid || (!sessionInitRef.current && regDate === today)) {
       sessionInitRef.current = true;
       if (best !== regSession) setRegSession(best);
     }
-  }, [doctor, visibleSessions, regDate, regSession, nowTick]);
+  }, [doctor, visibleSessions, regDate, regSession, nowTick, bookingsLoaded]);
 
   // Auto-end: if not ended manually, close it at end time + 10 minutes
   const autoEndedRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!doctor) return;
     for (const s of doctor.sessions as string[]) {
-      if (!isPastAutoEnd(today, s)) continue;
+      if (!shouldAutoSwitch(today, s)) continue;
       if (isSessionCancelled(doctor.id, today, s)) continue;
       const sid = makeSessionId(doctor.id, today, s);
       const st = tokenStates[sid];
       if (!st || st.isClosed === true) continue;
+      // Patients still waiting -> never auto-close (it would mark them unvisited + refund them)
+      if (pendingCountFor(today, s) > 0) continue;
       if (autoEndedRef.current.has(sid)) continue;
       autoEndedRef.current.add(sid);
       const label = getSessionLabel(s as SessionType, doctor.sessionTimings);
@@ -545,7 +592,7 @@ export default function DoctorDashboard() {
         .then(() => toast.info(label + " ended automatically"))
         .catch((e: unknown) => console.warn("Auto-end failed", sid, e));
     }
-  }, [nowTick, doctor, tokenStates]);
+  }, [nowTick, doctor, tokenStates, bookings, bookingsLoaded]);
 
   const availableDates = useMemo(() => getAvailableDates(), []);
 
@@ -560,11 +607,36 @@ export default function DoctorDashboard() {
     : false;
 
   // Session is only accessible for token regulation when date=today AND time >= session start
-  const isSessionAccessibleNow = isSessionAccessibleForRegulator(
-    regDate,
-    regSession,
-    doctor?.sessionTimings,
-  );
+  const overrunPending =
+    regDate === today && !isClosed && !cancelled && isPastScheduledEnd(regDate, regSession)
+      ? pendingCountFor(regDate, regSession)
+      : 0;
+  const isSessionAccessibleNow =
+    isSessionAccessibleForRegulator(regDate, regSession, doctor?.sessionTimings) ||
+    overrunPending > 0;
+
+  // ── Carry-over: waiting patients can move to the next session of the day ──
+  const sessionStartMinutes = (s: string) => {
+    const tm = doctor?.sessionTimings?.[s as SessionType] ?? SESSION_TIMES[s as SessionType];
+    if (!tm) return 0;
+    const [h, m] = tm.start.split(":").map(Number);
+    return h * 60 + m;
+  };
+  const carryTarget: SessionType | null =
+    doctor && regDate === today
+      ? ([...visibleSessions]
+          .filter(
+            (s) =>
+              s !== regSession &&
+              sessionStartMinutes(s) > sessionStartMinutes(regSession) &&
+              !isPastScheduledEnd(regDate, s),
+          )
+          .sort((a, b) => sessionStartMinutes(a) - sessionStartMinutes(b))[0] ?? null)
+      : null;
+  const carryTargetLabel = carryTarget ? getSessionLabel(carryTarget, doctor?.sessionTimings) : "";
+  const capName = (s: string | null) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : "");
+  const waitingTokens = Object.values(statuses).filter((s) => s === "red" || s === "yellow").length;
+  const carryMode = !!carryTarget && waitingTokens > 0 && carryChoice === "carry";
 
   // Show cancel button for future sessions OR today's sessions that haven't started yet
   const canCancelSession =
@@ -937,8 +1009,42 @@ export default function DoctorDashboard() {
     setTokenDialog({ open: false, tokenNum: null });
   }
 
-  function handleCloseSession() {
+  // Shift every waiting patient of the current session to a later session, then move on to it
+  async function carryWaitingTo(target: SessionType) {
     const sessionLabel = getSessionLabel(regSession, doctor?.sessionTimings);
+    const targetLabel = getSessionLabel(target, doctor?.sessionTimings);
+    const moved = waitingTokens;
+    try {
+      await closeSession(sessionId, "", target);
+      await refreshFromStorage();
+      toast.success(
+        `${moved} waiting patient${moved === 1 ? "" : "s"} moved to ${targetLabel}. They have been notified.`,
+      );
+      setRegSession(target);
+      setSessionActionResult({ type: "ended", session: sessionLabel });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not shift the patients");
+    }
+  }
+
+  async function handleCloseSession() {
+    const sessionLabel = getSessionLabel(regSession, doctor?.sessionTimings);
+    if (carryMode && carryTarget) {
+      const moved = waitingTokens;
+      try {
+        await closeSession(sessionId, "", carryTarget);
+        await refreshFromStorage();
+        toast.success(
+          `${moved} waiting patient${moved === 1 ? "" : "s"} moved to ${carryTargetLabel}. They have been notified.`,
+        );
+        setCloseReason("");
+        setRegSession(carryTarget);
+        setSessionActionResult({ type: "ended", session: sessionLabel });
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Could not carry the patients over");
+      }
+      return;
+    }
     closeSession(sessionId, closeReason.trim());
     toast.success(
       "Session closed. Patients have been notified and refunds will be processed for paid tokens.",
@@ -1142,6 +1248,7 @@ export default function DoctorDashboard() {
     { key: "followups", label: "Follow-ups", icon: Bell },
     { key: "presets", label: "Presets", icon: ClipboardList },
     { key: "nurse", label: "Nurse", icon: NurseMic },
+    { key: "intakevitals", label: "Intake Vitals", icon: Activity },
     ...(staffEnabled ? [{ key: "staff", label: "Staff Management", icon: StaffIcon }] : []),
     ...extraNav.map((n) => ({ key: n.key, label: n.label, icon: n.icon })),
   ];
@@ -1300,7 +1407,22 @@ export default function DoctorDashboard() {
                     <Label className="text-xs text-gray-500">Session</Label>
                     <Select
                       value={regSession}
-                      onValueChange={(v) => setRegSession(v as SessionType)}
+                      onValueChange={(v) => {
+                        // Moving on to a later session while patients are still waiting here -> warn first
+                        if (
+                          v !== regSession &&
+                          regDate === today &&
+                          !isClosed &&
+                          !cancelled &&
+                          isPastScheduledEnd(regDate, regSession) &&
+                          waitingTokens > 0 &&
+                          sessionStartMinutes(v) > sessionStartMinutes(regSession)
+                        ) {
+                          setSwitchPrompt(v as SessionType);
+                          return;
+                        }
+                        setRegSession(v as SessionType);
+                      }}
                     >
                       <SelectTrigger
                         className="w-full sm:w-72 [&>span]:truncate"
@@ -1334,6 +1456,10 @@ export default function DoctorDashboard() {
                       <span className="bg-yellow-100 text-yellow-700 text-xs font-medium px-3 py-1.5 rounded-full">
                         Not Started Yet
                       </span>
+                    ) : overrunPending > 0 ? (
+                      <span className="bg-amber-100 text-amber-800 text-xs font-medium px-3 py-1.5 rounded-full">
+                        Past scheduled time - {overrunPending} waiting
+                      </span>
                     ) : (
                       <span className="bg-green-100 text-green-700 text-xs font-medium px-3 py-1.5 rounded-full">
                         Session Active
@@ -1359,10 +1485,58 @@ export default function DoctorDashboard() {
                       },
                     )}
                   </CardTitle>
+                  {overrunPending > 0 && (
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                      <div className="flex items-center gap-2 text-sm text-amber-900">
+                        <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600" />
+                        <span>
+                          <b>{overrunPending} patient{overrunPending === 1 ? "" : "s"} waiting</b>
+                          {" · session time is over"}
+                        </span>
+                      </div>
+                      {carryTarget &&
+                        waitingTokens > 0 &&
+                        isSessionAccessibleForRegulator(regDate, carryTarget, doctor?.sessionTimings) && (
+                          <Button
+                            size="sm"
+                            className="bg-teal-600 hover:bg-teal-700 text-white"
+                            onClick={() => setSwitchPrompt(carryTarget)}
+                          >
+                            Start {capName(carryTarget)}
+                          </Button>
+                        )}
+                    </div>
+                  )}
+                  <AlertDialog
+                    open={switchPrompt !== null}
+                    onOpenChange={(v) => { if (!v) setSwitchPrompt(null); }}
+                  >
+                    <AlertDialogContent data-ocid="tokens.dialog">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          {waitingTokens} patient{waitingTokens === 1 ? "" : "s"} still waiting
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Shift to {capName(switchPrompt)}, or continue {capName(regSession)}?
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Continue {capName(regSession)}</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => {
+                            const t = switchPrompt;
+                            if (t) void carryWaitingTo(t);
+                          }}
+                        >
+                          Shift to {capName(switchPrompt)}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                   <div className="flex flex-wrap items-center gap-2">
                     {/* End Session: only when session is accessible now */}
                     {!isClosed && !cancelled && isSessionAccessibleNow && (
-                      <AlertDialog onOpenChange={(v) => { if (!v) setCloseReason(""); }}>
+                      <AlertDialog onOpenChange={(v) => { if (!v) setCloseReason(""); setCarryChoice("carry"); }}>
                         <AlertDialogTrigger asChild>
                           <Button
                             size="sm"
@@ -1380,12 +1554,65 @@ export default function DoctorDashboard() {
                               Close This Session?
                             </AlertDialogTitle>
                             <AlertDialogDescription>
-                              All remaining booked tokens will be marked as
-                              unvisited and eligible for refund. This cannot be
-                              undone.
+                              {carryMode ? (
+                                <>
+                                  The {waitingTokens} waiting patient(s) will move to the {carryTargetLabel} session
+                                  with new token numbers. They keep their payment, are notified, and no refund is issued.
+                                </>
+                              ) : (
+                                <>
+                                  {pendingCountFor(regDate, regSession) > 0 && (
+                                    <span className="block font-semibold text-red-600 mb-1">
+                                      {pendingCountFor(regDate, regSession)} patient(s) are still waiting and will be marked unvisited.
+                                    </span>
+                                  )}
+                                  All remaining booked tokens will be marked as
+                                  unvisited and eligible for refund. This cannot be
+                                  undone.
+                                </>
+                              )}
                             </AlertDialogDescription>
                           </AlertDialogHeader>
-                          <div className="space-y-1.5 py-1">
+                          {carryTarget && waitingTokens > 0 && (
+                            <div className="space-y-2 py-1">
+                              <p className="text-sm font-medium">
+                                What should happen to the {waitingTokens} waiting patient(s)?
+                              </p>
+                              <label className="flex items-start gap-2 rounded-lg border p-3 cursor-pointer text-sm">
+                                <input
+                                  type="radio"
+                                  name="carry-choice"
+                                  className="mt-1"
+                                  checked={carryChoice === "carry"}
+                                  onChange={() => setCarryChoice("carry")}
+                                />
+                                <span>
+                                  <b>Carry over to {carryTargetLabel}</b>
+                                  <br />
+                                  <span className="text-gray-500">
+                                    They keep their payment, get new tokens at the end of that queue, and are notified.
+                                  </span>
+                                </span>
+                              </label>
+                              <label className="flex items-start gap-2 rounded-lg border p-3 cursor-pointer text-sm">
+                                <input
+                                  type="radio"
+                                  name="carry-choice"
+                                  className="mt-1"
+                                  checked={carryChoice === "skip"}
+                                  onChange={() => setCarryChoice("skip")}
+                                />
+                                <span>
+                                  <b>End and mark unvisited</b>
+                                  <br />
+                                  <span className="text-gray-500">
+                                    They are refunded and told the session ended early (reason required).
+                                  </span>
+                                </span>
+                              </label>
+                            </div>
+                          )}
+                          <div className={"space-y-1.5 py-1" + (carryMode ? " hidden" : "")}>
                             <Label htmlFor="close-reason">
                               Reason for ending early <span className="text-red-500">*</span>
                             </Label>
@@ -1406,10 +1633,10 @@ export default function DoctorDashboard() {
                             </AlertDialogCancel>
                             <AlertDialogAction
                               onClick={handleCloseSession}
-                              disabled={!closeReason.trim()}
+                              disabled={!carryMode && !closeReason.trim()}
                               data-ocid="tokens.confirm_button"
                             >
-                              Close Session & Process Refunds
+                              {carryMode ? "Close & Carry Over Patients" : "Close Session & Process Refunds"}
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
@@ -1736,6 +1963,7 @@ export default function DoctorDashboard() {
       </TabsContent>
 
       <TabsContent value="nurse"><NurseTab onNavigate={goDoctorTab} nurse={nurseApi} /></TabsContent>
+      <TabsContent value="intakevitals"><DoctorIntakeVitals /></TabsContent>
       <TabsContent value="profile">
           <div className="space-y-4">
             {/* PHOTO IDENTITY */}
@@ -2196,15 +2424,18 @@ export default function DoctorDashboard() {
               )}
             </div>
 
-            {dialogTokenBooking?.id && foInfo[dialogTokenBooking.id]?.checked_in_at && (
+            {dialogTokenBooking?.id && (foInfo[dialogTokenBooking.id]?.checked_in_at || foInfo[dialogTokenBooking.id]?.vitals) && (
               <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
                 <div className="flex items-center gap-1.5 mb-1.5">
                   <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
-                    Vitals at check-in &middot; arrived {new Date(foInfo[dialogTokenBooking.id].checked_in_at as string).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                    Intake vitals{foInfo[dialogTokenBooking.id].checked_in_at ? <> &middot; arrived {new Date(foInfo[dialogTokenBooking.id].checked_in_at as string).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</> : null}
                   </span>
                 </div>
                 {foInfo[dialogTokenBooking.id].vitals ? (
-                  <VitalsPanel vitals={foInfo[dialogTokenBooking.id].vitals as Vitals} />
+                  <>
+                    <VitalsPanel vitals={foInfo[dialogTokenBooking.id].vitals as Vitals} />
+                    <VitalsRecordedBy bookingId={dialogTokenBooking.id} stamp={String(foInfo[dialogTokenBooking.id].vitals_at || "")} />
+                  </>
                 ) : (
                   <p className="text-sm font-medium text-amber-800 bg-amber-50 border border-amber-300 rounded-md px-2 py-1.5">&#9888; Vitals pending &mdash; not yet recorded by nurse / front office</p>
                 )}

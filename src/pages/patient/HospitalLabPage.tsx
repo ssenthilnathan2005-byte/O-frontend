@@ -19,6 +19,8 @@ export default function HospitalLabPage({ id, onBack }: { id: string; onBack: ()
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Test | null>(null);
   const [mine, setMine] = useState<any[]>([]);
+  // Test IDs this patient has already booked (cancelled bookings do not count)
+  const bookedIds = new Set<string>(mine.filter((o: any) => o.test_id && o.status !== "cancelled").map((o: any) => String(o.test_id)));
   async function loadMine() {
     if (!user) return;
     try {
@@ -117,8 +119,8 @@ export default function HospitalLabPage({ id, onBack }: { id: string; onBack: ()
       ) : (
         <div className="space-y-3">
           {tests.map((t) => (
-            <div key={t.id} role="button" tabIndex={0} onClick={() => pick(t)}
-              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(t); } }}
+            <div key={t.id} role="button" tabIndex={0} onClick={() => { if (bookedIds.has(t.id)) { toast.info("You have already booked this test."); return; } pick(t); }}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (bookedIds.has(t.id)) { toast.info("You have already booked this test."); return; } pick(t); } }}
               className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex items-center justify-between gap-3 cursor-pointer hover:border-teal-200 hover:shadow-md transition-colors">
               <div className="flex items-start gap-3 min-w-0">
                 <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center shrink-0">
@@ -133,7 +135,7 @@ export default function HospitalLabPage({ id, onBack }: { id: string; onBack: ()
               </div>
               <div className="text-right shrink-0">
                 <p className="font-bold text-gray-900 text-sm">₹{t.price}</p>
-                <span className="mt-1 text-xs font-semibold text-teal-600 block">Book →</span>
+                {bookedIds.has(t.id) ? <span className="mt-1 text-xs font-semibold text-gray-400 block">Already booked</span> : <span className="mt-1 text-xs font-semibold text-teal-600 block">Book &rarr;</span>}
               </div>
             </div>
           ))}
@@ -143,6 +145,29 @@ export default function HospitalLabPage({ id, onBack }: { id: string; onBack: ()
       {selected && <BookDialog hospitalId={id} hospitalName={hospital?.name || ""} test={selected} onClose={() => { setSelected(null); loadMine(); }} />}
     </div>
   );
+}
+
+type LabSess = { key: string; label: string; start: string; end: string };
+const DEFAULT_LAB_SESSIONS: LabSess[] = [
+  { key: "morning", label: "Morning", start: "09:00", end: "12:00" },
+  { key: "afternoon", label: "Afternoon", start: "14:00", end: "17:00" },
+];
+const hhmm = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + (m || 0); };
+function istClock() {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(new Date());
+  const g = (t: string) => parts.find((p) => p.type === t)?.value || "0";
+  return { today: `${g("year")}-${g("month")}-${g("day")}`, nowMin: (Number(g("hour")) % 24) * 60 + Number(g("minute")) };
+}
+function addDays(ymd: string, n: number) {
+  const d = new Date(`${ymd}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+// Dates before today are closed; today's session closes when it ends; later dates are open.
+function sessionOpen(date: string, s: LabSess, clock: { today: string; nowMin: number }) {
+  if (date < clock.today) return false;
+  if (date > clock.today) return true;
+  return clock.nowMin < hhmm(s.end);
 }
 
 function BookDialog({ hospitalId, hospitalName, test, onClose }: { hospitalId: string; hospitalName: string; test: Test; onClose: () => void }) {
@@ -163,10 +188,35 @@ function BookDialog({ hospitalId, hospitalName, test, onClose }: { hospitalId: s
       .catch(() => {});
   }, []);
 
-  const dates = Array.from({ length: 5 }, (_, i) => {
-    const d = new Date(); d.setDate(d.getDate() + i);
-    return d.toLocaleDateString("en-CA");
-  });
+  // Availability follows India time. The server clock is used when reachable so a wrong phone clock cannot open a closed session.
+  const [clock, setClock] = useState(() => istClock());
+  const [sessions, setSessions] = useState<LabSess[]>(DEFAULT_LAB_SESSIONS);
+  useEffect(() => {
+    let alive = true;
+    async function sync() {
+      try {
+        const r = await fetch(`${BASE}/hospital-lab/public/${hospitalId}/sessions`);
+        const d = await r.json();
+        if (!alive) return;
+        if (d && typeof d.today === "string" && typeof d.nowMin === "number") setClock({ today: d.today, nowMin: d.nowMin });
+        if (d && Array.isArray(d.sessions) && d.sessions.length) setSessions(d.sessions);
+      } catch { if (alive) setClock(istClock()); }
+    }
+    sync();
+    const t = setInterval(sync, 60000);
+    return () => { alive = false; clearInterval(t); };
+  }, [hospitalId]);
+
+  const dates = Array.from({ length: 5 }, (_, i) => addDays(clock.today, i));
+  const openFor = (d: string) => sessions.filter((s) => sessionOpen(d, s, clock)).map((s) => s.key);
+
+  useEffect(() => {
+    // Keep the selection valid: a past or fully closed date is replaced, and a closed session is cleared.
+    let d = slotDate;
+    if (!d || openFor(d).length === 0) d = dates.find((x) => openFor(x).length > 0) || "";
+    if (d !== slotDate) setSlotDate(d);
+    if (slotTime && !(d && openFor(d).includes(slotTime))) setSlotTime("");
+  }, [clock, sessions, slotDate]);
 
   async function submit() {
     setError("");
@@ -225,8 +275,8 @@ function BookDialog({ hospitalId, hospitalName, test, onClose }: { hospitalId: s
             <label className="text-xs font-medium text-gray-600 mb-2 block">Select Date</label>
             <div className="flex gap-2 overflow-x-auto pb-1">
               {dates.map((d) => (
-                <button key={d} type="button" onClick={() => setSlotDate(d)}
-                  className={`shrink-0 px-3 py-2 rounded-lg border text-xs font-medium ${slotDate === d ? "border-teal-500 bg-teal-50 text-teal-700" : "border-gray-200 text-gray-600"}`}>
+                <button key={d} type="button" disabled={openFor(d).length === 0} onClick={() => { setSlotDate(d); if (slotTime && !openFor(d).includes(slotTime)) setSlotTime(""); }}
+                  className={`shrink-0 px-3 py-2 rounded-lg border text-xs font-medium ${openFor(d).length === 0 ? "border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed line-through" : slotDate === d ? "border-teal-500 bg-teal-50 text-teal-700" : "border-gray-200 text-gray-600"}`}>
                   {new Date(`${d}T00:00:00`).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })}
                 </button>
               ))}
@@ -235,10 +285,10 @@ function BookDialog({ hospitalId, hospitalName, test, onClose }: { hospitalId: s
           <div>
             <label className="text-xs font-medium text-gray-600 mb-2 block">Select Session</label>
             <div className="grid grid-cols-2 gap-2">
-              {[{ k: "morning", l: "Morning" }, { k: "afternoon", l: "Afternoon" }].map((s) => (
-                <button key={s.k} type="button" onClick={() => setSlotTime(s.k)}
-                  className={`px-3 py-2 rounded-lg border text-xs font-medium ${slotTime === s.k ? "border-teal-500 bg-teal-50 text-teal-700" : "border-gray-200 text-gray-600"}`}>
-                  {s.l}
+              {sessions.map((x) => ({ k: x.key, l: x.label })).map((s) => (
+                <button key={s.k} type="button" disabled={!slotDate || !openFor(slotDate).includes(s.k)} onClick={() => setSlotTime(s.k)}
+                  className={`px-3 py-2 rounded-lg border text-xs font-medium ${!slotDate || !openFor(slotDate).includes(s.k) ? "border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed" : slotTime === s.k ? "border-teal-500 bg-teal-50 text-teal-700" : "border-gray-200 text-gray-600"}`}>
+                  {s.l}{slotDate && !openFor(slotDate).includes(s.k) ? " (closed)" : ""}
                 </button>
               ))}
             </div>

@@ -4,6 +4,7 @@ import { useTabRoute } from "../router/RouterContext";
 import { HeartPulse, LogOut, Building2, User, LayoutDashboard, Stethoscope, Menu, X } from "lucide-react";
 import { useStore } from "../context/StoreContext";
 import NurseWards from "./nurse/NurseWards";
+import NurseOpdVitals from "@/components/NurseOpdVitals";
 import { useExtraNav, ExtraPanel } from "../components/StaffExtras";
 import useModules from "@/hooks/useModules";
 
@@ -11,6 +12,7 @@ type Tab = string;
 
 const NAV: { key: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { key: "opd", label: "OPD Vitals", icon: HeartPulse },
   { key: "wards", label: "Beds & Wards", icon: Stethoscope },
 ];
 
@@ -23,7 +25,7 @@ export default function NurseDashboard() {
   const { has } = useModules();
   // The open page lives in the URL: /nurse/dashboard, /nurse/wards ...
   const [tab, setTab] = useTabRoute("/nurse", {
-    allowed: ["dashboard", ...(can("beds_wards") && has("wards") ? ["wards"] : []), ...extraNav.map((n) => n.key)],
+    allowed: ["dashboard", ...(can("vitals") ? ["opd"] : []), ...(can("beds_wards") && has("wards") ? ["wards"] : []), ...extraNav.map((n) => n.key)],
     ready: !permLoading,
   });
   const hospitalName = u?.hospitalName || "Hospital";
@@ -37,7 +39,7 @@ export default function NurseDashboard() {
     setDrawerOpen(false);
   }
 
-  const navButtons = [...NAV.filter(n => n.key !== "wards" || ((permLoading || can("beds_wards")) && has("wards"))), ...extraNav].map(({ key, label, icon: Icon }) => (
+  const navButtons = [...NAV.filter(n => n.key === "opd" ? (permLoading || can("vitals")) : (n.key !== "wards" || ((permLoading || can("beds_wards")) && has("wards")))), ...extraNav].map(({ key, label, icon: Icon }) => (
     <button
       key={key}
       type="button"
@@ -118,7 +120,9 @@ export default function NurseDashboard() {
       )}
 
       <main className="flex-1 min-w-0 md:pt-0 pt-14">
-        {tab.startsWith("x:") ? <ExtraPanel moduleKey={tab.slice(2)} /> : tab === "wards" && has("wards") ? (
+        {tab.startsWith("x:") ? <ExtraPanel moduleKey={tab.slice(2)} /> : tab === "opd" ? (
+          <NurseOpdVitals />
+        ) : tab === "wards" && has("wards") ? (
           <NurseWards />
         ) : (
           <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-4">

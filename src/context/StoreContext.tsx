@@ -35,6 +35,7 @@ interface Store {
   updateDoctor: (id: string, data: Partial<Doctor>) => Promise<void>;
   deleteDoctor: (id: string) => Promise<void>;
   bookings: Booking[];
+  bookingsLoaded: boolean;
   addBooking: (data: {
     id?: string; patientId?: string; patientName?: string;
     doctorId: string; doctorName?: string; hospitalName?: string;
@@ -53,7 +54,7 @@ interface Store {
   completeCurrentToken: (sid: string) => Promise<void>;
   skipToken: (sid: string, tokenNum?: number) => Promise<void>;
   completeSkippedToken: (sid: string, tokenNum: number) => Promise<void>;
-  closeSession: (sid: string, reason: string) => Promise<void>;
+  closeSession: (sid: string, reason: string, carryOverTo?: string) => Promise<void>;
   setPrioritySlot: (sid: string, slotIndex: number, slot: PrioritySlotState) => Promise<void>;
   cancelSession: (doctorId: string, date: string, session: string) => Promise<void>;
   isSessionCancelled: (doctorId: string, date: string, session: string) => boolean;
@@ -114,6 +115,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [hospitals, setHospitals]     = useState<Hospital[]>([]);
   const [doctors, setDoctors]         = useState<Doctor[]>([]);
   const [bookings, setBookings]       = useState<Booking[]>([]);
+  const [bookingsLoaded, setBookingsLoaded] = useState(false);
   const [patients, setPatients]       = useState<PatientRecord[]>([]);
   const [tokenStates, setTokenStates] = useState<Record<string, SessionTokenState>>({});
   const [cancelled, setCancelled]     = useState<string[]>([]);
@@ -187,6 +189,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     try {
       const b = await api.bookings.list(u.role === "hospital_admin" ? u.hospitalId : undefined);
       setBookings(b);
+      setBookingsLoaded(true);
     } catch (err) {
       if (!background) console.error("[store] bookings load failed:", err);
       // Some backends block global /bookings for hospital admins.
@@ -587,9 +590,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const closeSession = useCallback(async (sid: string, reason: string) => {
-    const s = await api.tokens.closeSession(sid, reason);
+  const closeSession = useCallback(async (sid: string, reason: string, carryOverTo?: string) => {
+    const s = await api.tokens.closeSession(sid, reason, carryOverTo);
     setTokenStates(p => ({ ...p, [sid]: s }));
+    if (carryOverTo) {
+      // Waiting patients were moved to another session: load that session's new state.
+      // The caller refreshes bookings (they changed session and token number).
+      const tsid = `${sid.slice(0, sid.lastIndexOf("_"))}_${carryOverTo}`;
+      const ts = await api.tokens.getState(tsid).catch(() => null);
+      if (ts) setTokenStates(p => ({ ...p, [tsid]: ts }));
+      return;
+    }
     setBookings(p => p.map(b =>
       b.sessionId === sid && b.status === "confirmed"
         ? { ...b, status: "unvisited" as const, closeReason: reason || null } : b
@@ -791,7 +802,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     user, serverStatus, login, logout, updateUser,
     hospitals, addHospital, updateHospital, updateHospitalPhoto, deleteHospital,
     doctors, addDoctor, updateDoctor, deleteDoctor,
-    bookings, addBooking, addBookingToStore, getBookingsForPatient, getBookingsForSession,
+    bookings, bookingsLoaded, addBooking, addBookingToStore, getBookingsForPatient, getBookingsForSession,
     patients,
     tokenStates, getOrCreateTokenState, bookToken,
     regulateToken, completeCurrentToken, skipToken, completeSkippedToken,

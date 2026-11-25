@@ -7,6 +7,7 @@ import { useRouter } from "../../router/RouterContext";
 import { enablePushNotifications } from "../../lib/push";
 import { bedBookings, patients } from "../../api";
 import LanguageSwitcher from "../LanguageSwitcher";
+import { Copy as CopyIcon } from "lucide-react";
 import { syncWithServer } from "../../lib/translate";
 
 export default function TopNav() {
@@ -14,6 +15,7 @@ export default function TopNav() {
   const { navigate, route } = useRouter();
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [uhid, setUhid] = useState("");
   const menuRef = useRef<HTMLDivElement>(null);
   const [admission, setAdmission] = useState<{ show: boolean; active: boolean }>({ show: false, active: false });
   const showAdmission = admission.show;
@@ -50,6 +52,7 @@ export default function TopNav() {
       if ((pn && pn !== (user as any)?.name) || (pp && pp !== (user as any)?.phone)) {
         updateUser({ ...(pn ? { name: pn } : {}), ...(pp ? { phone: pp } : {}) } as any);
       }
+      setUhid(String((p as any).uhid || "").trim());
       const l = p.preferredLanguage;
       if (l === "ta" || l === "en") void syncWithServer(langKey, l, patients.updateLanguage);
     }).catch(() => {});
@@ -288,7 +291,7 @@ export default function TopNav() {
 
       {/* Profile menu popup */}
       {showProfileMenu && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: "rgba(0,0,0,0.35)" }}>
+        <div className="fixed inset-0 z-50 flex items-end justify-center md:hidden" style={{ background: "rgba(0,0,0,0.35)" }}>
           <div
             ref={menuRef}
             className="w-full max-w-sm bg-white rounded-t-3xl px-4 pt-4 pb-8 shadow-2xl"
@@ -504,6 +507,34 @@ export default function TopNav() {
                     </p>
                   )}
                 </div>
+                {uhid && (
+                  <div className="mx-3 mt-1 mb-2 flex items-center justify-between rounded-lg border border-teal-100 bg-teal-50/70 px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-teal-700">UHID</p>
+                      <p className="font-mono text-sm font-bold tracking-wide text-gray-900 truncate">{uhid}</p>
+                    </div>
+                    <button
+                      type="button"
+                      aria-label="Copy UHID"
+                      title="Copy UHID"
+                      className="shrink-0 ml-2 rounded-md p-1.5 text-teal-700 hover:bg-teal-100 transition-colors"
+                      onClick={() => { navigator.clipboard?.writeText(uhid).then(() => toast.success("UHID copied")).catch(() => {}); }}
+                    >
+                      <CopyIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+                <div className="flex items-center justify-between px-3 py-2">
+                  <span className="text-sm text-gray-700">Language</span>
+                  <LanguageSwitcher />
+                </div>
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-teal-50 transition-colors"
+                  onClick={() => { setShowProfileMenu(false); navigate({ path: "/patient/profile" }); }}
+                >
+                  <UserCog className="w-4 h-4 text-teal-600" /> My Profile
+                </button>
                 <button
                   type="button"
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors"

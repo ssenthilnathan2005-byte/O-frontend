@@ -35,7 +35,7 @@ const STATUS_LABELS: Record<string,string> = {
 const CATEGORIES = ["general","haematology","biochemistry","microbiology","radiology","pathology","cardiology","other"];
 const SAMPLE_TYPES = ["blood","urine","stool","sputum","swab","tissue","other"];
 const EMPTY_TEST = { name:"", category:"general", sampleType:"blood", reportHours:"24", price:"0" };
-const EMPTY_ORDER = { patientName:"", doctorName:"", testId:"", priority:"normal", notes:"" };
+const EMPTY_ORDER = { uhid:"", patientName:"", doctorName:"", testId:"", priority:"normal", notes:"" };
 
 export default function HALab() {
   const { user } = useStore();
@@ -98,14 +98,17 @@ export default function HALab() {
 
   async function handleAddOrder() {
     if (!orderForm.patientName.trim() || !orderForm.testId) return;
+    if (!orderForm.uhid.trim()) { toast.error("Enter the patient UHID (for example DB01)"); return; }
     setLoading(true);
     try {
       const test = tests.find(t => t.id === orderForm.testId);
-      await apiFetch("/hospital-lab/orders", "POST", {
+      const orderRes = await apiFetch("/hospital-lab/orders", "POST", {
+        uhid: orderForm.uhid.trim().toUpperCase(),
         patientName: orderForm.patientName, doctorName: orderForm.doctorName||null,
         testId: orderForm.testId, testName: test?.name||"",
         priority: orderForm.priority, notes: orderForm.notes||null,
       });
+      if (orderRes && orderRes.error) { toast.error(orderRes.error); return; }
       setShowOrderForm(false); setOrderForm({ ...EMPTY_ORDER }); await loadOrders();
     } catch {} finally { setLoading(false); }
   }
@@ -382,6 +385,11 @@ export default function HALab() {
               <button onClick={() => setShowOrderForm(false)}><X className="w-4 h-4" /></button>
             </div>
             <div className="px-6 py-4 space-y-3">
+              <div>
+                <label className="text-sm font-medium text-gray-600 mb-1 block">Patient UHID *</label>
+                <Input placeholder="e.g. DB01" value={orderForm.uhid}
+                  onChange={e => setOrderForm(f => ({ ...f, uhid: e.target.value }))} />
+              </div>
               <div>
                 <label className="text-sm font-medium text-gray-600 mb-1 block">Patient Name *</label>
                 <Input placeholder="Patient name" value={orderForm.patientName}

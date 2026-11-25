@@ -313,7 +313,6 @@ function Outpatients() {
   const emptyV = { temperature: "", tempUnit: "F", bpSystolic: "", bpDiastolic: "", pulse: "", spo2: "", weight: "", notes: "" };
   const [vf, setVf] = useState(emptyV);
   const [intake, setIntake] = useState<any>(null);
-  useEffect(() => { call("/intake-config").then(setIntake).catch(() => {}); }, []);
   const ik = (k: string) => !intake || (intake.fields || []).some((x: any) => x.key === k);
 
   const load = useCallback(async () => {
@@ -365,12 +364,22 @@ function Outpatients() {
   }
 
   function startVitals(b: OPBooking) {
-    setEditId(null); setVitalsId(b.id);
+    setEditId(null); setVitalsId(b.id); setIntake(null);
+    fetch(BASE + "/doctor-vitals/booking/" + b.id, { headers: { Authorization: "Bearer " + getToken() } })
+      .then(r => r.ok ? r.json() : null).then(d => { if (d?.config) setIntake({ fields: d.config.fields }); }).catch(() => {});
     const v: any = b.vitals || {};
     setVf({ ...emptyV, ...Object.fromEntries(Object.entries(v).map(([k, x]) => [k, String(x)])) } as any);
   }
   async function saveVitals(id: string) {
-    try { await call("/bookings/" + id + "/vitals", "POST", vf); toast.success("Vitals saved"); setVitalsId(null); load(); }
+    try {
+      const had = !!rows.find(r => r.id === id)?.vitals;
+      let reason = "";
+      if (had) { reason = (window.prompt("Reason for correcting the saved vitals?") || "").trim(); if (!reason) return; }
+      const r = await fetch(BASE + "/doctor-vitals/booking/" + id, { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + getToken() }, body: JSON.stringify({ ...vf, reason }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || "Request failed");
+      toast.success("Vitals saved"); setVitalsId(null); load();
+    }
     catch (e: any) { toast.error(e.message); }
   }
 
@@ -573,9 +582,9 @@ function Outpatients() {
                   <Input placeholder="Phone" value={f.phone} onChange={e => setF({ ...f, phone: e.target.value })} />
                   <Input placeholder="Age" value={f.patientAge} onChange={e => setF({ ...f, patientAge: e.target.value })} />
                   <Input placeholder="Complaint" value={f.complaint} onChange={e => setF({ ...f, complaint: e.target.value })} />
-                  <div className="sm:col-span-3 flex gap-2">
-                    <Button size="sm" onClick={() => checkIn(b.id)}>Confirm check-in</Button>
+                  <div className="sm:col-span-3 flex justify-end gap-2">
                     <Button size="sm" variant="ghost" onClick={() => setEditId(null)}>Cancel</Button>
+                    <Button size="sm" onClick={() => checkIn(b.id)}>Confirm check-in</Button>
                   </div>
                 </div>
               )}
