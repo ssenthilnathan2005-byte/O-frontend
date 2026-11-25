@@ -1,12 +1,13 @@
 import { shortPhone } from "../lib/utils";
 import { useEffect, useMemo, useState } from "react";
 import { useTabRoute } from "../router/RouterContext";
-import { BedDouble, CheckCircle, FlaskConical, LogOut, Phone, X, XCircle } from "lucide-react";
+import { BedDouble, CheckCircle, ClipboardList, FlaskConical, LayoutGrid, Phone, X, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { getToken } from "../api";
 import { useStore } from "../context/StoreContext";
 import { useExtraNav, ExtraPanel } from "../components/StaffExtras";
+import LabShell from "../components/layout/LabShell";
 import useModules from "../hooks/useModules";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
@@ -83,42 +84,24 @@ export default function HospitalLabDashboard() {
   });
   const pendingCount = orders.filter((o) => PENDING.includes(o.status)).length;
 
-  const tabCls = (on: boolean) =>
-    `px-4 py-2 rounded-full text-sm font-medium transition-colors ${on ? "bg-teal-500 text-white" : "bg-white text-gray-600 border border-gray-200"}`;
+if (!hasModule("lab")) return (<div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-gray-50 p-6 text-center"><p className="text-lg font-semibold text-gray-800">Laboratory is not enabled for this hospital.</p><p className="text-sm text-gray-500">Ask your hospital admin to turn it on in Hospital Functioning.</p><button type="button" onClick={logout} className="px-4 py-2 rounded-lg bg-teal-500 text-white text-sm font-medium">Logout</button></div>);
 
-  if (!hasModule("lab")) return (<div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-gray-50 p-6 text-center"><p className="text-lg font-semibold text-gray-800">Laboratory is not enabled for this hospital.</p><p className="text-sm text-gray-500">Ask your hospital admin to turn it on in Hospital Functioning.</p><button type="button" onClick={logout} className="px-4 py-2 rounded-lg bg-teal-500 text-white text-sm font-medium">Logout</button></div>);
+  const navItems = [
+    { key: "board", label: "Token Board", icon: LayoutGrid },
+    { key: "orders", label: "Bookings", icon: ClipboardList, badge: pendingCount },
+    { key: "inpatients", label: "Inpatients", icon: BedDouble },
+    ...extraNav.map((n) => ({ key: n.key, label: n.label, icon: n.icon })),
+  ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-teal-500 flex items-center justify-center shrink-0">
-            <FlaskConical className="w-5 h-5 text-white" />
-          </div>
-          <div className="min-w-0">
-            <h1 className="font-bold text-gray-900 text-sm truncate">{user?.hospitalName || "Hospital Lab"}</h1>
-            <p className="text-xs text-gray-400">Lab Staff Dashboard</p>
-          </div>
-          {pendingCount > 0 && <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600">{pendingCount} pending</span>}
-        </div>
-        <button onClick={logout} className="flex items-center gap-1.5 text-sm border border-gray-200 rounded-md px-3 py-1.5 text-gray-600 hover:bg-gray-50">
-          <LogOut className="w-3.5 h-3.5" /> Logout
-        </button>
-      </header>
-
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-4">
-      <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={() => setTab("board")} className={tabCls(tab === "board")}>Token Board</button>
-        <button type="button" onClick={() => setTab("orders")} className={tabCls(tab === "orders")}>Bookings</button>
-        <button type="button" onClick={() => setTab("inpatients")} className={tabCls(tab === "inpatients")}>Inpatients</button>
-        {extraNav.map(n => (<button key={n.key} type="button" onClick={() => setTab(n.key)} className={tabCls(tab === n.key)}>{n.label}</button>))}
-      </div>
+    <LabShell title={user?.hospitalName || "Hospital Lab"} subtitle="Lab Staff Console" logo={FlaskConical} items={navItems} active={tab} onSelect={(k) => setTab(k)} onLogout={logout}>
+      <div className="w-full space-y-4 p-4 md:p-6">
 
       {tab.startsWith("x:") && <ExtraPanel moduleKey={tab.slice(2)} />}
       {tab === "inpatients" && <InpatientsPanel call={call} onChanged={load} />}
       {tab === "board" && <TokenBoard orders={orders} busy={busy} update={update} onResult={(o) => { setResultFor(o); setResultValue(o.result_value || ""); }} />}
 
-      {tab === "orders" && (<>
+      {tab === "orders" && (<><div><h1 className="text-xl font-bold text-gray-900">Lab Bookings</h1><p className="text-sm text-gray-500">Booked tests, sample collection and reports.</p></div>
       <div className="flex flex-wrap gap-2">
         {FILTERS.map(([k, l]) => (
           <button key={k} onClick={() => setFilter(k)}
@@ -201,7 +184,7 @@ export default function HospitalLabDashboard() {
         </div>
       )}
       </div>
-    </div>
+    </LabShell>
   );
 }
 
