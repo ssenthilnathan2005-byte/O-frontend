@@ -736,7 +736,7 @@ export default function FrontOfficeDashboard() {
   const { user, logout } = useStore() as any;
   const { has } = useModules();
   // FO_PERMS_V1: only "ipd" is built in (Admit inpatient); every other ticked permission shows as its own page
-  const { nav: extraNav, can, loading: extraLoading } = useExtraNav(["ipd"]);
+  const { nav: extraNav, can, loading: extraLoading } = useExtraNav([]); // FO_IPD_PAGE_V1: IPD / Inward is its own page; Admit inpatient stays separate
   const showAdmit = has("ipd") && can("ipd");
   const showBeds = has("bed_bookings") && (can("ipd") || can("beds_wards"));
   // The open page lives in the URL: /front-office/dashboard, /front-office/register-patient ...
@@ -758,7 +758,8 @@ export default function FrontOfficeDashboard() {
 
   const hospitalName = user?.hospitalName || "Front Office";
   const searchNav = extraNav.filter((n: any) => n.key === "x:all_patients");
-  const moreNav = extraNav.filter((n: any) => n.key !== "x:all_patients");
+  const ipdNav = extraNav.filter((n: any) => n.key === "x:ipd");
+  const moreNav = extraNav.filter((n: any) => n.key !== "x:all_patients" && n.key !== "x:ipd");
   const groups: { title: string; items: { key: string; label: string; icon: any }[] }[] = [
     { title: "Outpatient", items: [
       { key: "op", label: "Today's outpatients", icon: UserCheck },
@@ -767,6 +768,7 @@ export default function FrontOfficeDashboard() {
     { title: "Inpatient", items: [
       ...(showAdmit ? [{ key: "admit", label: "Admit inpatient", icon: BedDouble }] : []),
       ...(showBeds ? [{ key: "beds", label: "Bed requests", icon: BedDouble }] : []),
+      ...ipdNav.map((n: any) => ({ key: n.key, label: n.label, icon: n.icon })),
     ] },
     { title: "Search", items: searchNav.map((n: any) => ({ key: n.key, label: n.label, icon: n.icon })) },
     { title: "More", items: moreNav.map((n: any) => ({ key: n.key, label: n.label, icon: n.icon })) },
