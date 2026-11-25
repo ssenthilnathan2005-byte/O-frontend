@@ -123,7 +123,7 @@ function dosageText(m: Medicine): string {
   return n === 1 ? base : `${n} tablets x ${base}`;
 }
 function getParts(instructions: string): string[] {
-  return instructions.split(",").map(p => p.trim()).filter(Boolean);
+  const at = instructions.indexOf(CUSTOM_PREFIX); const head = at === -1 ? instructions : instructions.slice(0, at); const parts = head.split(",").map(p => p.trim()).filter(Boolean); return at === -1 ? parts : [...parts, instructions.slice(at)];
 }
 
 function composeInstructions(parts: string[]): string {
