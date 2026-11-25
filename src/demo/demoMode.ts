@@ -25,6 +25,10 @@ const doctors: any[] = docNames.map(([name, sp], i) => ({
   department: sp, qualification: "MBBS, MD", experience: 6 + i * 3, phone: "98765001" + (10 + i),
   email: "doctor" + (i + 1) + "@demohospital.in", fee: 300 + i * 100, consultationFee: 300 + i * 100,
   status: "available", isAvailable: true, onBreak: false,
+  price: 300 + i * 100, tokensPerSession: 30, doctorFee: 300 + i * 100, code: "DOC" + (i + 1),
+  sessions: ["morning", "afternoon"], bio: "Experienced consultant at Demo City Hospital.", photo: null,
+  sessionTimings: { morning: { start: "00:00", end: "23:59" }, afternoon: { start: "16:00", end: "20:00" } },
+  yearsOfExperience: String(6 + i * 3), education: "MBBS, MD", languages: ["English", "Tamil"], walkInInterval: 10,
 }));
 
 const pNames = ["Ravi Shankar", "Anitha Devi", "Karthik Raja", "Divya Bharathi", "Mohamed Irfan", "Sangeetha M",
@@ -38,8 +42,10 @@ const patients: any[] = pNames.map((name, i) => {
     id: "bk-" + (i + 1), tokenNumber: i + 1, token_number: i + 1, token: i + 1, patientName: name,
     patient_name: name, name, phone: "98400" + (10000 + i * 37), age: 22 + i * 3, gender: i % 2 ? "Female" : "Male",
     uhid: "UH" + (100200 + i), doctorId: d.id, doctorName: d.name, doctor_name: d.name, specialty: d.specialty,
-    status: statuses[i], reason: reasons[i % reasons.length], hospitalId: HID, hospital_id: HID,
-    sessionId: "sess-" + (i % 3), date: today, time: (9 + Math.floor(i / 2)) + ":" + (i % 2 ? "30" : "00"),
+    status: statuses[i] === "completed" ? "completed" : "confirmed", queueStatus: statuses[i], reason: reasons[i % reasons.length], hospitalId: HID, hospital_id: HID,
+    session: "morning", sessionId: d.id + "_" + today + "_morning", patientId: "pt-" + (i + 1),
+    hospitalName: "Demo City Hospital", paymentDone: true, complaint: reasons[i % reasons.length],
+    patientAge: 22 + i * 3, patientGender: i % 2 ? "Female" : "Male", patientArea: "Trichy", date: today, time: (9 + Math.floor(i / 2)) + ":" + (i % 2 ? "30" : "00"),
     createdAt: iso(200 - i * 12), created_at: iso(200 - i * 12), paymentStatus: "paid", amount: d.fee,
   };
 });
@@ -106,7 +112,7 @@ const prescriptions: any[] = patients.slice(0, 5).map((p: any, i: number) => ({
 const roleUsers: Record<string, any> = {
   hospital_admin: user,
   doctor: { id: "doc-1", name: "Dr. Arun Kumar", email: "doctor1@demohospital.in", phone: "9876500110",
-    role: "doctor", hospitalId: HID, hospital_id: HID, hospitalName: "Demo City Hospital",
+    role: "doctor", doctorId: "doc-1", hospitalId: HID, hospital_id: HID, hospitalName: "Demo City Hospital",
     specialty: "General Medicine", specialization: "General Medicine" },
   pharmacy: { id: "ph-1", name: "Demo Pharmacy", email: "pharmacy@demohospital.in", phone: "9876500120",
     role: "pharmacy", hospitalId: HID, hospital_id: HID, hospitalName: "Demo City Hospital" },
@@ -133,6 +139,8 @@ function route(method: string, path: string): any {
   if (/bookings|\/hospital\/patients|^\/patients/.test(p)) return patients;
   if (/pharmacy\/medicines|pharmacy\/stock|pharmacy\/inventory/.test(p)) return medicines;
   if (/pharmacy\/prescriptions|^\/prescriptions/.test(p)) return prescriptions;
+  if (/^\/availability\/doctor/.test(p)) return { availability: { doctorId: "doc-1", doctor_id: "doc-1", status: "available", breakStartedAt: null, breakEndsAt: null, reason: null } };
+  if (/exports/.test(p)) return [];
   if (/^\/doctor/.test(p)) return patients;
   return [];
 }
