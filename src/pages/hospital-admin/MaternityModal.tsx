@@ -15,7 +15,7 @@ const RISKS: [string, string][] = [
   ["prev_stillbirth", "Previous stillbirth"], ["other", "Other"],
 ];
 const inp = "border border-gray-300 rounded-lg px-2 py-1.5 text-sm bg-white w-full h-9";
-const lbl = "text-xs font-medium text-gray-600 mb-1 flex items-end leading-tight min-h-[2rem]";
+const lbl = "text-xs font-medium text-gray-600 mb-1 block whitespace-nowrap overflow-hidden text-ellipsis";
 
 const EMPTY = {
   lmp: "", edd: "", gravida: "", para: "", abortions: "", living: "", previousCs: "0",
@@ -152,8 +152,8 @@ export default function MaternityModal({ inwardId, onClose, defaultTab = "profil
             <section>
               <h4 className="text-sm font-semibold mb-2">Obstetric history</h4>
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 items-end">
-                {[["gravida", "Gravida (G)"], ["para", "Para (P)"], ["abortions", "Abortions (A)"], ["living", "Living (L)"], ["previousCs", "Previous C-sections"]].map(([k, l]) => (
-                  <div key={k}><label className={lbl}>{l}</label>
+                {[["gravida", "Gravida (G)"], ["para", "Para (P)"], ["abortions", "Abortions (A)"], ["living", "Living (L)"], ["previousCs", "Prev. C-sections"]].map(([k, l]) => (
+                  <div key={k}><label className={lbl} title={l === "Prev. C-sections" ? "Previous C-sections" : l}>{l}</label>
                     <input type="number" min={0} className={inp} value={(f as any)[k]} onChange={(e) => set(k, e.target.value)} /></div>
                 ))}
               </div>
@@ -168,7 +168,7 @@ export default function MaternityModal({ inwardId, onClose, defaultTab = "profil
                   </select></div>
                 <div><label className={lbl}>Height (cm)</label>
                   <input type="number" className={inp} value={f.heightCm} onChange={(e) => set("heightCm", e.target.value)} /></div>
-                <div><label className={lbl}>Pre-pregnancy weight (kg)</label>
+                <div><label className={lbl} title="Pre-pregnancy weight (kg)">Pre-pregnancy wt (kg)</label>
                   <input type="number" className={inp} value={f.prePregWeight} onChange={(e) => set("prePregWeight", e.target.value)} /></div>
                 <div><label className={lbl}>Antenatal booking</label>
                   <select className={inp} value={f.bookingStatus} onChange={(e) => set("bookingStatus", e.target.value)}>
