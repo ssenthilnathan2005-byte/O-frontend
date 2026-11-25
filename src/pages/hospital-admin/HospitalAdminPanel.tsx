@@ -28,24 +28,11 @@ import useModules from "../../hooks/useModules";
 import { PharmRevenue, PharmInventory, PharmPatients, PharmSold, PharmStockUpdate, usePharmacySocket } from "./PharmacyModule";
 
 const NAV_ITEMS = [
-  { path: "/admin/functioning", label: "Hospital Functioning", icon: Settings2 },
   { path: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { path: "/admin/activity", label: "Activity Monitor", icon: Activity },
-  { path: "/admin/billing", label: "Revenue", icon: Receipt },
-  { path: "/admin/all-patients", label: "All Patients", icon: Users },
-  { path: "/admin/attendance", label: "Attendance", icon: Fingerprint },
+  { path: "/admin/patients", label: "Live Patients ★", icon: Users2 },
   { path: "/admin/wards", label: "Beds & Wards", icon: Stethoscope },
   { path: "/admin/doctors", label: "Doctors", icon: UserCog },
-  { path: "/admin/front-desk", label: "Front Desk", icon: ClipboardList },
-  { path: "/admin/hr", label: "HR / Staff", icon: ClipboardList },
-  { path: "/admin/inventory", label: "Inventory", icon: Package },
   { path: "/admin/ipd", label: "IPD / Inward", icon: BedDouble },
-  { path: "/admin/lab", label: "Laboratory", icon: FlaskConical },
-  { path: "/admin/patients", label: "Live Patients", icon: Users2 },
-  { path: "/admin/nurses", label: "Nurses", icon: HeartPulse },
-  { path: "/admin/permissions", label: "Permissions", icon: ShieldCheck },
-  { path: "/admin/passwords", label: "Password Management", icon: KeyRound },
-  { path: "/admin/pharmacy", label: "Pharmacy", icon: Pill },
 ] as const;
 
 const NAV_MODULE: Record<string, string | undefined> = {
@@ -131,7 +118,7 @@ export default function HospitalAdminPanel() {
     if (route.path === "/admin/pharmacy/sold") return <PharmSold />;
     if (route.path === "/admin/pharmacy/gst") return <GstInvoice />;
     if (route.path === "/admin/pharmacy/stock") return <PharmStockUpdate />;
-    if (route.path === "/admin/pharmacy") return <HAPharmacy />;
+    if ((route.path as string) === "/admin/pharmacy") return <HAPharmacy />;
     if (route.path === "/admin/doctors") return <HADoctors />;
     if (route.path === "/admin/lab") return <HALab />;
     if (route.path === "/admin/wards") return <HAWards />;
@@ -143,7 +130,7 @@ export default function HospitalAdminPanel() {
     if (route.path === "/admin/billing") return <HABilling />;
     if (route.path === "/admin/permissions") return <HAPermissions />;
     if (route.path === "/admin/passwords") return <HAPasswordManagement />;
-    if (route.path === "/admin/activity") return <HAActivity />;
+    if ((route.path as string) === "/admin/activity") return <HAActivity />;
     if (route.path === "/admin/functioning") return <HospitalFunctioning />;
     return <HADashboard />;
   }
@@ -168,7 +155,7 @@ export default function HospitalAdminPanel() {
 
         <nav className="violet-scroll-dark flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 py-4 space-y-1">
           {NAV_ITEMS.filter((n) => has(NAV_MODULE[n.path])).map(({ path, label, icon: Icon }) => {
-            if (path === "/admin/pharmacy") return <PharmacyMenu key={path} />;
+            if ((path as string) === "/admin/pharmacy") return <PharmacyMenu key={path} />;
             const isActive = route.path === path || (route.path === "/admin/dashboard" && path === "/admin/dashboard");
             return (
               <button
@@ -181,7 +168,7 @@ export default function HospitalAdminPanel() {
               >
                 <Icon className="w-4 h-4 shrink-0" />
                 {label}
-                {path === "/admin/activity" && activityUnread > 0 && (<span className="ml-auto rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">{activityUnread > 99 ? "99+" : activityUnread}</span>)}
+                {(path as string) === "/admin/activity" && activityUnread > 0 && (<span className="ml-auto rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">{activityUnread > 99 ? "99+" : activityUnread}</span>)}
               </button>
             );
           })}
@@ -230,7 +217,7 @@ export default function HospitalAdminPanel() {
               </button>
             </div>
             <nav className="violet-scroll-dark flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y px-3 py-4 space-y-1">
-              {NAV_ITEMS.filter((n) => has(NAV_MODULE[n.path])).map(({ path, label, icon: Icon }) => path === "/admin/pharmacy" ? <PharmacyMenu key={path} onNavigate={() => setDrawerOpen(false)} /> : (
+              {NAV_ITEMS.filter((n) => has(NAV_MODULE[n.path])).map(({ path, label, icon: Icon }) => (path as string) === "/admin/pharmacy" ? <PharmacyMenu key={path} onNavigate={() => setDrawerOpen(false)} /> : (
                 <button
                   key={path}
                   type="button"
@@ -239,7 +226,7 @@ export default function HospitalAdminPanel() {
                 >
                   <Icon className="w-4 h-4 shrink-0" />
                   {label}
-                  {path === "/admin/activity" && activityUnread > 0 && (<span className="ml-auto rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">{activityUnread > 99 ? "99+" : activityUnread}</span>)}
+                  {(path as string) === "/admin/activity" && activityUnread > 0 && (<span className="ml-auto rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">{activityUnread > 99 ? "99+" : activityUnread}</span>)}
                 </button>
               ))}
             </nav>

@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./index.css";
+import { installDemo } from "./demo/demoMode";
 import { initTranslate } from "./lib/translate";
 import { initNavHeight } from "./lib/navHeight";
 import { registerOfflineSW } from "./lib/offlineSW";
@@ -29,6 +30,7 @@ declare global {
   }
 }
 
+installDemo();
 initTranslate();
 initNavHeight();
 registerOfflineSW();
