@@ -252,7 +252,7 @@ export default function HAInward() {
         <table className="w-full text-sm">
           <thead className="bg-muted/50">
             <tr>
-              {["Patient", "UHID", "Ward / Bed", "Doctor", "Diagnosis", "Days", "Status", ""].map(h => (
+              {["UHID", "Patient", "Ward / Bed", "Doctor", "Diagnosis", "Days", "Status", ""].map(h => (
                 <th key={h} className="text-left px-4 py-3 font-medium text-muted-foreground">{h}</th>
               ))}
             </tr>
@@ -264,12 +264,12 @@ export default function HAInward() {
             {filtered.map(p => (
               <Fragment key={p.id}>
               <tr className="border-t hover:bg-muted/20 transition-colors">
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 font-mono text-sm font-medium">{p.uhid || "-"}</td>
+                  <td className="px-4 py-3">
                   <p className="font-medium">{p.patient_name}</p>
                   {p.phone && <p className="text-xs text-muted-foreground">{shortPhone(p.phone)}</p>}
                   {p.age && <p className="text-xs text-muted-foreground">{p.age}y {p.gender || ""}</p>}
                 </td>
-                <td className="px-4 py-3 font-mono text-sm font-medium">{p.uhid || "-"}</td>
                 <td className="px-4 py-3">
                   <p>{p.ward || "—"}</p>
                   {p.bed_number && <p className="text-xs text-muted-foreground">Bed {p.bed_number}</p>}

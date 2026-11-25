@@ -254,7 +254,7 @@ export default function HAPatients() {
           <TableHeader>
             <TableRow className="bg-muted/40">
               <TableHead className="text-center w-16">Token</TableHead>
-              <TableHead>Patient</TableHead><TableHead>UHID</TableHead>
+              <TableHead>UHID</TableHead><TableHead>Patient</TableHead>
               <TableHead>Phone</TableHead>
               <TableHead>Doctor</TableHead>
               <TableHead>Session</TableHead>
@@ -277,13 +277,13 @@ export default function HAPatients() {
                 <TableCell className="text-center">
                   <span className="text-xl font-bold text-teal-600">#{b.tokenNumber}</span>
                 </TableCell>
-                <TableCell>
+                <TableCell className="text-sm font-mono font-medium">{b.uhid || "-"}</TableCell>
+                  <TableCell>
                   <p className="font-medium">{b.patientName || "—"}</p>
                   {b.patientAge != null && (
                     <p className="text-xs text-muted-foreground">{b.patientAge} yrs{b.patientGender ? ` · ${b.patientGender}` : ""}{b.patientArea ? ` · ${b.patientArea}` : ""}{b.patientBloodGroup ? ` · ${b.patientBloodGroup}` : ""}</p>
                   )}
                 </TableCell>
-                <TableCell className="text-sm font-mono font-medium">{b.uhid || "-"}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">
                   {shortPhone(b.phone) || "—"}
                 </TableCell>
