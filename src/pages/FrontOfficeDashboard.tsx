@@ -5,7 +5,8 @@ import DateInput from "@/components/DateInput";
 import { useState, useEffect, useCallback } from "react";
 import { useTabRoute } from "@/router/RouterContext";
 import { toast } from "sonner";
-import { LogOut, RefreshCw, UserCheck, BedDouble, Undo2, ClipboardList, Activity, Receipt, Printer, UserPlus } from "lucide-react";
+import { LogOut, RefreshCw, UserCheck, BedDouble, Undo2, ClipboardList, Activity, Receipt, Printer, UserPlus, Menu, X } from "lucide-react";
+import { useBodyScrollLock } from "@/lib/useBodyScrollLock";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -73,7 +74,7 @@ function PatientFinder({ f, found, setFound, setField, onPick, onNew }: any) {
     return () => { live = false; clearTimeout(t); };
   }, [f.uhid, f.phone, found, skipPhone]);
   return (
-    <div className="relative space-y-1.5">
+    <div className="relative space-y-1.5 md:col-span-2">
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5"><Label className="block">Patient UHID</Label>
           <Input style={{ height: 40 }} placeholder="e.g. DB09" value={f.uhid} onChange={(e: any) => setField("uhid", e.target.value)} /></div>
@@ -100,7 +101,7 @@ function PatientFinder({ f, found, setFound, setField, onPick, onNew }: any) {
         </div>
       )}
       {matches.length > 0 && (
-        <div className="mt-2 xl:mt-0 xl:absolute xl:right-full xl:mr-4 xl:top-0 xl:w-72 rounded-lg border border-gray-200 bg-white p-2 space-y-1.5">
+        <div className="mt-2 rounded-lg border border-gray-200 bg-gray-50 p-2 space-y-1.5">
           <p className="text-[11px] font-medium text-gray-500">{matches.length > 1 ? matches.length + " patients found. Pick one" : "Patient found"}</p>
           {matches.map((m: any) => {
             const rows: [string, any][] = [["UHID", m.uhid], ["Name", m.name], ["Age", m.age], ["Gender", m.gender], ["Phone", m.phone], ["Area", m.area], ["Blood group", m.blood_group]];
@@ -196,10 +197,9 @@ function RegisterWalkIn() {
     } finally { setSaving(false); }
   }
   return (
-    <div className="max-w-xl space-y-4">
-      <p className="text-sm text-gray-500">For patients without the app. The patient gets the next token in the doctor's queue.</p>
+    <div className="grid w-full grid-flow-dense items-start gap-4 rounded-2xl border border-gray-200 bg-white p-5 md:grid-cols-2 md:p-6">
       {done && (
-        <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm">
+        <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm md:col-span-2">
           <b>{done.patientName}</b>: token <b>{done.tokenNumber}</b>, {done.doctorName} ({done.session}, {String(done.date || "").split("-").reverse().join("-")})
           {done.uhid && <div className="mt-1">UHID: <span className="font-mono font-bold">{done.uhid}</span>{done.newAccount ? " (new patient). Write it on the patient's slip." : ""}</div>}
         </div>
@@ -213,7 +213,7 @@ function RegisterWalkIn() {
         onNew={() => { setFound(null); setF((p) => ({ ...p, uhid: "", patientName: "", age: "", patientGender: "", phoneRelation: "", patientArea: "" })); }} />
       <div className="space-y-1.5"><Label className="block">Patient name *</Label><Input style={{ height: 40 }} value={f.patientName} onChange={(e) => setF({ ...f, patientName: e.target.value })} /></div>
       {!found && String(f.phone || "").replace(/\D/g, "").length === 10 && (
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 md:col-span-2">
           <Label className="block">Relation to the existing owner of this phone (only if the number is already registered)</Label>
           <select value={f.phoneRelation} onChange={(e) => setF({ ...f, phoneRelation: e.target.value })}
             className="w-full border border-gray-200 rounded-lg px-3 text-sm bg-white" style={{ height: 40 }}>
@@ -227,7 +227,7 @@ function RegisterWalkIn() {
         <div className="space-y-1.5"><Label className="block">Gender</Label><select style={{ height: 40 }} className="w-full border border-input bg-background rounded-md px-3 text-sm" value={f.patientGender} onChange={(e) => setF({ ...f, patientGender: e.target.value })}><option value="">Select gender</option><option>Male</option><option>Female</option><option>Other</option></select></div>
       </div>
       
-      <div className="space-y-1.5"><Label className="block">Address</Label><Input style={{ height: 40 }} placeholder="Street, area, city" value={f.patientArea} onChange={(e) => setF({ ...f, patientArea: e.target.value })} /></div>
+      <div className="space-y-1.5 md:col-span-2"><Label className="block">Address</Label><Input style={{ height: 40 }} placeholder="Street, area, city" value={f.patientArea} onChange={(e) => setF({ ...f, patientArea: e.target.value })} /></div>
       <div className="space-y-1.5"><Label className="block">Type of doctor</Label>
         <select className={sel} value={spec} onChange={(e) => { const v = e.target.value; setSpec(v); if (v && selDoc && selDoc.specialty !== v) { setF({ ...f, doctorId: "" }); setSyms([]); } }}>
           <option value="">All types</option>
@@ -241,7 +241,7 @@ function RegisterWalkIn() {
         </select>
       </div>
       {symData ? (
-        <div className="space-y-1.5"><Label className="block">Symptoms / Reason for visit <span className="text-xs text-gray-400">({symData.label})</span></Label>
+        <div className="space-y-1.5 md:col-span-2"><Label className="block">Symptoms / Reason for visit <span className="text-xs text-gray-400">({symData.label})</span></Label>
           <div className="rounded-md border border-gray-200 bg-white max-h-52 overflow-y-auto p-1">
             <p className="text-xs text-gray-400 px-2 pt-1 pb-1">Select all that apply</p>
             {symData.symptoms.map((sy) => (
@@ -254,12 +254,12 @@ function RegisterWalkIn() {
           {syms.length > 0 && <p className="text-xs text-teal-600 font-medium">{syms.length} selected</p>}
         </div>
       ) : (
-        <div className="space-y-1.5"><Label className="block">Complaint</Label><Input style={{ height: 40 }} value={f.complaint} onChange={(e) => setF({ ...f, complaint: e.target.value })} /></div>
+        <div className="space-y-1.5 md:col-span-2"><Label className="block">Complaint</Label><Input style={{ height: 40 }} value={f.complaint} onChange={(e) => setF({ ...f, complaint: e.target.value })} /></div>
       )}
-      <div className="space-y-1.5"><Label className="block">Any other details (optional)</Label>
+      <div className="space-y-1.5 md:col-span-2"><Label className="block">Any other details (optional)</Label>
         <textarea rows={3} className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm" placeholder="Anything else the doctor should know" value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} />
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-4 md:col-span-2">
         <div className="space-y-1.5"><Label className="block">Session</Label>
           <select className={sel} value={f.session} onChange={(e) => setF({ ...f, session: e.target.value })}>
             {sessionOptions.length === 0 ? <option value="">{f.doctorId ? "Doctor not available on this date" : "Select doctor first"}</option> : sessionOptions.map((sn) => <option key={sn} value={sn}>{getSessionLabelForDate(f.date, sn as any, parseJ(selDoc?.schedule_config) as any, parseJ(selDoc?.session_timings) as any)}</option>)}
@@ -277,7 +277,7 @@ function RegisterWalkIn() {
           </div>
         </div>
       </div>
-      <Button onClick={() => submit()} disabled={saving}>{saving ? "Saving..." : "Create token"}</Button>
+      <div className="md:col-span-2"><Button onClick={() => submit()} disabled={saving}>{saving ? "Saving..." : "Create token"}</Button></div>
     </div>
   );
 }
@@ -724,6 +724,14 @@ function Admit() {
   );
 }
 
+// FO_REDESIGN_V1
+const FO_TAB_META: Record<string, { title: string; sub: string }> = {
+  op: { title: "Today's outpatients", sub: "Check in today's patients and collect fees." },
+  walkin: { title: "Register patient", sub: "For patients without the app. The patient gets the next token in the doctor's queue." },
+  admit: { title: "Admit inpatient", sub: "Admit a patient to a ward and bed, and see who is currently admitted." },
+  beds: { title: "Bed requests", sub: "Bed requests from patients, waiting for the front office." },
+};
+
 export default function FrontOfficeDashboard() {
   const { user, logout } = useStore() as any;
   const { nav: extraNav, loading: extraLoading } = useExtraNav(["live_patients", "ipd", "beds_wards"]);
@@ -733,45 +741,158 @@ export default function FrontOfficeDashboard() {
     allowed: ["op", "walkin", ...(has("ipd") ? ["admit"] : []), ...(has("bed_bookings") ? ["beds"] : []), ...extraNav.map((n: any) => n.key)],
     ready: !extraLoading,
   });
-  const tabCls = (on: boolean) => "flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium " + (on ? "bg-teal-500 text-white" : "bg-white border border-gray-200 text-gray-600");
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  useBodyScrollLock(drawerOpen);
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtml = html.style.overflow;
+    const prevBody = body.style.overflow;
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    return () => { html.style.overflow = prevHtml; body.style.overflow = prevBody; };
+  }, []);
+
+  const hospitalName = user?.hospitalName || "Front Office";
+  const searchNav = extraNav.filter((n: any) => n.key === "x:all_patients");
+  const moreNav = extraNav.filter((n: any) => n.key !== "x:all_patients");
+  const groups: { title: string; items: { key: string; label: string; icon: any }[] }[] = [
+    { title: "Outpatient", items: [
+      { key: "op", label: "Today's outpatients", icon: UserCheck },
+      { key: "walkin", label: "Register patient", icon: UserPlus },
+    ] },
+    { title: "Inpatient", items: [
+      ...(has("ipd") ? [{ key: "admit", label: "Admit inpatient", icon: BedDouble }] : []),
+      ...(has("bed_bookings") ? [{ key: "beds", label: "Bed requests", icon: BedDouble }] : []),
+    ] },
+    { title: "Search", items: searchNav.map((n: any) => ({ key: n.key, label: n.label, icon: n.icon })) },
+    { title: "More", items: moreNav.map((n: any) => ({ key: n.key, label: n.label, icon: n.icon })) },
+  ].filter(g => g.items.length > 0);
+
+  const navList = (onNavigate?: () => void) => (
+    <>
+      {groups.map((g, gi) => (
+        <div key={g.title} className={gi === 0 ? "space-y-1" : "pt-3 space-y-1"}>
+          <p className="px-3 pb-1 text-[11px] font-medium tracking-wide text-white/40">{g.title}</p>
+          {g.items.map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => { setTab(key); onNavigate?.(); }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                tab === key ? "bg-white/15 text-white border-l-2 border-teal-400" : "text-white/60 hover:bg-white/8 hover:text-white/90"
+              }`}
+            >
+              <Icon className="w-4 h-4 shrink-0" />
+              <span className="text-left leading-tight">{label}</span>
+            </button>
+          ))}
+        </div>
+      ))}
+    </>
+  );
+
+  const meta = FO_TAB_META[tab];
+  const isExtra = tab.startsWith("x:");
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-teal-500 flex items-center justify-center"><ClipboardList className="w-5 h-5 text-white" /></div>
-        <div className="flex-1 min-w-0">
-          <p className="font-bold text-gray-900 leading-tight">Front Office</p>
-          <p className="text-xs text-gray-500">{user?.hospitalName}</p>
+    <div className="fixed inset-0 flex overflow-hidden bg-background">
+      {/* Desktop sidebar */}
+      <aside className="hidden lg:flex w-64 h-full overflow-hidden bg-admin-sidebar text-admin-sidebar-fg flex-col shrink-0">
+        <div className="px-6 py-5 border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-teal-500 flex items-center justify-center shrink-0">
+              <ClipboardList className="w-5 h-5 text-white" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-bold text-white text-sm truncate">{hospitalName}</p>
+              <p className="text-[10px] text-white/50 uppercase tracking-wider">Front Office</p>
+            </div>
+          </div>
         </div>
-        <Button variant="outline" size="sm" onClick={() => logout()}><LogOut className="w-4 h-4 mr-1" />Sign out</Button>
-      </header>
-      <main className="max-w-5xl mx-auto p-4 space-y-4">
-        {/* TAB_GROUPS_V1 */}
-        <div className="flex flex-wrap items-start gap-3">
-          {(() => {
-            const exBtn = (n: any) => <button key={n.key} className={tabCls(tab === n.key)} onClick={() => setTab(n.key)}><n.icon className="w-4 h-4" />{n.label}</button>;
-            const searchNav = extraNav.filter((n: any) => n.key === "x:all_patients");
-            const moreNav = extraNav.filter((n: any) => n.key !== "x:all_patients");
-            const groups: { title: string; items: any[] }[] = [
-              { title: "Outpatient", items: [
-                <button key="op" className={tabCls(tab === "op")} onClick={() => setTab("op")}><UserCheck className="w-4 h-4" />Today's outpatients</button>,
-                <button key="walkin" className={tabCls(tab === "walkin")} onClick={() => setTab("walkin")}><UserPlus className="w-4 h-4" />Register patient</button>,
-              ] },
-              { title: "Inpatient", items: [
-                has("ipd") ? <button key="admit" className={tabCls(tab === "admit")} onClick={() => setTab("admit")}><BedDouble className="w-4 h-4" />Admit inpatient</button> : null,
-                has("bed_bookings") ? <button key="beds" className={tabCls(tab === "beds")} onClick={() => setTab("beds")}><BedDouble className="w-4 h-4" />Bed requests</button> : null,
-              ] },
-              { title: "Search", items: searchNav.map(exBtn) },
-              { title: "More", items: moreNav.map(exBtn) },
-            ];
-            return groups.filter(g => g.items.some(Boolean)).map(g => (
-              <div key={g.title} className="rounded-xl border border-gray-200 bg-white/70 p-2">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 px-1 mb-1.5">{g.title}</p>
-                <div className="flex flex-wrap gap-2">{g.items}</div>
+        <nav className="violet-scroll-dark flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 py-4">
+          {navList()}
+        </nav>
+        <div className="px-3 pt-4 pb-6 border-t border-white/10 shrink-0">
+          <button
+            type="button"
+            onClick={() => logout()}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white/60 hover:bg-white/8 hover:text-white transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            Logout
+          </button>
+        </div>
+      </aside>
+
+      {/* Mobile top bar */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-admin-sidebar text-white flex items-center justify-between px-4 py-3 border-b border-white/10">
+        <div className="flex items-center gap-2 min-w-0">
+          <ClipboardList className="w-5 h-5 shrink-0" />
+          <span className="font-bold text-sm truncate">{hospitalName}</span>
+        </div>
+        <button type="button" aria-label="Open menu" onClick={() => setDrawerOpen(true)} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
+          <Menu className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Mobile drawer */}
+      {drawerOpen && (
+        <>
+          <button
+            type="button"
+            aria-label="Close menu"
+            className="lg:hidden fixed inset-0 z-50 bg-black/50 cursor-default"
+            onClick={() => setDrawerOpen(false)}
+          />
+          <div className="lg:hidden fixed left-0 top-0 bottom-0 w-72 z-50 bg-admin-sidebar flex flex-col overflow-hidden" style={{ height: "100dvh" }}>
+            <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between">
+              <div className="flex items-center gap-3 min-w-0">
+                <ClipboardList className="w-6 h-6 text-white shrink-0" />
+                <p className="font-bold text-white text-sm truncate">{hospitalName}</p>
               </div>
-            ));
-          })()}
+              <button type="button" aria-label="Close menu" onClick={() => setDrawerOpen(false)} className="p-1.5 rounded-lg hover:bg-white/10">
+                <X className="w-5 h-5 text-white" />
+              </button>
+            </div>
+            <nav className="violet-scroll-dark flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y px-3 py-4">
+              {navList(() => setDrawerOpen(false))}
+            </nav>
+            <div className="px-3 pt-4 pb-6 border-t border-white/10 shrink-0">
+              <button
+                type="button"
+                onClick={() => logout()}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white/60 hover:bg-white/10 hover:text-white transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+                Logout
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      <main className="violet-scroll flex-1 min-w-0 h-full overflow-y-auto overscroll-contain lg:pt-0 pt-14">
+        <div className="mx-auto w-full max-w-[1760px]">
+          {isExtra ? (
+            <ExtraPanel moduleKey={tab.slice(2)} />
+          ) : (
+            <div className="w-full space-y-4 p-4 md:p-6">
+              {meta && (
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
+                    {tab === "op" ? <UserCheck className="h-5 w-5" /> : tab === "walkin" ? <UserPlus className="h-5 w-5" /> : <BedDouble className="h-5 w-5" />}
+                  </div>
+                  <div>
+                    <h1 className="text-xl font-bold text-gray-900">{meta.title}</h1>
+                    <p className="text-sm text-gray-500">{meta.sub}</p>
+                  </div>
+                </div>
+              )}
+              {tab === "op" ? <Outpatients /> : tab === "walkin" ? <RegisterWalkIn /> : tab === "beds" && has("bed_bookings") ? <HABedRequests /> : tab === "admit" && has("ipd") ? <Admit /> : <Outpatients />}
+            </div>
+          )}
         </div>
-        {tab.startsWith("x:") ? <ExtraPanel moduleKey={tab.slice(2)} /> : tab === "op" ? <Outpatients /> : tab === "walkin" ? <RegisterWalkIn /> : tab === "beds" && has("bed_bookings") ? <HABedRequests /> : tab === "admit" && has("ipd") ? <Admit /> : <Outpatients />}
       </main>
     </div>
   );
