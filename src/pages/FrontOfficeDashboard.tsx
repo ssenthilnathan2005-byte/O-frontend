@@ -737,8 +737,10 @@ export default function FrontOfficeDashboard() {
   const { has } = useModules();
   // FO_PERMS_V1: only "ipd" is built in (Admit inpatient); every other ticked permission shows as its own page
   const { nav: extraNav, can, loading: extraLoading } = useExtraNav([]); // FO_IPD_PAGE_V1: IPD / Inward is its own page; Admit inpatient stays separate
-  const showAdmit = has("ipd") && can("ipd");
-  const showBeds = has("bed_bookings") && (can("ipd") || can("beds_wards"));
+  // IPD / Inward sub-permissions (an older IPD / Inward with no sub-permissions means all three)
+  const ipdSub = (k: string) => can(k) || (can("ipd") && !["ipd_bed_requests", "ipd_collections", "ipd_patients"].some((s) => can(s)));
+  const showAdmit = has("ipd") && ipdSub("ipd_patients");
+  const showBeds = has("bed_bookings") && (ipdSub("ipd_bed_requests") || can("beds_wards"));
   // The open page lives in the URL: /front-office/dashboard, /front-office/register-patient ...
   const [tab, setTab] = useTabRoute("/front-office", {
     allowed: ["op", "walkin", ...(showAdmit ? ["admit"] : []), ...(showBeds ? ["beds"] : []), ...extraNav.map((n: any) => n.key)],

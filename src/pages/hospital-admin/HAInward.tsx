@@ -14,6 +14,7 @@ import MaternityModal from "./MaternityModal";
 import { maternityApi } from "../../lib/maternityApi";
 import IPDCollections from "./IPDCollections";
 import { downloadFile } from "../../lib/downloadFile";
+import useIpdAccess from "../../hooks/useIpdAccess";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
@@ -46,6 +47,7 @@ function daysSince(dateStr: string) {
 
 export default function HAInward() {
   const { doctors, user } = useStore();
+  const ipdAccess = useIpdAccess();
   const [patients, setPatients] = useState<InwardPatient[]>([]);
   const [tab, setTab] = useState<"admitted" | "discharged">("admitted");
   const [showForm, setShowForm] = useState(false);
@@ -82,6 +84,7 @@ export default function HAInward() {
   const myDoctors = doctors.filter((d: any) => d.hospitalId === hospitalId);
 
   async function load() {
+    if (ipdAccess.ready && !ipdAccess.patients) return;
     try { setPatients(await api.inward.list()); } catch (_) {}
   }
 
@@ -209,8 +212,12 @@ export default function HAInward() {
 
   return (
     <div className="p-4 md:p-6 space-y-4">
-      <HABedRequests />
-      <IPDCollections onOpen={setBillId} refreshKey={billId} />
+      {ipdAccess.ready && !ipdAccess.bedRequests && !ipdAccess.collections && !ipdAccess.patients && (
+        <div className="rounded-xl border border-gray-200 bg-white p-6 text-sm text-gray-500">Your hospital admin has not enabled any IPD / Inward sections for this login.</div>
+      )}
+      {ipdAccess.bedRequests && <HABedRequests />}
+      {ipdAccess.collections && <IPDCollections onOpen={setBillId} refreshKey={billId} />}
+      {ipdAccess.patients && (<>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <BedDouble className="w-5 h-5 text-teal-600" />
@@ -359,6 +366,7 @@ export default function HAInward() {
           </tbody>
         </table>
       </div>
+      </>)}
 
       {trId && (() => { const cur = patients.find(x => x.id === trId); return (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">

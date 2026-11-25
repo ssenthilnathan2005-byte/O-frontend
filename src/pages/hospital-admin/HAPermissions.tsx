@@ -43,6 +43,14 @@ const MODULE_META: Record<string, { label: string; hint: string; group: string; 
 };
 const GROUP_ORDER = ["Clinical", "Pharmacy & Stock", "Finance", "Administration"];
 
+// Sub-permissions that only exist under IPD / Inward
+const IPD_SUBS: { key: string; label: string; hint: string }[] = [
+  { key: "ipd_bed_requests", label: "Online Bed Requests & Bed Charges", hint: "Online bed requests and the bed charge per day" },
+  { key: "ipd_collections", label: "IPD Collections", hint: "Collected today, this month, outstanding and patient balances" },
+  { key: "ipd_patients", label: "Inward Patients", hint: "Edit, transfer, discharge, bill and the rest of the inward patient list" },
+];
+const IPD_SUB_KEYS = IPD_SUBS.map(s => s.key);
+
 type StaffRow = { name: string; code: string };
 
 export default function HAPermissions() {
@@ -81,7 +89,7 @@ export default function HAPermissions() {
 
   const groups = useMemo(() => {
     const g: Record<string, string[]> = {};
-    for (const m of modules) (g[MODULE_META[m]?.group || "Other"] ||= []).push(m);
+    for (const m of modules.filter(x => !IPD_SUB_KEYS.includes(x))) (g[MODULE_META[m]?.group || "Other"] ||= []).push(m);
     return GROUP_ORDER.filter(k => g[k]).map(k => [k, g[k]] as const)
       .concat(Object.keys(g).filter(k => !GROUP_ORDER.includes(k)).map(k => [k, g[k]] as const));
   }, [modules]);
@@ -91,8 +99,22 @@ export default function HAPermissions() {
 
   function toggle(role: string, mod: string) {
     setDraft(d => {
-      const cur = d[role] || [];
-      return { ...d, [role]: cur.includes(mod) ? cur.filter(x => x !== mod) : [...cur, mod] };
+      let cur = d[role] || [];
+      if (mod === "ipd") {
+        // ticking IPD / Inward ticks all three sub-permissions; unticking clears them
+        cur = cur.includes("ipd")
+          ? cur.filter(x => x !== "ipd" && !IPD_SUB_KEYS.includes(x))
+          : [...cur.filter(x => !IPD_SUB_KEYS.includes(x)), "ipd", ...IPD_SUB_KEYS];
+      } else if (IPD_SUB_KEYS.includes(mod)) {
+        // an older saved IPD / Inward (no sub-permissions yet) means all three
+        if (cur.includes("ipd") && !IPD_SUB_KEYS.some(k => cur.includes(k))) cur = [...cur, ...IPD_SUB_KEYS];
+        cur = cur.includes(mod) ? cur.filter(x => x !== mod) : [...cur, mod];
+        // with all three cleared, IPD / Inward itself is off
+        if (!IPD_SUB_KEYS.some(k => cur.includes(k))) cur = cur.filter(x => x !== "ipd");
+      } else {
+        cur = cur.includes(mod) ? cur.filter(x => x !== mod) : [...cur, mod];
+      }
+      return { ...d, [role]: cur };
     });
   }
   function setAll(role: string, on: boolean) {
@@ -146,7 +168,7 @@ export default function HAPermissions() {
                   <p className="text-xs text-gray-500">{meta.blurb}</p>
                 </div>
                 <span className="text-xs font-medium text-teal-700 bg-teal-50 rounded-full px-2.5 py-1 shrink-0">
-                  {on.length} of {modules.length} allowed
+                  {on.filter(x => !IPD_SUB_KEYS.includes(x)).length} of {modules.filter(x => !IPD_SUB_KEYS.includes(x)).length} allowed
                 </span>
               </header>
 
@@ -165,13 +187,13 @@ export default function HAPermissions() {
                 {groups.map(([group, mods]) => (
                   <div key={group}>
                     <p className="text-[11px] uppercase tracking-wider text-gray-400 mb-1.5">{group}</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 items-start gap-2">
                       {mods.map(m => {
                         const mm = MODULE_META[m] || { label: m, hint: "" };
                         const checked = on.includes(m);
                         return (
+                          <div key={m} className="min-w-0 space-y-1.5">
                           <label
-                            key={m}
                             className={`flex items-start gap-2.5 rounded-xl border px-3 py-2.5 cursor-pointer transition-colors ${
                               checked ? "border-teal-300 bg-teal-50/60" : "border-gray-200 hover:bg-gray-50"
                             }`}
@@ -192,6 +214,25 @@ export default function HAPermissions() {
                               <span className="block text-xs text-gray-500 leading-snug">{mm.hint}</span>
                             </span>
                           </label>
+                          {m === "ipd" && checked && (
+                            <div className="ml-4 space-y-1 border-l-2 border-teal-200 pl-3">
+                              {IPD_SUBS.map(s => {
+                                const subOn = on.includes(s.key) || !IPD_SUB_KEYS.some(k => on.includes(k));
+                                return (
+                                  <label key={s.key} className={`flex items-start gap-2 rounded-lg border px-2.5 py-2 cursor-pointer transition-colors ${
+                                    subOn ? "border-teal-300 bg-teal-50/60" : "border-gray-200 hover:bg-gray-50"
+                                  }`}>
+                                    <input type="checkbox" checked={subOn} onChange={() => toggle(role, s.key)} className="mt-0.5 h-4 w-4 accent-teal-600 shrink-0" />
+                                    <span className="min-w-0">
+                                      <span className="block text-sm font-medium text-gray-900">{s.label}</span>
+                                      <span className="block text-xs text-gray-500 leading-snug">{s.hint}</span>
+                                    </span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          )}
+                          </div>
                         );
                       })}
                     </div>
