@@ -10,6 +10,7 @@ const fmt = (s?: string | null) => (s ? new Date(s).toLocaleString("en-IN", { da
 const CATS: [string, string][] = [["procedure", "Procedure"], ["test", "Test"], ["medicine", "Medicine"], ["doctor_visit", "Doctor visit"], ["room_service", "Room service"], ["other", "Other"]];
 const MODES = ["cash", "upi", "card", "bank", "insurance", "other"];
 const inp = "border border-gray-300 rounded-lg px-2 py-1.5 text-sm bg-white w-full";
+const chip = (on: boolean) => "px-2.5 py-1 rounded-full text-xs border " + (on ? "bg-teal-600 text-white border-teal-600" : "bg-white text-gray-700 hover:bg-gray-50");
 
 export default function IPDBillModal({ inwardId, onClose }: { inwardId: string; onClose: () => void }) {
   const { user } = useStore() as any;
@@ -24,6 +25,8 @@ export default function IPDBillModal({ inwardId, onClose }: { inwardId: string; 
   const [discType, setDiscType] = useState("amount");
   const [cgst, setCgst] = useState("0");
   const [sgst, setSgst] = useState("0");
+  const [showGst, setShowGst] = useState(false);
+  const [rateEdit, setRateEdit] = useState(false);
   const closed = bill?.status === "discharged";
 
   const applyBill = useCallback((b: any) => {
@@ -93,10 +96,22 @@ export default function IPDBillModal({ inwardId, onClose }: { inwardId: string; 
     finally { setBusy(false); }
   }
 
+  const gstOpen = showGst || cgstNum > 0 || sgstNum > 0;
+  const lineTotal = round2((Number(item.qty) || 0) * (Number(item.unitPrice) || 0));
+  const paidSoFar = Number(bill?.paid || 0);
+  const payStatus = liveBalance < 0
+    ? { label: "Refund due", box: "bg-amber-50", text: "text-amber-700" }
+    : liveBalance === 0 && liveTotal > 0
+      ? { label: "Fully paid", box: "bg-teal-50", text: "text-teal-700" }
+      : paidSoFar > 0
+        ? { label: "Balance (part paid)", box: "bg-amber-50", text: "text-amber-700" }
+        : { label: "Balance (unpaid)", box: "bg-red-50", text: "text-red-600" };
+
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[92vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-4 py-3 border-b sticky top-0 bg-white z-10">
+        <div className="sticky top-0 bg-white z-10 border-b">
+        <div className="flex items-center justify-between px-4 py-3">
           <div>
             <h2 className="font-semibold text-gray-900">IPD Bill{bill ? " · " + bill.patientName : ""}</h2>
             {bill && <p className="text-xs text-gray-500">{bill.ward || "-"}{bill.bedNumber ? " / Bed " + bill.bedNumber : ""} · Admitted {fmt(bill.admittedAt)}{bill.dischargedAt ? " · Discharged " + fmt(bill.dischargedAt) : ""}</p>}
@@ -106,46 +121,20 @@ export default function IPDBillModal({ inwardId, onClose }: { inwardId: string; 
             <button onClick={onClose} className="p-1.5 rounded hover:bg-gray-100"><X className="w-4 h-4" /></button>
           </div>
         </div>
+        {bill && (
+          <div className="grid grid-cols-3 gap-2 text-center px-4 pb-3">
+            <div className="rounded-lg bg-gray-50 p-2"><p className="text-[11px] text-gray-500">Final total</p><p className="font-semibold">{inr(liveTotal)}</p></div>
+            <div className="rounded-lg bg-green-50 p-2"><p className="text-[11px] text-green-700">Paid</p><p className="font-semibold text-green-700">{inr(bill.paid)}</p></div>
+            <div className={"rounded-lg p-2 " + payStatus.box}><p className={"text-[11px] " + payStatus.text}>{payStatus.label}</p><p className={"font-semibold " + payStatus.text}>{inr(Math.abs(liveBalance))}</p></div>
+          </div>
+        )}
+        </div>
 
         {err && <p className="p-4 text-sm text-red-600">{err}</p>}
         {!bill && !err && <p className="p-6 text-sm text-gray-400 text-center">Loading...</p>}
 
         {bill && (
           <div className="p-4 space-y-4">
-            {/* Summary */}
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="rounded-lg bg-gray-50 p-2"><p className="text-[11px] text-gray-500">Final total</p><p className="font-semibold">{inr(liveTotal)}</p></div>
-              <div className="rounded-lg bg-green-50 p-2"><p className="text-[11px] text-green-700">Paid</p><p className="font-semibold text-green-700">{inr(bill.paid)}</p></div>
-              <div className={"rounded-lg p-2 " + (liveBalance > 0 ? "bg-red-50" : "bg-teal-50")}>
-                <p className={"text-[11px] " + (liveBalance > 0 ? "text-red-600" : "text-teal-700")}>{liveBalance < 0 ? "Refund due" : "Remaining balance"}</p>
-                <p className={"font-semibold " + (liveBalance > 0 ? "text-red-600" : "text-teal-700")}>{inr(Math.abs(liveBalance))}</p>
-              </div>
-            </div>
-
-            {/* Bed charge */}
-            <div className="border rounded-xl p-3 space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="font-medium">Bed charge</span>
-                <span className="font-semibold">{inr(bill.bedCharge)}</span>
-              </div>
-              {bill.segments && bill.segments.length > 1 ? (
-                <div className="text-xs text-gray-500 space-y-0.5">
-                  {bill.segments.map((s: any, i: number) => (
-                    <p key={i}>{s.ward}: {s.days} day{s.days === 1 ? "" : "s"} &times; {inr(s.rate)} = {inr(s.amount)}</p>
-                  ))}
-                  <p>Calendar days. The rate box below changes the current ward rate.</p>
-                </div>
-              ) : (
-                <p className="text-xs text-gray-500">{bill.days} day{bill.days === 1 ? "" : "s"} × {inr(bill.bedRate)} per day (calendar days)</p>
-              )}
-              <div className="flex items-end gap-2">
-                <div className="flex-1"><label className="text-[11px] text-gray-500">Bed rate per day (₹)</label>
-                  <input className={inp} inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} /></div>
-                <button disabled={busy} onClick={() => { const a = askReason(closed); if (a.ok) run(() => ipdBilling.settings(inwardId, { bedRate: Number(rate), reason: a.reason }), "Bed rate updated"); }}
-                  className="px-3 py-1.5 rounded-lg text-sm border hover:bg-gray-50 disabled:opacity-50">Save</button>
-              </div>
-            </div>
-
             {/* Lab tests (from the hospital lab) */}
             {bill.labTests && bill.labTests.length > 0 && (
               <div className="border rounded-xl p-3 space-y-2">
@@ -166,15 +155,46 @@ export default function IPDBillModal({ inwardId, onClose }: { inwardId: string; 
               </div>
             )}
 
-            {/* Items */}
+            {/* 1. Charges */}
             <div className="border rounded-xl p-3 space-y-2">
-              <p className="font-medium text-sm">Charges</p>
-              {bill.items.length === 0 && <p className="text-xs text-gray-400">No extra charges yet.</p>}
+              <div className="flex items-center justify-between">
+                <p className="font-medium text-sm">1. Charges</p>
+                <p className="text-xs text-gray-500">Subtotal <span className="font-semibold text-gray-800">{inr(bill.subtotal)}</span></p>
+              </div>
+
+              <div className="flex items-start justify-between gap-2 text-sm">
+                <div className="min-w-0">
+                  <p>Bed charge</p>
+                  {bill.segments && bill.segments.length > 1 ? (
+                    <div className="text-[11px] text-gray-500">
+                      {bill.segments.map((sg: any, i: number) => (
+                        <p key={i}>{sg.ward}: {sg.days} day{sg.days === 1 ? "" : "s"} &times; {inr(sg.rate)} = {inr(sg.amount)}</p>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-gray-500">{bill.days} day{bill.days === 1 ? "" : "s"} &times; {inr(bill.bedRate)} per day (calendar days)</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="font-medium">{inr(bill.bedCharge)}</span>
+                  <button type="button" onClick={() => setRateEdit(!rateEdit)} className="text-xs text-teal-700 hover:underline">{rateEdit ? "Cancel" : "Edit rate"}</button>
+                </div>
+              </div>
+              {rateEdit && (
+                <div className="flex items-end gap-2 bg-gray-50 rounded-lg p-2">
+                  <div className="flex-1"><label className="text-[11px] text-gray-500">Bed rate per day ({"\u20B9"}){bill.segments && bill.segments.length > 1 ? " - current ward" : ""}</label>
+                    <input className={inp} inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} /></div>
+                  <button disabled={busy} onClick={() => { const a = askReason(closed); if (a.ok) run(() => ipdBilling.settings(inwardId, { bedRate: Number(rate), reason: a.reason }), "Bed rate updated", () => setRateEdit(false)); }}
+                    className="px-3 py-1.5 rounded-lg text-sm bg-teal-600 text-white disabled:opacity-50">Save</button>
+                </div>
+              )}
+
+              {bill.items.length === 0 && <p className="text-xs text-gray-400 border-t pt-2">No extra charges yet.</p>}
               {bill.items.map((i: any) => (
-                <div key={i.id} className="flex items-center justify-between gap-2 text-sm border-t pt-1.5 first:border-0 first:pt-0">
+                <div key={i.id} className="flex items-center justify-between gap-2 text-sm border-t pt-1.5">
                   <div className="min-w-0">
                     <p className="truncate">{i.description}</p>
-                    <p className="text-[11px] text-gray-500 capitalize">{i.category.replace("_", " ")} · {i.qty} × {inr(i.unit_price)}</p>
+                    <p className="text-[11px] text-gray-500 capitalize">{i.category.replace("_", " ")} &middot; {i.qty} &times; {inr(i.unit_price)}</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="font-medium">{inr(i.amount)}</span>
@@ -183,29 +203,33 @@ export default function IPDBillModal({ inwardId, onClose }: { inwardId: string; 
                   </div>
                 </div>
               ))}
-              <div className="grid grid-cols-6 gap-2 pt-2 border-t">
-                <select className={inp + " col-span-3"} value={item.category} onChange={(e) => setItem({ ...item, category: e.target.value })}>
-                  {CATS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
-                </select>
-                <input className={inp + " col-span-3"} placeholder="Description" value={item.description} onChange={(e) => setItem({ ...item, description: e.target.value })} />
-                <input className={inp + " col-span-2"} inputMode="decimal" placeholder="Qty" value={item.qty} onChange={(e) => setItem({ ...item, qty: e.target.value })} />
-                <input className={inp + " col-span-3"} inputMode="decimal" placeholder="Price (₹)" value={item.unitPrice} onChange={(e) => setItem({ ...item, unitPrice: e.target.value })} />
+
+              {Number(bill.pharmacyTotal) > 0 && (
+                <div className="flex items-center justify-between text-sm border-t pt-1.5">
+                  <span>Pharmacy (GST included)</span>
+                  <span className="font-medium">{inr(bill.pharmacyTotal)}</span>
+                </div>
+              )}
+
+              <div className="pt-2 border-t space-y-2">
+                <p className="text-[11px] text-gray-500">Add a charge</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {CATS.map(([k, l]) => <button key={k} type="button" onClick={() => setItem({ ...item, category: k })} className={chip(item.category === k)}>{l}</button>)}
+                </div>
+                <div className="grid grid-cols-6 gap-2">
+                  <input className={inp + " col-span-6 sm:col-span-3"} placeholder="Description" value={item.description} onChange={(e) => setItem({ ...item, description: e.target.value })} />
+                  <input className={inp + " col-span-2 sm:col-span-1"} inputMode="decimal" placeholder="Qty" value={item.qty} onChange={(e) => setItem({ ...item, qty: e.target.value })} />
+                  <input className={inp + " col-span-4 sm:col-span-2"} inputMode="decimal" placeholder={"Price (\u20B9)"} value={item.unitPrice} onChange={(e) => setItem({ ...item, unitPrice: e.target.value })} />
+                </div>
                 <button disabled={busy || !item.description.trim() || item.unitPrice === ""}
                   onClick={() => { const a = askReason(closed); if (a.ok) run(() => ipdBilling.addItem(inwardId, { ...item, qty: Number(item.qty || 1), unitPrice: Number(item.unitPrice), reason: a.reason }), "Charge added", () => setItem({ ...item, description: "", qty: "1", unitPrice: "" })); }}
-                  className="col-span-1 flex items-center justify-center rounded-lg bg-teal-600 text-white disabled:opacity-50"><Plus className="w-4 h-4" /></button>
+                  className="w-full flex items-center justify-center gap-1 rounded-lg bg-teal-600 text-white text-sm py-2 disabled:opacity-50"><Plus className="w-4 h-4" />Add charge{lineTotal > 0 ? " - " + inr(lineTotal) : ""}</button>
               </div>
             </div>
 
-            {Number(bill.pharmacyTotal) > 0 && (
-              <div className="border rounded-xl p-3 flex items-center justify-between text-sm">
-                <span className="font-medium">Pharmacy (GST included)</span>
-                <span className="font-semibold">{inr(bill.pharmacyTotal)}</span>
-              </div>
-            )}
-
-              {/* Discount & tax */}
+            {/* 2. Discount and GST */}
             <div className="border rounded-xl p-3 space-y-2">
-              <div className="flex items-center justify-between text-sm"><span>Subtotal</span><span>{inr(bill.subtotal)}</span></div>
+              <p className="font-medium text-sm">2. Discount &amp; GST</p>
               <div>
                 <label className="text-[11px] text-gray-500">Discount</label>
                 <div className="flex items-center gap-2">
@@ -216,36 +240,44 @@ export default function IPDBillModal({ inwardId, onClose }: { inwardId: string; 
                   </div>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div><label className="text-[11px] text-gray-500">CGST (%)</label>
-                  <input className={inp} inputMode="decimal" value={cgst} onChange={(e) => setCgst(e.target.value)} /></div>
-                <div><label className="text-[11px] text-gray-500">SGST (%)</label>
-                  <input className={inp} inputMode="decimal" value={sgst} onChange={(e) => setSgst(e.target.value)} /></div>
-              </div>
+              {!gstOpen ? (
+                <button type="button" onClick={() => setShowGst(true)} className="text-xs text-teal-700 hover:underline">+ Add GST</button>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <div><label className="text-[11px] text-gray-500">CGST (%)</label>
+                    <input className={inp} inputMode="decimal" value={cgst} onChange={(e) => setCgst(e.target.value)} /></div>
+                  <div><label className="text-[11px] text-gray-500">SGST (%)</label>
+                    <input className={inp} inputMode="decimal" value={sgst} onChange={(e) => setSgst(e.target.value)} /></div>
+                </div>
+              )}
               {live && (
                 <div className="text-sm space-y-0.5 border-t pt-2">
-                  {live.discount > 0 && <div className="flex justify-between"><span>Discount{shownDiscType === "percent" ? " (" + shownDiscValue + "%)" : ""}</span><span>-{inr(live.discount)}</span></div>}
-                  {(shownCgstRate > 0 || shownSgstRate > 0) && <div className="flex justify-between"><span>Amount after discount</span><span>{inr(live.taxable)}</span></div>}
-                  {shownCgstRate > 0 && <div className="flex justify-between"><span>CGST ({shownCgstRate}%)</span><span>{inr(live.cgst)}</span></div>}
-                  {shownSgstRate > 0 && <div className="flex justify-between"><span>SGST ({shownSgstRate}%)</span><span>{inr(live.sgst)}</span></div>}
-                  <div className="flex justify-between font-semibold"><span>Final total</span><span>{inr(live.total)}</span></div>
+                  <div className="flex justify-between text-gray-600"><span>Subtotal</span><span>{inr(bill.subtotal)}</span></div>
+                  {live.discount > 0 && <div className="flex justify-between text-gray-600"><span>Discount{shownDiscType === "percent" ? " (" + shownDiscValue + "%)" : ""}</span><span>-{inr(live.discount)}</span></div>}
+                  {(shownCgstRate > 0 || shownSgstRate > 0) && <div className="flex justify-between text-gray-600"><span>Amount after discount</span><span>{inr(live.taxable)}</span></div>}
+                  {shownCgstRate > 0 && <div className="flex justify-between text-gray-600"><span>CGST ({shownCgstRate}%)</span><span>{inr(live.cgst)}</span></div>}
+                  {shownSgstRate > 0 && <div className="flex justify-between text-gray-600"><span>SGST ({shownSgstRate}%)</span><span>{inr(live.sgst)}</span></div>}
+                  {Number(bill.pharmacyTotal) > 0 && <div className="flex justify-between text-gray-600"><span>Pharmacy (GST included)</span><span>{inr(bill.pharmacyTotal)}</span></div>}
+                  <div className="flex justify-between font-semibold text-base border-t pt-1 mt-1"><span>Final total</span><span>{inr(live.total)}</span></div>
                 </div>
               )}
               <div className="flex items-center justify-between gap-2">
                 <p className="text-[11px] text-amber-600">{dirty ? "Preview only - press Save to apply" : ""}</p>
-                <button disabled={busy || !dirty} onClick={saveAdjustments} className="px-3 py-1.5 rounded-lg text-sm border hover:bg-gray-50 disabled:opacity-50">Save</button>
+                <button disabled={busy || !dirty} onClick={saveAdjustments} className="px-4 py-1.5 rounded-lg text-sm bg-teal-600 text-white disabled:bg-gray-100 disabled:text-gray-400">{dirty ? "Save changes" : "Saved"}</button>
               </div>
             </div>
 
-            {/* Payments */}
+            {/* 3. Payments */}
             <div className="border rounded-xl p-3 space-y-2">
-              <p className="font-medium text-sm">Payments</p>
-              <p className="text-xs text-gray-500">Remaining balance = Final total {inr(liveTotal)} - Paid {inr(bill.paid)} = <span className={"font-semibold " + (liveBalance > 0 ? "text-red-600" : "text-teal-700")}>{inr(Math.abs(liveBalance))}{liveBalance < 0 ? " (refund due)" : ""}</span></p>
+              <div className="flex items-center justify-between">
+                <p className="font-medium text-sm">3. Payments</p>
+                <p className="text-xs text-gray-500">Paid {inr(bill.paid)} of {inr(liveTotal)}</p>
+              </div>
               {bill.payments.length === 0 && <p className="text-xs text-gray-400">No payments yet.</p>}
               {bill.payments.map((p: any) => (
                 <div key={p.id} className="flex items-center justify-between gap-2 text-sm border-t pt-1.5 first:border-0 first:pt-0">
                   <div className="min-w-0">
-                    <p className="capitalize">{p.kind} · {p.mode}{p.note ? " · " + p.note : ""}</p>
+                    <p className="capitalize">{p.kind} &middot; {p.mode}{p.note ? " \u00b7 " + p.note : ""}</p>
                     <p className="text-[11px] text-gray-500">{fmt(p.created_at)}</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -255,19 +287,25 @@ export default function IPDBillModal({ inwardId, onClose }: { inwardId: string; 
                   </div>
                 </div>
               ))}
-              <div className="grid grid-cols-6 gap-2 pt-2 border-t">
-                <select className={inp + " col-span-3"} value={pay.kind} onChange={(e) => setPay({ ...pay, kind: e.target.value })}>
-                  <option value="advance">Advance</option><option value="payment">Payment</option><option value="refund">Refund</option>
-                </select>
-                <select className={inp + " col-span-3"} value={pay.mode} onChange={(e) => setPay({ ...pay, mode: e.target.value })}>
-                  {MODES.map((m) => <option key={m} value={m}>{m.toUpperCase()}</option>)}
-                </select>
-                {payAmt > 0 && <p className="col-span-6 text-xs text-teal-700">After this {pay.kind}, remaining balance will be {inr(Math.abs(afterPay))}{afterPay < 0 ? " (refund due)" : ""}</p>}
-                <input className={inp + " col-span-2"} inputMode="decimal" placeholder="Amount (₹)" value={pay.amount} onChange={(e) => setPay({ ...pay, amount: e.target.value })} />
-                <input className={inp + " col-span-3"} placeholder="Note (optional)" value={pay.note} onChange={(e) => setPay({ ...pay, note: e.target.value })} />
+              <div className="pt-2 border-t space-y-2">
+                <p className="text-[11px] text-gray-500">Record a payment</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {[["advance", "Advance"], ["payment", "Payment"], ["refund", "Refund"]].map(([k, l]) => <button key={k} type="button" onClick={() => setPay({ ...pay, kind: k })} className={chip(pay.kind === k)}>{l}</button>)}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {MODES.map((m) => <button key={m} type="button" onClick={() => setPay({ ...pay, mode: m })} className={chip(pay.mode === m)}>{m.toUpperCase()}</button>)}
+                </div>
+                <div className="flex items-center gap-2">
+                  <input className={inp} inputMode="decimal" placeholder={"Amount (\u20B9)"} value={pay.amount} onChange={(e) => setPay({ ...pay, amount: e.target.value })} />
+                  <button type="button" disabled={liveBalance === 0}
+                    onClick={() => liveBalance < 0 ? setPay({ ...pay, kind: "refund", amount: String(Math.abs(liveBalance)) }) : setPay({ ...pay, kind: pay.kind === "refund" ? "payment" : pay.kind, amount: String(liveBalance) })}
+                    className="shrink-0 px-3 py-1.5 rounded-lg text-xs border text-teal-700 hover:bg-teal-50 disabled:opacity-40">Full balance</button>
+                </div>
+                <input className={inp} placeholder="Note (optional)" value={pay.note} onChange={(e) => setPay({ ...pay, note: e.target.value })} />
+                {payAmt > 0 && <p className="text-xs text-teal-700">After this {pay.kind}, balance will be {inr(Math.abs(afterPay))}{afterPay < 0 ? " (refund due)" : ""}</p>}
                 <button disabled={busy || !(Number(pay.amount) > 0)}
                   onClick={() => { const a = askReason(closed && pay.kind === "refund"); if (a.ok) run(() => ipdBilling.addPayment(inwardId, { ...pay, amount: Number(pay.amount), reason: a.reason }), "Payment recorded", () => setPay({ ...pay, amount: "", note: "" })); }}
-                  className="col-span-1 flex items-center justify-center rounded-lg bg-teal-600 text-white disabled:opacity-50"><Plus className="w-4 h-4" /></button>
+                  className="w-full flex items-center justify-center gap-1 rounded-lg bg-teal-600 text-white text-sm py-2 disabled:opacity-50"><Plus className="w-4 h-4" />{pay.kind === "refund" ? "Record refund" : pay.kind === "advance" ? "Record advance" : "Record payment"}</button>
               </div>
             </div>
           </div>
