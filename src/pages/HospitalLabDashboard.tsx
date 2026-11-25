@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { getToken } from "../api";
 import { useStore } from "../context/StoreContext";
 import { useExtraNav, ExtraPanel } from "../components/StaffExtras";
+import useModules from "../hooks/useModules";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
@@ -32,6 +33,7 @@ const NEXT: Record<string, { to: string; label: string }> = {
 
 export default function HospitalLabDashboard() {
   const store = useStore() as any;
+  const { has: hasModule } = useModules();
   const user = store.user;
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState("pending");
@@ -83,6 +85,8 @@ export default function HospitalLabDashboard() {
 
   const tabCls = (on: boolean) =>
     `px-4 py-2 rounded-full text-sm font-medium transition-colors ${on ? "bg-teal-500 text-white" : "bg-white text-gray-600 border border-gray-200"}`;
+
+  if (!hasModule("lab")) return (<div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-gray-50 p-6 text-center"><p className="text-lg font-semibold text-gray-800">Laboratory is not enabled for this hospital.</p><p className="text-sm text-gray-500">Ask your hospital admin to turn it on in Hospital Functioning.</p><button type="button" onClick={logout} className="px-4 py-2 rounded-lg bg-teal-500 text-white text-sm font-medium">Logout</button></div>);
 
   return (
     <div className="min-h-screen bg-gray-50">
