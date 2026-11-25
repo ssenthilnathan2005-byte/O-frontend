@@ -282,7 +282,7 @@ function RegisterWalkIn() {
   );
 }
 
-function Outpatients() {
+function Outpatients({ canVitals = true }: { canVitals?: boolean }) {
   const [date, setDate] = useState("");
   const { user: foUser } = useStore() as any;
   function printReceipt(b: OPBooking) {
@@ -457,7 +457,7 @@ function Outpatients() {
                 ) : b.checked_in_at ? (
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-md px-2 py-1">Checked in</span>
-                    <Button size="sm" variant="outline" onClick={() => startVitals(b)}><Activity className="w-4 h-4 mr-1" />{b.vitals ? "Edit vitals" : "Vitals"}</Button>
+                    {canVitals && <Button size="sm" variant="outline" onClick={() => startVitals(b)}><Activity className="w-4 h-4 mr-1" />{b.vitals ? "Edit vitals" : "Vitals"}</Button>}
                     {b.fee_paid_at
                       ? <span className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-md px-2 py-1">Paid {"\u20B9"}{b.fee_amount} ({b.fee_mode})</span>
                       : <Button size="sm" variant="outline" onClick={() => startFee(b)}>Collect fee{b.doctor_fee != null ? " \u20B9" + b.doctor_fee : ""}</Button>}
@@ -734,11 +734,14 @@ const FO_TAB_META: Record<string, { title: string; sub: string }> = {
 
 export default function FrontOfficeDashboard() {
   const { user, logout } = useStore() as any;
-  const { nav: extraNav, loading: extraLoading } = useExtraNav(["live_patients", "ipd", "beds_wards"]);
   const { has } = useModules();
+  // FO_PERMS_V1: only "ipd" is built in (Admit inpatient); every other ticked permission shows as its own page
+  const { nav: extraNav, can, loading: extraLoading } = useExtraNav(["ipd"]);
+  const showAdmit = has("ipd") && can("ipd");
+  const showBeds = has("bed_bookings") && (can("ipd") || can("beds_wards"));
   // The open page lives in the URL: /front-office/dashboard, /front-office/register-patient ...
   const [tab, setTab] = useTabRoute("/front-office", {
-    allowed: ["op", "walkin", ...(has("ipd") ? ["admit"] : []), ...(has("bed_bookings") ? ["beds"] : []), ...extraNav.map((n: any) => n.key)],
+    allowed: ["op", "walkin", ...(showAdmit ? ["admit"] : []), ...(showBeds ? ["beds"] : []), ...extraNav.map((n: any) => n.key)],
     ready: !extraLoading,
   });
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -762,8 +765,8 @@ export default function FrontOfficeDashboard() {
       { key: "walkin", label: "Register patient", icon: UserPlus },
     ] },
     { title: "Inpatient", items: [
-      ...(has("ipd") ? [{ key: "admit", label: "Admit inpatient", icon: BedDouble }] : []),
-      ...(has("bed_bookings") ? [{ key: "beds", label: "Bed requests", icon: BedDouble }] : []),
+      ...(showAdmit ? [{ key: "admit", label: "Admit inpatient", icon: BedDouble }] : []),
+      ...(showBeds ? [{ key: "beds", label: "Bed requests", icon: BedDouble }] : []),
     ] },
     { title: "Search", items: searchNav.map((n: any) => ({ key: n.key, label: n.label, icon: n.icon })) },
     { title: "More", items: moreNav.map((n: any) => ({ key: n.key, label: n.label, icon: n.icon })) },
@@ -889,7 +892,7 @@ export default function FrontOfficeDashboard() {
                   </div>
                 </div>
               )}
-              {tab === "op" ? <Outpatients /> : tab === "walkin" ? <RegisterWalkIn /> : tab === "beds" && has("bed_bookings") ? <HABedRequests /> : tab === "admit" && has("ipd") ? <Admit /> : <Outpatients />}
+              {tab === "op" ? <Outpatients canVitals={can("vitals")} /> : tab === "walkin" ? <RegisterWalkIn /> : tab === "beds" && showBeds ? <HABedRequests /> : tab === "admit" && showAdmit ? <Admit /> : <Outpatients canVitals={can("vitals")} />}
             </div>
           )}
         </div>
