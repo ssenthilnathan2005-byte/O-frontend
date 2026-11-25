@@ -65,6 +65,8 @@ import { useStore } from "../../context/StoreContext";
 import { getToken as foGetToken } from "@/api";
 import { Vitals, vitalsText } from "@/lib/vitals";
 import VitalsPanel from "@/components/VitalsPanel";
+import DoctorIntakeVitals from "@/components/DoctorIntakeVitals";
+import VitalsRecordedBy from "@/components/VitalsRecordedBy";
 import MonthlyArchiveBanner from "../../components/MonthlyArchiveBanner";
 import { useExtraNav, ExtraPanel } from "../../components/StaffExtras";
 import useModules from "@/hooks/useModules";
@@ -321,7 +323,7 @@ export default function DoctorDashboard() {
   // The open page lives in the URL: /doctor/dashboard, /doctor/profile, /doctor/live-tokens ...
   // A URL for a page this doctor may not open is replaced with the dashboard.
   const allowedTabs = [
-    "regulator", "livetokens", "profile", "followups", "presets", "nurse",
+    "regulator", "livetokens", "profile", "followups", "presets", "nurse", "intakevitals",
     ...(staffEnabled ? ["staff"] : []),
     ...extraNav.map((n) => n.key),
   ];
@@ -429,7 +431,7 @@ export default function DoctorDashboard() {
   const [liveTokensView, setLiveTokensView] = useState<"tovisit" | "visited" | "archived">("tovisit");
   const [historyFor, setHistoryFor] = useState<{ patientId: string; patientName: string; bookingId: string } | null>(null);
   const [historyReturnToken, setHistoryReturnToken] = useState<number | null>(null);
-  const [foInfo, setFoInfo] = useState<Record<string, { checked_in_at: string | null; vitals: Vitals | null }>>({});
+  const [foInfo, setFoInfo] = useState<Record<string, { checked_in_at: string | null; vitals: Vitals | null; vitals_at?: string | null }>>({});
   useEffect(() => {
     let off = false;
     const foBase = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
@@ -439,8 +441,8 @@ export default function DoctorDashboard() {
         if (!r.ok) return;
         const j = await r.json();
         if (off) return;
-        const m: Record<string, { checked_in_at: string | null; vitals: Vitals | null }> = {};
-        for (const x of j.bookings || []) m[x.id] = { checked_in_at: x.checked_in_at, vitals: x.vitals };
+        const m: Record<string, { checked_in_at: string | null; vitals: Vitals | null; vitals_at?: string | null }> = {};
+        for (const x of j.bookings || []) m[x.id] = { checked_in_at: x.checked_in_at, vitals: x.vitals, vitals_at: x.vitals_at };
         setFoInfo(m);
       } catch {}
     }
@@ -1246,6 +1248,7 @@ export default function DoctorDashboard() {
     { key: "followups", label: "Follow-ups", icon: Bell },
     { key: "presets", label: "Presets", icon: ClipboardList },
     { key: "nurse", label: "Nurse", icon: NurseMic },
+    { key: "intakevitals", label: "Intake Vitals", icon: Activity },
     ...(staffEnabled ? [{ key: "staff", label: "Staff Management", icon: StaffIcon }] : []),
     ...extraNav.map((n) => ({ key: n.key, label: n.label, icon: n.icon })),
   ];
@@ -1960,6 +1963,7 @@ export default function DoctorDashboard() {
       </TabsContent>
 
       <TabsContent value="nurse"><NurseTab onNavigate={goDoctorTab} nurse={nurseApi} /></TabsContent>
+      <TabsContent value="intakevitals"><DoctorIntakeVitals /></TabsContent>
       <TabsContent value="profile">
           <div className="space-y-4">
             {/* PHOTO IDENTITY */}
@@ -2420,15 +2424,18 @@ export default function DoctorDashboard() {
               )}
             </div>
 
-            {dialogTokenBooking?.id && foInfo[dialogTokenBooking.id]?.checked_in_at && (
+            {dialogTokenBooking?.id && (foInfo[dialogTokenBooking.id]?.checked_in_at || foInfo[dialogTokenBooking.id]?.vitals) && (
               <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
                 <div className="flex items-center gap-1.5 mb-1.5">
                   <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
-                    Vitals at check-in &middot; arrived {new Date(foInfo[dialogTokenBooking.id].checked_in_at as string).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                    Intake vitals{foInfo[dialogTokenBooking.id].checked_in_at ? <> &middot; arrived {new Date(foInfo[dialogTokenBooking.id].checked_in_at as string).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</> : null}
                   </span>
                 </div>
                 {foInfo[dialogTokenBooking.id].vitals ? (
-                  <VitalsPanel vitals={foInfo[dialogTokenBooking.id].vitals as Vitals} />
+                  <>
+                    <VitalsPanel vitals={foInfo[dialogTokenBooking.id].vitals as Vitals} />
+                    <VitalsRecordedBy bookingId={dialogTokenBooking.id} stamp={String(foInfo[dialogTokenBooking.id].vitals_at || "")} />
+                  </>
                 ) : (
                   <p className="text-sm font-medium text-amber-800 bg-amber-50 border border-amber-300 rounded-md px-2 py-1.5">&#9888; Vitals pending &mdash; not yet recorded by nurse / front office</p>
                 )}
