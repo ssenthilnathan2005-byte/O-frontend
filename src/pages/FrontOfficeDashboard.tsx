@@ -596,7 +596,7 @@ function Outpatients({ canVitals = true }: { canVitals?: boolean }) {
   );
 }
 
-function Admit() {
+function Admit({ canBill = true }: { canBill?: boolean }) {
   const [billId, setBillId] = useState<string | null>(null);
   const [printingId, setPrintingId] = useState<string | null>(null);
   const [matEligible, setMatEligible] = useState<Set<string>>(new Set());
@@ -712,7 +712,7 @@ function Admit() {
                       <Printer className="w-3 h-3" />{printingId === p.id ? "Preparing..." : "Print record"}
                     </button>
                   )}
-                  <button type="button" onClick={() => setBillId(p.id)} className="flex items-center gap-1 text-xs text-teal-700 border border-teal-200 rounded-md px-2 py-0.5 hover:bg-teal-50"><Receipt className="w-3 h-3" />Bill</button>
+                  {canBill && <button type="button" onClick={() => setBillId(p.id)} className="flex items-center gap-1 text-xs text-teal-700 border border-teal-200 rounded-md px-2 py-0.5 hover:bg-teal-50"><Receipt className="w-3 h-3" />Bill</button>}
                 </div>
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -751,8 +751,8 @@ export default function FrontOfficeDashboard() {
   // FO_PERMS_V1: only "ipd" is built in (Admit inpatient); every other ticked permission shows as its own page
   const { nav: extraNav, can, loading: extraLoading } = useExtraNav([]); // FO_IPD_PAGE_V1: IPD / Inward is its own page; Admit inpatient stays separate
   // IPD / Inward sub-permissions (an older IPD / Inward with no sub-permissions means all three)
-  const ipdSub = (k: string) => can(k) || (can("ipd") && !["ipd_bed_requests", "ipd_collections", "ipd_patients"].some((s) => can(s)));
-  const showAdmit = has("ipd") && ipdSub("ipd_patients");
+  const ipdSub = (k: string) => can(k) || (can("ipd") && !["ipd_bed_requests", "ipd_collections", "ipd_patient_ops", "ipd_patient_billing"].some((s) => can(s)));
+  const showAdmit = has("ipd") && ipdSub("ipd_patient_ops");
   const showBeds = has("bed_bookings") && (ipdSub("ipd_bed_requests") || can("beds_wards"));
   // The open page lives in the URL: /front-office/dashboard, /front-office/register-patient ...
   const [tab, setTab] = useTabRoute("/front-office", {
@@ -909,7 +909,7 @@ export default function FrontOfficeDashboard() {
                   </div>
                 </div>
               )}
-              {tab === "op" ? <Outpatients canVitals={can("vitals")} /> : tab === "walkin" ? <RegisterWalkIn /> : tab === "beds" && showBeds ? <HABedRequests /> : tab === "admit" && showAdmit ? <Admit /> : <Outpatients canVitals={can("vitals")} />}
+              {tab === "op" ? <Outpatients canVitals={can("vitals")} /> : tab === "walkin" ? <RegisterWalkIn /> : tab === "beds" && showBeds ? <HABedRequests /> : tab === "admit" && showAdmit ? <Admit canBill={ipdSub("ipd_patient_billing")} /> : <Outpatients canVitals={can("vitals")} />}
             </div>
           )}
         </div>

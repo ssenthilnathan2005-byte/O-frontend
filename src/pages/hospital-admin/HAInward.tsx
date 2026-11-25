@@ -187,7 +187,7 @@ export default function HAInward() {
       if (Number(b.balance) > 0) { alert("Bill not paid. Balance due: ₹" + Number(b.balance).toLocaleString("en-IN") + ". The front desk must collect payment before discharge."); return; }
     } catch (_) {}
     if (!confirm("Mark this patient as discharged?" + note)) return;
-    try { await api.inward.discharge(id); await load(); setBillId(id); } catch (e) { alert((e as Error)?.message || "Could not discharge this patient."); await load(); }
+    try { await api.inward.discharge(id); await load(); if (ipdAccess.patientBilling) setBillId(id); } catch (e) { alert((e as Error)?.message || "Could not discharge this patient."); await load(); }
   }
 
   async function handleExport() {
@@ -287,23 +287,27 @@ export default function HAInward() {
                     <button onClick={() => toggleHistory(p.id)} className="w-8 h-8 flex items-center justify-center rounded hover:bg-muted transition-colors" title="Vitals & notes">
                       {expandedId === p.id ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
                     </button>
-                    {matEligible.has(p.id) ? (
+                    {ipdAccess.patientOps && matEligible.has(p.id) ? (
                     <button onClick={() => setMatId(p.id)} className="w-8 h-8 flex items-center justify-center rounded hover:bg-pink-50 transition-colors" title="Maternity profile">
                       <Baby className="w-3.5 h-3.5 text-pink-600" />
                     </button>
                     ) : <span className="w-8 h-8" aria-hidden />}
-                    <button onClick={() => setBillId(p.id)} className="w-8 h-8 flex items-center justify-center rounded hover:bg-teal-50 transition-colors" title="Bill">
+                    {ipdAccess.patientBilling ? (
+<button onClick={() => setBillId(p.id)} className="w-8 h-8 flex items-center justify-center rounded hover:bg-teal-50 transition-colors" title="Bill">
                       <Receipt className="w-3.5 h-3.5 text-teal-600" />
                     </button>
-                    <button onClick={() => openEdit(p)} className="w-8 h-8 flex items-center justify-center rounded hover:bg-muted transition-colors">
+) : <span className="w-8 h-8" aria-hidden />}
+                    {ipdAccess.patientOps ? (
+<button onClick={() => openEdit(p)} className="w-8 h-8 flex items-center justify-center rounded hover:bg-muted transition-colors">
                       <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
                     </button>
-                    {p.status === "admitted" ? (
+) : <span className="w-8 h-8" aria-hidden />}
+                    {ipdAccess.patientOps && p.status === "admitted" ? (
                       <button onClick={() => openTransfer(p)} className="w-8 h-8 flex items-center justify-center rounded hover:bg-blue-50 transition-colors" title="Transfer to another bed or ward">
                         <ArrowRightLeft className="w-3.5 h-3.5 text-blue-600" />
                       </button>
                     ) : <span className="w-8 h-8" aria-hidden />}
-                    {p.status === "admitted" ? (
+                    {ipdAccess.patientOps && p.status === "admitted" ? (
                       <button onClick={() => handleDischarge(p.id)} className="w-8 h-8 flex items-center justify-center rounded hover:bg-red-50 transition-colors">
                         <LogOut className="w-3.5 h-3.5 text-red-500" />
                       </button>

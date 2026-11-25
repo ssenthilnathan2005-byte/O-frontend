@@ -44,10 +44,11 @@ const MODULE_META: Record<string, { label: string; hint: string; group: string; 
 const GROUP_ORDER = ["Clinical", "Pharmacy & Stock", "Finance", "Administration"];
 
 // Sub-permissions that only exist under IPD / Inward
-const IPD_SUBS: { key: string; label: string; hint: string }[] = [
+const IPD_SUBS: { key: string; label: string; hint: string; group?: string }[] = [
   { key: "ipd_bed_requests", label: "Online Bed Requests & Bed Charges", hint: "Online bed requests and the bed charge per day" },
   { key: "ipd_collections", label: "IPD Collections", hint: "Collected today, this month, outstanding and patient balances" },
-  { key: "ipd_patients", label: "Inward Patients", hint: "Edit, transfer, discharge, bill and the rest of the inward patient list" },
+  { key: "ipd_patient_ops", group: "Inward Patients", label: "Patient Operations", hint: "Edit, transfer, discharge and the other patient actions" },
+  { key: "ipd_patient_billing", group: "Inward Patients", label: "Billing", hint: "Open patient bills, add charges and take payments" },
 ];
 const IPD_SUB_KEYS = IPD_SUBS.map(s => s.key);
 
@@ -216,10 +217,13 @@ export default function HAPermissions() {
                           </label>
                           {m === "ipd" && checked && (
                             <div className="ml-4 space-y-1 border-l-2 border-teal-200 pl-3">
-                              {IPD_SUBS.map(s => {
+                              {IPD_SUBS.map((s, i) => {
                                 const subOn = on.includes(s.key) || !IPD_SUB_KEYS.some(k => on.includes(k));
+                                const startsGroup = !!s.group && IPD_SUBS[i - 1]?.group !== s.group;
                                 return (
-                                  <label key={s.key} className={`flex items-start gap-2 rounded-lg border px-2.5 py-2 cursor-pointer transition-colors ${
+                                  <div key={s.key}>
+                                  {startsGroup && <p className="mb-1 mt-2 text-xs font-semibold text-gray-700">{s.group}</p>}
+                                  <label className={`flex items-start gap-2 rounded-lg border px-2.5 py-2 cursor-pointer transition-colors ${s.group ? "ml-4 " : ""}${
                                     subOn ? "border-teal-300 bg-teal-50/60" : "border-gray-200 hover:bg-gray-50"
                                   }`}>
                                     <input type="checkbox" checked={subOn} onChange={() => toggle(role, s.key)} className="mt-0.5 h-4 w-4 accent-teal-600 shrink-0" />
@@ -228,6 +232,7 @@ export default function HAPermissions() {
                                       <span className="block text-xs text-gray-500 leading-snug">{s.hint}</span>
                                     </span>
                                   </label>
+                                  </div>
                                 );
                               })}
                             </div>
