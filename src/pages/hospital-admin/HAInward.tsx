@@ -282,32 +282,32 @@ export default function HAInward() {
                     {p.status}
                   </Badge>
                 </td>
-                <td className="px-4 py-3">
-                  <div className="flex gap-2">
-                    <button onClick={() => toggleHistory(p.id)} className="p-1.5 rounded hover:bg-muted transition-colors" title="Vitals & notes">
+                <td className="px-4 py-3 w-[250px] min-w-[250px]">
+                  <div className="grid grid-cols-6 gap-1 items-center justify-items-center">
+                    <button onClick={() => toggleHistory(p.id)} className="w-8 h-8 flex items-center justify-center rounded hover:bg-muted transition-colors" title="Vitals & notes">
                       {expandedId === p.id ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
                     </button>
-                    {matEligible.has(p.id) && (
-                    <button onClick={() => setMatId(p.id)} className="p-1.5 rounded hover:bg-pink-50 transition-colors" title="Maternity profile">
+                    {matEligible.has(p.id) ? (
+                    <button onClick={() => setMatId(p.id)} className="w-8 h-8 flex items-center justify-center rounded hover:bg-pink-50 transition-colors" title="Maternity profile">
                       <Baby className="w-3.5 h-3.5 text-pink-600" />
                     </button>
-                    )}
-                    <button onClick={() => setBillId(p.id)} className="p-1.5 rounded hover:bg-teal-50 transition-colors" title="Bill">
+                    ) : <span className="w-8 h-8" aria-hidden />}
+                    <button onClick={() => setBillId(p.id)} className="w-8 h-8 flex items-center justify-center rounded hover:bg-teal-50 transition-colors" title="Bill">
                       <Receipt className="w-3.5 h-3.5 text-teal-600" />
                     </button>
-                    <button onClick={() => openEdit(p)} className="p-1.5 rounded hover:bg-muted transition-colors">
+                    <button onClick={() => openEdit(p)} className="w-8 h-8 flex items-center justify-center rounded hover:bg-muted transition-colors">
                       <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
                     </button>
-                    {p.status === "admitted" && (
-                      <button onClick={() => openTransfer(p)} className="p-1.5 rounded hover:bg-blue-50 transition-colors" title="Transfer to another bed or ward">
+                    {p.status === "admitted" ? (
+                      <button onClick={() => openTransfer(p)} className="w-8 h-8 flex items-center justify-center rounded hover:bg-blue-50 transition-colors" title="Transfer to another bed or ward">
                         <ArrowRightLeft className="w-3.5 h-3.5 text-blue-600" />
                       </button>
-                    )}
-                    {p.status === "admitted" && (
-                      <button onClick={() => handleDischarge(p.id)} className="p-1.5 rounded hover:bg-red-50 transition-colors">
+                    ) : <span className="w-8 h-8" aria-hidden />}
+                    {p.status === "admitted" ? (
+                      <button onClick={() => handleDischarge(p.id)} className="w-8 h-8 flex items-center justify-center rounded hover:bg-red-50 transition-colors">
                         <LogOut className="w-3.5 h-3.5 text-red-500" />
                       </button>
-                    )}
+                    ) : <span className="w-8 h-8" aria-hidden />}
                   </div>
                 </td>
               </tr>

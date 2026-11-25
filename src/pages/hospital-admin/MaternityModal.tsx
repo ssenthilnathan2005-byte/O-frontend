@@ -14,8 +14,8 @@ const RISKS: [string, string][] = [
   ["bleeding", "Bleeding in pregnancy"], ["short_stature", "Short stature"],
   ["prev_stillbirth", "Previous stillbirth"], ["other", "Other"],
 ];
-const inp = "border border-gray-300 rounded-lg px-2 py-1.5 text-sm bg-white w-full";
-const lbl = "text-xs font-medium text-gray-600 mb-1 block";
+const inp = "border border-gray-300 rounded-lg px-2 py-1.5 text-sm bg-white w-full h-9";
+const lbl = "text-xs font-medium text-gray-600 mb-1 flex items-end leading-tight min-h-[2rem]";
 
 const EMPTY = {
   lmp: "", edd: "", gravida: "", para: "", abortions: "", living: "", previousCs: "0",
@@ -138,20 +138,20 @@ export default function MaternityModal({ inwardId, onClose, defaultTab = "profil
           <div className="p-5 space-y-5">
             <section>
               <h4 className="text-sm font-semibold mb-2">Pregnancy dates</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
                 <div><label className={lbl}>LMP (last menstrual period)</label>
                   <input type="date" lang="en-GB" className={inp} value={f.lmp} max={new Date().toISOString().slice(0, 10)}
                     onChange={(e) => { set("lmp", e.target.value); set("edd", eddFromLmp(e.target.value)); }} /></div>
                 <div><label className={lbl}>EDD (expected delivery)</label>
                   <input type="date" lang="en-GB" className={inp} value={f.edd} onChange={(e) => set("edd", e.target.value)} /></div>
                 <div><label className={lbl}>Gestational age today</label>
-                  <div className="px-2 py-1.5 text-sm rounded-lg bg-muted/40 min-h-[34px]">{gaText(f.lmp) || "--"}</div></div>
+                  <div className="px-2 text-sm rounded-lg bg-muted/40 h-9 flex items-center">{gaText(f.lmp) || "--"}</div></div>
               </div>
             </section>
 
             <section>
               <h4 className="text-sm font-semibold mb-2">Obstetric history</h4>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 items-end">
                 {[["gravida", "Gravida (G)"], ["para", "Para (P)"], ["abortions", "Abortions (A)"], ["living", "Living (L)"], ["previousCs", "Previous C-sections"]].map(([k, l]) => (
                   <div key={k}><label className={lbl}>{l}</label>
                     <input type="number" min={0} className={inp} value={(f as any)[k]} onChange={(e) => set(k, e.target.value)} /></div>
@@ -161,7 +161,7 @@ export default function MaternityModal({ inwardId, onClose, defaultTab = "profil
 
             <section>
               <h4 className="text-sm font-semibold mb-2">Blood group and body measures</h4>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 items-end">
                 <div><label className={lbl}>Blood group</label>
                   <select className={inp} value={f.bloodGroup} onChange={(e) => set("bloodGroup", e.target.value)}>
                     <option value="">Not known</option>{BLOOD_GROUPS.map((g) => <option key={g}>{g}</option>)}
