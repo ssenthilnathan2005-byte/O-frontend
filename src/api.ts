@@ -502,7 +502,7 @@ export interface Booking {
   doctorId: string; doctorName: string; hospitalName: string;
   date: string; session: string; tokenNumber: number; sessionId: string;
   paymentDone: boolean; status: "confirmed" | "completed" | "unvisited" | "cancelled";
-  phone: string; complaint?: string; patientAge?: number | null; patientArea?: string | null; patientGender?: string | null; patientBloodGroup?: string | null; createdAt: string;
+  phone: string; complaint?: string; patientAge?: number | null; patientArea?: string | null; patientGender?: string | null; patientBloodGroup?: string | null; uhid?: string | null; createdAt: string;
   closeReason?: string | null;
   lateFlag?: boolean; lateEtaMinutes?: number | null;
 }

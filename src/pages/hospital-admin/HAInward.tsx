@@ -32,7 +32,7 @@ type InwardPatient = {
   gender: string | null; ward: string | null; bed_number: string | null;
   admitting_doctor_name: string | null; diagnosis: string | null;
   notes: string | null; status: "admitted" | "discharged";
-  admitted_at: string; discharged_at: string | null;
+  admitted_at: string; discharged_at: string | null; uhid?: string | null;
 };
 
 const EMPTY_FORM = {
@@ -107,7 +107,7 @@ export default function HAInward() {
     p.status === tab &&
     (p.patient_name.toLowerCase().includes(search.toLowerCase()) ||
      (p.ward || "").toLowerCase().includes(search.toLowerCase()) ||
-     (p.bed_number || "").toLowerCase().includes(search.toLowerCase()))
+     (p.bed_number || "").toLowerCase().includes(search.toLowerCase()) || (p.uhid || "").toLowerCase().includes(search.toLowerCase()))
   );
 
   function openTransfer(p: InwardPatient) {
@@ -245,21 +245,21 @@ export default function HAInward() {
         ))}
       </div>
 
-      <Input placeholder="Search by name, ward, bed..." value={search}
+      <Input placeholder="Search by name, UHID, ward, bed..." value={search}
         onChange={e => setSearch(e.target.value)} className="max-w-sm" />
 
       <div className="rounded-xl border overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-muted/50">
             <tr>
-              {["Patient", "Ward / Bed", "Doctor", "Diagnosis", "Days", "Status", ""].map(h => (
+              {["Patient", "UHID", "Ward / Bed", "Doctor", "Diagnosis", "Days", "Status", ""].map(h => (
                 <th key={h} className="text-left px-4 py-3 font-medium text-muted-foreground">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && (
-              <tr><td colSpan={7} className="text-center py-10 text-muted-foreground">No {tab} patients</td></tr>
+              <tr><td colSpan={8} className="text-center py-10 text-muted-foreground">No {tab} patients</td></tr>
             )}
             {filtered.map(p => (
               <Fragment key={p.id}>
@@ -269,6 +269,7 @@ export default function HAInward() {
                   {p.phone && <p className="text-xs text-muted-foreground">{shortPhone(p.phone)}</p>}
                   {p.age && <p className="text-xs text-muted-foreground">{p.age}y {p.gender || ""}</p>}
                 </td>
+                <td className="px-4 py-3 font-mono text-sm font-medium">{p.uhid || "-"}</td>
                 <td className="px-4 py-3">
                   <p>{p.ward || "—"}</p>
                   {p.bed_number && <p className="text-xs text-muted-foreground">Bed {p.bed_number}</p>}
@@ -312,7 +313,7 @@ export default function HAInward() {
               </tr>
               {expandedId === p.id && (
                 <tr className="border-t bg-muted/10">
-                  <td colSpan={7} className="px-4 py-3">
+                  <td colSpan={8} className="px-4 py-3">
                     {historyLoading === p.id ? (
                       <p className="text-xs text-muted-foreground">Loading history...</p>
                     ) : (

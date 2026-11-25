@@ -75,7 +75,7 @@ export default function HAPatients() {
         if (q && !(
           b.patientName?.toLowerCase().includes(q) ||
           b.doctorName?.toLowerCase().includes(q) ||
-          b.phone?.includes(q) ||
+          b.phone?.includes(q) || b.uhid?.toLowerCase().includes(q) ||
           String(b.tokenNumber).includes(q)
         )) return false;
         return true;
@@ -194,7 +194,7 @@ export default function HAPatients() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               className="pl-9"
-              placeholder="Search patient, doctor, phone…"
+              placeholder="Search patient, doctor, phone, UHID..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -254,7 +254,7 @@ export default function HAPatients() {
           <TableHeader>
             <TableRow className="bg-muted/40">
               <TableHead className="text-center w-16">Token</TableHead>
-              <TableHead>Patient</TableHead>
+              <TableHead>Patient</TableHead><TableHead>UHID</TableHead>
               <TableHead>Phone</TableHead>
               <TableHead>Doctor</TableHead>
               <TableHead>Session</TableHead>
@@ -267,7 +267,7 @@ export default function HAPatients() {
           <TableBody>
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground py-16">
+                <TableCell colSpan={10} className="text-center text-muted-foreground py-16">
                   {search ? "No results match your search." : "No patient bookings found."}
                 </TableCell>
               </TableRow>
@@ -283,6 +283,7 @@ export default function HAPatients() {
                     <p className="text-xs text-muted-foreground">{b.patientAge} yrs{b.patientGender ? ` · ${b.patientGender}` : ""}{b.patientArea ? ` · ${b.patientArea}` : ""}{b.patientBloodGroup ? ` · ${b.patientBloodGroup}` : ""}</p>
                   )}
                 </TableCell>
+                <TableCell className="text-sm font-mono font-medium">{b.uhid || "-"}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">
                   {shortPhone(b.phone) || "—"}
                 </TableCell>
