@@ -179,7 +179,7 @@ export function PharmRevenue() {
 // ── 2. Inventory ─────────────────────────────────────────────────────────────
 type InvStatus = "ok" | "low_stock" | "out_of_stock" | "expiring_soon" | "expired";
 type Inv = {
-  id: string; name: string; quantity: number; packSize: number; packUnit?: string | null; tabletsAvailable: number; reorderLevel: number;
+  id: string; name: string; brandName?: string | null; quantity: number; packSize: number; packUnit?: string | null; tabletsAvailable: number; reorderLevel: number;
   purchasePrice: number | null; sellingPrice: number | null; supplier: string | null; batchNo: string | null; batches?: { batchNo: string | null; expiryDate: string | null; tablets: number; supplier: string | null }[]; medCategory: string | null;
   expiryDate: string | null; location: string | null; status: InvStatus;
   stripsPerBox?: number | null; tabletsPerBox?: number | null; schedule?: string; gstPercent?: number | null; hsnCode?: string | null;
@@ -286,15 +286,16 @@ export function PharmInventory({ readOnly = false, iconActions = false }: { read
   const [err, setErr] = useState("");
   const [q, setQ] = useState("");
   const [flt, setFlt] = useState("all");
+  const [brandFlt, setBrandFlt] = useState("all");
   const [edit, setEdit] = useState<Inv | null>(null);
-  const [f, setF] = useState({ batchNo: "", expiryDate: "", supplier: "", location: "", sellingPrice: "", packSize: "1", medCategory: "" });
+  const [f, setF] = useState({ batchNo: "", expiryDate: "", supplier: "", location: "", sellingPrice: "", packSize: "1", medCategory: "", brandName: "" });
   const [saving, setSaving] = useState(false);
   const [stock, setStock] = useState<Inv | null>(null);
   const [sMode, setSMode] = useState<"add" | "set">("add");
   const [sQty, setSQty] = useState("");
   const [sReason, setSReason] = useState("");
   const [sErr, setSErr] = useState("");
-  const BLANK = { name: "", medCategory: "Tablet", hsnCode: "", tabletsPerStrip: "", stripsPerBox: "", mrpStrip: "", purchaseBox: "", schedule: "none", gstPercent: "", reorderLevel: "", location: "", supplier: "", boxes: "", strips: "", tablets: "", batchNo: "", expiryDate: "", invoiceNo: "" };
+  const BLANK = { name: "", brandName: "", medCategory: "Tablet", hsnCode: "", tabletsPerStrip: "", stripsPerBox: "", mrpStrip: "", purchaseBox: "", schedule: "none", gstPercent: "", reorderLevel: "", location: "", supplier: "", boxes: "", strips: "", tablets: "", batchNo: "", expiryDate: "", invoiceNo: "" };
   const [adding, setAdding] = useState(false);
   const [nf, setNf] = useState(BLANK);
   const [nErr, setNErr] = useState("");
@@ -337,10 +338,16 @@ export function PharmInventory({ readOnly = false, iconActions = false }: { read
   }, [hid]);
   const alerts = rows.filter(r => r.status !== "ok");
   const catOptions = Array.from(new Set([...cats, ...rows.map(r => r.medCategory).filter((c): c is string => !!c)]));
-  const shown = rows.filter(r => (flt === "all" || r.status === flt) && r.name.toLowerCase().includes(q.trim().toLowerCase()));
+  const brandOptions = Array.from(new Set(rows.map(r => (r.brandName || "").trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+  const shown = rows.filter(r => {
+    const term = q.trim().toLowerCase();
+    const okSearch = !term || r.name.toLowerCase().includes(term) || (r.brandName || "").toLowerCase().includes(term);
+    const okBrand = brandFlt === "all" || (brandFlt === "__none__" ? !(r.brandName || "").trim() : (r.brandName || "").trim() === brandFlt);
+    return (flt === "all" || r.status === flt) && okSearch && okBrand;
+  });
   function openEdit(r: Inv) {
     setEdit(r); setEErr("");
-    setF({ batchNo: r.batchNo || "", expiryDate: r.expiryDate || "", supplier: r.supplier || "", location: r.location || "", sellingPrice: r.sellingPrice == null ? "" : String(r.sellingPrice), packSize: String(r.packSize || 1), medCategory: r.medCategory || "" });
+    setF({ batchNo: r.batchNo || "", expiryDate: r.expiryDate || "", supplier: r.supplier || "", location: r.location || "", sellingPrice: r.sellingPrice == null ? "" : String(r.sellingPrice), packSize: String(r.packSize || 1), medCategory: r.medCategory || "", brandName: r.brandName || "" });
     setPf({
       tabletsPerStrip: String(r.packSize || 1),
       stripsPerBox: r.stripsPerBox ? String(r.stripsPerBox) : "",
@@ -374,6 +381,7 @@ export function PharmInventory({ readOnly = false, iconActions = false }: { read
     const tps = nOrNaN(nf.tabletsPerStrip), spb = nOrNaN(nf.stripsPerBox), mrp = nOrNaN(nf.mrpStrip), pbox = nOrNaN(nf.purchaseBox), gst = nOrNaN(nf.gstPercent);
     const opening = (Number(nf.boxes) || 0) * (spb || 0) * (tps || 0) + (Number(nf.strips) || 0) * (tps || 0) + (Number(nf.tablets) || 0);
     if (!name) { setNErr("Medicine name is required"); return; }
+    if (nf.brandName.trim().length > 100) { setNErr("Brand name must be 100 characters or less"); return; }
     if (!Number.isInteger(tps) || tps < 1) { setNErr(packLabels(nf.medCategory).perStrip + " must be a whole number of 1 or more"); return; }
     if (!Number.isInteger(spb) || spb < 1) { setNErr(packLabels(nf.medCategory).perBox + " must be a whole number of 1 or more"); return; }
     if (!(mrp >= 0)) { setNErr("MRP per " + packLabels(nf.medCategory).s + " is required"); return; }
@@ -385,7 +393,7 @@ export function PharmInventory({ readOnly = false, iconActions = false }: { read
     let newId = "";
     try {
       const created = await pm<{ ok: boolean; id: string }>("/inventory", { method: "POST", body: JSON.stringify({
-        name, packSize: tps, medCategory: nf.medCategory || undefined, openingTablets: 0,
+        name, brandName: nf.brandName.trim() || undefined, packSize: tps, medCategory: nf.medCategory || undefined, openingTablets: 0,
         reorderLevel: nf.reorderLevel === "" ? undefined : Number(nf.reorderLevel),
         purchasePrice: nf.purchaseBox.trim() === "" ? undefined : pbox / spb, sellingPrice: mrp,
         supplier: nf.supplier || undefined, location: nf.location || undefined,
@@ -443,6 +451,7 @@ export function PharmInventory({ readOnly = false, iconActions = false }: { read
   async function save() {
     if (!edit) return;
     const tps = nOrNaN(pf.tabletsPerStrip), spb = nOrNaN(pf.stripsPerBox), mrp = nOrNaN(pf.mrpStrip), pbox = nOrNaN(pf.purchaseBox), gst = nOrNaN(pf.gstPercent);
+    if (f.brandName.trim().length > 100) { setEErr("Brand name must be 100 characters or less"); return; }
     if (!Number.isInteger(tps) || tps < 1) { setEErr(packLabels(f.medCategory).perStrip + " must be a whole number of 1 or more"); return; }
     if (!Number.isInteger(spb) || spb < 1) { setEErr(packLabels(f.medCategory).perBox + " must be a whole number of 1 or more"); return; }
     if (!(mrp >= 0)) { setEErr("MRP per " + packLabels(f.medCategory).s + " is required"); return; }
@@ -457,6 +466,7 @@ export function PharmInventory({ readOnly = false, iconActions = false }: { read
         body: JSON.stringify({
           batchNo: f.batchNo || undefined, expiryDate: f.expiryDate || undefined,
           supplier: f.supplier || undefined, location: f.location.trim(), medCategory: f.medCategory || undefined,
+          brandName: f.brandName.trim(),
         }),
       });
       await pm("/inventory/" + edit.id + "/packing", { method: "POST", body: JSON.stringify({
@@ -483,8 +493,13 @@ export function PharmInventory({ readOnly = false, iconActions = false }: { read
           <button type="button" onClick={() => { setNf(BLANK); setNErr(""); setAdding(true); }} className="px-3 py-2 rounded-md bg-teal-600 text-white text-sm">+ Add medicine</button>
         )}
         {!readOnly && <PharmImportButton />}
-        <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search medicine"
+        <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search medicine or brand"
           className="border border-gray-200 rounded-md text-sm px-3 py-2 bg-white w-64" />
+        <select value={brandFlt} onChange={e => setBrandFlt(e.target.value)} className="border border-gray-200 rounded-md text-sm px-2 py-2 bg-white max-w-[12rem]" aria-label="Filter by brand">
+          <option value="all">All brands</option>
+          {brandOptions.map(b => <option key={b} value={b}>{b}</option>)}
+          <option value="__none__">No brand</option>
+        </select>
         <select value={flt} onChange={e => setFlt(e.target.value)} className="border border-gray-200 rounded-md text-sm px-2 py-2 bg-white">
           <option value="all">All</option>
           {(Object.keys(STATUS_UI) as InvStatus[]).map(k => <option key={k} value={k}>{STATUS_UI[k][0]}</option>)}
@@ -494,12 +509,13 @@ export function PharmInventory({ readOnly = false, iconActions = false }: { read
       <div className="overflow-x-auto bg-white rounded-xl border border-gray-100">
         <table className="w-full">
           <thead className="bg-gray-50"><tr>
-            {["Medicine", "Category", "Available", "Batches / expiry", "Supplier", "Location", "Reorder level (packs)", "MRP / pack", "Status", ""].map(h => <th key={h} className={TH}>{h}</th>)}
+            {["Medicine", "Brand name", "Category", "Available", "Batches / expiry", "Supplier", "Location", "Reorder level (packs)", "MRP / pack", "Status", ""].map(h => <th key={h} className={TH}>{h}</th>)}
           </tr></thead>
           <tbody>
             {shown.map(r => (
               <tr key={r.id} className="border-t border-gray-100">
                 <td className={TD + " font-medium"}>{r.name}{r.schedule && r.schedule !== "none" && <span className="ml-2 px-1.5 py-0.5 rounded bg-red-50 text-red-700 text-xs">{r.schedule}</span>}<span className="block text-[11px] font-normal text-gray-500">{r.hsnCode ? "HSN " + r.hsnCode : <span className="text-red-600">HSN missing</span>}{r.gstPercent != null ? ", GST " + r.gstPercent + "%" : <span className="text-red-600">, GST % missing</span>}</span></td>
+                <td className={TD + " min-w-[7rem]"}>{r.brandName ? r.brandName : <span className="text-gray-400">-</span>}</td>
                 <td className={TD}>{r.medCategory || "-"}</td>
                 <td className={TD}>{fmtQty(r.quantity)} {unitWord(r, r.quantity)}{availText(r) && <span className="text-xs text-gray-400"> ({availText(r)})</span>}</td>
                 <td className={TD}>{r.batches && r.batches.length > 0 ? (<div className="space-y-0.5">{r.batches.map((b, i) => (<div key={i} className="text-xs whitespace-nowrap">{b.batchNo ? "Batch " + b.batchNo : "No batch recorded"} - {b.expiryDate || "no expiry"} - {fmtQty(b.tablets / (r.packSize || 1))} {unitWord(r, b.tablets / (r.packSize || 1))}</div>))}</div>) : (r.expiryDate || "-")}</td>
@@ -527,7 +543,7 @@ export function PharmInventory({ readOnly = false, iconActions = false }: { read
                 ))}</td>
               </tr>
             ))}
-            {shown.length === 0 && <tr><td colSpan={10} className="px-3 py-8 text-center text-sm text-gray-400">No medicines found</td></tr>}
+            {shown.length === 0 && <tr><td colSpan={11} className="px-3 py-8 text-center text-sm text-gray-400">No medicines found</td></tr>}
           </tbody>
         </table>
       </div>
@@ -568,6 +584,7 @@ export function PharmInventory({ readOnly = false, iconActions = false }: { read
           <div className="bg-white rounded-xl p-5 w-full max-w-lg space-y-3 my-8" onClick={e => e.stopPropagation()}>
             <p className="font-semibold text-gray-900">Add new medicine</p>
             <Fld label="Medicine name *" value={nf.name} onChange={v => setNf(p => ({ ...p, name: v }))} />
+            <Fld label="Brand name (optional)" placeholder="e.g. Dolo" value={nf.brandName} onChange={v => setNf(p => ({ ...p, brandName: v }))} />
             <CategoryPicker value={nf.medCategory} onChange={v => setNf(p => ({ ...p, medCategory: v }))} options={catOptions} />
             <p className="text-xs font-semibold text-gray-500 uppercase pt-1">Packing</p>
             <div className="grid grid-cols-2 gap-3">
@@ -609,6 +626,7 @@ export function PharmInventory({ readOnly = false, iconActions = false }: { read
         <div className="fixed inset-0 z-50 bg-black/40 flex items-start justify-center p-4 overflow-y-auto" onClick={() => setEdit(null)}>
           <div className="bg-white rounded-xl p-5 w-full max-w-lg space-y-3 my-8" onClick={e => e.stopPropagation()}>
             <p className="font-semibold text-gray-900">{edit.name}</p>
+            <Fld label="Brand name (optional)" placeholder="e.g. Dolo" value={f.brandName} onChange={v => setF(prev => ({ ...prev, brandName: v }))} />
             <CategoryPicker value={f.medCategory} onChange={v => setF(prev => ({ ...prev, medCategory: v }))} options={catOptions} allowBlank />
             <p className="text-xs font-semibold text-gray-500 uppercase pt-1">Packing and price</p>
             <div className="grid grid-cols-2 gap-3">

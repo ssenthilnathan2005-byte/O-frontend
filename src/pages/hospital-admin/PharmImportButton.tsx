@@ -6,7 +6,7 @@ const CATS = ["Tablet", "Capsule", "Syrup/Tonic", "Injection", "Oil", "Ointment/
 const UNITS = ["", "box", "strip", "bottle", "vial", "tube", "sachet", "inhaler", "piece", "pack", "tablet", "capsule"];
 
 type Row = {
-  name: string; medCategory: string; quantity: string; quantityUnit: string; tabletsPerStrip: string; stripsPerBox: string; batchNo: string;
+  name: string; brandName: string; medCategory: string; quantity: string; quantityUnit: string; tabletsPerStrip: string; stripsPerBox: string; batchNo: string;
   expiryDate: string; purchasePrice: string; sellingPrice: string; gstPercent: string; hsn: string; hsnReplace: boolean; supplier: string;
   allowNoBatchExpiry: boolean; warnings: string[];
 };
@@ -63,7 +63,7 @@ export default function PharmImportButton() {
       fd.append("file", file);
       const d = await call("/parse", { method: "POST", body: fd });
       setRows((d.rows || []).map((r: any): Row => ({
-        name: s(r.name), medCategory: s(r.medCategory), quantity: s(r.quantity), quantityUnit: s(r.quantityUnit),
+        name: s(r.name), brandName: s(r.brandName), medCategory: s(r.medCategory), quantity: s(r.quantity), quantityUnit: s(r.quantityUnit),
         tabletsPerStrip: s(r.tabletsPerStrip), stripsPerBox: s(r.stripsPerBox),
         batchNo: s(r.batchNo), expiryDate: s(r.expiryDate), purchasePrice: s(r.purchasePrice), sellingPrice: s(r.sellingPrice),
         gstPercent: s(r.gstPercent), hsn: s(r.hsn), hsnReplace: false, supplier: s(r.supplier), allowNoBatchExpiry: false, warnings: r.warnings || [],
@@ -205,7 +205,7 @@ export default function PharmImportButton() {
                   <table className="min-w-full text-xs">
                     <thead>
                       <tr className="text-left text-gray-500">
-                        {["", "Medicine", "Category", "Qty", "Unit", "Tabs/strip", "Strips/box", "Batch", "Expiry", "Purchase price", "MRP", "GST %", "HSN code", ""].map((h, k) => <th key={k} className="px-1 py-1 font-medium">{h}</th>)}
+                        {["", "Medicine", "Brand", "Category", "Qty", "Unit", "Tabs/strip", "Strips/box", "Batch", "Expiry", "Purchase price", "MRP", "GST %", "HSN code", ""].map((h, k) => <th key={k} className="px-1 py-1 font-medium">{h}</th>)}
                       </tr>
                     </thead>
                     <tbody>
@@ -229,6 +229,9 @@ export default function PharmImportButton() {
                                   Save without batch/expiry
                                 </label>
                               )}
+                            </td>
+                            <td className="px-1 py-1 min-w-[110px]">
+                              <input value={r.brandName} onChange={e => upd(i, "brandName", e.target.value)} className={inp} placeholder="-" maxLength={100} />
                             </td>
                             <td className="px-1 py-1 min-w-[110px]">
                               <select value={r.medCategory} onChange={e => upd(i, "medCategory", e.target.value)} className={inp}>
