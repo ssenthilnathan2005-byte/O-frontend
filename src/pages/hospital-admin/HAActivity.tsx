@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { Activity, ArrowRight, BedDouble, ClipboardList, FlaskConical, HeartPulse, Loader2, Package, Pill, RefreshCw, Search, Stethoscope, Users } from "lucide-react";
+﻿import { useCallback, useEffect, useState } from "react";
+import { Activity, ArrowRight, IndianRupee, Loader2, RefreshCw, Search, Settings, ShieldCheck, Users } from "lucide-react";
 import { useStore } from "../../context/StoreContext";
 import { getToken } from "../../api";
 
@@ -12,7 +12,7 @@ export function markActivitySeen(hid: string) {
   window.dispatchEvent(new Event("db-activity-seen"));
 }
 
-/** Number of changes made by others since the admin last opened the Activity Monitor. */
+/** Number of important changes made by others since the admin last opened the Activity Monitor. */
 export function useActivityUnread(): number {
   const { user } = useStore();
   const hid = user && user.role === "hospital_admin" ? user.hospitalId : "";
@@ -37,7 +37,7 @@ export function useActivityUnread(): number {
     return () => { clearInterval(t); window.removeEventListener("db-activity-seen", load); };
   }, [load]);
 
-  // Live updates: the server sends a tiny "activity" ping whenever anyone in this hospital does something.
+  // Live updates: the server sends a tiny "activity" ping whenever an important change is saved.
   useEffect(() => {
     if (!hid) return;
     const wsBase = BASE.replace(/^http/, "ws").replace(/\/api\/?$/, "");
@@ -74,21 +74,16 @@ export function useActivityUnread(): number {
 type Change = { field: string; label: string; from: string | null; to: string };
 type Item = {
   id: string; at: string; actor_id: string | null; actor_role: string | null; actor_name: string | null;
-  category: string; action: string; entity_type: string | null; entity_id: string | null; entity_name: string | null;
+  category: string; action: string; group: string | null; entity_type: string | null; entity_id: string | null; entity_name: string | null;
   summary: string; changes: Change[] | null;
 };
 
-const CATS: { key: string; label: string; icon: typeof Activity; cls: string }[] = [
-  { key: "", label: "Everyone", icon: Activity, cls: "bg-gray-100 text-gray-600" },
-  { key: "doctor", label: "Doctors", icon: Stethoscope, cls: "bg-teal-50 text-teal-600" },
-  { key: "nursing", label: "Nurses", icon: HeartPulse, cls: "bg-rose-50 text-rose-600" },
-  { key: "front_desk", label: "Front desk", icon: ClipboardList, cls: "bg-sky-50 text-sky-600" },
-  { key: "pharmacy", label: "Pharmacy", icon: Pill, cls: "bg-violet-50 text-violet-600" },
-  { key: "lab", label: "Lab", icon: FlaskConical, cls: "bg-amber-50 text-amber-600" },
-  { key: "inventory", label: "Inventory", icon: Package, cls: "bg-orange-50 text-orange-600" },
-  { key: "wards", label: "Wards and beds", icon: BedDouble, cls: "bg-indigo-50 text-indigo-600" },
-  { key: "hr", label: "HR", icon: Users, cls: "bg-emerald-50 text-emerald-600" },
-  { key: "admin", label: "Admin", icon: Users, cls: "bg-emerald-50 text-emerald-600" },
+const GROUPS: { key: string; label: string; icon: typeof Activity; cls: string }[] = [
+  { key: "", label: "All important", icon: Activity, cls: "bg-gray-100 text-gray-600" },
+  { key: "pricing", label: "Pricing and billing", icon: IndianRupee, cls: "bg-amber-50 text-amber-600" },
+  { key: "access", label: "Permissions and passwords", icon: ShieldCheck, cls: "bg-rose-50 text-rose-600" },
+  { key: "staff", label: "Staff and logins", icon: Users, cls: "bg-emerald-50 text-emerald-600" },
+  { key: "config", label: "Configuration", icon: Settings, cls: "bg-indigo-50 text-indigo-600" },
 ];
 const ROLE_LABEL: Record<string, string> = {
   doctor: "Doctor", nurse: "Nurse", front_office: "Front office", pharmacy: "Pharmacy", pharmacy_staff: "Pharmacy",
@@ -135,7 +130,7 @@ export default function HAActivity() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
-  const [cat, setCat] = useState("");
+  const [group, setGroup] = useState("");
   const [q, setQ] = useState("");
   const [dq, setDq] = useState("");
   const [extraPages, setExtraPages] = useState(false);
@@ -144,11 +139,11 @@ export default function HAActivity() {
 
   const params = useCallback((before?: string) => {
     const p: Record<string, string> = { limit: "50" };
-    if (cat) p.category = cat;
+    if (group) p.group = group;
     if (dq) p.q = dq;
     if (before) p.before = before;
     return p;
-  }, [cat, dq]);
+  }, [group, dq]);
 
   const loadFirst = useCallback(async (showSpinner: boolean) => {
     if (showSpinner) setLoading(true);
@@ -168,7 +163,6 @@ export default function HAActivity() {
     return () => clearInterval(t);
   }, [loadFirst, extraPages]);
   useEffect(() => {
-    // New activity arrives instantly through the live connection (no refresh needed).
     let timer: ReturnType<typeof setTimeout> | undefined;
     const onLive = () => { if (extraPages) return; if (timer) clearTimeout(timer); timer = setTimeout(() => loadFirst(false), 300); };
     const onSocket = (e: Event) => setLive(Boolean((e as CustomEvent).detail));
@@ -201,11 +195,11 @@ export default function HAActivity() {
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600"><Activity className="h-5 w-5" /></div>
           <div>
             <h1 className="text-xl font-bold text-gray-900">Activity Monitor</h1>
-            <p className="text-sm text-gray-500">Every change made by doctors, nurses, front desk, pharmacy, lab, inventory, wards and HR, with what it was before and after.</p>
+            <p className="text-sm text-gray-500">Important administrative changes only: pricing and bed rates, permissions and passwords, staff logins and critical settings. Routine daily work is not shown here.</p>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <span className={"flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium " + (live ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-500")} title={live ? "New activity appears automatically" : "Reconnecting, refreshing every 15 seconds"}>
+          <span className={"flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium " + (live ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-500")} title={live ? "New changes appear automatically" : "Reconnecting, refreshing every 15 seconds"}>
             <span className={"h-2 w-2 rounded-full " + (live ? "animate-pulse bg-emerald-500" : "bg-gray-400")} /> {live ? "Live" : "Updating"}
           </span>
           <button type="button" onClick={() => loadFirst(true)} className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 hover:bg-gray-50">
@@ -215,9 +209,9 @@ export default function HAActivity() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {CATS.map((c) => (
-          <button key={c.key || "all"} type="button" onClick={() => setCat(c.key)}
-            className={"rounded-full border px-3 py-1.5 text-sm font-medium transition-colors " + (cat === c.key ? "border-teal-500 bg-teal-500 text-white" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50")}>
+        {GROUPS.map((c) => (
+          <button key={c.key || "all"} type="button" onClick={() => setGroup(c.key)}
+            className={"rounded-full border px-3 py-1.5 text-sm font-medium transition-colors " + (group === c.key ? "border-teal-500 bg-teal-500 text-white" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50")}>
             {c.label}
           </button>
         ))}
@@ -225,7 +219,7 @@ export default function HAActivity() {
 
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by person, role, patient or change"
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by person, ward, role or change"
           className="h-10 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-teal-400" />
       </div>
 
@@ -236,8 +230,8 @@ export default function HAActivity() {
       ) : items.length === 0 ? (
         <div className="rounded-2xl border border-gray-100 bg-white py-16 text-center">
           <Activity className="mx-auto mb-3 h-10 w-10 text-gray-200" />
-          <p className="font-semibold text-gray-900">No activity yet</p>
-          <p className="mt-1 text-sm text-gray-500">When someone in your hospital changes something, it will show up here.</p>
+          <p className="font-semibold text-gray-900">No important changes</p>
+          <p className="mt-1 text-sm text-gray-500">Rate and price changes, permission changes, login changes and critical settings will show up here.</p>
         </div>
       ) : (
         <div className="space-y-5">
@@ -245,7 +239,7 @@ export default function HAActivity() {
             <section key={g.key} className="space-y-2">
               <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400">{dayLabel(g.key)}</h2>
               {g.items.map((it) => {
-                const meta = CATS.find((c) => c.key === it.category) || CATS[0];
+                const meta = GROUPS.find((c) => c.key === it.group) || GROUPS[0];
                 const Icon = meta.icon;
                 const role = it.actor_role ? ROLE_LABEL[it.actor_role] || it.actor_role : "";
                 return (
@@ -255,6 +249,7 @@ export default function HAActivity() {
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                         <span className="text-sm font-semibold text-gray-900">{it.actor_name || "Staff"}</span>
                         {role && <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600">{role}</span>}
+                        <span className="rounded-full px-2 py-0.5 text-[11px] font-medium bg-gray-50 text-gray-500">{meta.label}</span>
                         <span className="ml-auto text-right text-xs text-gray-400" title={exactLabel(it.at)}>
                           {exactLabel(it.at)}{agoLabel(it.at) ? <span className="ml-1 text-teal-600">({agoLabel(it.at)})</span> : null}
                         </span>
