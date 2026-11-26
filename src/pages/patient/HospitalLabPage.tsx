@@ -20,7 +20,7 @@ export default function HospitalLabPage({ id, onBack }: { id: string; onBack: ()
   const [selected, setSelected] = useState<Test | null>(null);
   const [mine, setMine] = useState<any[]>([]);
   // Test IDs this patient has already booked (cancelled bookings do not count)
-  const bookedIds = new Set<string>(mine.filter((o: any) => o.test_id && o.status !== "cancelled").map((o: any) => String(o.test_id)));
+  const bookedIds = new Set<string>(mine.filter((o: any) => o.test_id && o.status !== "cancelled" && o.status !== "report_ready").map((o: any) => String(o.test_id)));
   async function loadMine() {
     if (!user) return;
     try {
