@@ -419,12 +419,12 @@ export default function HAInventory() {
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600 mb-1 block">From</label>
-                <DateInput value={exportFrom} onChange={e => setExportFrom(e.target.value)}
+                <DateInput value={exportFrom} max={exportTo || undefined} onChange={e => setExportFrom(e.target.value)}
                   className="w-full border rounded-md px-3 py-2 text-sm bg-white" />
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600 mb-1 block">To</label>
-                <DateInput value={exportTo} onChange={e => setExportTo(e.target.value)}
+                <DateInput value={exportTo} min={exportFrom || undefined} onChange={e => setExportTo(e.target.value)}
                   className="w-full border rounded-md px-3 py-2 text-sm bg-white" />
               </div>
               <p className="text-xs text-gray-400">

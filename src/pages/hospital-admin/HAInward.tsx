@@ -224,10 +224,10 @@ export default function HAInward() {
           <h1 className="text-xl font-bold">Inward Patients</h1>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <DateInput value={exportFrom} onChange={e => setExportFrom(e.target.value)}
+          <DateInput value={exportFrom} max={exportTo || undefined} onChange={e => setExportFrom(e.target.value)}
             className="border rounded-lg px-2.5 py-2 text-sm bg-background" />
           <span className="text-sm text-muted-foreground">to</span>
-          <DateInput value={exportTo} onChange={e => setExportTo(e.target.value)}
+          <DateInput value={exportTo} min={exportFrom || undefined} onChange={e => setExportTo(e.target.value)}
             className="border rounded-lg px-2.5 py-2 text-sm bg-background" />
           <button onClick={handleExport} disabled={exporting}
             className="flex items-center gap-2 border px-4 py-2 rounded-lg text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50">

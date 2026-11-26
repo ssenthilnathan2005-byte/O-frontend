@@ -144,7 +144,7 @@ export default function MaternityModal({ inwardId, onClose, defaultTab = "profil
                   <DateInput className="w-full" value={f.lmp} max={new Date().toISOString().slice(0, 10)}
                     onChange={(e) => { set("lmp", e.target.value); set("edd", eddFromLmp(e.target.value)); }} /></div>
                 <div><label className={lbl}>EDD (expected delivery)</label>
-                  <DateInput className="w-full" value={f.edd} onChange={(e) => set("edd", e.target.value)} /></div>
+                  <DateInput className="w-full" value={f.edd} min={f.lmp || undefined} onChange={(e) => set("edd", e.target.value)} /></div>
                 <div><label className={lbl}>Gestational age today</label>
                   <div className="px-2 text-sm rounded-lg bg-muted/40 h-9 flex items-center">{gaText(f.lmp) || "--"}</div></div>
               </div>

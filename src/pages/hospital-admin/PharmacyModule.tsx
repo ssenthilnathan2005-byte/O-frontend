@@ -90,9 +90,9 @@ function useRange() {
       ))}
       {preset === "custom" && (
         <>
-          <DateInput value={cf} onChange={e => setCf(e.target.value)} className="border border-gray-200 rounded-md text-sm px-2 py-1.5 bg-white" />
+          <DateInput value={cf} max={ct || undefined} onChange={e => setCf(e.target.value)} className="border border-gray-200 rounded-md text-sm px-2 py-1.5 bg-white" />
           <span className="text-gray-400 text-sm">to</span>
-          <DateInput value={ct} onChange={e => setCt(e.target.value)} className="border border-gray-200 rounded-md text-sm px-2 py-1.5 bg-white" />
+          <DateInput value={ct} min={cf || undefined} onChange={e => setCt(e.target.value)} className="border border-gray-200 rounded-md text-sm px-2 py-1.5 bg-white" />
         </>
       )}
     </div>

@@ -323,8 +323,8 @@ export default function GstInvoice() {
           ))}
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <label className="text-xs text-gray-600">From<DateInput className="w-full" value={from} onChange={e => setFrom(e.target.value)} /></label>
-          <label className="text-xs text-gray-600">To<DateInput className="w-full" value={to} onChange={e => setTo(e.target.value)} /></label>
+          <label className="text-xs text-gray-600">From<DateInput className="w-full" value={from} max={to || undefined} onChange={e => setFrom(e.target.value)} /></label>
+          <label className="text-xs text-gray-600">To<DateInput className="w-full" value={to} min={from || undefined} onChange={e => setTo(e.target.value)} /></label>
         </div>
         <button type="button" onClick={generate} disabled={loading} className="px-4 py-2 text-sm rounded-md bg-teal-600 text-white font-medium disabled:opacity-60">{loading ? "Generating..." : "Generate GST Invoice"}</button>
       </div>
