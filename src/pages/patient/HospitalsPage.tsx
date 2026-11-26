@@ -1,5 +1,5 @@
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, MapPin, Search, Users, Navigation, Loader2, XCircle, HeartPulse, Baby, Bone, Brain, Eye, Ear, Smile, Stethoscope, Sparkles, Flower2, Activity } from "lucide-react";
+import { ChevronLeft, MapPin, Search, Users, Navigation, Loader2, XCircle, HeartPulse, Baby, Bone, Brain, Eye, Ear, Smile, Stethoscope, BriefcaseMedical, Sparkles, Flower2, Droplets, Droplet, Activity, Wind, Ribbon, Scan, Microscope, Scissors, Syringe, Dumbbell, Salad, Moon, Siren, Bug, ShieldPlus, Hand, Footprints, Accessibility } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Fragment, useState } from "react";
 import { useStore } from "../../context/StoreContext";
@@ -25,19 +25,52 @@ function norm(s: string | null | undefined): string { return (s || "").trim().to
 const TYPE_LABELS: Record<string, string> = { general: "General Hospital", eye: "Eye Hospital", ent: "ENT Hospital", dental: "Dental Clinic", pediatrics: "Children's Hospital", gynecology: "Women's Hospital", orthopedics: "Orthopedic Hospital", dermatology: "Skin Clinic", cardiology: "Heart Hospital", diabetology: "Diabetes Centre", clinic: "Clinic" };
 const typeOf = (h: any): string => h?.hospitalType || "general";
 
+// To give a NEW specialty its own icon, add one line to SPEC_ICONS (keywords are lowercase, any part of the name).
+// Specialties not listed still appear automatically with a stethoscope and their own colour.
+const SPEC_ICONS: Array<[RegExp, any, string, string]> = [
+  [/ortho|bone|joint|spine/, Bone, "bg-blue-100", "text-blue-600"],
+  [/cardi|heart/, HeartPulse, "bg-red-100", "text-red-500"],
+  [/neuro|brain|psychiat|psycholog|mental/, Brain, "bg-purple-100", "text-purple-600"],
+  [/pediat|paediat|child|neonat/, Baby, "bg-teal-100", "text-teal-600"],
+  [/ophthal|eye|optom/, Eye, "bg-cyan-100", "text-cyan-600"],
+  [/\bent\b|otolaryn|\bear\b|nose|throat/, Ear, "bg-indigo-100", "text-indigo-600"],
+  [/dent|oral|maxillo/, Smile, "bg-sky-100", "text-sky-600"],
+  [/derma|skin|cosmet|trichol|hair/, Sparkles, "bg-orange-100", "text-orange-500"],
+  [/gyn|obst|maternity|women|fertil/, Flower2, "bg-rose-100", "text-rose-500"],
+  [/urolog|nephro|kidney/, Droplets, "bg-emerald-100", "text-emerald-600"],
+  [/gastro|hepat|liver|digest|colorect/, Activity, "bg-amber-100", "text-amber-600"],
+  [/pulmon|chest|respir|asthma|lung/, Wind, "bg-sky-100", "text-sky-600"],
+  [/onco|cancer/, Ribbon, "bg-pink-100", "text-pink-600"],
+  [/radiolog|imaging|x-ray|scan/, Scan, "bg-slate-100", "text-slate-600"],
+  [/patholog|microbio/, Microscope, "bg-violet-100", "text-violet-600"],
+  [/endocrin|diabet|thyroid/, Droplet, "bg-blue-100", "text-blue-600"],
+  [/vascular|hemat|blood/, Droplet, "bg-red-100", "text-red-600"],
+  [/surg/, Scissors, "bg-rose-100", "text-rose-600"],
+  [/anesth|anaesth|pain/, Syringe, "bg-lime-100", "text-lime-700"],
+  [/physio|rehab|sports/, Dumbbell, "bg-lime-100", "text-lime-700"],
+  [/nutrition|dietic|diet/, Salad, "bg-green-100", "text-green-600"],
+  [/sleep/, Moon, "bg-indigo-100", "text-indigo-600"],
+  [/emergency|critical|icu|trauma/, Siren, "bg-red-100", "text-red-600"],
+  [/infect|fever|virolog/, Bug, "bg-orange-100", "text-orange-600"],
+  [/allerg|immun/, ShieldPlus, "bg-teal-100", "text-teal-600"],
+  [/rheum|arthr/, Hand, "bg-amber-100", "text-amber-600"],
+  [/podiat|foot/, Footprints, "bg-stone-100", "text-stone-600"],
+  [/geriat|elder/, Accessibility, "bg-slate-100", "text-slate-600"],
+  [/general medicine|physician|internal/, BriefcaseMedical, "bg-teal-100", "text-teal-700"],
+  [/general practi|family|\bgp\b/, Stethoscope, "bg-emerald-100", "text-emerald-700"],
+];
+const FALLBACK_COLORS: Array<[string, string]> = [
+  ["bg-teal-100", "text-teal-700"], ["bg-blue-100", "text-blue-600"], ["bg-purple-100", "text-purple-600"],
+  ["bg-rose-100", "text-rose-600"], ["bg-amber-100", "text-amber-600"], ["bg-emerald-100", "text-emerald-600"],
+  ["bg-cyan-100", "text-cyan-600"], ["bg-indigo-100", "text-indigo-600"],
+];
 function specIcon(sp: string) {
   const x = sp.toLowerCase();
-  if (/cardi|heart/.test(x)) return { Icon: HeartPulse, tile: "bg-pink-100", color: "text-red-500" };
-  if (/pediat|child|paed/.test(x)) return { Icon: Baby, tile: "bg-teal-100", color: "text-teal-600" };
-  if (/ortho|bone/.test(x)) return { Icon: Bone, tile: "bg-blue-100", color: "text-blue-500" };
-  if (/neuro|brain/.test(x)) return { Icon: Brain, tile: "bg-purple-100", color: "text-purple-500" };
-  if (/eye|ophthal/.test(x)) return { Icon: Eye, tile: "bg-cyan-100", color: "text-cyan-600" };
-  if (/ent|ear/.test(x)) return { Icon: Ear, tile: "bg-indigo-100", color: "text-indigo-500" };
-  if (/dent/.test(x)) return { Icon: Smile, tile: "bg-sky-100", color: "text-sky-500" };
-  if (/derma|skin/.test(x)) return { Icon: Sparkles, tile: "bg-orange-100", color: "text-orange-500" };
-  if (/gyn|obst|women/.test(x)) return { Icon: Flower2, tile: "bg-rose-100", color: "text-rose-500" };
-  if (/uro|nephro|kidney/.test(x)) return { Icon: Activity, tile: "bg-emerald-100", color: "text-emerald-600" };
-  return { Icon: Stethoscope, tile: "bg-teal-100", color: "text-teal-700" };
+  for (const [re, Icon, tile, color] of SPEC_ICONS) if (re.test(x)) return { Icon, tile, color };
+  let h = 0;
+  for (let i = 0; i < x.length; i++) h = (h * 31 + x.charCodeAt(i)) >>> 0;
+  const [tile, color] = FALLBACK_COLORS[h % FALLBACK_COLORS.length];
+  return { Icon: Stethoscope, tile, color };
 }
 
 export default function HospitalsPage({ city, q }: { city?: string; q?: string }) {
