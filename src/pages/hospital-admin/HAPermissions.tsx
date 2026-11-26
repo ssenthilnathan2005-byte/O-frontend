@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+﻿import { Fragment, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   ClipboardList, FlaskConical, HeartPulse, Loader2, Pill, Save, ShieldCheck, Stethoscope, type LucideIcon,
@@ -193,7 +193,7 @@ export default function HAPermissions() {
                         const mm = MODULE_META[m] || { label: m, hint: "" };
                         const checked = on.includes(m);
                         return (
-                          <div key={m} className="min-w-0 space-y-1.5">
+                          <Fragment key={m}>
                           <label
                             className={`flex items-start gap-2.5 rounded-xl border px-3 py-2.5 cursor-pointer transition-colors ${
                               checked ? "border-teal-300 bg-teal-50/60" : "border-gray-200 hover:bg-gray-50"
@@ -215,29 +215,43 @@ export default function HAPermissions() {
                               <span className="block text-xs text-gray-500 leading-snug">{mm.hint}</span>
                             </span>
                           </label>
-                          {m === "ipd" && checked && (
-                            <div className="ml-4 space-y-1 border-l-2 border-teal-200 pl-3">
-                              {IPD_SUBS.map((s, i) => {
-                                const subOn = on.includes(s.key) || !IPD_SUB_KEYS.some(k => on.includes(k));
-                                const startsGroup = !!s.group && IPD_SUBS[i - 1]?.group !== s.group;
-                                return (
-                                  <div key={s.key}>
-                                  {startsGroup && <p className="mb-1 mt-2 text-xs font-semibold text-gray-700">{s.group}</p>}
-                                  <label className={`flex items-start gap-2 rounded-lg border px-2.5 py-2 cursor-pointer transition-colors ${s.group ? "ml-4 " : ""}${
-                                    subOn ? "border-teal-300 bg-teal-50/60" : "border-gray-200 hover:bg-gray-50"
-                                  }`}>
-                                    <input type="checkbox" checked={subOn} onChange={() => toggle(role, s.key)} className="mt-0.5 h-4 w-4 accent-teal-600 shrink-0" />
-                                    <span className="min-w-0">
-                                      <span className="block text-sm font-medium text-gray-900">{s.label}</span>
-                                      <span className="block text-xs text-gray-500 leading-snug">{s.hint}</span>
-                                    </span>
-                                  </label>
+                          {m === "ipd" && checked && (() => {
+                            const renderSub = (sub: (typeof IPD_SUBS)[number]) => {
+                              const subOn = on.includes(sub.key) || !IPD_SUB_KEYS.some(k => on.includes(k));
+                              return (
+                                <label
+                                  key={sub.key}
+                                  className={`flex items-start gap-2.5 rounded-lg border bg-white px-3 py-2.5 cursor-pointer transition-colors ${
+                                    subOn ? "border-teal-300 shadow-sm" : "border-gray-200 hover:border-gray-300"
+                                  }`}
+                                >
+                                  <input type="checkbox" checked={subOn} onChange={() => toggle(role, sub.key)} className="mt-0.5 h-4 w-4 accent-teal-600 shrink-0" />
+                                  <span className="min-w-0">
+                                    <span className="block text-sm font-medium text-gray-900">{sub.label}</span>
+                                    <span className="block text-xs text-gray-500 leading-snug">{sub.hint}</span>
+                                  </span>
+                                </label>
+                              );
+                            };
+                            const plain = IPD_SUBS.filter(x => !x.group);
+                            const groupNames = Array.from(new Set(IPD_SUBS.filter(x => x.group).map(x => x.group as string)));
+                            return (
+                              <div className="sm:col-span-2 rounded-xl border border-teal-200 bg-teal-50/40 p-3.5">
+                                <div className="mb-3 flex flex-wrap items-baseline gap-x-2">
+                                  <p className="text-sm font-semibold text-gray-900">IPD / Inward access</p>
+                                  <p className="text-xs text-gray-500">Choose what this role can open inside IPD / Inward</p>
+                                </div>
+                                <div className="grid gap-2 sm:grid-cols-2">{plain.map(renderSub)}</div>
+                                {groupNames.map(g => (
+                                  <div key={g} className="mt-3.5">
+                                    <p className="mb-1.5 text-xs font-semibold text-gray-700">{g}</p>
+                                    <div className="grid gap-2 sm:grid-cols-2">{IPD_SUBS.filter(x => x.group === g).map(renderSub)}</div>
                                   </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                          </div>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                          </Fragment>
                         );
                       })}
                     </div>
