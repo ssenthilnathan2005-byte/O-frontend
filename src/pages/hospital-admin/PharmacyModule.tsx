@@ -366,8 +366,10 @@ function stockText(r: Inv): string {
 function Fld({ label, value, onChange, type = "text", placeholder }: { label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string }) {
   return (
     <label className="block text-sm text-gray-600">{label}
-      <input type={type} value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)}
-        className="mt-1 w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm" />
+      {type === "date"
+        ? <div className="mt-1"><DateInput className="w-full" value={value} onChange={e => onChange(e.target.value)} /></div>
+        : <input type={type} value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)}
+            className="mt-1 w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm" />}
     </label>
   );
 }

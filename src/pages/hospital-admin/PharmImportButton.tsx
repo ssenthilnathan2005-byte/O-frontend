@@ -1,3 +1,4 @@
+import DateInput from "@/components/DateInput";
 import { useEffect, useState } from "react";
 import { getToken } from "@/api";
 
@@ -250,7 +251,7 @@ export default function PharmImportButton() {
                             <td className="px-1 py-1 w-16"><input value={r.tabletsPerStrip} onChange={e => upd(i, "tabletsPerStrip", e.target.value)} className={inp} inputMode="numeric" /></td>
                             <td className="px-1 py-1 w-16"><input value={r.stripsPerBox} onChange={e => upd(i, "stripsPerBox", e.target.value)} className={inp} inputMode="numeric" /></td>
                             <td className="px-1 py-1 w-24"><input value={r.batchNo} onChange={e => upd(i, "batchNo", e.target.value)} className={inp + (r.batchNo ? "" : " border-amber-300")} /></td>
-                            <td className="px-1 py-1 w-32"><input type="date" value={r.expiryDate} onChange={e => upd(i, "expiryDate", e.target.value)} className={inp + (r.expiryDate ? "" : " border-amber-300")} /></td>
+                            <td className="px-1 py-1 w-40"><DateInput className="w-full" value={r.expiryDate} onChange={e => upd(i, "expiryDate", e.target.value)} /></td>
                             <td className="px-1 py-1 w-20"><input value={r.purchasePrice} onChange={e => upd(i, "purchasePrice", e.target.value)} className={inp} inputMode="decimal" /></td>
                             <td className="px-1 py-1 w-20"><input value={r.sellingPrice} onChange={e => upd(i, "sellingPrice", e.target.value)} className={inp} inputMode="decimal" /></td>
                             <td className="px-1 py-1 w-14"><input value={r.gstPercent} onChange={e => upd(i, "gstPercent", e.target.value)} className={inp} inputMode="decimal" /></td>

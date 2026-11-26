@@ -1,3 +1,4 @@
+import DateInput from "@/components/DateInput";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { X, Printer } from "lucide-react";
@@ -140,10 +141,10 @@ export default function MaternityModal({ inwardId, onClose, defaultTab = "profil
               <h4 className="text-sm font-semibold mb-2">Pregnancy dates</h4>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
                 <div><label className={lbl}>LMP (last menstrual period)</label>
-                  <input type="date" lang="en-GB" className={inp} value={f.lmp} max={new Date().toISOString().slice(0, 10)}
+                  <DateInput className="w-full" value={f.lmp} max={new Date().toISOString().slice(0, 10)}
                     onChange={(e) => { set("lmp", e.target.value); set("edd", eddFromLmp(e.target.value)); }} /></div>
                 <div><label className={lbl}>EDD (expected delivery)</label>
-                  <input type="date" lang="en-GB" className={inp} value={f.edd} onChange={(e) => set("edd", e.target.value)} /></div>
+                  <DateInput className="w-full" value={f.edd} onChange={(e) => set("edd", e.target.value)} /></div>
                 <div><label className={lbl}>Gestational age today</label>
                   <div className="px-2 text-sm rounded-lg bg-muted/40 h-9 flex items-center">{gaText(f.lmp) || "--"}</div></div>
               </div>

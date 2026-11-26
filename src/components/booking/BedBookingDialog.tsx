@@ -1,3 +1,4 @@
+import DateInput from "@/components/DateInput";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { BedDouble, Loader2 } from "lucide-react";
@@ -135,7 +136,7 @@ export default function BedBookingDialog({ hospitalId, hospitalName, open, onClo
                 </select>
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Expected admission date</p>
-                  <input type="date" className={inp} min={new Date().toLocaleDateString("en-CA")} value={f.expectedAdmitAt} onChange={(e) => setF({ ...f, expectedAdmitAt: e.target.value })} />
+                  <DateInput className="w-full" min={new Date().toLocaleDateString("en-CA")} value={f.expectedAdmitAt} onChange={(e) => setF({ ...f, expectedAdmitAt: e.target.value })} />
                 </div>
                 <textarea className={inp} rows={2} placeholder="Reason / condition (optional)" value={f.reason} onChange={(e) => setF({ ...f, reason: e.target.value })} />
                 <Button className="w-full bg-teal-600 hover:bg-teal-700" onClick={submit} disabled={saving}>{saving ? "Sending..." : "Request bed"}</Button>

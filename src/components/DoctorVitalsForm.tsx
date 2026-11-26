@@ -1,3 +1,4 @@
+import DateInput from "@/components/DateInput";
 import VitalsScanAll from "@/components/VitalsScanAll";
 import { Input } from "@/components/ui/input";
 
@@ -44,7 +45,7 @@ export default function DoctorVitalsForm({ fields, value, onChange, onSubmit }: 
               <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">{lab(f)}</label>
               {f.kind === "bool" ? <select className={sel} value={val} onChange={(e) => set(f.key, e.target.value)}><option value="">-</option><option value="true">Yes</option><option value="false">No</option></select>
                 : f.kind === "select" ? <select className={sel} value={val} onChange={(e) => set(f.key, e.target.value)}><option value="">-</option>{(f.options || []).map((o) => <option key={o} value={o}>{o}</option>)}</select>
-                : f.kind === "date" ? <Input type="date" value={val} onChange={(e) => set(f.key, e.target.value)} />
+                : f.kind === "date" ? <DateInput className="w-full" value={val} onChange={(e) => set(f.key, e.target.value)} />
                 : <Input inputMode={f.kind === "number" ? "decimal" : undefined} value={val} onChange={(e) => set(f.key, e.target.value)} />}
             </div>
           );

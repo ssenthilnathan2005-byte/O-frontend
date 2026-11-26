@@ -1,3 +1,4 @@
+import DateInput from "@/components/DateInput";
 import { useEffect, useState } from "react";
 import { getToken } from "../../api";
 
@@ -108,7 +109,7 @@ export default function StaffActions({ s, onDone }: { s: S; onDone: () => void }
                     <input className={cls} placeholder="Specialty (optional, keeps old if blank)" value={f.specialty} onChange={e => setF({ ...f, specialty: e.target.value })} />
                   </>
                 )}
-                <input type="date" className={cls} value={f.date} onChange={e => setF({ ...f, date: e.target.value })} />
+                <DateInput className="w-full" value={f.date} onChange={e => setF({ ...f, date: e.target.value })} />
                 <input className={cls} placeholder="Reason (optional)" value={f.reason} onChange={e => setF({ ...f, reason: e.target.value })} />
                 {err && <p className="text-sm text-red-600">{err}</p>}
                 <div className="flex justify-end gap-2 pt-1">

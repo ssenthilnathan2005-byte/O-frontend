@@ -1,3 +1,4 @@
+import DateInput from "@/components/DateInput";
 import useModules from "@/hooks/useModules";
 import AbdmOptInCard from "../../components/AbdmOptInCard";
 import PharmacyAnalytics, { useLabRevenue, useIpdRevenue } from "./PharmacyAnalytics";
@@ -523,21 +524,9 @@ export default function HADashboard() {
           ))}
           {period === "custom" && (
             <>
-              <input
-                type="date"
-                value={customFrom}
-                max={customTo || undefined}
-                onChange={(e) => setCustomFrom(e.target.value)}
-                className="border border-gray-200 rounded-md px-2 py-1 text-sm text-gray-700"
-              />
+              <DateInput value={customFrom} max={customTo || undefined} onChange={(e) => setCustomFrom(e.target.value)} />
               <span className="text-sm text-gray-400">to</span>
-              <input
-                type="date"
-                value={customTo}
-                min={customFrom || undefined}
-                onChange={(e) => setCustomTo(e.target.value)}
-                className="border border-gray-200 rounded-md px-2 py-1 text-sm text-gray-700"
-              />
+              <DateInput value={customTo} min={customFrom || undefined} onChange={(e) => setCustomTo(e.target.value)} />
             </>
           )}
         </div>

@@ -1,3 +1,4 @@
+import DateInput from "@/components/DateInput";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { RefreshCw } from "lucide-react";
@@ -54,7 +55,7 @@ export default function NurseOpdVitals() {
       <div className="flex items-center justify-between gap-2">
         <h1 className="text-xl font-bold text-gray-900">OPD Vitals</h1>
         <div className="flex items-center gap-2">
-          <Input type="date" className="w-40" value={date} onChange={(e) => setDate(e.target.value)} />
+          <DateInput className="w-40" value={date} onChange={(e) => setDate(e.target.value)} />
           <Button size="sm" variant="outline" onClick={load}><RefreshCw className="w-4 h-4" /></Button>
         </div>
       </div>

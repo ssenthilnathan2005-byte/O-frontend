@@ -266,16 +266,8 @@ function RegisterWalkIn() {
             {sessionOptions.length === 0 ? <option value="">{f.doctorId ? "Doctor not available on this date" : "Select doctor first"}</option> : sessionOptions.map((sn) => <option key={sn} value={sn}>{getSessionLabelForDate(f.date, sn as any, parseJ(selDoc?.schedule_config) as any, parseJ(selDoc?.session_timings) as any)}</option>)}
           </select>
         </div>
-        <div className="space-y-1.5"><Label className="block">Date (dd-mm-yyyy)</Label>
-          <div className="relative">
-            <Input style={{ height: 40 }} inputMode="numeric" placeholder="dd-mm-yyyy" maxLength={10} value={dateText} onChange={(e) => onDateText(e.target.value)} />
-            <button type="button" aria-label="Pick date" className="absolute right-0 top-0 h-full w-10 flex items-center justify-center text-gray-500"
-              onClick={(e) => { const el = e.currentTarget.nextElementSibling as HTMLInputElement | null; try { el?.showPicker(); } catch { el?.focus(); } }}>
-              <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
-            </button>
-            <input type="date" tabIndex={-1} aria-hidden="true" className="absolute right-0 bottom-0 h-10 w-10 opacity-0 pointer-events-none" value={f.date}
-              onChange={(e) => { if (e.target.value) { setF({ ...f, date: e.target.value }); setDateText(e.target.value.split("-").reverse().join("-")); } }} />
-          </div>
+        <div className="space-y-1.5"><Label className="block">Date</Label>
+          <DateInput className="w-full" value={f.date} onChange={(e) => { const v = e.target.value; if (v) { setF({ ...f, date: v }); setDateText(v.split("-").reverse().join("-")); } }} />
         </div>
       </div>
       <div className="md:col-span-2"><Button onClick={() => submit()} disabled={saving}>{saving ? "Saving..." : "Create token"}</Button></div>
@@ -510,7 +502,7 @@ function Outpatients({ canVitals = true }: { canVitals?: boolean }) {
                           ) : x.kind === "select" ? (
                             <select className={sel} value={val} onChange={e => set(e.target.value)}><option value="">-</option>{(x.options || []).map((o: string) => <option key={o} value={o}>{o}</option>)}</select>
                           ) : x.kind === "date" ? (
-                            <Input type="date" value={val} onChange={e => set(e.target.value)} />
+                            <DateInput className="w-full" value={val} onChange={e => set(e.target.value)} />
                           ) : (
                             <Input inputMode={x.kind === "number" ? "decimal" : undefined} value={val} onChange={e => set(e.target.value)} />
                           )}
