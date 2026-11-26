@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Camera, X, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -269,13 +269,20 @@ export default function VitalsScanAll({ onApply, include, label, captureAudit }:
   const dragStart = useRef<{ x: number; y: number } | null>(null);
   const framesRef = useRef<HTMLCanvasElement[]>([]); // extra frames from the live camera, used to vote on hard digits
 
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
+
   function resetAll() {
     if (imgUrl) URL.revokeObjectURL(imgUrl);
     setStep("capture"); setImgUrl(null); setImgEl(null); setCrop(null); setOut(null);
     setAutoCrop(false); setIssues([]); setQMetrics(null); pixels.current = null; cropRef.current = null;
     setVals({}); setTouched({}); setThumb(null); setVerified(false); setError(""); setProgress(0); setStage(""); setSeenInfo(null); setCopied(false); setOrig(null);
   }
-  function openScanner() { resetAll(); setOpen(true); }
+  function openScanner() { if (open) return; resetAll(); setOpen(true); }
   function closeScanner() { resetAll(); setOpen(false); }
 
       /** Manual entry: open the same review form with empty fields (no photo, no OCR). */
@@ -355,8 +362,10 @@ export default function VitalsScanAll({ onApply, include, label, captureAudit }:
     if (imgEl) analysePhoto(imgEl, "recheck", ok);
   }
 
+  const readingRef = useRef(false); // blocks a double tap from starting two scans at once
   async function readScreen() {
-    if (!imgEl) return;
+    if (!imgEl || readingRef.current) return;
+    readingRef.current = true;
     setStep("reading"); setProgress(0); setStage("Preparing the photo"); setError("");
     try {
       const area: Frac = crop || { x0: 0, y0: 0, x1: 1, y1: 1 };
@@ -674,6 +683,8 @@ export default function VitalsScanAll({ onApply, include, label, captureAudit }:
       workerPromise = null;
       setError("Could not read the photo on this device. Check that the OCR files are installed (public/tesseract) or enter the values manually. " + (e?.message || ""));
       setStep("crop");
+    } finally {
+      readingRef.current = false;
     }
   }
 

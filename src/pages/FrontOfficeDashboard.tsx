@@ -2,7 +2,7 @@ import { shortPhone } from "../lib/utils";
 import { hasSessionEndedForDate, getSessionLabelForDate, isSessionEndingSoon } from "../data/seed";
 import VitalsScanAll from "@/components/VitalsScanAll";
 import DateInput from "@/components/DateInput";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTabRoute } from "@/router/RouterContext";
 import { toast } from "sonner";
 import { LogOut, RefreshCw, UserCheck, BedDouble, Undo2, ClipboardList, Activity, Receipt, Printer, UserPlus, Menu, X } from "lucide-react";
@@ -306,19 +306,22 @@ function Outpatients({ canVitals = true }: { canVitals?: boolean }) {
   const emptyV = { temperature: "", tempUnit: "F", bpSystolic: "", bpDiastolic: "", pulse: "", spo2: "", weight: "", notes: "" };
   const [vf, setVf] = useState(emptyV);
   const [intake, setIntake] = useState<any>(null);
-  const ik = (k: string) => !intake || (intake.fields || []).some((x: any) => x.key === k);
+  const [intakeErr, setIntakeErr] = useState(false);
+  const intakeReq = useRef(0); // ignores a late answer for a previously opened patient
+  // Only the vitals this booking's doctor asked for. Nothing is assumed while the list is still loading.
+  const ik = (k: string) => !!intake && (intake.fields || []).some((x: any) => x.key === k);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent?: boolean) => {
+    if (silent !== true) setLoading(true);
     try {
       const res = await call("/today" + (date ? "?date=" + date : ""));
       setRows(res.bookings);
       if (!date) setDate(res.date);
-    } catch (e: any) { toast.error(e.message); }
-    finally { setLoading(false); }
+    } catch (e: any) { if (silent !== true) toast.error(e.message); }
+    finally { if (silent !== true) setLoading(false); }
   }, [date]);
 
-  useEffect(() => { load(); const t = setInterval(load, 4000); return () => clearInterval(t); }, [load]);
+  useEffect(() => { load(); const t = setInterval(() => load(true), 4000); return () => clearInterval(t); }, [load]);
 
   function startEdit(b: OPBooking) {
     setEditId(b.id);
@@ -356,10 +359,18 @@ function Outpatients({ canVitals = true }: { canVitals?: boolean }) {
     load();
   }
 
+  function fetchIntake(id: string) {
+    const my = ++intakeReq.current;
+    setIntake(null); setIntakeErr(false);
+    fetch(BASE + "/doctor-vitals/booking/" + id, { headers: { Authorization: "Bearer " + getToken() } })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (my !== intakeReq.current) return; if (d?.config) setIntake({ fields: d.config.fields }); else setIntakeErr(true); })
+      .catch(() => { if (my === intakeReq.current) setIntakeErr(true); });
+  }
   function startVitals(b: OPBooking) {
-    setEditId(null); setVitalsId(b.id); setIntake(null);
-    fetch(BASE + "/doctor-vitals/booking/" + b.id, { headers: { Authorization: "Bearer " + getToken() } })
-      .then(r => r.ok ? r.json() : null).then(d => { if (d?.config) setIntake({ fields: d.config.fields }); }).catch(() => {});
+    if (vitalsId === b.id) return; // a second click on the same button must not restart the load
+    setEditId(null); setVitalsId(b.id);
+    fetchIntake(b.id);
     const v: any = b.vitals || {};
     setVf({ ...emptyV, ...Object.fromEntries(Object.entries(v).map(([k, x]) => [k, String(x)])) } as any);
   }
@@ -393,7 +404,7 @@ function Outpatients({ canVitals = true }: { canVitals?: boolean }) {
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1"><Label>Date</Label><DateInput value={date} onChange={e => setDate(e.target.value)} /></div>
         <div className="space-y-1 flex-1 min-w-[160px]"><Label>Search</Label><Input placeholder="Name, phone or token" value={q} onChange={e => setQ(e.target.value)} /></div>
-        <Button variant="outline" onClick={load} disabled={loading}><RefreshCw className={"w-4 h-4 " + (loading ? "animate-spin" : "")} /></Button>
+        <Button variant="outline" onClick={() => load()} disabled={loading}><RefreshCw className={"w-4 h-4 " + (loading ? "animate-spin" : "")} /></Button>
       </div>
       <p className="text-sm text-gray-500">{arrived} of {rows.length} patients checked in</p>
       {(() => {
@@ -483,6 +494,13 @@ function Outpatients({ canVitals = true }: { canVitals?: boolean }) {
                       { title: "Skin", keys: ["skinDuration"] },
                       { title: "History & risk", keys: ["dmBpHistory", "allergies", "bloodThinner"] },
                     ];
+                    if (!intake) return (
+                      <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-6 text-center text-sm text-gray-500 min-h-[140px] flex flex-col items-center justify-center gap-2">
+                        {intakeErr
+                          ? (<><p className="text-red-700">Could not load this doctor's vitals form.</p><Button size="sm" variant="outline" onClick={() => fetchIntake(b.id)}>Retry</Button></>)
+                          : (<><RefreshCw className="w-4 h-4 animate-spin text-teal-600" /><p>Loading the vitals this doctor needs...</p></>)}
+                      </div>
+                    );
                     const fields: any[] = intake?.fields || [];
                     const used = new Set<string>(GROUPS.flatMap(g => g.keys));
                     const boxes = GROUPS.map(g => ({ title: g.title, items: fields.filter((x: any) => g.keys.includes(x.key)) }));
@@ -523,7 +541,7 @@ function Outpatients({ canVitals = true }: { canVitals?: boolean }) {
                         {hasCore && (
                           <div>
                             <p className="text-xs font-semibold text-gray-700 mb-1.5">Vitals</p>
-                            {scanOn && <div className="mb-2"><VitalsScanAll include={["temperature", "bpSystolic", "bpDiastolic", "pulse", "spo2"]} onApply={v => setVf(f => ({ ...f, ...v }))} /></div>}
+                            {scanOn && <div className="mb-2"><VitalsScanAll include={[ik("temperature") && "temperature", ik("bp") && "bpSystolic", ik("bp") && "bpDiastolic", ik("pulse") && "pulse", ik("spo2") && "spo2"].filter(Boolean) as any[]} onApply={v => setVf(f => ({ ...f, ...v }))} /></div>}
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                               {ik("temperature") && (
                                 <div className="flex gap-1 min-w-0">
@@ -555,7 +573,7 @@ function Outpatients({ canVitals = true }: { canVitals?: boolean }) {
                     );
                   })()}
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={() => saveVitals(b.id)}>Save vitals</Button>
+                    <Button size="sm" disabled={!intake} onClick={() => saveVitals(b.id)}>Save vitals</Button>
                     <Button size="sm" variant="ghost" onClick={() => setVitalsId(null)}>Cancel</Button>
                   </div>
                 </div>
