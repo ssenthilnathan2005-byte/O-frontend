@@ -188,7 +188,7 @@ export default function HAPermissions() {
                 {groups.map(([group, mods]) => (
                   <div key={group}>
                     <p className="text-[11px] uppercase tracking-wider text-gray-400 mb-1.5">{group}</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 items-start gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 grid-flow-dense items-start gap-2">
                       {mods.map(m => {
                         const mm = MODULE_META[m] || { label: m, hint: "" };
                         const checked = on.includes(m);
