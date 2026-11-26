@@ -16,10 +16,17 @@ async function call(path: string, method = "GET", body?: unknown) {
   return data;
 }
 
-type Row = { type: string; role: string; id: string; name: string; loginId: string; status: string };
+type Row = { type: string; role: string; id: string; name: string; loginId: string; status: string; lastUpdatedAt?: string | null; lastUpdatedNote?: string | null };
 type Action = { kind: "show" | "change"; row: Row };
 
 const FILTERS = ["All", "Hospital Admin", "Doctor", "Nurse", "Front Office", "Laboratory", "Pharmacy"];
+
+function fmtWhen(iso?: string | null) {
+  if (!iso) return "Not recorded";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "Not recorded";
+  return d.toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true });
+}
 
 function statusClass(s: string) {
   if (s === "Active") return "bg-emerald-50 text-emerald-700";
@@ -71,7 +78,9 @@ export default function HAPasswordManagement() {
     const onVis = () => { if (document.visibilityState === "visible") load(true); };
     document.addEventListener("visibilitychange", onVis);
     window.addEventListener("focus", onVis);
-    return () => { clearInterval(t); document.removeEventListener("visibilitychange", onVis); window.removeEventListener("focus", onVis); };
+    const onLive = () => load(true);
+    window.addEventListener("db-activity-live", onLive);
+    return () => { clearInterval(t); document.removeEventListener("visibilitychange", onVis); window.removeEventListener("focus", onVis); window.removeEventListener("db-activity-live", onLive); };
   }, []);
 
   const shown = useMemo(() => {
@@ -140,18 +149,22 @@ export default function HAPasswordManagement() {
           <thead>
             <tr className="border-b border-gray-100 text-left text-xs uppercase tracking-wide text-gray-500">
               <th className="px-4 py-3">Name</th><th className="px-4 py-3">Login ID</th><th className="px-4 py-3">Role</th>
-              <th className="px-4 py-3">Status</th><th className="px-4 py-3 text-right">Password</th>
+              <th className="px-4 py-3">Status</th><th className="px-4 py-3">Last updated</th><th className="px-4 py-3 text-right">Password</th>
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400"><Loader2 className="mx-auto h-5 w-5 animate-spin" /></td></tr>}
-            {!loading && shown.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">No users found</td></tr>}
+            {loading && <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400"><Loader2 className="mx-auto h-5 w-5 animate-spin" /></td></tr>}
+            {!loading && shown.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">No users found</td></tr>}
             {shown.map(r => (
               <tr key={r.type + r.id} className="border-b border-gray-50 last:border-0">
                 <td className="px-4 py-3 font-medium text-gray-900">{r.name}</td>
                 <td className="px-4 py-3 font-mono text-xs text-gray-700">{r.loginId}</td>
                 <td className="px-4 py-3 text-gray-600">{r.role}</td>
                 <td className="px-4 py-3"><span className={"rounded-full px-2 py-0.5 text-xs font-medium " + statusClass(r.status)}>{r.status}</span></td>
+                <td className="px-4 py-3">
+                  <div className="text-xs text-gray-700">{fmtWhen(r.lastUpdatedAt)}</div>
+                  {r.lastUpdatedNote && <div className="text-[11px] text-gray-400">{r.lastUpdatedNote}</div>}
+                </td>
                 <td className="px-4 py-3">
                   <div className="flex justify-end gap-1.5">
                     <button type="button" onClick={() => open("show", r)} className="flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs hover:bg-gray-50"><Eye className="h-3.5 w-3.5" />Show</button>
@@ -177,7 +190,10 @@ export default function HAPasswordManagement() {
               <span className={"shrink-0 rounded-full px-2 py-0.5 text-xs font-medium " + statusClass(r.status)}>{r.status}</span>
             </div>
             <div className="mt-2 flex items-center justify-between gap-2">
-              <span className="text-xs text-gray-500">{r.role}</span>
+              <div className="min-w-0">
+                <span className="text-xs text-gray-500">{r.role}</span>
+                <p className="text-[11px] text-gray-400">Updated: {fmtWhen(r.lastUpdatedAt)}{r.lastUpdatedNote ? " · " + r.lastUpdatedNote : ""}</p>
+              </div>
               <div className="flex gap-1.5">
                 <button type="button" onClick={() => open("show", r)} className="flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs hover:bg-gray-50"><Eye className="h-3.5 w-3.5" />Show</button>
                 <button type="button" onClick={() => open("change", r)} className="flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs hover:bg-gray-50"><KeyRound className="h-3.5 w-3.5" />Change</button>
