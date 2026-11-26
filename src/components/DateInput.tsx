@@ -28,18 +28,61 @@ const isEmpty = (s: Seg) => !s[0] && !s[1] && !s[2];
 const render = (s: Seg) => s.map((x, i) => x + "_".repeat(LEN[i] - x.length)).join("/");
 const segAt = (pos: number) => (pos <= 2 ? 0 : pos <= 5 ? 1 : 2);
 
-/** Types one character into part `idx`. Returns the part the cursor should be in afterwards. */
+let YEAR_RANGE: [number, number] = [1900, 2100];
+const setRange = (mn?: string, mx?: string) => {
+  const lo = mn ? parseInt(mn.slice(0, 4), 10) : 1900;
+  const hi = mx ? parseInt(mx.slice(0, 4), 10) : 2100;
+  YEAR_RANGE = [isNaN(lo) ? 1900 : lo, isNaN(hi) ? 2100 : hi];
+};
+const isLeap = (y: number) => y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0);
+const daysIn = (m: number, y?: number) =>
+  m === 2 ? (y !== undefined && !isLeap(y) ? 28 : 29) : [4, 6, 9, 11].includes(m) ? 30 : 31;
+
+/** Is "str" an acceptable value for part idx, given the other parts? */
+function partOk(s: Seg, idx: number, str: string): boolean {
+  const yr = s[2].length === 4 ? +s[2] : undefined;
+  if (idx === 0) {
+    if (str.length === 1) return str <= "3";
+    const d = +str;
+    if (d < 1 || d > 31) return false;
+    if (s[1].length === 2) return d <= daysIn(+s[1], yr);
+    return true;
+  }
+  if (idx === 1) {
+    if (str.length === 1) return str <= "1";
+    const m = +str;
+    if (m < 1 || m > 12) return false;
+    if (s[0].length === 2) return +s[0] <= daysIn(m, yr);
+    return true;
+  }
+  const lo = +str.padEnd(4, "0");
+  const hi = +str.padEnd(4, "9");
+  if (!(lo <= YEAR_RANGE[1] && hi >= YEAR_RANGE[0])) return false;
+  if (str.length === 4 && s[0].length === 2 && s[1].length === 2) return +s[0] <= daysIn(+s[1], +str);
+  return true;
+}
+const okFull = (s: Seg) => {
+  const iso = parseDMY(s.join("/"));
+  if (!iso) return false;
+  const y = +s[2];
+  return y >= YEAR_RANGE[0] && y <= YEAR_RANGE[1];
+};
+
+/** Types one character into part `idx`. Returns the part the cursor should be in afterwards. Bad digits are ignored. */
 function typeChar(s: Seg, idx: number, ch: string): number {
   if (/\d/.test(ch)) {
     let str = s[idx];
     if (str.length >= LEN[idx]) str = ""; // a full part starts over
-    if (str === "" && ((idx === 0 && ch > "3") || (idx === 1 && ch > "1"))) str = "0" + ch;
-    else str += ch;
-    s[idx] = str;
-    return str.length >= LEN[idx] && idx < 2 ? idx + 1 : idx;
+    const next = str === "" && ((idx === 0 && ch > "3") || (idx === 1 && ch > "1")) ? "0" + ch : str + ch;
+    if (!partOk(s, idx, next)) return idx; // not allowed: ignore this key
+    s[idx] = next;
+    return next.length >= LEN[idx] && idx < 2 ? idx + 1 : idx;
   }
   if (/[\/.\-\s]/.test(ch) && idx < 2) {
-    if (s[idx].length === 1) s[idx] = "0" + s[idx];
+    if (s[idx].length === 1) {
+      if (!partOk(s, idx, "0" + s[idx])) return idx;
+      s[idx] = "0" + s[idx];
+    }
     return idx + 1;
   }
   return idx;
@@ -68,9 +111,9 @@ function applyEdit(segs: Seg, a: number, b: number, kind: "text" | "back" | "del
   let text = data;
   if (kind === "paste") {
     const iso = /^\s*(\d{4})-(\d{2})-(\d{2})/.exec(data);
-    if (iso) { return { s: [iso[3], iso[2], iso[1]] as Seg, caret: 10 }; }
+    if (iso) { const n: Seg = [iso[3], iso[2], iso[1]]; return okFull(n) ? { s: n, caret: 10 } : { s: [segs[0], segs[1], segs[2]] as Seg, caret: a }; }
     const digits = data.replace(/\D/g, "");
-    if (digits.length === 8) return { s: [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4)] as Seg, caret: 10 };
+    if (digits.length === 8) { const n: Seg = [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4)]; return okFull(n) ? { s: n, caret: 10 } : { s: [segs[0], segs[1], segs[2]] as Seg, caret: a }; }
     text = digits;
     s[0] = s[1] = s[2] = "";
     idx = 0;
@@ -141,6 +184,7 @@ export default function DateInput({ value = "", onChange, className = "", min, m
       e.preventDefault();
       const a = el.selectionStart ?? 0;
       const b = el.selectionEnd ?? a;
+      setRange(latest.current.min, latest.current.max);
       const r = applyEdit(latest.current.segs, a, b, kind, data, el.value.length > 0 && !isEmpty(latest.current.segs));
       pendingCaret.current = r.caret;
       setSegs(r.s);
@@ -186,7 +230,10 @@ export default function DateInput({ value = "", onChange, className = "", min, m
         onChange={(e) => {
           // fallback for keyboards that bypass the editing above
           const d = e.target.value.replace(/\D/g, "");
-          const s: Seg = [d.slice(0, 2), d.slice(2, 4), d.slice(4, 8)];
+          setRange(min, max);
+          const s: Seg = EMPTY();
+          let ci = 0;
+          for (const ch of d.slice(0, 8)) ci = typeChar(s, ci, ch);
           setSegs(s);
           commit(s);
         }}
