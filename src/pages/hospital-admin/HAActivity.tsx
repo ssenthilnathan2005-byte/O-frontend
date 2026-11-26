@@ -88,6 +88,7 @@ const CATS: { key: string; label: string; icon: typeof Activity; cls: string }[]
   { key: "inventory", label: "Inventory", icon: Package, cls: "bg-orange-50 text-orange-600" },
   { key: "wards", label: "Wards and beds", icon: BedDouble, cls: "bg-indigo-50 text-indigo-600" },
   { key: "hr", label: "HR", icon: Users, cls: "bg-emerald-50 text-emerald-600" },
+  { key: "admin", label: "Admin", icon: Users, cls: "bg-emerald-50 text-emerald-600" },
 ];
 const ROLE_LABEL: Record<string, string> = {
   doctor: "Doctor", nurse: "Nurse", front_office: "Front office", pharmacy: "Pharmacy", pharmacy_staff: "Pharmacy",
