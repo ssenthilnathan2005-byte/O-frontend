@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import DateInput from "@/components/DateInput";
-import { CalendarCheck, CheckCheck, Loader2, RefreshCw } from "lucide-react";
+import { CalendarCheck, CheckCheck, Loader2, RefreshCw, Save } from "lucide-react";
 import { toast } from "sonner";
 import { getToken } from "../../api";
+import { fmtDate } from "@/lib/formatDate";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
 type Status = "present" | "absent" | "half_day" | "leave";
-type Row = { id: string; name: string; role: string; department: string | null; status: Status | null };
+type Marks = Record<string, Status | null>; // staffId -> status
+type Staff = { id: string; name: string; role: string; department: string | null };
 type SummaryRow = { id: string; name: string; role: string; present: number; half_day: number; leave: number; absent: number };
 
 const OPTIONS: { key: Status; label: string; on: string }[] = [
@@ -30,14 +32,19 @@ async function call(path: string, method = "GET", body?: unknown) {
 
 const iso = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 const roleLabel = (r: string) => (r || "").replace(/_/g, " ");
+const UNSAVED_MSG = "You have unsaved attendance changes. Discard them?";
 
 export default function HAAttendance() {
   const today = iso(new Date());
   const [tab, setTab] = useState<"daily" | "summary">("daily");
 
-  // Daily
+  // Daily: `saved` is what the server has, `draft` is what is on screen.
   const [date, setDate] = useState(today);
-  const [rows, setRows] = useState<Row[]>([]);
+  const [staff, setStaff] = useState<Staff[]>([]);
+  const [saved, setSaved] = useState<Marks>({});
+  const [draft, setDraft] = useState<Marks>({});
+  const [saving, setSaving] = useState(false);
+
   // Summary
   const [from, setFrom] = useState(today.slice(0, 8) + "01");
   const [to, setTo] = useState(today);
@@ -46,10 +53,21 @@ export default function HAAttendance() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const changedIds = staff.filter(s => (draft[s.id] ?? null) !== (saved[s.id] ?? null)).map(s => s.id);
+  const dirty = changedIds.length > 0;
+  const unmarked = staff.filter(s => !draft[s.id]).length;
+  const anySaved = staff.some(s => saved[s.id]);
+  const count = (st: Status) => staff.filter(s => draft[s.id] === st).length;
+
   async function loadDaily() {
     setLoading(true); setError("");
-    try { setRows((await call(`?date=${date}`)).staff); }
-    catch (e: any) { setError(e.message); }
+    try {
+      const list: (Staff & { status: Status | null })[] = (await call(`?date=${date}`)).staff;
+      const marks: Marks = {};
+      for (const s of list) marks[s.id] = s.status ?? null;
+      setStaff(list.map(({ id, name, role, department }) => ({ id, name, role, department })));
+      setSaved(marks); setDraft(marks);
+    } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
   }
 
@@ -63,27 +81,50 @@ export default function HAAttendance() {
   useEffect(() => { if (tab === "daily") loadDaily(); /* eslint-disable-next-line */ }, [tab, date]);
   useEffect(() => { if (tab === "summary") loadSummary(); /* eslint-disable-next-line */ }, [tab, from, to]);
 
-  async function mark(staffId: string, status: Status) {
-    const current = rows.find(r => r.id === staffId)?.status ?? null;
-    const next = current === status ? null : status; // tap the active button again to clear
-    setRows(rs => rs.map(r => (r.id === staffId ? { ...r, status: next } : r)));
-    try { await call(`/${staffId}/${date}`, "PUT", { status: next }); }
-    catch (e: any) {
-      setRows(rs => rs.map(r => (r.id === staffId ? { ...r, status: current } : r)));
-      toast.error(e.message);
-    }
+  // Warn before closing the tab with unsaved changes.
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+
+  function changeDate(v: string) {
+    if (!v || v === date) return;
+    if (dirty && !window.confirm(UNSAVED_MSG)) return;
+    setDate(v);
   }
 
-  async function markAllPresent() {
+  function refresh() {
+    if (dirty && !window.confirm(UNSAVED_MSG)) return;
+    loadDaily();
+  }
+
+  function pick(id: string, status: Status) {
+    // tap the active button again to clear it
+    setDraft(d => ({ ...d, [id]: d[id] === status ? null : status }));
+  }
+
+  function fillUnmarked() {
+    setDraft(d => {
+      const next = { ...d };
+      for (const s of staff) if (!next[s.id]) next[s.id] = "present";
+      return next;
+    });
+  }
+
+  async function save() {
+    if (!dirty || saving) return;
+    if (unmarked > 0 && !window.confirm(`${unmarked} staff are not marked. Save anyway?`)) return;
+    setSaving(true);
     try {
-      const r = await call("/bulk", "POST", { date, status: "present" });
-      toast.success(r.marked ? `${r.marked} staff marked present` : "Everyone is already marked");
-      loadDaily();
+      const entries = changedIds.map(id => ({ staffId: id, status: draft[id] ?? null }));
+      await call("/save", "POST", { date, entries });
+      setSaved({ ...draft });
+      toast.success(`Attendance saved for ${fmtDate(date)}`);
     } catch (e: any) { toast.error(e.message); }
+    finally { setSaving(false); }
   }
-
-  const count = (s: Status) => rows.filter(r => r.status === s).length;
-  const unmarked = rows.filter(r => !r.status).length;
 
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -109,14 +150,14 @@ export default function HAAttendance() {
       {tab === "daily" ? (
         <>
           <div className="flex flex-wrap items-end gap-3">
-            <div><p className="text-xs text-muted-foreground mb-1">Date</p>
-              <DateInput value={date} max={today} onChange={e => e.target.value && setDate(e.target.value)} /></div>
-            <button type="button" onClick={loadDaily} disabled={loading}
+            <div><p className="text-xs text-muted-foreground mb-1">Date (pick a past day to correct it)</p>
+              <DateInput value={date} max={today} onChange={e => changeDate(e.target.value)} /></div>
+            <button type="button" onClick={refresh} disabled={loading}
               className="h-10 px-4 rounded-md border text-sm font-medium flex items-center gap-2 disabled:opacity-60">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Refresh
             </button>
-            <button type="button" onClick={markAllPresent} disabled={loading || unmarked === 0}
-              className="h-10 px-4 rounded-md bg-teal-600 text-white text-sm font-medium flex items-center gap-2 disabled:opacity-50">
+            <button type="button" onClick={fillUnmarked} disabled={loading || unmarked === 0}
+              className="h-10 px-4 rounded-md border border-teal-600 text-teal-700 text-sm font-medium flex items-center gap-2 disabled:opacity-50">
               <CheckCheck className="w-4 h-4" /> Mark all unmarked as present
             </button>
           </div>
@@ -129,28 +170,38 @@ export default function HAAttendance() {
             <span className="px-2 py-1 rounded-full bg-gray-100 text-gray-600">Not marked {unmarked}</span>
           </div>
 
+          {dirty ? (
+            <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              Not saved yet. Press <b>Save attendance</b> to store {fmtDate(date)}.
+            </p>
+          ) : anySaved ? (
+            <p className="text-xs text-green-800 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+              Saved for {fmtDate(date)}. To change it, tap a different status and save again.
+            </p>
+          ) : null}
+
           <div className="rounded-xl border overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-muted/40 text-left">
                 <tr><th className="p-3">Staff</th><th className="p-3">Attendance</th></tr>
               </thead>
               <tbody>
-                {rows.length === 0 && !loading && (
+                {staff.length === 0 && !loading && (
                   <tr><td colSpan={2} className="p-6 text-center text-muted-foreground">
                     No staff for this date. Add staff in HR / Staff first.
                   </td></tr>
                 )}
-                {rows.map(r => (
+                {staff.map(r => (
                   <tr key={r.id} className="border-t">
                     <td className="p-3">
-                      <p className="font-medium">{r.name}</p>
+                      <p className="font-medium">{r.name}{(draft[r.id] ?? null) !== (saved[r.id] ?? null) && <span className="ml-2 text-xs text-amber-600">edited</span>}</p>
                       <p className="text-xs text-muted-foreground capitalize">{roleLabel(r.role)}{r.department ? ` · ${r.department}` : ""}</p>
                     </td>
                     <td className="p-3">
                       <div className="flex flex-wrap gap-2">
                         {OPTIONS.map(o => (
-                          <button key={o.key} type="button" onClick={() => mark(r.id, o.key)}
-                            className={`px-3 py-1.5 rounded-md border text-xs font-medium ${r.status === o.key ? o.on : "bg-white text-gray-600 hover:bg-gray-50"}`}>
+                          <button key={o.key} type="button" onClick={() => pick(r.id, o.key)}
+                            className={`px-3 py-1.5 rounded-md border text-xs font-medium ${draft[r.id] === o.key ? o.on : "bg-white text-gray-600 hover:bg-gray-50"}`}>
                             {o.label}
                           </button>
                         ))}
@@ -160,6 +211,22 @@ export default function HAAttendance() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          <div className="sticky bottom-0 -mx-4 md:-mx-8 px-4 md:px-8 py-3 bg-white/95 backdrop-blur border-t flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">
+              {dirty ? `${changedIds.length} unsaved change${changedIds.length > 1 ? "s" : ""}` : "No changes to save"}
+            </p>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setDraft({ ...saved })} disabled={!dirty || saving}
+                className="h-10 px-4 rounded-md border text-sm font-medium disabled:opacity-50">
+                Discard
+              </button>
+              <button type="button" onClick={save} disabled={!dirty || saving}
+                className="h-10 px-5 rounded-md bg-teal-600 text-white text-sm font-semibold flex items-center gap-2 disabled:opacity-50">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save attendance
+              </button>
+            </div>
           </div>
         </>
       ) : (
