@@ -9,11 +9,11 @@ import { useStore } from "../../context/StoreContext";
 import { hasSessionEndedForDate, getSessionLabelForDate } from "../../data/seed";
 import { isLiveBookingStatus, normalizeBookingStatus } from "../../lib/bookingStatus";
 import { useRouter } from "../../router/RouterContext";
+import FollowUpReminders from "../../components/FollowUpReminders";
 import type { SessionType } from "../../types";
 
-// Past bookings older than this many days are hidden from the PATIENT view only.
-// Nothing is deleted; hospital admin and lab staff still see the full history.
-const HIDE_AFTER_DAYS = 6;
+// Patient history is never hidden: every past booking stays visible until the patient
+// or an admin deletes it.
 // Past bookings shown per click of "Show more" inside a folder.
 const PAGE_SIZE = 5;
 
@@ -40,17 +40,6 @@ function parseDay(d?: string | null): Date | null {
   if (!d) return null;
   const dt = /^\d{4}-\d{2}-\d{2}/.test(d) ? new Date(`${d.slice(0, 10)}T00:00:00`) : new Date(d);
   return Number.isNaN(dt.getTime()) ? null : dt;
-}
-function cutoffDate(): Date {
-  const c = new Date();
-  c.setHours(0, 0, 0, 0);
-  c.setDate(c.getDate() - HIDE_AFTER_DAYS);
-  return c;
-}
-// Unreadable dates stay visible rather than silently disappearing.
-function isRecent(d?: string | null): boolean {
-  const dt = parseDay(d);
-  return !dt || dt >= cutoffDate();
 }
 function dayLabel(d: string): string {
   const dt = parseDay(d);
@@ -94,7 +83,7 @@ function PastFolder({
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-gray-900">{title}</p>
           <p className="text-xs text-gray-500">
-            {count === 0 ? `Nothing in the last ${HIDE_AFTER_DAYS} days` : open ? "Tap to hide" : "Tap to view"}
+            {count === 0 ? "Nothing here yet" : open ? "Tap to hide" : "Tap to view"}
           </p>
         </div>
         <span className="text-sm font-semibold text-gray-600 bg-gray-100 rounded-full px-2.5 py-0.5">{count}</span>
@@ -105,6 +94,26 @@ function PastFolder({
   );
 }
 
+const HBASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
+async function loadHospitalLab(): Promise<LabBooking[]> {
+  try {
+    const r = await fetch(`${HBASE}/hospital-lab/my-orders`, { headers: { Authorization: `Bearer ${api.getToken()}` } });
+    const d = await r.json();
+    if (!Array.isArray(d)) return [];
+    return d.map((o: any) => ({
+      id: o.id, patient_id: null, patient_name: "", phone: "", lab_id: o.hospital_id, test_id: "",
+      lab_name: o.hospital_name, lab_area: o.booked_via === "ipd" ? "Hospital lab booked report" : "Hospital lab", test_name: o.test_name,
+      slot_date: o.slot_date || new Date(o.ordered_at).toLocaleDateString("en-CA"), slot_time: o.slot_time || "morning",
+      token_number: o.token_number, collection_type: "walk_in", price: o.price ?? o.amount ?? 0, payment_done: false,
+      status: o.status === "ordered" ? "booked" : o.status,
+      created_at: o.ordered_at, updated_at: o.ordered_at, _hospital: true,
+      _ipd: o.booked_via === "ipd", _result: o.result_value || null, _reportUrl: o.report_url || null,
+    }) as unknown as LabBooking);
+  } catch { return []; }
+}
+function markExpired(b: LabBooking): LabBooking {
+  return b;
+}
 function DayHeading({ label }: { label: string }) {
   return <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-400 pt-2">{label}</h3>;
 }
@@ -121,7 +130,7 @@ export default function MyTokensPage() {
   const [labBookings, setLabBookings] = useState<LabBooking[]>([]);
   const [labBookingsLoading, setLabBookingsLoading] = useState(true);
   useEffect(() => {
-    api.labs.myBookings()
+    Promise.all([api.labs.myBookings().catch(() => [] as LabBooking[]), loadHospitalLab()]).then(([a, h]) => [...a, ...h])
       .then(setLabBookings)
       .catch(() => {})
       .finally(() => setLabBookingsLoading(false));
@@ -135,7 +144,7 @@ export default function MyTokensPage() {
   const patientId = (user as { id: string }).id;
 
   const allMyBookings = bookings
-    .filter((b) => b.patientId === patientId)
+    .filter((b) => b.patientId === patientId || (b as any).forUserId === patientId)
     .sort((a, b) => {
       const timeA = new Date(`${a.date}T00:00:00`).getTime();
       const timeB = new Date(`${b.date}T00:00:00`).getTime();
@@ -158,18 +167,20 @@ export default function MyTokensPage() {
   const pastBookings = allMyBookings.filter((b) => {
     const status = normalizeBookingStatus(b.status);
     if (!FINISHED_STATUSES.has(status)) return false;
-    if (!isRecent(b.date)) return false;
     if (status === "cancelled") return true;
     return sessionEnded(b);
   });
   const pastGroups = groupByDay(pastBookings.slice(0, pastVisible), (b) => b.date);
 
-  // Labs: unfinished ones stay on top; finished/cancelled go in the folder (6-day limit).
-  const sortedLab = [...labBookings].sort(
+  // Labs: unfinished ones stay on top; finished/cancelled go in the folder (no age limit).
+  const sortedLab = [...labBookings].map(markExpired).sort(
     (a, b) => (parseDay(b.slot_date)?.getTime() ?? 0) - (parseDay(a.slot_date)?.getTime() ?? 0),
   );
-  const activeLab = sortedLab.filter((b) => !LAB_DONE.has(b.status));
-  const pastLab = sortedLab.filter((b) => LAB_DONE.has(b.status) && isRecent(b.slot_date));
+  // IPD hospital-lab reports stay in the live section for the same day only.
+  const todayStr = new Date().toLocaleDateString("en-CA");
+  const keepLive = (b: LabBooking) => (b as any)._ipd && b.status === "report_ready" && b.slot_date === todayStr;
+  const activeLab = sortedLab.filter((b) => !LAB_DONE.has(b.status) || keepLive(b));
+  const pastLab = sortedLab.filter((b) => LAB_DONE.has(b.status) && !keepLive(b));
   const labGroups = groupByDay(pastLab.slice(0, labVisible), (b) => b.slot_date);
 
   const renderLabCard = (b: LabBooking) => (
@@ -177,11 +188,11 @@ export default function MyTokensPage() {
       key={b.id}
       role="button"
       tabIndex={0}
-      onClick={() => navigate({ path: "/labs/track", bookingId: b.id })}
+      onClick={() => { if (!(b as any)._hospital) navigate({ path: "/labs/track", bookingId: b.id }); }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          navigate({ path: "/labs/track", bookingId: b.id });
+          if (!(b as any)._hospital) navigate({ path: "/labs/track", bookingId: b.id });
         }
       }}
       className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 cursor-pointer transition hover:border-sky-200 hover:shadow"
@@ -199,8 +210,17 @@ export default function MyTokensPage() {
           </div>
           <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-gray-500">
             <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {b.slot_date}</span>
-            <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {api.labSessionLabel(b.slot_time)}</span>
+            {!(b as any)._ipd && <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {api.labSessionLabel(b.slot_time)}</span>}
           </div>
+          {(b as any)._ipd && (
+            <p className="text-xs text-gray-500 mt-1">Charged to your IPD bill</p>
+          )}
+          {(b as any)._hospital && b.status === "report_ready" && (b as any)._result && (
+            <p className="text-xs text-green-700 font-medium mt-2">Result: {(b as any)._result}</p>
+          )}
+          {(b as any)._hospital && b.status === "report_ready" && (b as any)._reportUrl && (
+            <a href={(b as any)._reportUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-xs text-teal-600 underline mt-1 inline-block">View report</a>
+          )}
         </div>
         {b.token_number != null && (
           <div className="text-right shrink-0 leading-none">
@@ -234,6 +254,7 @@ export default function MyTokensPage() {
         </div>
       ) : (
         <div className="space-y-8">
+          <FollowUpReminders />
           {/* ── Live hospital bookings ── */}
           <section className="space-y-3">
             <div className="flex items-center justify-between">
@@ -268,6 +289,11 @@ export default function MyTokensPage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <h3 className="font-bold text-gray-900">{booking.doctorName}</h3>
+                              {(booking as any).forMe
+                                ? <span className="inline-block whitespace-nowrap mt-1 text-xs font-bold text-teal-700">Booked by family</span>
+                                : (booking as any).forUserId
+                                  ? <span className="inline-block whitespace-nowrap mt-1 text-xs font-bold text-teal-700">For: {booking.patientName}</span>
+                                  : null}
                               <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${STATUS_BADGE[booking.status]?.className ?? "bg-gray-100 text-gray-600"}`}>
                                 {STATUS_BADGE[booking.status]?.label ?? booking.status}
                               </span>
@@ -369,6 +395,11 @@ export default function MyTokensPage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <h4 className="font-bold text-gray-900">{booking.doctorName}</h4>
+                              {(booking as any).forMe
+                                ? <span className="inline-block whitespace-nowrap mt-1 text-xs font-bold text-teal-700">Booked by family</span>
+                                : (booking as any).forUserId
+                                  ? <span className="inline-block whitespace-nowrap mt-1 text-xs font-bold text-teal-700">For: {booking.patientName}</span>
+                                  : null}
                               <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_BADGE[booking.status]?.className ?? "bg-gray-100 text-gray-600"}`}>
                                 {STATUS_BADGE[booking.status]?.label ?? booking.status}
                               </span>
