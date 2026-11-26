@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Activity, ArrowRight, BedDouble, ClipboardList, FlaskConical, HeartPulse, Loader2, Package, Pill, RefreshCw, Search, Stethoscope, Users } from "lucide-react";
 import { useStore } from "../../context/StoreContext";
 import { getToken } from "../../api";
@@ -36,10 +36,42 @@ export function useActivityUnread(): number {
     window.addEventListener("db-activity-seen", load);
     return () => { clearInterval(t); window.removeEventListener("db-activity-seen", load); };
   }, [load]);
+
+  // Live updates: the server sends a tiny "activity" ping whenever anyone in this hospital does something.
+  useEffect(() => {
+    if (!hid) return;
+    const wsBase = BASE.replace(/^http/, "ws").replace(/\/api\/?$/, "");
+    let ws: WebSocket | null = null;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let dead = false;
+    let backoff = 2000;
+    const connect = () => {
+      if (dead) return;
+      try {
+        ws = new WebSocket(wsBase + "/ws?session=" + encodeURIComponent("activity_" + hid));
+        ws.onopen = () => { backoff = 2000; window.dispatchEvent(new CustomEvent("db-activity-socket", { detail: true })); };
+        ws.onmessage = (e) => {
+          try {
+            if (JSON.parse(e.data).type === "activity") {
+              load();
+              window.dispatchEvent(new Event("db-activity-live"));
+            }
+          } catch { /* ignore */ }
+        };
+        ws.onclose = () => {
+          window.dispatchEvent(new CustomEvent("db-activity-socket", { detail: false }));
+          if (!dead) { timer = setTimeout(connect, backoff); backoff = Math.min(backoff * 2, 30000); }
+        };
+        ws.onerror = () => ws?.close();
+      } catch { if (!dead) timer = setTimeout(connect, backoff); }
+    };
+    connect();
+    return () => { dead = true; if (timer) clearTimeout(timer); try { ws?.close(); } catch { /* ignore */ } };
+  }, [hid, load]);
   return n;
 }
 
-type Change = { field: string; label: string; from: string; to: string };
+type Change = { field: string; label: string; from: string | null; to: string };
 type Item = {
   id: string; at: string; actor_id: string | null; actor_role: string | null; actor_name: string | null;
   category: string; action: string; entity_type: string | null; entity_id: string | null; entity_name: string | null;
@@ -61,6 +93,11 @@ const ROLE_LABEL: Record<string, string> = {
   doctor: "Doctor", nurse: "Nurse", front_office: "Front office", pharmacy: "Pharmacy", pharmacy_staff: "Pharmacy",
   hospital_lab: "Lab", hospital_admin: "Hospital admin", admin: "Platform admin",
 };
+const ENTITY_LABEL: Record<string, string> = {
+  patient: "Patient", doctor: "Doctor", nurse: "Nurse", ward: "Ward", bed: "Bed", inventory_item: "Item", staff: "Staff",
+  medicine: "Medicine", lab_test: "Lab test", role: "Role", login: "Login", hospital: "Hospital", preset: "Preset",
+  prescription: "Prescription", front_office: "Front office login", pharmacy_staff: "Pharmacy login", lab_staff: "Lab login",
+};
 
 async function fetchActivity(params: Record<string, string>) {
   const r = await fetch(BASE + "/activity?" + new URLSearchParams(params).toString(), {
@@ -79,13 +116,14 @@ function dayLabel(key: string) {
   if (key === yest) return "Yesterday";
   return new Date(key + "T00:00:00").toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short", year: "numeric" });
 }
-function timeLabel(iso: string) {
-  const d = new Date(iso);
-  const mins = Math.floor((Date.now() - d.getTime()) / 60000);
-  const clock = d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
-  if (mins < 1) return "Just now, " + clock;
-  if (mins < 60) return mins + " min ago, " + clock;
-  return clock;
+function exactLabel(iso: string) {
+  return new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true });
+}
+function agoLabel(iso: string) {
+  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return mins + " min ago";
+  return "";
 }
 
 export default function HAActivity() {
@@ -121,10 +159,21 @@ export default function HAActivity() {
     finally { setLoading(false); }
   }, [params, hid]);
 
+  const [live, setLive] = useState(false);
   useEffect(() => { loadFirst(true); }, [loadFirst]);
   useEffect(() => {
-    const t = setInterval(() => { if (!extraPages) loadFirst(false); }, 20000);
+    // Safety net: refresh every 15 seconds even if the live connection is down.
+    const t = setInterval(() => { if (!extraPages) loadFirst(false); }, 15000);
     return () => clearInterval(t);
+  }, [loadFirst, extraPages]);
+  useEffect(() => {
+    // New activity arrives instantly through the live connection (no refresh needed).
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const onLive = () => { if (extraPages) return; if (timer) clearTimeout(timer); timer = setTimeout(() => loadFirst(false), 300); };
+    const onSocket = (e: Event) => setLive(Boolean((e as CustomEvent).detail));
+    window.addEventListener("db-activity-live", onLive);
+    window.addEventListener("db-activity-socket", onSocket);
+    return () => { if (timer) clearTimeout(timer); window.removeEventListener("db-activity-live", onLive); window.removeEventListener("db-activity-socket", onSocket); };
   }, [loadFirst, extraPages]);
 
   async function loadMore() {
@@ -151,12 +200,17 @@ export default function HAActivity() {
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600"><Activity className="h-5 w-5" /></div>
           <div>
             <h1 className="text-xl font-bold text-gray-900">Activity Monitor</h1>
-            <p className="text-sm text-gray-500">Every change made by doctors, nurses, front desk, pharmacy and lab, with what it was before and after.</p>
+            <p className="text-sm text-gray-500">Every change made by doctors, nurses, front desk, pharmacy, lab, inventory, wards and HR, with what it was before and after.</p>
           </div>
         </div>
-        <button type="button" onClick={() => loadFirst(true)} className="flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 hover:bg-gray-50">
-          <RefreshCw className="h-4 w-4" /> Refresh
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className={"flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium " + (live ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-500")} title={live ? "New activity appears automatically" : "Reconnecting, refreshing every 15 seconds"}>
+            <span className={"h-2 w-2 rounded-full " + (live ? "animate-pulse bg-emerald-500" : "bg-gray-400")} /> {live ? "Live" : "Updating"}
+          </span>
+          <button type="button" onClick={() => loadFirst(true)} className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 hover:bg-gray-50">
+            <RefreshCw className="h-4 w-4" /> Refresh
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -170,7 +224,7 @@ export default function HAActivity() {
 
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by person, doctor or change"
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by person, role, patient or change"
           className="h-10 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-teal-400" />
       </div>
 
@@ -200,17 +254,30 @@ export default function HAActivity() {
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                         <span className="text-sm font-semibold text-gray-900">{it.actor_name || "Staff"}</span>
                         {role && <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600">{role}</span>}
-                        <span className="ml-auto text-xs text-gray-400">{timeLabel(it.at)}</span>
+                        <span className="ml-auto text-right text-xs text-gray-400" title={exactLabel(it.at)}>
+                          {exactLabel(it.at)}{agoLabel(it.at) ? <span className="ml-1 text-teal-600">({agoLabel(it.at)})</span> : null}
+                        </span>
                       </div>
                       <p className="mt-0.5 text-sm text-gray-600">{it.summary}</p>
+                      {it.entity_name && (
+                        <p className="mt-1 text-xs text-gray-500">
+                          <span className="font-medium text-gray-600">{(it.entity_type && ENTITY_LABEL[it.entity_type]) || "Record"}:</span> {it.entity_name}
+                        </p>
+                      )}
                       {it.changes && it.changes.length > 0 && (
                         <ul className="mt-2 space-y-1.5">
-                          {it.changes.map((c) => (
-                            <li key={c.field} className="flex flex-wrap items-center gap-2 text-xs">
+                          {it.changes.map((c, i) => (
+                            <li key={c.field + i} className="flex flex-wrap items-center gap-2 text-xs">
                               <span className="font-medium text-gray-700">{c.label}</span>
-                              <span className="rounded bg-red-50 px-1.5 py-0.5 text-red-700 line-through">{c.from}</span>
-                              <ArrowRight className="h-3 w-3 text-gray-400" />
-                              <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-emerald-700">{c.to}</span>
+                              {c.from === null || c.from === undefined ? (
+                                <span className="rounded bg-gray-50 px-1.5 py-0.5 text-gray-700">{c.to}</span>
+                              ) : (
+                                <>
+                                  <span className="rounded bg-red-50 px-1.5 py-0.5 text-red-700 line-through">{c.from}</span>
+                                  <ArrowRight className="h-3 w-3 text-gray-400" />
+                                  <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-emerald-700">{c.to}</span>
+                                </>
+                              )}
                             </li>
                           ))}
                         </ul>
