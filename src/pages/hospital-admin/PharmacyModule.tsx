@@ -1,5 +1,5 @@
 import { ArrowDown as IcDown, ArrowUp as IcUp, History as IcHistory, Pencil as IcEdit, Trash2 as IcDelete } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import DateInput from "@/components/DateInput";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { getToken } from "@/api";
@@ -111,12 +111,14 @@ function Shell({ title, subtitle, children }: { title: string; subtitle: string;
     </div>
   );
 }
-function Stat({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
+function Stat({ label, value, sub, color, onClick, hint }: { label: string; value: string; sub?: string; color?: string; onClick?: () => void; hint?: string }) {
+  const click = onClick ? { role: "button" as const, tabIndex: 0, onClick, onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } } } : {};
   return (
-    <div className="bg-white rounded-xl border border-gray-100 p-4">
+    <div {...click} className={"bg-white rounded-xl border border-gray-100 p-4" + (onClick ? " cursor-pointer hover:border-teal-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-teal-200" : "")}>
       <p className="text-xs text-gray-500">{label}</p>
       <p className={"text-2xl font-bold mt-1 " + (color || "text-gray-900")}>{value}</p>
       {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+      {hint && <p className="text-xs text-teal-700 mt-1">{hint}</p>}
     </div>
   );
 }
@@ -128,11 +130,140 @@ type Rev = {
   grossRevenue: number; costOfGoods: number; netMargin: number; netMarginPct: number; tabletsSold: number; prescriptions: number;
   byPayment: { cash: number; upi: number; insurance: number }; daily: { date: string; revenue: number }[];
 };
+type MarginMed = { name: string; tablets: number; prescriptions: number; revenue: number; cost: number; margin: number; marginPct: number | null; soldPerTablet: number | null; costPerTablet: number | null; mrpPerTablet: number | null; issue: "no_cost_price" | "no_revenue" | "below_cost" | null };
+type MarginRx = { id: string; day: string; payment: string; bill: number; cost: number; margin: number; medicines: number };
+type MarginDetails = {
+  from: string; to: string;
+  summary: { grossRevenue: number; costOfGoods: number; netMargin: number; netMarginPct: number | null; billAdjustment: number; prescriptions: number; lossMedicines: number; missingCostPrice: number };
+  medicines: MarginMed[]; prescriptions: MarginRx[];
+};
+const ISSUE_TEXT: Record<NonNullable<MarginMed["issue"]>, string> = {
+  below_cost: "Sold below purchase cost",
+  no_cost_price: "No purchase price saved (cost counted as \u20B90)",
+  no_revenue: "No amount billed",
+};
+function MarginDetailsModal({ from, to, onClose }: { from: string; to: string; onClose: () => void }) {
+  const [d, setD] = useState<MarginDetails | null>(null);
+  const [err, setErr] = useState("");
+  const [tab, setTab] = useState<"med" | "rx">("med");
+  const load = useCallback(async () => {
+    try { setD(await pm<MarginDetails>("/revenue/margin-details?from=" + from + "&to=" + to)); setErr(""); }
+    catch (e: any) { setErr(e.message); }
+  }, [from, to]);
+  useEffect(() => {
+    load();
+    const h = () => { load(); };
+    window.addEventListener("pharmacy-updated", h);
+    return () => window.removeEventListener("pharmacy-updated", h);
+  }, [load]);
+  const sm = d?.summary;
+  const neg = !!sm && sm.netMargin < 0;
+  const pct = (v: number | null) => (v === null ? "N/A" : (Math.round(v * 10) / 10) + "%");
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-start justify-center p-3 md:p-6 overflow-y-auto" onClick={onClose}>
+      <div className="bg-white rounded-xl w-full max-w-5xl my-4 md:my-8" onClick={e => e.stopPropagation()}>
+        <div className="flex items-start justify-between gap-3 p-4 md:p-5 border-b border-gray-100">
+          <div>
+            <p className="font-semibold text-gray-900">Net margin details</p>
+            <p className="text-xs text-gray-500">{from === to ? from : from + " to " + to} · margin = amount billed − cost of the medicines sold</p>
+          </div>
+          <button type="button" onClick={onClose} className="px-2.5 py-1 text-sm rounded-md border border-gray-200 hover:bg-gray-50">Close</button>
+        </div>
+        <div className="p-4 md:p-5 space-y-4">
+          {err && <p className="text-sm text-red-600">{err}</p>}
+          {!d && !err && <p className="text-sm text-gray-500">Loading...</p>}
+          {d && sm && (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="rounded-lg border border-gray-100 p-3"><p className="text-xs text-gray-500">Gross revenue</p><p className="text-lg font-bold text-teal-700">{inr(sm.grossRevenue)}</p></div>
+                <div className="rounded-lg border border-gray-100 p-3"><p className="text-xs text-gray-500">Cost of goods</p><p className="text-lg font-bold text-gray-900">{inr(sm.costOfGoods)}</p></div>
+                <div className="rounded-lg border border-gray-100 p-3"><p className="text-xs text-gray-500">Net margin</p><p className={"text-lg font-bold " + (neg ? "text-red-600" : "text-emerald-700")}>{inr(sm.netMargin)}</p></div>
+                <div className="rounded-lg border border-gray-100 p-3"><p className="text-xs text-gray-500">Margin %</p><p className={"text-lg font-bold " + (neg ? "text-red-600" : "text-emerald-700")}>{pct(sm.netMarginPct)}</p></div>
+              </div>
+              {(neg || sm.lossMedicines > 0 || sm.missingCostPrice > 0) && (
+                <div className={"rounded-lg border px-3 py-2.5 text-sm space-y-1 " + (neg ? "border-red-200 bg-red-50 text-red-800" : "border-amber-200 bg-amber-50 text-amber-800")}>
+                  {neg && <p>The margin is negative because the cost of the medicines sold ({inr(sm.costOfGoods)}) is more than the amount billed ({inr(sm.grossRevenue)}).</p>}
+                  {sm.lossMedicines > 0 && <p>{sm.lossMedicines} medicine{sm.lossMedicines === 1 ? " was" : "s were"} sold below purchase cost. They are listed first below. Check the selling price entered at billing, or the purchase price saved in Inventory.</p>}
+                  {sm.missingCostPrice > 0 && <p>{sm.missingCostPrice} medicine{sm.missingCostPrice === 1 ? " has" : "s have"} no purchase price saved, so their cost is counted as {"\u20B9"}0 and the real margin is lower than shown.</p>}
+                </div>
+              )}
+              <div className="flex gap-2">
+                {([["med", "By medicine"], ["rx", "By prescription"]] as const).map(([k, l]) => (
+                  <button key={k} type="button" onClick={() => setTab(k)} className={"px-3 py-1.5 rounded-full text-sm border " + (tab === k ? "bg-teal-600 text-white border-teal-600" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50")}>{l}</button>
+                ))}
+              </div>
+              {tab === "med" ? (
+                <div className="overflow-x-auto rounded-lg border border-gray-100">
+                  <table className="w-full">
+                    <thead className="bg-gray-50"><tr>
+                      {["Medicine", "Tablets sold", "Billed", "Cost", "Margin", "Margin %", "Sold at / tablet", "Cost / tablet", "Note"].map(h => <th key={h} className={TH}>{h}</th>)}
+                    </tr></thead>
+                    <tbody>
+                      {d.medicines.map((m, i) => (
+                        <tr key={i} className={"border-t border-gray-100 " + (m.margin < 0 ? "bg-red-50/60" : "")}>
+                          <td className={TD + " font-medium min-w-[160px]"}>{m.name}</td>
+                          <td className={TD}>{m.tablets}</td>
+                          <td className={TD}>{inr(m.revenue)}</td>
+                          <td className={TD}>{inr(m.cost)}</td>
+                          <td className={TD + " font-semibold " + (m.margin < 0 ? "text-red-600" : "text-emerald-700")}>{inr(m.margin)}</td>
+                          <td className={TD}>{pct(m.marginPct)}</td>
+                          <td className={TD}>{m.soldPerTablet === null ? "-" : rs(m.soldPerTablet)}</td>
+                          <td className={TD}>{m.costPerTablet === null ? "-" : rs(m.costPerTablet)}</td>
+                          <td className={TD + " text-xs min-w-[170px] " + (m.issue === "below_cost" ? "text-red-600" : "text-amber-700")}>{m.issue ? ISSUE_TEXT[m.issue] : ""}</td>
+                        </tr>
+                      ))}
+                      {sm.billAdjustment !== 0 && (
+                        <tr className="border-t border-gray-100 bg-gray-50/60">
+                          <td className={TD + " font-medium"} colSpan={2}>Discount / bill adjustment</td>
+                          <td className={TD}>{inr(sm.billAdjustment)}</td>
+                          <td className={TD}>-</td>
+                          <td className={TD + " font-semibold " + (sm.billAdjustment < 0 ? "text-red-600" : "text-emerald-700")}>{inr(sm.billAdjustment)}</td>
+                          <td className={TD} colSpan={4}><span className="text-xs text-gray-500">Difference between the item prices and the final bill amount entered</span></td>
+                        </tr>
+                      )}
+                      {d.medicines.length === 0 && <tr><td colSpan={9} className="px-3 py-8 text-center text-sm text-gray-400">No medicines were handed over in this period</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-lg border border-gray-100">
+                  <table className="w-full">
+                    <thead className="bg-gray-50"><tr>
+                      {["Date", "Prescription", "Medicines", "Payment", "Billed", "Cost", "Margin"].map(h => <th key={h} className={TH}>{h}</th>)}
+                    </tr></thead>
+                    <tbody>
+                      {d.prescriptions.map(r => (
+                        <tr key={r.id} className={"border-t border-gray-100 " + (r.margin < 0 ? "bg-red-50/60" : "")}>
+                          <td className={TD + " whitespace-nowrap"}>{r.day}</td>
+                          <td className={TD + " text-xs text-gray-500"}>{String(r.id).slice(-8)}</td>
+                          <td className={TD}>{r.medicines}</td>
+                          <td className={TD + " capitalize"}>{r.payment}</td>
+                          <td className={TD}>{inr(r.bill)}</td>
+                          <td className={TD}>{inr(r.cost)}</td>
+                          <td className={TD + " font-semibold " + (r.margin < 0 ? "text-red-600" : "text-emerald-700")}>{inr(r.margin)}</td>
+                        </tr>
+                      ))}
+                      {d.prescriptions.length === 0 && <tr><td colSpan={7} className="px-3 py-8 text-center text-sm text-gray-400">No prescriptions in this period</td></tr>}
+                    </tbody>
+                  </table>
+                  {sm.prescriptions > d.prescriptions.length && <p className="text-xs text-gray-500 px-3 py-2">Showing the latest {d.prescriptions.length} of {sm.prescriptions} prescriptions.</p>}
+                </div>
+              )}
+              <p className="text-xs text-gray-500">Cost uses the purchase price saved for each medicine in Inventory. Prescriptions billed to an admitted patient's IP bill are counted in the IP bill, not here.</p>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function PharmRevenue() {
   const hid = useHid();
   const { range, ui } = useRange();
   const [d, setD] = useState<Rev | null>(null);
   const [err, setErr] = useState("");
+  const [showMargin, setShowMargin] = useState(false);
   useLive(async () => {
     try { setD(await pm<Rev>("/revenue?from=" + range.from + "&to=" + range.to)); setErr(""); }
     catch (e: any) { setErr(e.message); }
@@ -146,7 +277,7 @@ export function PharmRevenue() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <Stat label="Gross revenue" value={inr(d.grossRevenue)} sub={d.prescriptions + " prescriptions"} color="text-teal-700" />
             <Stat label="Cost of goods" value={inr(d.costOfGoods)} sub={d.costOfGoods === 0 ? "Add purchase prices in Inventory" : undefined} />
-            <Stat label="Net margin" value={inr(d.netMargin)} sub={Math.round(d.netMarginPct) + "% of gross"} color={d.netMargin < 0 ? "text-red-600" : "text-emerald-700"} />
+            <Stat label="Net margin" value={inr(d.netMargin)} sub={Math.round(d.netMarginPct) + "% of gross"} color={d.netMargin < 0 ? "text-red-600" : "text-emerald-700"} onClick={() => setShowMargin(true)} hint="Click to see details" />
             <Stat label="Tablets sold" value={String(d.tabletsSold)} />
           </div>
           <div className="bg-white rounded-xl border border-gray-100 p-4">
@@ -172,6 +303,7 @@ export function PharmRevenue() {
           </div>
         </>
       )}
+      {showMargin && <MarginDetailsModal from={range.from} to={range.to} onClose={() => setShowMargin(false)} />}
     </Shell>
   );
 }
