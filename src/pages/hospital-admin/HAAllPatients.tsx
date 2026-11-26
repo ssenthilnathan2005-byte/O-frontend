@@ -12,6 +12,7 @@ import { inward as inwardApi } from "../../api";
 import { useLiveRefresh } from "../../hooks/useLiveRefresh";
 import { normalizeBookingStatus } from "../../lib/bookingStatus";
 import { useRouter, type Route } from "@/router/RouterContext";
+import PatientProfileModal from "@/components/PatientProfileModal";
 
 type Visit = {
   key: string;
@@ -125,6 +126,7 @@ export default function HAAllPatients() {
   const [error, setError] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [printingId, setPrintingId] = useState<string | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [matEligible, setMatEligible] = useState<Set<string>>(new Set());
   useEffect(() => {
     maternityApi.eligible().then((r) => setMatEligible(new Set(r.ids))).catch(() => setMatEligible(new Set()));
@@ -381,6 +383,14 @@ export default function HAAllPatients() {
               <button type="button" onClick={() => setSelectedId(null)}><X className="w-4 h-4" /></button>
             </div>
 
+            {!isNurse && (
+              <div className="px-6 pt-3">
+                <button type="button" onClick={() => setProfileOpen(true)}
+                  className="w-full rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold py-2 transition-colors">
+                  View full hospital profile
+                </button>
+              </div>
+            )}
             <div className="px-6 py-4 grid grid-cols-3 gap-3 text-center border-b">
               <div className="rounded-lg bg-gray-50 py-2">
                 <p className="text-lg font-bold">{selected.visits.length}</p>
@@ -434,6 +444,9 @@ export default function HAAllPatients() {
             </div>
           </div>
         </div>
+      )}
+      {profileOpen && selected && (
+        <PatientProfileModal query={{ uhid: selected.uhid, phone: selected.phone, name: selected.name }} onClose={() => setProfileOpen(false)} />
       )}
     </div>
   );

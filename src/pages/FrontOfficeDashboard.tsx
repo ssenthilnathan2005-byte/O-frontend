@@ -20,6 +20,7 @@ import HABedRequests from "./hospital-admin/HABedRequests";
 import IPDBillModal from "./hospital-admin/IPDBillModal";
 import { maternityApi } from "@/lib/maternityApi";
 import { printMaternityRecord } from "@/lib/maternityRecord";
+import PatientProfileModal from "@/components/PatientProfileModal";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
@@ -598,6 +599,7 @@ function Outpatients({ canVitals = true }: { canVitals?: boolean }) {
 
 function Admit({ canBill = true }: { canBill?: boolean }) {
   const [billId, setBillId] = useState<string | null>(null);
+  const [profileQ, setProfileQ] = useState<any>(null);
   const [printingId, setPrintingId] = useState<string | null>(null);
   const [matEligible, setMatEligible] = useState<Set<string>>(new Set());
   const [doctors, setDoctors] = useState<{ id: string; name: string; specialty: string }[]>([]);
@@ -693,13 +695,13 @@ function Admit({ canBill = true }: { canBill?: boolean }) {
         {inward.length > 0 && inwardShown.length === 0 && <p className="text-sm text-gray-400 py-6 text-center">No admitted patient matches "{aq}".</p>}
         <div className="space-y-2">
           {inwardShown.map(p => (
-            <div key={p.id} className="border border-gray-100 rounded-xl px-3.5 py-3 hover:border-teal-200 transition-colors">
+            <div key={p.id} className="border border-gray-100 rounded-xl px-3.5 py-3 hover:border-teal-200 transition-colors cursor-pointer" onClick={() => setProfileQ({ inwardId: p.id, uhid: p.uhid || "", phone: p.phone || "", name: p.patient_name })}>
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="font-semibold text-gray-900 leading-tight truncate">{p.patient_name}</p>
                   <p className="text-xs text-gray-500 mt-0.5">{[p.age != null ? p.age + " yrs" : "", p.gender || ""].filter(Boolean).join(" \u00b7 ")}</p>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
                   {matEligible.has(p.id) && (
                     <button type="button" disabled={printingId === p.id}
                       onClick={async () => {
@@ -733,6 +735,7 @@ function Admit({ canBill = true }: { canBill?: boolean }) {
         </div>
       </div>
       {billId && <IPDBillModal inwardId={billId} onClose={() => setBillId(null)} />}
+      {profileQ && <PatientProfileModal query={profileQ} onClose={() => setProfileQ(null)} />}
     </div>
   );
 }
