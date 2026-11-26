@@ -1,5 +1,5 @@
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, MapPin, Search, Users, Navigation, Loader2, XCircle } from "lucide-react";
+import { ChevronLeft, MapPin, Search, Users, Navigation, Loader2, XCircle, HeartPulse, Baby, Bone, Brain, Eye, Ear, Smile, Stethoscope, Sparkles, Flower2, Activity } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Fragment, useState } from "react";
 import { useStore } from "../../context/StoreContext";
@@ -25,6 +25,21 @@ function norm(s: string | null | undefined): string { return (s || "").trim().to
 const TYPE_LABELS: Record<string, string> = { general: "General Hospital", eye: "Eye Hospital", ent: "ENT Hospital", dental: "Dental Clinic", pediatrics: "Children's Hospital", gynecology: "Women's Hospital", orthopedics: "Orthopedic Hospital", dermatology: "Skin Clinic", cardiology: "Heart Hospital", diabetology: "Diabetes Centre", clinic: "Clinic" };
 const typeOf = (h: any): string => h?.hospitalType || "general";
 
+function specIcon(sp: string) {
+  const x = sp.toLowerCase();
+  if (/cardi|heart/.test(x)) return { Icon: HeartPulse, tile: "bg-pink-100", color: "text-red-500" };
+  if (/pediat|child|paed/.test(x)) return { Icon: Baby, tile: "bg-teal-100", color: "text-teal-600" };
+  if (/ortho|bone/.test(x)) return { Icon: Bone, tile: "bg-blue-100", color: "text-blue-500" };
+  if (/neuro|brain/.test(x)) return { Icon: Brain, tile: "bg-purple-100", color: "text-purple-500" };
+  if (/eye|ophthal/.test(x)) return { Icon: Eye, tile: "bg-cyan-100", color: "text-cyan-600" };
+  if (/ent|ear/.test(x)) return { Icon: Ear, tile: "bg-indigo-100", color: "text-indigo-500" };
+  if (/dent/.test(x)) return { Icon: Smile, tile: "bg-sky-100", color: "text-sky-500" };
+  if (/derma|skin/.test(x)) return { Icon: Sparkles, tile: "bg-orange-100", color: "text-orange-500" };
+  if (/gyn|obst|women/.test(x)) return { Icon: Flower2, tile: "bg-rose-100", color: "text-rose-500" };
+  if (/uro|nephro|kidney/.test(x)) return { Icon: Activity, tile: "bg-emerald-100", color: "text-emerald-600" };
+  return { Icon: Stethoscope, tile: "bg-teal-100", color: "text-teal-700" };
+}
+
 export default function HospitalsPage({ city, q }: { city?: string; q?: string }) {
   const [mode, setMode] = useState<"hospitals" | "specialty">(q === "@doctors" ? "specialty" : "hospitals");
   const [search, setSearch] = useState(q === "@doctors" ? "" : (q ?? ""));
@@ -49,6 +64,7 @@ export default function HospitalsPage({ city, q }: { city?: string; q?: string }
   );
 
   const isNearMeActive = nearState.status === "done";
+  const showSpecGrid = mode === "specialty" && !search.trim();
 
   const keyOf = (h: { area: string }) => norm(h.area) || "other";
   const groupLabel = new Map<string, string>();
@@ -132,7 +148,12 @@ export default function HospitalsPage({ city, q }: { city?: string; q?: string }
         </AnimatePresence>
       </div>
 
-      {mode === "specialty" && (() => {
+      <div className="mt-5 inline-flex rounded-full border border-gray-200 bg-white p-1 text-sm font-medium">
+        <button type="button" onClick={() => { setMode("hospitals"); setSearch(""); }} className={"px-4 py-1.5 rounded-full " + (mode === "hospitals" ? "bg-teal-700 text-white" : "text-gray-600")}>Hospitals</button>
+        <button type="button" onClick={() => { setMode("specialty"); setSearch(""); }} className={"px-4 py-1.5 rounded-full " + (mode === "specialty" ? "bg-teal-700 text-white" : "text-gray-600")}>Doctors by specialty</button>
+      </div>
+
+      {showSpecGrid && (() => {
         const spCounts = new Map<string, number>();
         for (const d of doctors as any[]) {
           const sp = (d.specialty || "").trim();
@@ -141,25 +162,28 @@ export default function HospitalsPage({ city, q }: { city?: string; q?: string }
         const spList = Array.from(spCounts.keys()).sort((a, b) => a.localeCompare(b));
         return (
           <div className="mt-5">
-            <h2 className="text-xs font-semibold text-gray-500 mb-2 tracking-wide uppercase">Specialties</h2>
-            <div className="flex flex-wrap gap-2">
-              {spList.map((sp) => {
-                const active = norm(search) === norm(sp);
-                return (
-                  <button key={sp} type="button" onClick={() => setSearch(active ? "" : sp)} className={"px-3.5 py-1.5 rounded-full text-sm font-medium border transition-colors " + (active ? "bg-teal-700 text-white border-teal-700" : "bg-white text-gray-700 border-gray-200 hover:border-teal-300")}>
-                    {sp} <span className={"text-xs " + (active ? "text-teal-100" : "text-gray-400")}>{spCounts.get(sp)}</span>
-                  </button>
-                );
-              })}
-            </div>
+            <h2 className="text-lg font-bold text-gray-900 mb-3">Doctor Specialities</h2>
+            {spList.length === 0 ? (
+              <p className="text-sm text-gray-400 py-8 text-center">No specialities available yet</p>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                {spList.map((sp) => {
+                  const { Icon, tile, color } = specIcon(sp);
+                  return (
+                    <button key={sp} type="button" onClick={() => setSearch(sp)} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col items-center gap-3 hover:shadow-md active:scale-[0.98] transition-all" data-ocid={`hospitals.specialty.${sp}`}>
+                      <div className={"w-16 h-16 rounded-2xl flex items-center justify-center " + tile}>
+                        <Icon className={"w-8 h-8 " + color} />
+                      </div>
+                      <span className="text-sm font-medium text-gray-800 text-center leading-tight">{sp}</span>
+                      <span className="text-xs text-gray-400">{spCounts.get(sp)} {spCounts.get(sp) === 1 ? "doctor" : "doctors"}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         );
       })()}
-
-      <div className="mt-5 inline-flex rounded-full border border-gray-200 bg-white p-1 text-sm font-medium">
-        <button type="button" onClick={() => { setMode("hospitals"); setSearch(""); }} className={"px-4 py-1.5 rounded-full " + (mode === "hospitals" ? "bg-teal-700 text-white" : "text-gray-600")}>Hospitals</button>
-        <button type="button" onClick={() => { setMode("specialty"); setSearch(""); }} className={"px-4 py-1.5 rounded-full " + (mode === "specialty" ? "bg-teal-700 text-white" : "text-gray-600")}>Doctors by specialty</button>
-      </div>
 
       {mode === "hospitals" && !city && !isNearMeActive && (() => {
         const cityCounts = new Map<string, number>();
@@ -189,7 +213,7 @@ export default function HospitalsPage({ city, q }: { city?: string; q?: string }
         );
       })()}
 
-      {typeList.length > 1 && (
+      {!showSpecGrid && typeList.length > 1 && (
         <div className="mt-4 flex gap-2 overflow-x-auto -mx-4 px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {["all", ...typeList].map((tp) => (
             <button key={tp} type="button" onClick={() => setTypeFilter(tp)} className={"shrink-0 px-3.5 py-1.5 rounded-full text-xs font-medium border transition-colors " + (typeFilter === tp ? "bg-teal-700 text-white border-teal-700" : "bg-white text-gray-600 border-gray-200")}>
@@ -199,11 +223,17 @@ export default function HospitalsPage({ city, q }: { city?: string; q?: string }
         </div>
       )}
 
-      <p className="mt-5 mb-3 text-sm text-gray-500" aria-live="polite">
+      {mode === "specialty" && !showSpecGrid && (
+        <button type="button" onClick={() => setSearch("")} className="mt-5 flex items-center gap-1 text-sm font-semibold text-teal-700 hover:text-teal-800">
+          <ChevronLeft className="w-4 h-4" />
+          All specialties
+        </button>
+      )}
+      {!showSpecGrid && <p className="mt-3 mb-3 text-sm text-gray-500" aria-live="polite">
         <span className="font-semibold text-gray-800">{filtered.length}</span> hospital{filtered.length === 1 ? "" : "s"} found{search.trim() ? ` for "${search.trim()}"` : ""}
-      </p>
+      </p>}
 
-      {filtered.length === 0 ? (
+      {showSpecGrid ? null : filtered.length === 0 ? (
         <div className="text-center py-16 text-gray-400" data-ocid="hospitals.empty_state">
           <Search className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p className="text-lg font-medium">No hospitals found</p>
@@ -262,6 +292,16 @@ export default function HospitalsPage({ city, q }: { city?: string; q?: string }
                         </div>
                       </div>
                     </div>
+                    {mode === "specialty" && search.trim() && (
+                      <div className="mt-3 space-y-1.5">
+                        {(doctors as any[]).filter((d) => d.hospitalId === hospital.id && norm(d.specialty).includes(norm(search))).slice(0, 4).map((d) => (
+                          <button key={d.id} type="button" onClick={openHospital} className="w-full flex items-center justify-between text-left text-sm bg-gray-50 hover:bg-teal-50 rounded-lg px-3 py-1.5 transition-colors">
+                            <span className="truncate text-gray-800 font-medium">{d.name}</span>
+                            <span className="text-xs text-teal-700 shrink-0 ml-2">{d.specialty}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     <div className="flex gap-2 mt-3">
                       <button type="button" title="View on map" onClick={(e) => { e.stopPropagation(); setMapHospital(hospital); }} className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-teal-200 text-teal-700 text-sm font-semibold py-2 hover:bg-teal-50 active:scale-[0.98] transition-all">
                         <MapPin className="w-4 h-4" />
