@@ -14,9 +14,8 @@ import { Label }   from "@/components/ui/label";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Fingerprint, Building2, CheckCircle2, Edit2, ImageIcon, KeyRound, Loader2, Plus, RefreshCw, Trash2, UploadCloud } from "lucide-react";
+import { Building2, CheckCircle2, Edit2, ImageIcon, KeyRound, Loader2, Plus, RefreshCw, Trash2, UploadCloud } from "lucide-react";
 import { Fragment, useState } from "react";
-import HospitalIntegrationsDialog from "./HospitalIntegrationsDialog";
 import { toast }  from "sonner";
 import { useStore } from "../../context/StoreContext";
 import * as api from "../../api";
@@ -50,7 +49,6 @@ export default function AdminHospitals() {
   const [loginInfoLoading, setLoginInfoLoading] = useState(false);
   const [newLoginIdInput, setNewLoginIdInput] = useState("");
   const [resetting, setResetting] = useState(false);
-  const [integHospital, setIntegHospital] = useState<Hospital | null>(null);
 
   const existingLocations = Array.from(new Set(hospitals.map((x) => (x.area || "").trim()).filter(Boolean))).sort((x, y) => x.localeCompare(y));
 
@@ -410,9 +408,6 @@ export default function AdminHospitals() {
                     <Button variant="ghost" size="icon" className="size-8" title="Edit hospital" aria-label="Edit hospital" onClick={() => openEditHospital(hospital)} data-ocid="admin.edit_button">
                       <Edit2 className="w-4 h-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="size-8" title="Integrations" aria-label="Integrations" onClick={() => setIntegHospital(hospital)} data-ocid="admin.button">
-                      <Fingerprint className="w-4 h-4" />
-                    </Button>
                     {/* hide Login for Basic: Basic hospitals are not provided with a Hospital Admin account.
                         An empty slot keeps the remaining icons aligned across rows. */}
                     {(hospital.plan ?? "premium") !== "basic" ? (
@@ -563,7 +558,6 @@ export default function AdminHospitals() {
         </DialogContent>
       </Dialog>
 
-      <HospitalIntegrationsDialog hospital={integHospital} onClose={() => setIntegHospital(null)} />
       {/* Hospital Staff Login Dialog */}
       <Dialog open={!!loginDialogHospital} onOpenChange={open => { if (!open) { setLoginDialogHospital(null); setLoginInfo(null); setNewLoginIdInput(""); } }}>
         <DialogContent data-ocid="admin.dialog">

@@ -65,7 +65,7 @@ export default function HAHR() {
   const [loading, setLoading] = useState(false);
   const [paidSet, setPaidSet] = useState<Set<string>>(new Set());
   const [exporting, setExporting] = useState(false);
-  const [today, setToday] = useState<Record<string, { first: string; count: number }>>({});
+  const [today, setToday] = useState<Record<string, string>>({});
 
   async function apiFetch(path: string, method="GET", body?: any) {
     const res = await fetch(`${BASE}${path}`, {
@@ -78,10 +78,10 @@ export default function HAHR() {
   async function load() {
     try { setStaff(await apiFetch("/hr")); } catch {}
     try {
-      const tr = await fetch(`${BASE}/hospital-integrations/today`, { headers: { Authorization: `Bearer ${getToken()}` } });
-      const rows = tr.ok ? await tr.json() : [];
-      const m: Record<string, { first: string; count: number }> = {};
-      for (const r of rows) m[String(r.device_user_id)] = { first: r.first_punch, count: r.punches };
+      const tr = await fetch(`${BASE}/staff-attendance`, { headers: { Authorization: `Bearer ${getToken()}` } });
+      const data = tr.ok ? await tr.json() : { staff: [] };
+      const m: Record<string, string> = {};
+      for (const r of data.staff) if (r.status) m[r.id] = r.status;
       setToday(m);
     } catch {}
   }
@@ -94,10 +94,11 @@ export default function HAHR() {
   }, [hospitalId]);
 
   function todayCell(s: Staff) {
-    if (!s.employee_id) return <span className="text-gray-300">No ID</span>;
-    const e = today[s.employee_id];
-    if (!e) return <span className="text-gray-400">No scan today</span>;
-    return <span className="text-green-700">In {new Date(e.first).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</span>;
+    const st = today[s.id];
+    if (!st) return <span className="text-gray-400">Not marked</span>;
+    const label: Record<string, string> = { present: "Present", half_day: "Half day", leave: "Leave", absent: "Absent" };
+    const cls: Record<string, string> = { present: "text-green-700", half_day: "text-amber-600", leave: "text-blue-600", absent: "text-red-600" };
+    return <span className={cls[st] || "text-gray-500"}>{label[st] || st}</span>;
   }
 
   function monthKey() { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}`; }
@@ -318,7 +319,7 @@ export default function HAHR() {
                 { label:"Department", key:"department", placeholder:"e.g. Cardiology, Emergency" },
                 { label:"Phone", key:"phone", placeholder:"Mobile number" },
                 { label:"Email", key:"email", placeholder:"Email address" },
-                { label:"Employee ID (as enrolled on the attendance device)", key:"employeeId", placeholder:"e.g. 101" },
+                { label:"Employee ID (optional)", key:"employeeId", placeholder:"e.g. 101" },
                 { label:"Join Date", key:"joinDate", placeholder:"YYYY-MM-DD" },
                 { label:"Salary (₹)", key:"salary", placeholder:"Monthly salary" },
               ].map(({ label, key, placeholder }) => (
