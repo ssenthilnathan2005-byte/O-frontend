@@ -38,7 +38,7 @@ export default function TermsPage() {
               />
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Terms & Conditions</h1>
-                <p className="text-xs text-gray-400 mt-0.5">Last updated: June 2026 · Doctor Booked · Udyam Registered Startup</p>
+                <p className="text-xs text-gray-400 mt-0.5">Last updated: June 2026 · Doctor Booked · Care In Motion Private Limited</p>
               </div>
             </div>
             <div className="bg-teal-50 border border-teal-100 rounded-xl px-4 py-3 text-sm text-teal-800">
@@ -51,7 +51,7 @@ export default function TermsPage() {
             <section>
               <h2 className="text-base font-bold text-gray-900 mb-3">1. About Doctor Booked</h2>
               <p>
-                Doctor Booked is a Udyam-registered startup operating across India. We provide an online platform
+                Doctor Booked is operated by Care In Motion Private Limited, a company operating across India. We provide an online platform
                 that allows patients to book doctor appointments, receive a real-time token number, and track their
                 queue position live — eliminating unnecessary waiting at clinics and hospitals.
               </p>
