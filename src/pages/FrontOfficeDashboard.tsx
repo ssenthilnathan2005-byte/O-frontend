@@ -1,4 +1,4 @@
-import { shortPhone } from "../lib/utils";
+﻿import { shortPhone } from "../lib/utils";
 import { hasSessionEndedForDate, getSessionLabelForDate, isSessionEndingSoon } from "../data/seed";
 import VitalsScanAll from "@/components/VitalsScanAll";
 import DateInput from "@/components/DateInput";
@@ -308,6 +308,7 @@ function Outpatients({ canVitals = true }: { canVitals?: boolean }) {
   const [intake, setIntake] = useState<any>(null);
   const [intakeErr, setIntakeErr] = useState(false);
   const intakeReq = useRef(0); // ignores a late answer for a previously opened patient
+  const savingVitalsRef = useRef(false); // a double click on Save must not store two entries
   // Only the vitals this booking's doctor asked for. Nothing is assumed while the list is still loading.
   const ik = (k: string) => !!intake && (intake.fields || []).some((x: any) => x.key === k);
 
@@ -375,6 +376,11 @@ function Outpatients({ canVitals = true }: { canVitals?: boolean }) {
     setVf({ ...emptyV, ...Object.fromEntries(Object.entries(v).map(([k, x]) => [k, String(x)])) } as any);
   }
   async function saveVitals(id: string) {
+    if (savingVitalsRef.current) return;
+    savingVitalsRef.current = true;
+    try { await saveVitalsInner(id); } finally { savingVitalsRef.current = false; }
+  }
+  async function saveVitalsInner(id: string) {
     try {
       const had = !!rows.find(r => r.id === id)?.vitals;
       let reason = "";

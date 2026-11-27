@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Camera, X, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -266,6 +266,7 @@ export default function VitalsScanAll({ onApply, include, label, captureAudit }:
   const cameraRef = useRef<HTMLInputElement | null>(null);
   const galleryRef = useRef<HTMLInputElement | null>(null);
   const boxRef = useRef<HTMLDivElement | null>(null);
+  const openedAt = useRef(0); // when the scanner opened: a double click must not close it again
   const dragStart = useRef<{ x: number; y: number } | null>(null);
   const framesRef = useRef<HTMLCanvasElement[]>([]); // extra frames from the live camera, used to vote on hard digits
 
@@ -282,7 +283,7 @@ export default function VitalsScanAll({ onApply, include, label, captureAudit }:
     setAutoCrop(false); setIssues([]); setQMetrics(null); pixels.current = null; cropRef.current = null;
     setVals({}); setTouched({}); setThumb(null); setVerified(false); setError(""); setProgress(0); setStage(""); setSeenInfo(null); setCopied(false); setOrig(null);
   }
-  function openScanner() { if (open) return; resetAll(); setOpen(true); }
+  function openScanner() { if (open) return; openedAt.current = Date.now(); resetAll(); setOpen(true); }
   function closeScanner() { resetAll(); setOpen(false); }
 
       /** Manual entry: open the same review form with empty fields (no photo, no OCR). */
@@ -742,7 +743,7 @@ export default function VitalsScanAll({ onApply, include, label, captureAudit }:
       </button>
 
       {open && createPortal(
-        <div className="fixed inset-0 z-[100] bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={closeScanner}>
+        <div className="fixed inset-0 z-[100] bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => { if (Date.now() - openedAt.current > 500) closeScanner(); }}>
           <div className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[92vh] overflow-y-auto p-4 space-y-3" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="text-base font-semibold text-gray-900">Scan all vitals from monitor</h3>
