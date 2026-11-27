@@ -576,23 +576,18 @@ function AppRoutes() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {!hideTopNav && <TopNav />}
 
-      {/* Server status banner — shown when Railway is waking up or unreachable */}
-      {serverStatus === "waking" && (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500 text-white text-sm font-medium py-2.5 px-4 flex items-center justify-center gap-2 shadow-md">
-          <svg className="w-4 h-4 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+      {/* Server status loader - simple centered spinner while the server wakes up or is unreachable */}
+      {(serverStatus === "waking" || serverStatus === "offline") && (
+        <div
+          className="server-loader fixed inset-0 z-50 flex items-center justify-center bg-white/50 backdrop-blur-[2px] pointer-events-none"
+          role="status"
+          aria-live="polite"
+        >
+          <svg className="w-12 h-12 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" stroke="#FBBF24" strokeOpacity="0.25" strokeWidth="3" />
+            <path d="M22 12a10 10 0 00-10-10" stroke="#FBBF24" strokeWidth="3" strokeLinecap="round" />
           </svg>
-          <span>Server is starting up — connecting automatically, please wait…</span>
-        </div>
-      )}
-      {serverStatus === "offline" && (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-amber-600 text-white text-sm font-medium py-2.5 px-4 flex items-center justify-center gap-2 shadow-md">
-          <svg className="w-4 h-4 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-          </svg>
-          <span>Taking longer than usual — still trying to connect, please wait…</span>
+          <span className="sr-only">Connecting to server</span>
         </div>
       )}
       <main className="flex-1 pb-24 md:pb-8">
