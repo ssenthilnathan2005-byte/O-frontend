@@ -4,7 +4,8 @@ import { useTabRoute } from "../router/RouterContext";
 import { BedDouble, CheckCircle, ClipboardList, FlaskConical, LayoutGrid, Phone, X, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
-import { getToken } from "../api";
+import { getToken, connectTokenSocket } from "../api";
+import type { LabSessionState } from "../api";
 import { useStore } from "../context/StoreContext";
 import { useExtraNav, ExtraPanel } from "../components/StaffExtras";
 import LabShell from "../components/layout/LabShell";
@@ -14,7 +15,7 @@ const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/
 
 type Order = {
   id: string; patient_name: string; phone?: string | null; test_name: string; status: string;
-  priority: string; result_value: string | null; ordered_at: string;
+  priority: string; result_value: string | null; ordered_at: string; test_id?: string | null;
   slot_date?: string | null; slot_time?: string | null; token_number?: number | null; source?: string | null;
 };
 
@@ -99,7 +100,7 @@ if (!hasModule("lab")) return (<div className="min-h-screen flex flex-col items-
 
       {tab.startsWith("x:") && <ExtraPanel moduleKey={tab.slice(2)} />}
       {tab === "inpatients" && <InpatientsPanel call={call} onChanged={load} />}
-      {tab === "board" && <TokenBoard orders={orders} busy={busy} update={update} onResult={(o) => { setResultFor(o); setResultValue(o.result_value || ""); }} />}
+      {tab === "board" && <TokenBoard orders={orders} busy={busy} update={update} call={call} hospitalId={(user as any)?.hospitalId || ""} onChanged={load} onResult={(o) => { setResultFor(o); setResultValue(o.result_value || ""); }} />}
 
       {tab === "orders" && (<><div><h1 className="text-xl font-bold text-gray-900">Lab Bookings</h1><p className="text-sm text-gray-500">Booked tests, sample collection and reports.</p></div>
       <div className="flex flex-wrap gap-2">
@@ -206,30 +207,100 @@ const TOKEN_LEGEND: [string, string][] = [
 ];
 const SESSIONS: [string, string][] = [["morning", "Morning"], ["afternoon", "Afternoon"]];
 
-function TokenBoard({ orders, busy, update, onResult }: {
+const QUEUE_CLS: Record<string, string> = {
+  red: "bg-red-50 text-red-600 border-red-300",
+  yellow: "bg-yellow-100 text-yellow-700 border-yellow-400",
+  orange: "bg-orange-500 text-white border-orange-600",
+  green: "bg-green-100 text-green-700 border-green-400",
+  purple: "bg-purple-100 text-purple-700 border-purple-300",
+};
+const QUEUE_LEGEND: [string, string][] = [
+  ["red", "Waiting"], ["yellow", "Next up"], ["orange", "Now serving"], ["green", "Completed"], ["purple", "Skipped"],
+];
+
+function TokenBoard({ orders, busy, update, onResult, call, hospitalId, onChanged }: {
   orders: Order[]; busy: boolean;
   update: (o: Order, status?: string, resultValue?: string) => Promise<void>;
   onResult: (o: Order) => void;
+  call: (path: string, method?: string, body?: any) => Promise<any>;
+  hospitalId: string;
+  onChanged: () => void;
 }) {
   const dates = useMemo(() => [0, 1, 2, 3, 4].map(localDate), []);
   const [date, setDate] = useState(dates[0]);
   const [session, setSession] = useState(new Date().getHours() < 12 ? "morning" : "afternoon");
-  const [testName, setTestName] = useState("");
+  const [testId, setTestId] = useState("");
   const [selId, setSelId] = useState<string | null>(null);
+  const [qs, setQs] = useState<LabSessionState | null>(null);
+  const [qBusy, setQBusy] = useState(false);
 
-  const tokened = orders.filter((o) => o.token_number != null && o.slot_date);
-  const tests = Array.from(new Set(tokened.map((o) => o.test_name)));
-  const activeTest = tests.includes(testName) ? testName : tests[0] || "";
+  const tokened = orders.filter((o) => o.token_number != null && o.slot_date && o.test_id);
+  const testList = Array.from(new Map(tokened.map((o) => [o.test_id as string, o.test_name] as [string, string])).entries());
+  const activeTest = testList.some(([id]) => id === testId) ? testId : testList[0]?.[0] || "";
   const sess = (o: Order) => String(o.slot_time || "").toLowerCase();
 
-  const forDate = tokened.filter((o) => o.test_name === activeTest && o.slot_date === date);
+  const forDate = tokened.filter((o) => o.test_id === activeTest && o.slot_date === date);
   const inSession = forDate.filter((o) => sess(o) === session).sort((a, b) => (a.token_number || 0) - (b.token_number || 0));
-  const testCount = (t: string) => tokened.filter((o) => o.test_name === t && o.slot_date === date && o.status !== "cancelled").length;
+  const testCount = (id: string) => tokened.filter((o) => o.test_id === id && o.slot_date === date && o.status !== "cancelled").length;
   const sessionCount = (k: string) => forDate.filter((o) => sess(o) === k && o.status !== "cancelled").length;
-  const countOf = (f: (o: Order) => boolean) => inSession.filter(f).length;
   const sel = selId ? orders.find((o) => o.id === selId) || null : null;
   const next = sel ? NEXT[sel.status] : undefined;
   const open = sel ? sel.status !== "report_ready" && sel.status !== "cancelled" : false;
+
+  // Live queue of this test / date / session (same flow as the independent lab's Token Control)
+  useEffect(() => {
+    if (!activeTest || !hospitalId) { setQs(null); return; }
+    let alive = true;
+    setQs(null);
+    const load = () => call(`/queue/${activeTest}/${date}/${session}`)
+      .then((s) => { if (alive && s && s.tokenStatuses) setQs(s as LabSessionState); }).catch(() => {});
+    load();
+    const t = setInterval(load, 10000);
+    const close = connectTokenSocket(`hl:${hospitalId}_${activeTest}_${date}_${session}`, (p: any) => {
+      if (alive && p?.type === "state_update" && p.state) { setQs(p.state as LabSessionState); onChanged(); }
+    });
+    return () => { alive = false; clearInterval(t); close(); };
+  }, [activeTest, date, session, hospitalId]);
+
+  const statuses = qs?.tokenStatuses ?? {};
+  const cur = qs?.currentToken ?? null;
+  const nxt = qs?.nextToken ?? null;
+  const countQ = (s: string) => inSession.filter((o) => o.status !== "cancelled" && statuses[String(o.token_number)] === s).length;
+  const waiting = countQ("red") + countQ("yellow");
+  const byToken = new Map<number, Order>(inSession.map((o) => [o.token_number as number, o]));
+  const curOrder = cur != null ? byToken.get(cur) : undefined;
+  const nextOrder = nxt != null ? byToken.get(nxt) : undefined;
+  const selState = sel && sel.token_number != null ? statuses[String(sel.token_number)] : undefined;
+
+  async function act(action: "call" | "complete" | "skip", token?: number): Promise<boolean> {
+    if (!activeTest) return false;
+    setQBusy(true);
+    try {
+      const s = await call(`/queue/${activeTest}/${date}/${session}/${action}`, "POST", token != null ? { token } : {});
+      if (s && s.tokenStatuses) setQs(s as LabSessionState);
+      return true;
+    } catch (e: any) { toast.error(e.message || "Queue update failed"); return false; }
+    finally { setQBusy(false); }
+  }
+  async function callToken(n?: number) {
+    if (await act("call", n)) toast.success(n != null ? `Token #${n} is now being served` : "Next token called");
+    setSelId(null);
+  }
+  async function completeCurrent() {
+    const done = cur;
+    if (await act("complete")) toast.success(`Token #${done} completed`);
+    setSelId(null);
+  }
+  async function skipToken(n: number) {
+    if (await act("skip", n)) toast.success(`Token #${n} skipped`);
+    setSelId(null);
+  }
+
+  const tokenCls = (o: Order) => {
+    const st = statuses[String(o.token_number)];
+    const base = qs ? (QUEUE_CLS[st] || QUEUE_CLS.red) : (TOKEN_CLS[o.status] || TOKEN_CLS.ordered);
+    return o.status === "cancelled" ? `${base} opacity-50 line-through` : base;
+  };
 
   const pill = (on: boolean) =>
     `shrink-0 px-3 py-2 rounded-xl border text-sm font-medium ${on ? "border-teal-500 bg-teal-50 text-teal-700" : "border-gray-200 bg-white text-gray-600"}`;
@@ -238,18 +309,18 @@ function TokenBoard({ orders, busy, update, onResult }: {
     <div>
       <div className="mb-4">
         <h2 className="text-lg font-bold text-gray-900">Token Board</h2>
-        <p className="text-xs text-gray-500 mt-0.5">Every test has its own tokens for each date and session.</p>
+        <p className="text-xs text-gray-500 mt-0.5">Every test has its own live queue for each date and session. Patients are notified as you call tokens.</p>
       </div>
 
-      {tests.length === 0 ? (
+      {testList.length === 0 ? (
         <div className="py-12 text-center text-gray-400 text-sm">No bookings yet. Tokens appear here as patients book.</div>
       ) : (
         <>
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Test</p>
           <div className="flex gap-2 overflow-x-auto pb-2 mb-3">
-            {tests.map((t) => (
-              <button key={t} type="button" onClick={() => setTestName(t)} className={pill(activeTest === t)}>
-                {t} <span className="ml-1 text-xs opacity-70">({testCount(t)})</span>
+            {testList.map(([id, name]) => (
+              <button key={id} type="button" onClick={() => setTestId(id)} className={pill(activeTest === id)}>
+                {name} <span className="ml-1 text-xs opacity-70">({testCount(id)})</span>
               </button>
             ))}
           </div>
@@ -277,30 +348,55 @@ function TokenBoard({ orders, busy, update, onResult }: {
               No bookings for this test in the {session} session on this date.
             </div>
           ) : (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-              <div className="flex gap-4 mb-4 pb-3 border-b border-gray-100 text-xs text-gray-500">
-                <span>Waiting <b className="text-gray-800">{countOf((o) => o.status === "ordered")}</b></span>
-                <span>In progress <b className="text-gray-800">{countOf((o) => o.status === "sample_collected" || o.status === "processing")}</b></span>
-                <span>Report ready <b className="text-gray-800">{countOf((o) => o.status === "report_ready")}</b></span>
-                <span>Total <b className="text-gray-800">{inSession.length}</b></span>
+            <>
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Now serving</p>
+                    <p className="text-4xl font-extrabold text-orange-500 leading-none mt-1">{cur != null ? `#${cur}` : "—"}</p>
+                    {curOrder && (
+                      <p className="text-xs text-gray-600 mt-1.5 truncate">{curOrder.patient_name}{curOrder.phone ? ` · ${shortPhone(curOrder.phone)}` : ""}</p>
+                    )}
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Next up</p>
+                    <p className="text-2xl font-extrabold text-yellow-600 leading-none mt-1">{nxt != null ? `#${nxt}` : "—"}</p>
+                    {nextOrder && <p className="text-xs text-gray-500 mt-1.5">{nextOrder.patient_name.split(" ")[0]}</p>}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-4">
+                  <button type="button" disabled={qBusy || waiting === 0} onClick={() => callToken()}
+                    className="px-4 py-2 rounded-lg text-sm font-semibold bg-teal-500 hover:bg-teal-600 text-white disabled:opacity-50">Call next</button>
+                  <button type="button" disabled={qBusy || cur == null} onClick={completeCurrent}
+                    className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 text-gray-700 disabled:opacity-50">Complete current</button>
+                </div>
+                <div className="flex gap-4 mt-4 pt-3 border-t border-gray-100 text-xs text-gray-500">
+                  <span>Waiting <b className="text-gray-800">{waiting}</b></span>
+                  <span>Completed <b className="text-gray-800">{countQ("green")}</b></span>
+                  <span>Skipped <b className="text-gray-800">{countQ("purple")}</b></span>
+                  <span>Total <b className="text-gray-800">{inSession.length}</b></span>
+                </div>
               </div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Tokens · tap to manage</p>
-              <div className="flex flex-wrap gap-2">
-                {inSession.map((o) => (
-                  <button key={o.id} type="button" onClick={() => setSelId(o.id)} title={o.patient_name}
-                    className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl border-2 text-sm font-semibold transition-all hover:scale-105 ${TOKEN_CLS[o.status] || TOKEN_CLS.ordered}`}>
-                    {o.token_number}
-                  </button>
-                ))}
+
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Tokens {"·"} tap to manage</p>
+                <div className="flex flex-wrap gap-2">
+                  {inSession.map((o) => (
+                    <button key={o.id} type="button" onClick={() => setSelId(o.id)} title={o.patient_name}
+                      className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl border-2 text-sm font-semibold transition-all hover:scale-105 ${tokenCls(o)} ${statuses[String(o.token_number)] === "orange" ? "scale-110 shadow-lg" : ""}`}>
+                      {o.token_number}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-x-3 gap-y-1 mt-4">
+                  {QUEUE_LEGEND.map(([k, label]) => (
+                    <span key={k} className="flex items-center gap-1 text-[11px] text-gray-500">
+                      <span className={`w-2.5 h-2.5 rounded-sm border ${QUEUE_CLS[k]}`} /> {label}
+                    </span>
+                  ))}
+                </div>
               </div>
-              <div className="flex flex-wrap gap-x-3 gap-y-1 mt-4">
-                {TOKEN_LEGEND.map(([k, label]) => (
-                  <span key={k} className="flex items-center gap-1 text-[11px] text-gray-500">
-                    <span className={`w-2.5 h-2.5 rounded-sm border ${TOKEN_CLS[k]}`} /> {label}
-                  </span>
-                ))}
-              </div>
-            </div>
+            </>
           )}
         </>
       )}
@@ -323,9 +419,29 @@ function TokenBoard({ orders, busy, update, onResult }: {
               {sel.status === "cancelled" && <p className="text-xs font-semibold text-red-600">This booking was cancelled.</p>}
             </div>
             <div className="px-5 py-3 border-t flex flex-wrap gap-2 justify-end">
+              {sel.status !== "cancelled" && (selState === "red" || selState === "yellow") && (
+                <>
+                  <button disabled={qBusy} onClick={() => callToken(sel.token_number as number)}
+                    className="px-3 py-2 rounded-lg text-xs font-semibold bg-teal-500 hover:bg-teal-600 text-white disabled:opacity-60">Call now</button>
+                  <button disabled={qBusy} onClick={() => skipToken(sel.token_number as number)}
+                    className="px-3 py-2 rounded-lg text-xs font-medium border border-gray-200 text-gray-700 disabled:opacity-60">Skip (not present)</button>
+                </>
+              )}
+              {sel.status !== "cancelled" && selState === "orange" && (
+                <>
+                  <button disabled={qBusy} onClick={completeCurrent}
+                    className="px-3 py-2 rounded-lg text-xs font-semibold bg-green-600 hover:bg-green-700 text-white disabled:opacity-60">Mark completed</button>
+                  <button disabled={qBusy} onClick={() => skipToken(sel.token_number as number)}
+                    className="px-3 py-2 rounded-lg text-xs font-medium border border-gray-200 text-gray-700 disabled:opacity-60">Skip</button>
+                </>
+              )}
+              {sel.status !== "cancelled" && selState === "purple" && (
+                <button disabled={qBusy} onClick={() => callToken(sel.token_number as number)}
+                  className="px-3 py-2 rounded-lg text-xs font-semibold bg-teal-500 hover:bg-teal-600 text-white disabled:opacity-60">Call again</button>
+              )}
               {open && next && (
                 <button disabled={busy} onClick={() => update(sel, next.to)}
-                  className="px-3 py-2 rounded-lg text-xs font-semibold bg-teal-500 hover:bg-teal-600 text-white disabled:opacity-60">{next.label} →</button>
+                  className="px-3 py-2 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-60">{next.label} {"→"}</button>
               )}
               {sel.status !== "cancelled" && (
                 <button disabled={busy} onClick={() => { onResult(sel); setSelId(null); }}

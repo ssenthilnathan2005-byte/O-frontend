@@ -6,6 +6,24 @@ import * as api from "../../api";
 import { useRouter } from "../../router/RouterContext";
 import LabQueuePanel from "./LabQueuePanel";
 
+const HBASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
+
+// A hospital lab booking (id starts with hlo_), shaped like a lab booking so the same page and notifications work
+async function loadHospitalOrder(id: string): Promise<api.LabBooking | null> {
+  const r = await fetch(`${HBASE}/hospital-lab/my-orders`, { headers: { Authorization: `Bearer ${api.getToken()}` } });
+  const d = await r.json();
+  const o = Array.isArray(d) ? d.find((x: any) => x.id === id) : null;
+  if (!o) return null;
+  return {
+    id: o.id, patient_id: null, patient_name: "", phone: "", lab_id: o.hospital_id, test_id: o.test_id || "",
+    lab_name: o.hospital_name, lab_area: o.booked_via === "ipd" ? "Hospital lab booked report" : "Hospital lab", test_name: o.test_name,
+    slot_date: o.slot_date || String(o.ordered_at).slice(0, 10), slot_time: o.slot_time || "morning",
+    token_number: o.token_number, collection_type: "walk_in", price: o.price ?? o.amount ?? 0, payment_done: false,
+    status: o.status === "ordered" ? "booked" : o.status, report_url: o.report_url || null,
+    created_at: o.ordered_at, updated_at: o.ordered_at, _result: o.result_value || null, _ipd: o.booked_via === "ipd",
+  } as unknown as api.LabBooking;
+}
+
 interface Props {
   bookingId: string;
 }
@@ -22,6 +40,7 @@ export default function LabTrackingPage({ bookingId }: Props) {
   const { goBack, navigate } = useRouter();
   const [booking, setBooking] = useState<api.LabBooking | null>(null);
   const [loading, setLoading] = useState(true);
+  const isHospital = bookingId.startsWith("hlo_");
 
   // Request push permission once, so background notifications work
   useEffect(() => { enablePushNotifications(); }, []);
@@ -34,8 +53,9 @@ export default function LabTrackingPage({ bookingId }: Props) {
 
     async function fetchStatus() {
       try {
-        const bookings = await api.labs.myBookings();
-        const found = bookings.find((b) => b.id === bookingId);
+        const found = isHospital
+          ? await loadHospitalOrder(bookingId)
+          : (await api.labs.myBookings()).find((b) => b.id === bookingId);
         if (mounted && found) setBooking(found);
       } catch {
         // silent — keep last known state on transient errors
@@ -47,7 +67,7 @@ export default function LabTrackingPage({ bookingId }: Props) {
     fetchStatus();
     const interval = setInterval(fetchStatus, 10_000); // poll every 10s
     return () => { mounted = false; clearInterval(interval); };
-  }, [bookingId]);
+  }, [bookingId, isHospital]);
 
   if (loading) {
     return (
@@ -88,13 +108,13 @@ export default function LabTrackingPage({ bookingId }: Props) {
         </div>
         <div className="grid grid-cols-2 gap-2 text-xs text-gray-500 mt-3 pt-3 border-t border-gray-100">
           <span>Date: <span className="text-gray-800 font-medium">{booking.slot_date}</span></span>
-          <span>Session: <span className="text-gray-800 font-medium">{api.labSessionLabel(booking.slot_time)}</span></span>
-          <span>Type: <span className="text-gray-800 font-medium">{booking.collection_type === "home" ? "Home Collection" : "Walk-in"}</span></span>
+          {!(booking as any)._ipd && <span>Session: <span className="text-gray-800 font-medium">{api.labSessionLabel(booking.slot_time)}</span></span>}
+          <span>Type: <span className="text-gray-800 font-medium">{isHospital ? ((booking as any)._ipd ? "Inpatient (IPD bill)" : "Hospital lab") : booking.collection_type === "home" ? "Home Collection" : "Walk-in"}</span></span>
           <span>Amount: <span className="text-gray-800 font-medium">₹{booking.price}</span></span>
         </div>
       </div>
 
-      {!isCancelled && <LabQueuePanel booking={booking} />}
+      {!isCancelled && <LabQueuePanel booking={booking} hospitalLab={isHospital} />}
 
       {isCancelled ? (
         <div className="bg-red-50 border border-red-200 rounded-2xl p-5 text-center">
@@ -129,6 +149,9 @@ export default function LabTrackingPage({ bookingId }: Props) {
             })}
           </div>
 
+          {booking.status === "report_ready" && (booking as any)._result && (
+            <p className="text-sm text-green-700 font-medium mt-2 mb-1">Result: {(booking as any)._result}</p>
+          )}
           {booking.status === "report_ready" && booking.report_url && (
             <a
               href={booking.report_url}

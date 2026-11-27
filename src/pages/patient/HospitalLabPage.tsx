@@ -4,11 +4,12 @@ import { toast } from "sonner";
 import * as api from "../../api";
 import { useRouter } from "../../router/RouterContext";
 import { useStore } from "../../context/StoreContext";
+import { enablePushNotifications } from "../../lib/push";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
 type Test = { id: string; name: string; category: string; sample_type: string; report_hours: number; price: number };
-type Booked = { token_number: number | null; slot_date: string; slot_time: string; testName: string };
+type Booked = { id?: string; token_number: number | null; slot_date: string; slot_time: string; testName: string };
 
 export default function HospitalLabPage({ id, onBack }: { id: string; onBack: () => void }) {
   const { navigate } = useRouter();
@@ -29,6 +30,8 @@ export default function HospitalLabPage({ id, onBack }: { id: string; onBack: ()
       if (Array.isArray(d)) setMine(d);
     } catch {}
   }
+  // Ask for push permission so lab updates reach the patient when the app is closed
+  useEffect(() => { if (user) enablePushNotifications(); }, [user]);
   useEffect(() => {
     loadMine();
     const t = setInterval(loadMine, 8000);
@@ -82,7 +85,8 @@ export default function HospitalLabPage({ id, onBack }: { id: string; onBack: ()
             {mine.map((o) => {
               const st = STATUS[o.status] || { label: o.status, cls: "bg-gray-100 text-gray-500" };
               return (
-                <div key={o.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+                <div key={o.id} role="button" tabIndex={0} onClick={() => navigate({ path: "/labs/track", bookingId: o.id })}
+                  className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 cursor-pointer hover:border-teal-200">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="font-semibold text-gray-900 text-sm">{o.test_name}</p>
@@ -101,7 +105,7 @@ export default function HospitalLabPage({ id, onBack }: { id: string; onBack: ()
                     <p className="text-xs text-green-700 mt-2 font-medium">Result: {o.result_value}</p>
                   )}
                   {o.status === "report_ready" && o.report_url && (
-                    <a href={o.report_url} target="_blank" rel="noreferrer" className="text-xs text-teal-600 underline mt-1 inline-block">View report</a>
+                    <a href={o.report_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-xs text-teal-600 underline mt-1 inline-block">View report</a>
                   )}
                   {o.status !== "report_ready" && o.status !== "cancelled" && (
                     <p className="text-xs text-gray-400 mt-2">{o.booked_via === "ipd" ? "Added to your IPD bill. The report appears here when ready." : `Pay ₹${o.price} at the hospital lab. This updates automatically.`}</p>
@@ -171,6 +175,7 @@ function sessionOpen(date: string, s: LabSess, clock: { today: string; nowMin: n
 }
 
 function BookDialog({ hospitalId, hospitalName, test, onClose }: { hospitalId: string; hospitalName: string; test: Test; onClose: () => void }) {
+  const { navigate } = useRouter();
   const [slotDate, setSlotDate] = useState("");
   const [slotTime, setSlotTime] = useState("");
   const [patientName, setPatientName] = useState("");
@@ -257,6 +262,10 @@ function BookDialog({ hospitalId, hospitalName, test, onClose }: { hospitalId: s
           )}
           <p className="text-xs text-gray-500 mb-1">{booked.slot_date} · {booked.slot_time} session</p>
           <p className="text-xs text-gray-400 mb-5">Pay ₹{test.price} at the hospital lab.</p>
+          {booked.id && (
+            <button type="button" onClick={() => navigate({ path: "/labs/track", bookingId: booked.id as string })}
+              className="w-full mb-2 border border-teal-200 text-teal-700 rounded-full py-3 text-sm font-semibold">Track my token live</button>
+          )}
           <button type="button" onClick={onClose} className="w-full bg-teal-500 hover:bg-teal-600 text-white rounded-full py-3 text-sm font-semibold">Done</button>
         </div>
       </div>

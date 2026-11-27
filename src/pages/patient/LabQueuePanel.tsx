@@ -4,6 +4,8 @@ import * as api from "../../api";
 import { resolveSessionTiming } from "../../data/seed";
 import { useLabQueueNotifications } from "../../hooks/useLabQueueNotifications";
 
+const HBASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
+
 const TOKEN_STYLE: Record<string, string> = {
   red: "bg-red-50 text-red-600 border-red-200",
   yellow: "bg-yellow-100 text-yellow-700 border-yellow-300",
@@ -20,7 +22,7 @@ const LEGEND: [string, string][] = [
   ["purple", "Skipped"],
 ];
 
-export default function LabQueuePanel({ booking }: { booking: api.LabBooking }) {
+export default function LabQueuePanel({ booking, hospitalLab = false }: { booking: api.LabBooking; hospitalLab?: boolean }) {
   const [session, setSession] = useState<api.LabSessionState | null>(null);
   const [lateFlag, setLateFlag] = useState(!!booking.late_flag);
   const [lateEtaMinutes, setLateEtaMinutes] = useState<number | null>(booking.late_eta_minutes ?? null);
@@ -35,19 +37,21 @@ export default function LabQueuePanel({ booking }: { booking: api.LabBooking }) 
     let mounted = true;
     const load = async () => {
       try {
-        const s = await api.labs.getSession(labId, testId, slotDate, slotTime);
-        if (mounted) setSession(s);
+        const s = hospitalLab
+          ? await fetch(`${HBASE}/hospital-lab/queue/${encodeURIComponent(labId)}/${encodeURIComponent(testId)}/${slotDate}/${slotTime}`).then((r) => r.json())
+          : await api.labs.getSession(labId, testId, slotDate, slotTime);
+        if (mounted) setSession(s && s.tokenStatuses ? s : null);
       } catch {
         // keep last known state
       }
     };
     load();
     const interval = setInterval(load, 10_000);
-    const closeSocket = api.connectTokenSocket(`${labId}_${testId}_${slotDate}_${slotTime}`, (p: any) => {
+    const closeSocket = api.connectTokenSocket(`${hospitalLab ? "hl:" : ""}${labId}_${testId}_${slotDate}_${slotTime}`, (p: any) => {
       if (mounted && p?.type === "state_update" && p.state) setSession(p.state as api.LabSessionState);
     });
     return () => { mounted = false; clearInterval(interval); closeSocket(); };
-  }, [labId, testId, slotDate, slotTime]);
+  }, [labId, testId, slotDate, slotTime, hospitalLab]);
 
   useLabQueueNotifications(
     session,
@@ -105,7 +109,7 @@ export default function LabQueuePanel({ booking }: { booking: api.LabBooking }) 
     }
   }
 
-  const canShowLate = myState === "red" || myState === "yellow";
+  const canShowLate = !hospitalLab && (myState === "red" || myState === "yellow");
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-5">
