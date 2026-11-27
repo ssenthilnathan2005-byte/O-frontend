@@ -576,16 +576,17 @@ function AppRoutes() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {!hideTopNav && <TopNav />}
 
-      {/* Server status loader - simple centered spinner while the server wakes up or is unreachable */}
+      {/* Server status loader v2 - small corner spinner while the server wakes up or is unreachable */}
       {(serverStatus === "waking" || serverStatus === "offline") && (
         <div
-          className="server-loader fixed inset-0 z-50 flex items-center justify-center bg-white/50 backdrop-blur-[2px] pointer-events-none"
+          className="server-loader-corner fixed right-3 z-50 pointer-events-none flex items-center justify-center w-9 h-9 rounded-full bg-white/90 shadow-sm"
+          style={{ top: "calc(env(safe-area-inset-top, 0px) + 12px)" }}
           role="status"
           aria-live="polite"
         >
-          <svg className="w-12 h-12 animate-spin" fill="none" viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="10" stroke="#FBBF24" strokeOpacity="0.25" strokeWidth="3" />
-            <path d="M22 12a10 10 0 00-10-10" stroke="#FBBF24" strokeWidth="3" strokeLinecap="round" />
+          <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" stroke="#0D9488" strokeOpacity="0.2" strokeWidth="3" />
+            <path d="M22 12a10 10 0 00-10-10" stroke="#0D9488" strokeWidth="3" strokeLinecap="round" />
           </svg>
           <span className="sr-only">Connecting to server</span>
         </div>
