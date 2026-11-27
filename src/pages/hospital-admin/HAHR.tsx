@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { getToken } from "../../api";
 import { downloadFile } from "../../lib/downloadFile";
 import StaffActions from "./StaffActions";
+import EmployeeFormModal from "./EmployeeFormModal";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
@@ -307,66 +308,7 @@ export default function HAHR() {
       )}
 
       {showForm && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-6 py-4 border-b">
-              <h2 className="font-semibold text-lg">{editId ? "Edit Staff" : "Add Staff"}</h2>
-              <button onClick={() => setShowForm(false)}><X className="w-4 h-4" /></button>
-            </div>
-            <div className="px-6 py-4 space-y-3">
-              {[
-                { label:"Name *", key:"name", placeholder:"Full name" },
-                { label:"Department", key:"department", placeholder:"e.g. Cardiology, Emergency" },
-                { label:"Phone", key:"phone", placeholder:"Mobile number" },
-                { label:"Email", key:"email", placeholder:"Email address" },
-                { label:"Employee ID (optional)", key:"employeeId", placeholder:"e.g. 101" },
-                { label:"Join Date", key:"joinDate", placeholder:"YYYY-MM-DD" },
-                { label:"Salary (₹)", key:"salary", placeholder:"Monthly salary" },
-              ].map(({ label, key, placeholder }) => (
-                <div key={key}>
-                  <label className="text-sm font-medium text-gray-600 mb-1 block">{label}</label>
-                  <Input placeholder={placeholder} value={(form as any)[key]} disabled={!!editing?.login_id && (key==="name" || key==="phone")}
-                    onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} />
-                </div>
-              ))}
-              <div>
-                <label className="text-sm font-medium text-gray-600 mb-1 block">Role *</label>
-                <select value={form.role} disabled={!!editing?.login_id} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
-                  className="w-full border rounded-md px-3 py-2 text-sm bg-white">
-                  {(editing?.login_id ? [form.role, ...ROLES.filter(r => r !== form.role)] : ROLES).map(r => <option key={r} value={r} className="capitalize">{r.replace("_"," ")}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-600 mb-1 block">Shift (select one or more)</label>
-                <div className="flex flex-wrap gap-3 border rounded-md px-3 py-2 bg-white">
-                  {SHIFTS.map(s => (
-                    <label key={s} className="flex items-center gap-1.5 text-sm capitalize cursor-pointer">
-                      <input type="checkbox" checked={form.shifts.includes(s)}
-                        onChange={e => setForm(f => ({
-                          ...f, shifts: e.target.checked ? [...f.shifts, s] : f.shifts.filter(x => x !== s),
-                        }))} />
-                      {s}
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-600 mb-1 block">Notes</label>
-                <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                  rows={2} placeholder="Additional notes..."
-                  className="w-full border rounded-md px-3 py-2 text-sm bg-white resize-none" />
-              </div>
-            </div>
-            <div className="px-6 py-4 border-t flex gap-3 justify-end">
-              <button onClick={() => setShowForm(false)}
-                className="px-4 py-2 rounded-lg text-sm border hover:bg-gray-50 transition-colors">Cancel</button>
-              <button onClick={handleSubmit} disabled={loading}
-                className="px-4 py-2 rounded-lg text-sm bg-teal-600 hover:bg-teal-700 text-white font-medium transition-colors disabled:opacity-50">
-                {loading ? "Saving..." : editId ? "Update" : "Add Staff"}
-              </button>
-            </div>
-          </div>
-        </div>
+        <EmployeeFormModal editing={editing} staffList={staff} onClose={() => setShowForm(false)} onSaved={load} />
       )}
     </div>
   );
