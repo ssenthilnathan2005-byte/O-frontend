@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Copy, Eye, KeyRound, Loader2, RefreshCw, Search, X } from "lucide-react";
 import { getToken } from "../../api";
+import { useStore } from "../../context/StoreContext";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
@@ -52,6 +53,8 @@ function copy(text: string) {
 }
 
 export default function HAPasswordManagement() {
+  const { user } = useStore();
+  const hid = user && user.role === "hospital_admin" ? user.hospitalId : "";
   const [rows, setRows] = useState<Row[]>([]);
   const [vaultEnabled, setVaultEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -82,6 +85,31 @@ export default function HAPasswordManagement() {
     window.addEventListener("db-activity-live", onLive);
     return () => { clearInterval(t); document.removeEventListener("visibilitychange", onVis); window.removeEventListener("focus", onVis); window.removeEventListener("db-activity-live", onLive); };
   }, []);
+
+  // Instant updates: the server pings this hospital's room whenever any password is set or changed
+  // (including a staff member's first-time password). The ping carries no data; we just re-read the list.
+  useEffect(() => {
+    if (!hid) return;
+    const wsBase = BASE.replace(/^http/, "ws").replace(/\/api\/?$/, "");
+    let ws: WebSocket | null = null;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let dead = false;
+    let backoff = 2000;
+    const connect = () => {
+      if (dead) return;
+      try {
+        ws = new WebSocket(wsBase + "/ws?session=" + encodeURIComponent("pwd_" + hid));
+        ws.onopen = () => { backoff = 2000; load(true); };
+        ws.onmessage = (e) => {
+          try { if (JSON.parse(e.data).type === "password") load(true); } catch { /* ignore */ }
+        };
+        ws.onclose = () => { if (!dead) { timer = setTimeout(connect, backoff); backoff = Math.min(backoff * 2, 30000); } };
+        ws.onerror = () => ws?.close();
+      } catch { if (!dead) timer = setTimeout(connect, backoff); }
+    };
+    connect();
+    return () => { dead = true; if (timer) clearTimeout(timer); try { ws?.close(); } catch { /* ignore */ } };
+  }, [hid]);
 
   const shown = useMemo(() => {
     const s = q.trim().toLowerCase();
