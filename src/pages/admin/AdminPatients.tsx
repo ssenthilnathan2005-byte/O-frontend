@@ -32,6 +32,9 @@ export default function AdminPatients() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [selected, setSelected] = useState<string>("all");
+  const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [bulkConfirm, setBulkConfirm] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const { groups, noBookingRows } = useMemo(() => {
     const patientById = new Map(patients.map((p) => [p.id, p]));
@@ -91,6 +94,44 @@ export default function AdminPatients() {
     setDeletingId(null);
   }
 
+  function toggleOne(id: string) {
+    setBulkConfirm(false);
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleMany(rows: Row[], on: boolean) {
+    setBulkConfirm(false);
+    setChecked((prev) => {
+      const next = new Set(prev);
+      rows.forEach((r) => (on ? next.add(r.patient.id) : next.delete(r.patient.id)));
+      return next;
+    });
+  }
+
+  async function bulkDelete() {
+    setBulkDeleting(true);
+    const token = localStorage.getItem("db_jwt") ?? "";
+    let failed = 0;
+    for (const id of Array.from(checked)) {
+      try {
+        const r = await fetch(`${API}/api/patients/${id}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!r.ok) failed += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+    setBulkDeleting(false);
+    if (failed > 0) alert(`${failed} patient(s) could not be deleted.`);
+    window.location.reload();
+  }
+
   function renderActions(id: string) {
     return confirmId === id ? (
       <div className="flex items-center justify-center gap-2">
@@ -124,6 +165,15 @@ export default function AdminPatients() {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/40">
+              <TableHead className="w-10">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 cursor-pointer accent-red-600"
+                  checked={rows.length > 0 && rows.every((r) => checked.has(r.patient.id))}
+                  onChange={(e) => toggleMany(rows, e.target.checked)}
+                  aria-label="Select all in this table"
+                />
+              </TableHead>
               <TableHead>#</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
@@ -135,7 +185,16 @@ export default function AdminPatients() {
           </TableHeader>
           <TableBody>
             {rows.map((r, idx) => (
-              <TableRow key={r.patient.id}>
+              <TableRow key={r.patient.id} className={checked.has(r.patient.id) ? "bg-red-50/60" : ""}>
+                <TableCell>
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 cursor-pointer accent-red-600"
+                    checked={checked.has(r.patient.id)}
+                    onChange={() => toggleOne(r.patient.id)}
+                    aria-label={`Select ${r.patient.name}`}
+                  />
+                </TableCell>
                 <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
                 <TableCell className="font-medium">{r.patient.name}</TableCell>
                 <TableCell className="text-muted-foreground">{r.patient.email ?? "—"}</TableCell>
@@ -222,6 +281,49 @@ export default function AdminPatients() {
               </button>
             )}
           </div>
+
+          {/* Bulk selection bar */}
+          {checked.size > 0 && (
+            <div className="sticky top-0 z-20 mb-4 flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 shadow-sm">
+              <span className="text-sm font-medium text-red-700">{checked.size} selected</span>
+              <div className="flex items-center gap-2">
+                {bulkConfirm ? (
+                  <>
+                    <span className="text-xs text-red-700">Delete {checked.size} patient(s) permanently?</span>
+                    <button
+                      onClick={bulkDelete}
+                      disabled={bulkDeleting}
+                      className="px-3 py-1 rounded-lg bg-red-600 text-white text-xs font-medium hover:bg-red-700 disabled:opacity-60"
+                    >
+                      {bulkDeleting ? "Deleting..." : "Confirm"}
+                    </button>
+                    <button
+                      onClick={() => setBulkConfirm(false)}
+                      disabled={bulkDeleting}
+                      className="px-3 py-1 rounded-lg border border-border bg-white text-xs font-medium hover:bg-muted"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => { setChecked(new Set()); setBulkConfirm(false); }}
+                      className="px-3 py-1 rounded-lg border border-border bg-white text-xs font-medium hover:bg-muted"
+                    >
+                      Clear
+                    </button>
+                    <button
+                      onClick={() => setBulkConfirm(true)}
+                      className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-red-600 text-white text-xs font-medium hover:bg-red-700"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" /> Delete selected ({checked.size})
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Hospital sections */}
           <div className="space-y-8">
