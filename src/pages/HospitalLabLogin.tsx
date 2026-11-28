@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useStore } from "../context/StoreContext";
 import { useRouter } from "../router/RouterContext";
+import FirstLoginPasswordForm from "@/components/FirstLoginPasswordForm";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
@@ -21,7 +22,6 @@ export default function HospitalLabLogin() {
   const { navigate } = useRouter();
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
   const [setup, setSetup] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -37,7 +37,7 @@ export default function HospitalLabLogin() {
     finally { setLoading(false); }
   }
 
-  async function handleSet() {
+  async function handleSet(newPassword: string) {
     if (newPassword.length < 6) { toast.error("Password must be at least 6 characters"); return; }
     setLoading(true);
     try {
@@ -62,16 +62,7 @@ export default function HospitalLabLogin() {
         </div>
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
           {setup ? (
-            <>
-              <div className="space-y-1.5">
-                <Label>New Password</Label>
-                <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Min 6 characters" onKeyDown={(e) => e.key === "Enter" && handleSet()} autoFocus />
-              </div>
-              <Button className="w-full" onClick={handleSet} disabled={loading}>
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Password & Sign In"}
-              </Button>
-            </>
+            <FirstLoginPasswordForm minLength={6} tempPassword={password} loading={loading} onSubmit={handleSet} />
           ) : (
             <>
               <div className="space-y-1.5">

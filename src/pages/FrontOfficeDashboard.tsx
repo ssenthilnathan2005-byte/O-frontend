@@ -308,6 +308,7 @@ function Outpatients({ canVitals = true }: { canVitals?: boolean }) {
   const [intake, setIntake] = useState<any>(null);
   const [intakeErr, setIntakeErr] = useState(false);
   const intakeReq = useRef(0); // ignores a late answer for a previously opened patient
+  const intakeCache = useRef<Record<string, { fields: any[] }>>({}); // each booking's doctor-specific vitals form, kept so reopening is instant
   const savingVitalsRef = useRef(false); // a double click on Save must not store two entries
   // Only the vitals this booking's doctor asked for. Nothing is assumed while the list is still loading.
   const ik = (k: string) => !!intake && (intake.fields || []).some((x: any) => x.key === k);
@@ -323,6 +324,22 @@ function Outpatients({ canVitals = true }: { canVitals?: boolean }) {
   }, [date]);
 
   useEffect(() => { load(); const t = setInterval(() => load(true), 4000); return () => clearInterval(t); }, [load]);
+  // Preload every checked-in patient's vitals form in the background, so clicking Vitals (even straight after Collect fee) opens instantly with no loading box.
+  useEffect(() => {
+    let stop = false;
+    (async () => {
+      for (const r of rows) {
+        if (stop) return;
+        if (!r.checked_in_at || intakeCache.current[r.id]) continue;
+        try {
+          const res = await fetch(BASE + "/doctor-vitals/booking/" + r.id, { headers: { Authorization: "Bearer " + getToken() } });
+          const d = res.ok ? await res.json() : null;
+          if (d && d.config && Array.isArray(d.config.fields)) intakeCache.current[r.id] = { fields: d.config.fields };
+        } catch { /* the form loads it when opened */ }
+      }
+    })();
+    return () => { stop = true; };
+  }, [rows.map(r => r.id + (r.checked_in_at ? "1" : "0")).join(",")]);
 
   function startEdit(b: OPBooking) {
     setEditId(b.id);
@@ -362,15 +379,15 @@ function Outpatients({ canVitals = true }: { canVitals?: boolean }) {
 
   function fetchIntake(id: string) {
     const my = ++intakeReq.current;
-    setIntake(null); setIntakeErr(false);
+    setIntake(intakeCache.current[id] || null); setIntakeErr(false); // a saved copy shows at once; the server copy is checked quietly below
     fetch(BASE + "/doctor-vitals/booking/" + id, { headers: { Authorization: "Bearer " + getToken() } })
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (my !== intakeReq.current) return; if (d?.config) setIntake({ fields: d.config.fields }); else setIntakeErr(true); })
+      .then(d => { if (my !== intakeReq.current) return; if (d?.config) { const cfg = { fields: d.config.fields }; intakeCache.current[id] = cfg; setIntake((p: any) => (p && JSON.stringify(p) === JSON.stringify(cfg) ? p : cfg)); } else if (!intakeCache.current[id]) setIntakeErr(true); })
       .catch(() => { if (my === intakeReq.current) setIntakeErr(true); });
   }
   function startVitals(b: OPBooking) {
     if (vitalsId === b.id) return; // a second click on the same button must not restart the load
-    setEditId(null); setVitalsId(b.id);
+    setEditId(null); setFeeId(null); setVitalsId(b.id); // one panel at a time: opening Vitals closes an open Collect fee panel (like Collect fee already closes Vitals)
     fetchIntake(b.id);
     const v: any = b.vitals || {};
     setVf({ ...emptyV, ...Object.fromEntries(Object.entries(v).map(([k, x]) => [k, String(x)])) } as any);

@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import * as api from "../api";
 import { useStore } from "../context/StoreContext";
 import { useRouter } from "../router/RouterContext";
+import FirstLoginPasswordForm from "@/components/FirstLoginPasswordForm";
 
 export default function PharmacyLogin() {
   const { login } = useStore();
@@ -14,7 +15,6 @@ export default function PharmacyLogin() {
 
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
   const [setupMode, setSetupMode] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -40,7 +40,7 @@ export default function PharmacyLogin() {
     }
   }
 
-  async function handleSetPassword() {
+  async function handleSetPassword(newPassword: string) {
     if (newPassword.length < 6) {
       toast.error("Password must be at least 6 characters");
       return;
@@ -72,22 +72,7 @@ export default function PharmacyLogin() {
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
           {setupMode ? (
-            <>
-              <div className="space-y-1.5">
-                <Label>New Password</Label>
-                <Input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Min 6 characters"
-                  onKeyDown={(e) => e.key === "Enter" && handleSetPassword()}
-                  autoFocus
-                />
-              </div>
-              <Button className="w-full" onClick={handleSetPassword} disabled={loading}>
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Password & Sign In"}
-              </Button>
-            </>
+            <FirstLoginPasswordForm minLength={6} tempPassword={password} loading={loading} onSubmit={handleSetPassword} />
           ) : (
             <>
               <div className="space-y-1.5">

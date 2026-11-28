@@ -1,4 +1,5 @@
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import FirstLoginPasswordForm from "@/components/FirstLoginPasswordForm";
 import { Button } from "@/components/ui/button";
 import { Capacitor } from "@capacitor/core";
 import { nativeGoogleSignIn } from "@/lib/nativeGoogleAuth";
@@ -416,19 +417,13 @@ export default function LoginPage({
 
   // ── Doctor login ──────────────────────────────────────────────────────────────
   const [doctorSetup, setDoctorSetup] = useState(false);
-  const [doctorNewPass, setDoctorNewPass] = useState("");
 
   async function handleDoctorLogin(e: React.FormEvent) {
     e.preventDefault();
+    if (doctorSetup) return; // the first-time password form has its own submit
     if (!doctorCode || !doctorPass) { toast.error("Please fill all fields"); return; }
     setLoading(true);
     try {
-      if (doctorSetup) {
-        if (doctorNewPass.length < 6) { toast.error("Password must be at least 6 characters"); return; }
-        const r = await auth.doctorSetPassword(doctorCode.trim(), doctorPass, doctorNewPass);
-        login(r.user, r.token);
-        return;
-      }
       const res = await auth.doctorLogin(doctorCode.trim(), doctorPass);
       if (res.firstLogin) {
         setDoctorSetup(true);
@@ -437,6 +432,15 @@ export default function LoginPage({
       }
       login(res.user, res.token);
     } catch (err: any) { toast.error(err.message || "Login failed"); }
+    finally { setLoading(false); }
+  }
+
+  async function handleDoctorSetPassword(newPw: string) {
+    setLoading(true);
+    try {
+      const r = await auth.doctorSetPassword(doctorCode.trim(), doctorPass, newPw);
+      login(r.user, r.token);
+    } catch (err: any) { toast.error(err.message || "Failed to set password"); }
     finally { setLoading(false); }
   }
 
@@ -820,15 +824,13 @@ export default function LoginPage({
                     <Input type="password" className="pl-9" placeholder="Enter your password" value={doctorPass} onChange={e => setDoctorPass(e.target.value)} /></div>
                 </div>
                 {doctorSetup && (
-                  <div className="space-y-1.5">
-                    <Label>New Password</Label>
-                    <div className="relative"><Lock className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                      <Input type="password" className="pl-9" placeholder="Min 6 characters" value={doctorNewPass} onChange={e => setDoctorNewPass(e.target.value)} autoFocus /></div>
-                  </div>
+                  <FirstLoginPasswordForm minLength={6} tempPassword={doctorPass} loading={loading} onSubmit={handleDoctorSetPassword} />
                 )}
-                <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 rounded-full h-11" disabled={loading}>
-                  {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Verifying…</> : "Access Dashboard"}
-                </Button>
+                {!doctorSetup && (
+                  <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 rounded-full h-11" disabled={loading}>
+                    {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Verifying…</> : "Access Dashboard"}
+                  </Button>
+                )}
                 <button
                   type="button"
                   onClick={() => {

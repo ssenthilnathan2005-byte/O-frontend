@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import * as api from "../api";
 import { useStore } from "../context/StoreContext";
 import { useRouter } from "../router/RouterContext";
+import FirstLoginPasswordForm from "@/components/FirstLoginPasswordForm";
 
 export default function HospitalAdminLogin() {
   const { login } = useStore();
@@ -34,7 +35,6 @@ export default function HospitalAdminLogin() {
 
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<"login" | "set-password">("login");
@@ -65,26 +65,27 @@ export default function HospitalAdminLogin() {
           login(normalizedUser, res.token);
           
         }
-      } else {
-        if (password.length < 6) {
-          toast.error("Password must be at least 6 characters");
-          return;
-        }
-        if (password !== confirmPassword) {
-          toast.error("Passwords don't match");
-          return;
-        }
-        const res = await api.auth.hospitalSetPassword(loginId.trim(), password);
-        const normalizedUser = normalizeHospitalAdminUser(res as any);
-        if (!normalizedUser || normalizedUser.role !== "hospital_admin") {
-          toast.error("Hospital admin access required for this account");
-          return;
-        }
-        login(normalizedUser, res.token);
-        toast.success("Password set — you're in");
       }
     } catch (err: any) {
       toast.error(err.message || "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleSetPassword(newPw: string) {
+    setLoading(true);
+    try {
+      const res = await api.auth.hospitalSetPassword(loginId.trim(), newPw);
+      const normalizedUser = normalizeHospitalAdminUser(res as any);
+      if (!normalizedUser || normalizedUser.role !== "hospital_admin") {
+        toast.error("Hospital admin access required for this account");
+        return;
+      }
+      login(normalizedUser, res.token);
+      toast.success("Password set — you're in");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to set password");
     } finally {
       setLoading(false);
     }
@@ -117,42 +118,34 @@ export default function HospitalAdminLogin() {
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label>{mode === "login" ? "Password" : "New Password"}</Label>
-            <div className="relative">
-              <Input
-                type={showPw ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder={mode === "login" ? "Your password" : "At least 6 characters"}
-                onKeyDown={(e) => e.key === "Enter" && mode === "login" && handleContinue()}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPw((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-
-          {mode === "set-password" && (
-            <div className="space-y-1.5">
-              <Label>Confirm Password</Label>
-              <Input
-                type={showPw ? "text" : "password"}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Re-enter password"
-                onKeyDown={(e) => e.key === "Enter" && handleContinue()}
-              />
-            </div>
+          {mode === "login" ? (
+            <>
+              <div className="space-y-1.5">
+                <Label>Password</Label>
+                <div className="relative">
+                  <Input
+                    type={showPw ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Your password"
+                    onKeyDown={(e) => e.key === "Enter" && handleContinue()}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <Button className="w-full" onClick={handleContinue} disabled={loading}>
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Sign In"}
+              </Button>
+            </>
+          ) : (
+            <FirstLoginPasswordForm minLength={6} loading={loading} onSubmit={handleSetPassword} />
           )}
-
-          <Button className="w-full" onClick={handleContinue} disabled={loading}>
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : mode === "login" ? "Sign In" : "Set Password & Continue"}
-          </Button>
 
           <button
             type="button"
