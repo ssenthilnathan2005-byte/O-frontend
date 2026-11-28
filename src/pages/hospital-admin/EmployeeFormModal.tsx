@@ -328,7 +328,7 @@ export default function EmployeeFormModal({ editing, staffList, onClose, onSaved
           <Section title="4. Login Details">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Role">
-                <select className={selectCls} value={f.role} disabled={hasLogin} onChange={ev => set("role", ev.target.value)}>
+                <select className={selectCls} value={f.role} disabled={hasLogin} onChange={ev => { set("role", ev.target.value); if (!hasLogin) setWantLogin(LOGIN_ROLES.includes(ev.target.value)); }}>
                   <option value="">-</option>
                   {ROLE_OPTIONS.map(r => <option key={r.v} value={r.v}>{r.l}</option>)}
                 </select>

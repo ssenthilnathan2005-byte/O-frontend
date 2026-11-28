@@ -6,6 +6,7 @@ import { getToken } from "../../api";
 import { downloadFile } from "../../lib/downloadFile";
 import StaffActions from "./StaffActions";
 import EmployeeFormModal from "./EmployeeFormModal";
+import GenerateLoginButton from "./GenerateLoginButton";
 
 const BASE = (import.meta.env.VITE_API_URL as string) || "http://localhost:4000/api";
 
@@ -261,7 +262,7 @@ export default function HAHR() {
                         {s.role.replace("_"," ")}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs">{s.login_code || <span className="text-gray-300">-</span>}</td>
+                    <td className="px-4 py-3 font-mono text-xs">{s.login_code || (!s.login_id && s.is_active === 1 && ["doctor","nurse","receptionist","pharmacist","lab_technician"].includes(s.role) ? <GenerateLoginButton staffId={s.id} onDone={load} /> : <span className="text-gray-300">-</span>)}</td>
                     <td className="px-4 py-3 text-muted-foreground">{s.department||"—"}</td>
                     <td className="px-4 py-3 text-muted-foreground">{s.phone||"—"}</td>
                     <td className="px-4 py-3 capitalize text-muted-foreground">
